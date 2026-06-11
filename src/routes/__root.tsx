@@ -77,14 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "JEEnie" },
-      { name: "description", content: "JEEnie — a fresh start." },
+      { title: "JEEnie AI" },
+      { name: "description", content: "JEEnie AI - India's AI-first learning ecosystem for JEE & NEET aspirants—personalized preparation, instant guidance, and measurable results." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "JEEnie" },
-      { property: "og:description", content: "JEEnie — a fresh start." },
+      { property: "og:title", content: "JEEnie AI" },
+      { property: "og:description", content: "JEEnie AI - India's AI-first learning ecosystem for JEE & NEET aspirants—personalized preparation, instant guidance, and measurable results." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "JEEnie AI" },
+      { name: "twitter:description", content: "JEEnie AI - India's AI-first learning ecosystem for JEE & NEET aspirants—personalized preparation, instant guidance, and measurable results." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/de1393ba-46ed-4bc3-93e9-104aa8648a17/id-preview-22cc29f8--6f4b283a-95ba-48de-bc49-5d21294601f4.lovable.app-1781202443263.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/de1393ba-46ed-4bc3-93e9-104aa8648a17/id-preview-22cc29f8--6f4b283a-95ba-48de-bc49-5d21294601f4.lovable.app-1781202443263.png" },
     ],
     links: [
       {
