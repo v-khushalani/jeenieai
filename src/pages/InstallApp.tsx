@@ -75,13 +75,9 @@ const InstallApp = () => {
     }
 
     toast({
-      title: 'Install not available',
-      description: 'Open your browser menu (⋮) and tap "Install app" or "Add to Home Screen".',
-    toast({
       title: 'Almost there!',
-      description: isIOS
-        ? 'Tap the Share button in Safari, then "Add to Home Screen".'
-        : 'Open your browser menu (⋮) and tap "Install app" or "Add to Home Screen". Tip: visit this page a couple of times so Chrome enables one-tap install.',
+      description:
+        'Open your browser menu (⋮) and tap "Install app" or "Add to Home Screen". Tip: visit this page a couple of times so Chrome enables one-tap install.',
     });
   };
 
