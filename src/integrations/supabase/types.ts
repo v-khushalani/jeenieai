@@ -1952,6 +1952,42 @@ export type Database = {
         }
         Relationships: []
       }
+      test_attempt_violations: {
+        Row: {
+          auto_submitted: boolean
+          created_at: string
+          id: string
+          mode: string
+          occurred_at: string
+          test_session_id: string | null
+          user_id: string
+          violation_count: number
+          violation_type: string
+        }
+        Insert: {
+          auto_submitted?: boolean
+          created_at?: string
+          id?: string
+          mode: string
+          occurred_at?: string
+          test_session_id?: string | null
+          user_id: string
+          violation_count?: number
+          violation_type: string
+        }
+        Update: {
+          auto_submitted?: boolean
+          created_at?: string
+          id?: string
+          mode?: string
+          occurred_at?: string
+          test_session_id?: string | null
+          user_id?: string
+          violation_count?: number
+          violation_type?: string
+        }
+        Relationships: []
+      }
       test_sessions: {
         Row: {
           accuracy: number | null
@@ -2571,6 +2607,18 @@ export type Database = {
           subscription_tier: string
           target_exam: string
         }[]
+      }
+      apply_paid_subscription: {
+        Args: {
+          p_end_date: string
+          p_plan_id: string
+          p_razorpay_order_id: string
+          p_razorpay_payment_id: string
+          p_razorpay_signature: string
+          p_tier: string
+          p_user_id: string
+        }
+        Returns: undefined
       }
       award_badge: {
         Args: { _badge_id: string; _user_id: string }
