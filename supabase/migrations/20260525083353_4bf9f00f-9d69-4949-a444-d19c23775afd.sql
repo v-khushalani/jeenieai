@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS educator_approved boolean NOT NULL DEFAULT false;

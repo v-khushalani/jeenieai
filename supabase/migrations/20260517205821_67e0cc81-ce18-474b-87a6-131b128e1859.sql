@@ -1,0 +1,1 @@
+UPDATE public.questions SET source = NULL WHERE source = 'ai_error';

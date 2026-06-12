@@ -1,0 +1,1 @@
+ALTER TABLE public.question_attempts DROP CONSTRAINT IF EXISTS question_attempts_selected_option_check;

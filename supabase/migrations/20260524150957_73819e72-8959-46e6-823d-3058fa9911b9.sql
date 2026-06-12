@@ -1,0 +1,5 @@
+
+UPDATE public.subscription_plans SET features = '["Unlimited practice questions","Unlimited mock tests","AI Doubt Solver — Limited access","AI Study Planner","Full leaderboard & badges","Priority email support"]'::jsonb WHERE id = 'monthly';
+UPDATE public.subscription_plans SET features = '["Everything in Pro monthly","Save 40% vs MRP","AI Doubt Solver — Limited access","AI Study Planner","Effective ₹75/month","Priority email support"]'::jsonb WHERE id = 'yearly';
+UPDATE public.subscription_plans SET features = '["Everything in Pro","AI Doubt Solver — Unlimited access","Adaptive AI Study Planner","AI Rank Predictor","Educator PPTs & simulations","WhatsApp priority support"]'::jsonb WHERE id = 'pro_plus_monthly';
+UPDATE public.subscription_plans SET features = '["Everything in Pro+ monthly","Save 40% vs MRP","AI Doubt Solver — Unlimited access","Adaptive AI Study Planner","AI Rank Predictor","Educator PPTs & simulations","Effective ₹150/month","WhatsApp priority support","Early access to new features"]'::jsonb WHERE id = 'pro_plus_yearly';

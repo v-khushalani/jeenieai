@@ -1,0 +1,1 @@
+TRUNCATE TABLE public.question_attempts, public.question_reports, public.questions, public.topics, public.chapters RESTART IDENTITY CASCADE;

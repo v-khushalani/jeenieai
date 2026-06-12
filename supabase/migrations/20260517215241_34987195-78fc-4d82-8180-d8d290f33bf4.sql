@@ -1,0 +1,2 @@
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS kw_classified_at timestamptz;
+CREATE INDEX IF NOT EXISTS idx_questions_kw_classified_at ON public.questions(kw_classified_at) WHERE kw_classified_at IS NULL;

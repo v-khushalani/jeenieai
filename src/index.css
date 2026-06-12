@@ -1,0 +1,690 @@
+@import 'tailwindcss';
+
+@plugin 'tailwindcss-animate';
+
+@custom-variant dark (&:is(.dark *));
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 1rem;
+  @media (width >= --theme(--breakpoint-xs)) {
+    max-width: none;
+  }
+  @media (width >= 1400px) {
+    max-width: 1400px;
+  }
+}
+
+@theme {
+  --font-sans: 'Saira', system-ui, sans-serif;
+  --font-saira: 'Saira', sans-serif;
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-surface: hsl(var(--surface));
+  --color-surface-elevated: hsl(var(--surface-elevated));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-light: hsl(var(--primary-light));
+  --color-primary-glow: hsl(var(--primary-glow));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --radius-lg: var(--radius-lg);
+  --radius-md: var(--radius);
+  --radius-sm: var(--radius-sm);
+
+  --shadow-apple: var(--shadow-sm);
+  --shadow-apple-md: var(--shadow-md);
+  --shadow-apple-lg: var(--shadow-lg);
+  --shadow-apple-xl: var(--shadow-xl);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility animate-float {
+  /* Apple-inspired animations */
+  animation: float 6s ease-in-out infinite;
+}
+
+@utility animate-fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+@utility animate-fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@utility animate-scale-in {
+  animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@utility animate-slide-in {
+  animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@utility glass {
+  /* Glassmorphism */
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+@utility glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(1, 48, 98, 0.1);
+}
+
+@utility shadow-apple {
+  /* Apple-style shadows */
+  box-shadow:
+    0 2px 8px 0 rgba(0, 0, 0, 0.08),
+    0 1px 2px 0 rgba(0, 0, 0, 0.04);
+}
+
+@utility shadow-apple-lg {
+  box-shadow:
+    0 10px 40px 0 rgba(0, 0, 0, 0.12),
+    0 2px 8px 0 rgba(0, 0, 0, 0.08);
+}
+
+@utility transition-apple {
+  /* Smooth transitions */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@utility mobile-app-shell {
+  height: 100dvh;
+  min-height: 100dvh;
+  width: 100%;
+  padding-top: var(--app-header-height);
+  padding-bottom: var(--app-mobile-nav-height);
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@utility mobile-app-shell-header-only {
+  height: 100dvh;
+  min-height: 100dvh;
+  width: 100%;
+  padding-top: var(--app-header-height);
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@utility mobile-app-shell-bottom-nav {
+  height: 100dvh;
+  min-height: 100dvh;
+  width: 100%;
+  padding-bottom: var(--app-mobile-nav-height);
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@utility mobile-app-shell-content {
+  /* Canonical content wrappers for pages with fixed header/bottom tabs. */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+@utility mobile-app-shell-content-fit {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@utility admin-panel-hide-subtitles {
+  & .card-description {
+    display: none;
+  }
+}
+
+@utility card-description {
+  .admin-panel-hide-subtitles & {
+    display: none;
+  }
+}
+@utility pb-safe {
+  /* Safe area padding for iOS notch/home indicator */
+  padding-bottom: env(safe-area-inset-bottom, 0.5rem);
+}
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top, 0);
+}
+@utility touch-target {
+  /* Touch-friendly tap targets */
+  min-height: 44px;
+  min-width: 44px;
+}
+@utility scrollbar-hide {
+  /* Hide scrollbar but keep functionality */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+@utility text-mobile-xs {
+  /* Mobile text sizing */
+  font-size: 0.65rem;
+  line-height: 1rem;
+}
+@utility text-mobile-sm {
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+}
+@utility no-select {
+  /* Prevent text selection on UI elements */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+@utility gpu {
+  /* Hardware acceleration for smooth animations */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+@layer base {
+  :root {
+    /* Apple-inspired color system */
+    --background: 0 0% 100%;
+    --foreground: 216 15% 12%;
+    
+    /* Primary: #013062 */
+    --primary: 213 100% 19%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 213 100% 95%;
+    --primary-glow: 213 100% 40%;
+    
+    /* Surface colors */
+    --surface: 0 0% 98%;
+    --surface-elevated: 0 0% 100%;
+    
+    /* Secondary: #e6eeff */  
+    --secondary: 213 100% 95%;
+    --secondary-foreground: 213 100% 19%;
+    
+    /* Muted/Gray: #e9e9e9 */
+    --muted: 0 0% 91%;
+    --muted-foreground: 216 10% 40%;
+    
+    /* Accent */
+    --accent: 213 100% 95%;
+    --accent-foreground: 213 100% 19%;
+    
+    /* Card */
+    --card: 0 0% 100%;
+    --card-foreground: 216 15% 12%;
+    
+    /* Popover - SOLID background for dropdowns */
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 15% 12%;
+
+    /* Sidebar tokens (used by admin sidebar/drawer) */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 216 15% 12%;
+    --sidebar-primary: 213 100% 19%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 213 100% 95%;
+    --sidebar-accent-foreground: 213 100% 19%;
+    --sidebar-border: 216 15% 90%;
+    --sidebar-ring: 213 100% 19%;
+    
+    /* Border */
+    --border: 216 15% 92%;
+    --input: 216 15% 92%;
+    --ring: 213 100% 19%;
+    
+    /* Apple-style radius */
+    --radius: 1rem;
+    --radius-sm: 0.75rem;
+    --radius-lg: 1.25rem;
+    
+    /* Glassmorphism */
+    --glass-bg: 255 255 255 / 0.7;
+    --glass-border: 255 255 255 / 0.2;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+    
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* App shell measurements */
+    --app-header-height: 4rem;
+    --app-mobile-nav-height: 0px;
+  }
+
+  @media (min-width: 1024px) {
+    :root {
+      --app-header-height: 4.5rem;
+    }
+  }
+
+  .dark {
+    /* Brand-anchored dark mode — keeps the #013062 navy DNA.
+       Surfaces are deep navy (213 hue family, not generic slate),
+       primary stays in the same hue but lifted for legibility on dark. */
+
+    /* Backgrounds: deep navy derived from brand #013062 */
+    --background: 213 60% 7%;
+    --foreground: 213 25% 96%;
+
+    --surface: 213 50% 9%;
+    --surface-elevated: 213 45% 12%;
+
+    /* Primary: same 213 hue family, lifted for dark contrast (not generic sky) */
+    --primary: 213 90% 62%;
+    --primary-foreground: 213 100% 8%;
+    --primary-light: 213 60% 18%;
+    --primary-glow: 213 100% 70%;
+
+    /* Secondary surface: brand navy tint */
+    --secondary: 213 45% 14%;
+    --secondary-foreground: 213 30% 95%;
+
+    --muted: 213 30% 16%;
+    --muted-foreground: 213 15% 70%;
+
+    --accent: 213 55% 20%;
+    --accent-foreground: 213 95% 78%;
+
+    --card: 213 50% 9%;
+    --card-foreground: 213 25% 96%;
+
+    /* Popover - SOLID dark background for dropdowns */
+    --popover: 213 50% 10%;
+    --popover-foreground: 213 25% 96%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Sidebar tokens (dark mode) */
+    --sidebar-background: 213 55% 8%;
+    --sidebar-foreground: 213 25% 96%;
+    --sidebar-primary: 213 90% 62%;
+    --sidebar-primary-foreground: 213 100% 8%;
+    --sidebar-accent: 213 45% 14%;
+    --sidebar-accent-foreground: 213 25% 96%;
+    --sidebar-border: 213 35% 20%;
+    --sidebar-ring: 213 90% 62%;
+
+    --border: 213 30% 20%;
+    --input: 213 30% 18%;
+    --ring: 213 90% 62%;
+  }
+}
+
+@layer utilities {
+  /* Skip link styles */
+  .skip-link {
+    position: absolute;
+    left: -999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .skip-link:focus,
+  .skip-link:active {
+    left: 1rem;
+    top: 1rem;
+    width: auto;
+    height: auto;
+    padding: 0.5rem 1rem;
+    background: white;
+    color: black;
+    z-index: 9999;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  /* Keyboard focus visible styles for accessibility */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(1,48,98,0.08);
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Saira', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+    cursor: default;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-height: 100%;
+  }
+
+  html,
+  body {
+    overflow-x: hidden;
+  }
+}
+
+@layer utilities {
+  /* Apple-inspired keyframes */
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+      transform: translateY(-20px) rotate(2deg);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Mobile-first responsive utilities */
+}
+
+/* Mobile-specific overrides */
+@media (max-width: 640px) {
+  :root {
+    --app-mobile-nav-height: 4.75rem;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  body {
+    position: fixed;
+    inset: 0;
+  }
+
+  #root {
+    position: relative;
+  }
+
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Comfortable readable base on mobile (also avoids iOS zoom on focus for inputs ≥16px) */
+  html {
+    font-size: 15px;
+  }
+
+  /* Prevent iOS auto-zoom when focusing form fields */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Ensure interactive elements meet 44px tap-target guideline */
+  button,
+  [role="button"],
+  a.btn,
+  .tap-target {
+    min-height: 44px;
+  }
+
+  /* Tighten oversized headings on phones */
+  h1 { line-height: 1.1; }
+  h2 { line-height: 1.15; }
+
+  /* Cards: softer radius and tighter inner padding feel native on phones */
+  .glass-card {
+    border-radius: 1rem;
+  }
+}
+
+/* Apple-inspired gradients */
+.gradient-primary {
+  background: linear-gradient(135deg, #0b5ed7 0%, #1f8bff 100%);
+}
+
+.gradient-surface {
+  background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.gradient-overlay {
+  background: linear-gradient(135deg, rgba(15, 92, 214, 0.1) 0%, rgba(173, 216, 255, 0.22) 100%);
+}
+/* 🧠 JEEnie AI Formula & Highlight Theme */
+.jeenius-formula {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--primary));
+  font-family: 'Saira', monospace;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 3px hsl(var(--primary) / 0.1);
+  transition: all 0.25s ease-in-out;
+}
+
+.jeenius-formula:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--primary));
+  box-shadow: 0 0 6px hsl(var(--primary) / 0.25);
+  transform: scale(1.02);
+}
+
+/* Bold & Important Text */
+.jeenius-strong {
+  color: hsl(var(--primary));
+  font-weight: 700;
+}
+
+/* 💬 Chat bubbles */
+.jeenius-ai {
+  background-color: hsl(var(--background));
+  color: hsl(var(--primary));
+  border-left: 4px solid hsl(var(--primary));
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  margin: 0.5rem 0;
+  box-shadow: 0 2px 6px hsl(var(--primary) / 0.05);
+}
+
+.jeenius-user {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+  text-align: right;
+}
+
+/* Italic or subtle emphasis */
+.jeenius-em {
+  color: hsl(var(--primary));
+  font-style: italic;
+}
+
+/* KaTeX Math Display Styles */
+.math-display {
+  display: inline;
+}
+
+.math-display .katex {
+  font-size: 1.1em;
+}
+
+.math-display .katex-display {
+  margin: 0.5em 0;
+}
+
+.math-display .katex .katex-error,
+.math-display .katex-error {
+  color: inherit !important;
+  font-family: inherit;
+}

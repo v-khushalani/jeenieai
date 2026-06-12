@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_questions_chapter_kwcls ON public.questions(chapter_id, id) WHERE kw_classified_at IS NULL;

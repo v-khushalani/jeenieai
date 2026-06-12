@@ -1,0 +1,4 @@
+DELETE FROM public.topics WHERE name ~ '^Topic [0-9]+$' AND id NOT IN (SELECT DISTINCT topic_id FROM public.questions WHERE topic_id IS NOT NULL);
+WITH exam_to_batch AS (SELECT DISTINCT ON (exam_type) exam_type, id AS batch_id FROM public.batches WHERE is_active = true ORDER BY exam_type, grade DESC NULLS LAST, display_order ASC) UPDATE public.chapters c SET batch_id = etb.batch_id FROM exam_to_batch etb WHERE c.batch_id IS NULL AND ((etb.exam_type = 'JEE' AND ('JEE_MAINS' = ANY(c.exam_relevance) OR 'JEE_ADVANCED' = ANY(c.exam_relevance))) OR (etb.exam_type = 'NEET' AND 'NEET' = ANY(c.exam_relevance)));
+CREATE INDEX IF NOT EXISTS questions_exam_subject_chapter_idx ON public.questions (exam, subject, chapter_id) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS chapters_batch_subject_idx ON public.chapters (batch_id, subject_id) WHERE is_active = true;

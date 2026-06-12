@@ -1,0 +1,1 @@
+ALTER TABLE public.test_sessions ADD COLUMN IF NOT EXISTS subject text;
