@@ -1,0 +1,47 @@
+# JEEnie AI
+
+> AI-powered personalized learning platform for JEE Main, JEE Advanced, NEET, and Foundation (Class 9-10) exam preparation in India. 50,000+ practice questions with adaptive difficulty, smart analytics, AI doubt solver, and gamified learning.
+
+## What JEEnie AI does
+
+JEEnie AI helps Indian students crack competitive entrance exams through:
+- **Adaptive practice**: questions auto-adjust to your skill level
+- **AI Doubt Solver**: step-by-step Hinglish explanations
+- **Personalized study plans**: AI analyzes your weak topics and builds a daily plan
+- **Mock tests**: full-length JEE/NEET pattern tests with detailed analytics
+- **Topic mastery tracking**: see exactly which chapters need more work
+- **Gamification**: streaks, badges, leaderboards to maintain consistency
+
+## Exams covered
+- JEE Main (Physics, Chemistry, Mathematics)
+- JEE Advanced (Physics, Chemistry, Mathematics)
+- NEET (Physics, Chemistry, Biology)
+- Foundation Class 9-10 (board exam preparation)
+
+## Pricing
+- Free tier: 15 questions/day, 2 mock tests/month
+- Pro: ₹99/month — unlimited questions and tests, AI features
+- Pro+: educator PPTs and premium content library
+
+## Key pages
+- [Home](https://www.jeenie.website/): platform overview
+- [Why Us](https://www.jeenie.website/why-us): differentiators vs traditional coaching
+- [About](https://www.jeenie.website/about): team and mission
+- [FAQ](https://www.jeenie.website/faq): common questions about JEE/NEET prep
+- [Subscription Plans](https://www.jeenie.website/subscription-plans): pricing details
+- [Privacy Policy](https://www.jeenie.website/privacy-policy)
+- [Terms of Service](https://www.jeenie.website/terms-of-service)
+
+## Common questions
+
+**Is JEEnie AI free?** Yes, a free tier is available. Premium starts at ₹99/month.
+
+**Which exams does it cover?** JEE Main, JEE Advanced, NEET, Foundation 9-10.
+
+**How does AI personalization work?** JEEnie AI tracks attempts, accuracy, time-per-question, and topic mastery to dynamically adjust difficulty and recommend the next best topic to study.
+
+**Does it work on mobile?** Yes — installable PWA on Android/iOS plus native apps.
+
+## Contact
+- Website: https://www.jeenie.website
+- Support: support@jeenie.website

@@ -1,0 +1,26 @@
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  background: hsl(0 0% 100%);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.sim-error {
+  margin: 16px;
+  padding: 12px;
+  border: 1px solid hsl(350 89% 87%);
+  border-radius: 12px;
+  background: hsl(351 100% 97%);
+  color: hsl(352 83% 41%);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}

@@ -1,0 +1,54 @@
+User-agent: Googlebot
+Allow: /
+Disallow: /admin
+Disallow: /educator
+Disallow: /dashboard
+Disallow: /test-attempt
+Disallow: /test-results
+Disallow: /settings
+Disallow: /profile
+Disallow: /auth/callback
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /goal-selection
+Disallow: /subscription-plans
+Disallow: /practice
+Disallow: /tests
+Disallow: /analytics
+Disallow: /study-now
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+Disallow: /educator
+Disallow: /dashboard
+Disallow: /subscription-plans
+Disallow: /auth/callback
+Disallow: /forgot-password
+Disallow: /reset-password
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /educator
+Disallow: /dashboard
+Disallow: /test-attempt
+Disallow: /test-results
+Disallow: /settings
+Disallow: /profile
+Disallow: /subscription-plans
+Disallow: /auth/callback
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /practice
+Disallow: /tests
+Disallow: /analytics
+Disallow: /study-now
+
+Sitemap: https://www.jeenie.website/sitemap.xml

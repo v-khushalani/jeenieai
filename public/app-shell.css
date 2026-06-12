@@ -1,0 +1,30 @@
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.skip-link:focus {
+  left: 8px;
+  top: 8px;
+  width: auto;
+  height: auto;
+  z-index: 9999;
+  padding: 8px 16px;
+  border-radius: 4px;
+  background: hsl(0 0% 100%);
+  color: hsl(211 97% 20%);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+  font-weight: 600;
+  font-family: 'Saira', system-ui, sans-serif;
+  text-decoration: none;
+}
+
+.noscript-fallback {
+  padding: 50px;
+  text-align: center;
+  font-family: 'Saira', system-ui, sans-serif;
+}
