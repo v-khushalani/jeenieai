@@ -27,13 +27,18 @@ const InstallApp = () => {
       setIsInstalled(true);
     }
 
+    const existing = (window as any).__jeenieDeferredInstallPrompt;
+    if (existing) setDeferredPrompt(existing as BeforeInstallPromptEvent);
+
     const handler = (e: Event) => {
       e.preventDefault();
+      (window as any).__jeenieDeferredInstallPrompt = e;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
+      (window as any).__jeenieDeferredInstallPrompt = undefined;
       setDeferredPrompt(null);
       toast({ title: 'Installed!', description: 'JEEnie AI is now on your home screen.' });
     };
@@ -70,8 +75,9 @@ const InstallApp = () => {
     }
 
     toast({
-      title: 'Install not available',
-      description: 'Open your browser menu (⋮) and tap "Install app" or "Add to Home Screen".',
+      title: 'Almost there!',
+      description:
+        'Open your browser menu (⋮) and tap "Install app" or "Add to Home Screen". Tip: visit this page a couple of times so Chrome enables one-tap install.',
     });
   };
 
@@ -101,8 +107,8 @@ const InstallApp = () => {
       <div className="mobile-app-shell-content flex-1 flex items-center justify-center px-4 py-10 max-w-lg mx-auto w-full">
         <div className="w-full space-y-8 text-center">
           <div className="space-y-4">
-            <div className="w-24 h-24 mx-auto rounded-3xl bg-primary flex items-center justify-center shadow-xl shadow-primary/30">
-              <img src="/logo.png" alt="JEEnie AI" className="w-16 h-16" />
+            <div className="w-24 h-24 mx-auto flex items-center justify-center drop-shadow-xl">
+              <img src="/logo.png" alt="JEEnie AI" className="w-24 h-24 rounded-3xl object-cover" />
             </div>
             <div>
               <h2 className="text-3xl font-bold text-foreground">JEEnie AI</h2>
