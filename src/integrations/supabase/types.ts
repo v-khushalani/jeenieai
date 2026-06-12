@@ -1727,7 +1727,6 @@ export type Database = {
           created_at: string | null
           id: string
           referral_code: string
-          referred_email: string | null
           referred_id: string | null
           referred_user_id: string | null
           referrer_id: string
@@ -1739,7 +1738,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           referral_code: string
-          referred_email?: string | null
           referred_id?: string | null
           referred_user_id?: string | null
           referrer_id: string
@@ -1751,7 +1749,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           referral_code?: string
-          referred_email?: string | null
           referred_id?: string | null
           referred_user_id?: string | null
           referrer_id?: string
@@ -2435,6 +2432,48 @@ export type Database = {
           total_questions_solved?: number | null
           total_study_time?: number | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profiles_public: {
+        Row: {
+          avatar_url: string | null
+          badges: Json | null
+          current_streak: number | null
+          full_name: string | null
+          id: string | null
+          level: string | null
+          level_progress: number | null
+          longest_streak: number | null
+          overall_accuracy: number | null
+          total_points: number | null
+          total_questions_solved: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          badges?: Json | null
+          current_streak?: number | null
+          full_name?: string | null
+          id?: string | null
+          level?: string | null
+          level_progress?: number | null
+          longest_streak?: number | null
+          overall_accuracy?: number | null
+          total_points?: number | null
+          total_questions_solved?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          badges?: Json | null
+          current_streak?: number | null
+          full_name?: string | null
+          id?: string | null
+          level?: string | null
+          level_progress?: number | null
+          longest_streak?: number | null
+          overall_accuracy?: number | null
+          total_points?: number | null
+          total_questions_solved?: number | null
         }
         Relationships: []
       }
