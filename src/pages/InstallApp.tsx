@@ -27,13 +27,18 @@ const InstallApp = () => {
       setIsInstalled(true);
     }
 
+    const existing = (window as any).__jeenieDeferredInstallPrompt;
+    if (existing) setDeferredPrompt(existing as BeforeInstallPromptEvent);
+
     const handler = (e: Event) => {
       e.preventDefault();
+      (window as any).__jeenieDeferredInstallPrompt = e;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
+      (window as any).__jeenieDeferredInstallPrompt = undefined;
       setDeferredPrompt(null);
       toast({ title: 'Installed!', description: 'JEEnie AI is now on your home screen.' });
     };
