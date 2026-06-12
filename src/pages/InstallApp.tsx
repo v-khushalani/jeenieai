@@ -107,8 +107,8 @@ const InstallApp = () => {
       <div className="mobile-app-shell-content flex-1 flex items-center justify-center px-4 py-10 max-w-lg mx-auto w-full">
         <div className="w-full space-y-8 text-center">
           <div className="space-y-4">
-            <div className="w-24 h-24 mx-auto rounded-3xl bg-primary flex items-center justify-center shadow-xl shadow-primary/30">
-              <img src="/logo.png" alt="JEEnie AI" className="w-16 h-16" />
+            <div className="w-24 h-24 mx-auto flex items-center justify-center drop-shadow-xl">
+              <img src="/logo.png" alt="JEEnie AI" className="w-24 h-24 rounded-3xl object-cover" />
             </div>
             <div>
               <h2 className="text-3xl font-bold text-foreground">JEEnie AI</h2>
