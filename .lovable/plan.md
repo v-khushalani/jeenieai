@@ -1,100 +1,74 @@
-# Notes v2 — Document Upload + Pro+ Viewer + Progress
+# JEEnie — Pre-Launch Audit
 
-Big upgrade across admin authoring and student reading. 6 things below.
-
----
-
-## 1. Database & Storage
-
-**New columns on `study_notes`**:
-- `document_url text` — public storage URL (PDF). Word files are auto-converted to PDF on upload (browser-side via `docx` → server keeps original too).
-- `document_type text` (`'markdown' | 'pdf' | 'docx'`) — drives which viewer renders.
-- `document_name text` — original filename for download.
-- `document_pages int` — page count (PDF only) for progress %.
-- `requires_pro_plus boolean default true` — server-enforced gate.
-
-**New table `note_reading_progress`** (per user, per note):
-- `user_id`, `note_id`, `chapter_id`, `last_page int default 1`, `last_scroll_pct numeric default 0`, `completed boolean default false`, `updated_at`.
-- RLS: user can read/write only their own rows.
-- Unique `(user_id, note_id)`.
-
-**New Storage bucket `study-notes`** (public read, authenticated write via admin role check).
-
-**Server-enforced Pro+ gating** via SQL view + RLS:
-- New `study_notes` SELECT policy: only return `document_url`/`content_md` if `requires_pro_plus = false` OR `has_role(auth.uid(), 'pro_plus')` OR admin. (Currently policy is open — tightening it.)
-- Edge function `get-note` (security definer) double-checks tier before signing a private URL — backup path if we ever flip the bucket to private.
+Short answer: **No — not launch-ready yet.** App code is in good shape, but there are **2 critical (data-leak) security issues** and **missing backend secrets** that block a safe launch. Everything else is "should-fix" polish.
 
 ---
 
-## 2. Admin — NotesManager UX redesign
+## 🔴 BLOCKERS (must fix before launch)
 
-- **Filters as pills** (FilterPills component already in repo) instead of 3 dropdowns. Exam / Class / Subject all become pill rows. Cleaner mobile too.
-- **Fix duplicate chapter dropdown**: dedupe by chapter title (case/space-insensitive) before populating `<Select>`. Same dedupe logic that StudyNow already uses.
-- **New "Upload Document" panel** inside the note editor:
-  - Drag-drop or file picker: `.pdf`, `.docx`, `.doc`
-  - On upload → push to `study-notes` bucket → save `document_url` + `document_type` + `document_name` + page count.
-  - Either markdown OR document is required (not both).
-  - Editor shows current attached doc with replace/remove buttons.
-- Note row badge shows `PDF` / `DOCX` / `MD` so you know format at a glance.
+### 1. `profiles` table is publicly readable
+SELECT policy is `USING (true)` → **anyone, unauthenticated, can read every user's email, phone, full name, avatar, subscription status**. Sample scan confirmed real PII is exposed.
+→ Restrict SELECT to `auth.uid() = id`; expose only safe fields (display name, avatar) via a dedicated public view if needed.
 
----
+### 2. `referrals.referred_email` leaks third-party emails
+Referrer can read every referred email, even for people who never signed up → email enumeration.
+→ Either drop the `referred_email` column or hide it via a column-restricted view / RLS column filter.
 
-## 3. Student — Document Viewer
+### 3. Missing runtime secrets
+Only `LOVABLE_API_KEY` is configured. Edge functions reference but don't have:
+- `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` → payments (`create-razorpay-order`, `verify-payment`, `create-batch-order`) will fail
+- `GEMINI_API_KEY` / `OPENAI_API_KEY` → AI features (`jeenie`, `generate-study-plan`, `extract-pdf-questions`, `text-to-speech`, `voice-to-text`) will fail
+- `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` → push notifications will fail
 
-Replace current markdown-only `StudyNotesIntro` with a `DocumentViewer` that handles 3 modes:
-
-- **Markdown** → existing pretty render (keep).
-- **PDF** → `react-pdf` (pdf.js worker). Continuous scroll, pinch/scroll zoom, page counter, keyboard nav.
-- **DOCX** → render via `mammoth` → HTML in same paper-like shell. (No client-side Word renderer is perfect; mammoth covers ~95% of teaching notes.)
-
-Viewer chrome:
-- Sticky header: title, Pro+ badge, page X of Y, zoom (− 100% +), download original.
-- Sticky footer: **Resume from where you left** + progress bar + "Start practice" button.
-- Auto-saves scroll/page every 5s + on close → `note_reading_progress`.
-- Reopening the note jumps to last position.
+Without these, paid signup and core "AI tutor" features are broken on day 1.
 
 ---
 
-## 4. Strict Pro+ enforcement
+## 🟡 SHOULD-FIX (security warnings, non-blocking but recommended)
 
-Three layers (defense in depth):
-
-1. **UI** — `StudyNotesIntro` already checks `subscriptionTier === 'pro_plus'`; we add a `<ProPlusGate>` upgrade card for non-Pro+ users showing a blurred preview + upgrade CTA (no real content leaks).
-2. **Data layer** — RLS policy on `study_notes` denies `document_url` / `content_md` to non-Pro+ users (returns row metadata only: title + reading time so the upsell card has context).
-3. **Storage layer** — bucket stays public-read for performance, but filenames are UUIDs (unguessable). If you later want stricter, flip to private + use the `get-note` signed-URL edge function (scaffolded).
-
----
-
-## 5. Fix: student-side notes not appearing
-
-Root cause likely the chapter-id match: admin saves `chapter_id` from class-filtered list, but `StudyNotesIntro` queries by the chapter UUID the student is practising. Verifying with a quick query, then:
-- Ensure `is_published` is true before show.
-- Ensure feature flag `study_notes` is actually ON for the student (right now it's default OFF — surface this clearly in NotesManager with a "Flag is OFF — students won't see" banner + 1-click toggle for admins).
-- Fix any subject-case mismatch the same way I fixed the chapter loader.
+| # | Issue | Risk |
+|---|---|---|
+| 4 | `admin_notifications` in Realtime publication, no non-admin SELECT policy | Realtime may broadcast admin content to all subscribers |
+| 5 | `promo_codes` in Realtime publication without restrictive policy | Discount codes could leak to subscribers |
+| 6 | `realtime.messages` has no RLS | Any signed-in user can subscribe to any channel (battle sessions, private notifications) |
+| 7 | `topic_mastery` has SELECT but no INSERT/UPDATE/DELETE policies | Confirm all writes go via service-role function |
+| 8 | `battle_rewards` has no write policies | Same — confirm server-only writes |
+| 9 | A SECURITY DEFINER view exists (linter ERROR) | Should be SECURITY INVOKER or moved out of public schema |
+| 10 | Multiple SECURITY DEFINER functions executable by `anon` / `authenticated` | Revoke EXECUTE where not intended |
+| 11 | Extensions installed in `public` schema | Move to `extensions` schema |
+| 12 | RLS enabled but no policy on some tables (INFO) | Add policies or disable RLS |
+| 13 | Auth "leaked password protection" disabled | Enable in Supabase Auth settings |
 
 ---
 
-## 6. StudyNow integration
+## 🟢 LOOKS GOOD
 
-- When a student enters a chapter that has a published note, auto-open `DocumentViewer` (Pro+) or upgrade card (free/pro).
-- Chapter card already shows a `Theory` badge — extend with format icon (PDF/DOC/MD) and progress ring if they started reading.
-- Resume CTA on the chapter card if `note_reading_progress.completed = false`.
-
----
-
-## Technical notes
-
-- New deps: `react-pdf` (PDF viewer, ~280kb gz, lazy-loaded), `mammoth` (DOCX→HTML, ~100kb gz, lazy-loaded). Both behind dynamic import so the practice page bundle stays small.
-- pdf.js worker served from `/public/pdf.worker.min.js`.
-- Bucket `study-notes` public-read, 25MB file limit, admin-only write via storage RLS check on `has_role(auth.uid(),'admin')`.
-- Migration order: columns → bucket → policies → progress table → policies/grants.
-- Feature flag `study_notes` stays the master kill switch.
+- Supabase connected, types generated, 24 edge functions deployed
+- Razorpay payment flow has signature verification + idempotency + referral rewards
+- Promo redemption is server-validated via edge function + RPC
+- CSP, HSTS, X-Frame-Options, security headers configured in `vercel.json`
+- PWA + service worker registered, auto-update on
+- Sentry + Mixpanel + GA hooks present (need IDs in env)
+- Admin role check uses `user_roles` table + `has_role` SECURITY DEFINER (correct pattern)
 
 ---
 
-## Out of scope (for now)
-- OCR of scanned PDFs (assume text-layer PDFs).
-- Highlighting / annotations.
-- Multiple documents per chapter (one-to-one for v2).
+## 📋 Proposed fix plan (in order)
 
-Confirm and I'll ship migration + code in one batch. Or tell me what to drop.
+1. **Migration** — fix `profiles` SELECT policy + remove/hide `referrals.referred_email`.
+2. **Migration** — tighten Realtime: remove `admin_notifications` & `promo_codes` from `supabase_realtime` publication (or add restrictive policies); add RLS on `realtime.messages` scoping subscriptions by `auth.uid()`.
+3. **Migration** — add explicit write policies on `topic_mastery` and `battle_rewards` (or document service-role-only).
+4. **Migration** — audit SECURITY DEFINER functions/views: revoke EXECUTE from `anon`/`authenticated` where unintended; convert the flagged view to SECURITY INVOKER; move public-schema extensions to `extensions`.
+5. **Secrets** — add `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `GEMINI_API_KEY` (and/or `OPENAI_API_KEY`), `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` via the secrets tool.
+6. **Supabase dashboard (manual)** — enable Leaked Password Protection, confirm Site URL + Redirect URLs include the production domain, confirm Google OAuth credentials are set.
+7. **Re-run security scan** → publish.
+
+---
+
+## ❓ Decisions I need from you before implementing
+
+1. For **#2 referrals**: drop the `referred_email` column entirely, or keep it but block client reads (server-only)?
+2. For **#3 secrets**: do you already have Razorpay live keys + a Gemini/OpenAI key ready to paste? Which AI provider — Gemini, OpenAI, or both?
+3. Want me to also enable Leaked Password Protection automatically (where possible) and tighten the SECURITY DEFINER grants in the same migration, or keep that as a separate review step?
+
+Approve and I'll execute the migrations + request the secrets one by one.
