@@ -14,7 +14,20 @@ declare global {
     __JEENIE_SIM_REACT_DOM__?: {
       createRoot: typeof createRoot;
     };
+    __jeenieDeferredInstallPrompt?: any;
   }
+}
+
+// Capture the browser install prompt as early as possible so the Install page
+// can trigger it directly instead of falling back to manual instructions.
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    (window as any).__jeenieDeferredInstallPrompt = e;
+  });
+  window.addEventListener('appinstalled', () => {
+    (window as any).__jeenieDeferredInstallPrompt = undefined;
+  });
 }
 
 // Only expose React internals in development for the sim/e2e harness.
