@@ -17,6 +17,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PricingModal from '@/components/PricingModal';
 import { logger } from '@/utils/logger';
+import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
 import { parseGrade, isFoundationGrade, extractGradeFromExamType } from '@/utils/gradeParser';
 import { FilterPills } from '@/components/ui/FilterPills';
 import { FREE_LIMITS } from '@/config/subscriptionPlans';
@@ -47,6 +48,7 @@ type ChapterOption = { id: string; subject: string; chapter: string };
 const TestPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth() as any;
+  const testHistoryEnabled = useFeatureFlag('test_history');
   const [loading, setLoading] = useState(false);
   const [testMode, setTestMode] = useState<string>('');
   const [pyqExam, setPyqExam] = useState<string>('');
@@ -1300,9 +1302,11 @@ const TestPage: React.FC = () => {
               )}
               </div>
 
-            <div className="mt-6 sm:mt-8">
-              {testHistorySection()}
-            </div>
+            {testHistoryEnabled && (
+              <div className="mt-6 sm:mt-8">
+                {testHistorySection()}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -47,12 +47,7 @@ const GoalSelectionPage = () => {
 
   const getScopedKey = (base: string) => (user?.id ? `${base}:${user.id}` : base);
 
-  const getDiagnosticKey = () => getScopedKey('diagnosticComplete');
-
-  const getPostGoalRoute = () => {
-    const diagnosticDone = safeLocalStorage.getItem(getDiagnosticKey()) || safeLocalStorage.getItem('diagnosticComplete');
-    return diagnosticDone ? '/dashboard' : '/diagnostic';
-  };
+  const getPostGoalRoute = () => '/dashboard';
 
   const setGoalCompletionFlags = (exam: TargetExam, grade: number) => {
     if (!user?.id) return;
