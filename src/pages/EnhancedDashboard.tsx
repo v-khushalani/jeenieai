@@ -22,7 +22,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import LoadingScreen from "@/components/ui/LoadingScreen";
 import Leaderboard from "@/components/Leaderboard";
-import OnboardingTutorial from "@/components/OnboardingTutorial";
+
 import { useUserStats } from "@/hooks/useUserStats";
 import { useStreakData } from "@/hooks/useStreakData";
 import { useExamDates } from "@/hooks/useExamDates";
@@ -198,7 +198,6 @@ const EnhancedDashboard = () => {
 
   return (
     <div className="mobile-app-shell bg-background">
-      <OnboardingTutorial />
       {/* Background decoration */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-secondary rounded-full -translate-y-1/2 translate-x-1/3 opacity-40" />

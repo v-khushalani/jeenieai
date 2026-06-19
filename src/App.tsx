@@ -48,7 +48,6 @@ const SubscriptionPlans = lazyWithRetry(() => import('@/pages/SubscriptionPlans'
 const ProPlusLibraryPage = lazyWithRetry(() => import('@/pages/ProPlusLibraryPage'), "ProPlusLibraryPage");
 
 const BadgesPage = lazyWithRetry(() => import('@/pages/BadgesPage'), "BadgesPage");
-const DiagnosticQuizPage = lazyWithRetry(() => import('@/pages/DiagnosticQuizPage'), "DiagnosticQuizPage");
 const CreateGroupTestPage = lazyWithRetry(() => import('@/pages/CreateGroupTestPage'), "CreateGroupTestPage");
 const JoinGroupTestPage = lazyWithRetry(() => import('@/pages/JoinGroupTestPage'), "JoinGroupTestPage");
 const GroupTestLeaderboard = lazyWithRetry(() => import('@/pages/GroupTestLeaderboard'), "GroupTestLeaderboard");
@@ -153,7 +152,7 @@ const MobileBottomNav = () => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
 
-  const hiddenPaths = ['/admin', '/educator', '/test-attempt', '/goal-selection', '/diagnostic', '/auth/callback'];
+  const hiddenPaths = ['/admin', '/educator', '/test-attempt', '/goal-selection', '/auth/callback'];
   const shouldHide = hiddenPaths.some(p => location.pathname.startsWith(p));
 
   if (!isMobile || shouldHide || !isAuthenticated) return null;
@@ -219,7 +218,7 @@ function App() {
                   {/* Goal Selection - requires auth */}
                   <Route path="/goal-selection" element={<ProtectedRoute><GoalSelectionPage /></ProtectedRoute>} />
                   <Route path="/pyq" element={<Navigate to="/tests" replace />} />
-                  <Route path="/diagnostic" element={<ProtectedRoute><DiagnosticQuizPage /></ProtectedRoute>} />
+                  <Route path="/diagnostic" element={<Navigate to="/dashboard" replace />} />
                   
                   
                 

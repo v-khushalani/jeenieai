@@ -100,13 +100,11 @@ const Header = () => {
   const mobilePrimaryNavItems = isAuthenticated && !isAdmin && !isEducator
     ? [
         { name: 'Dashboard', path: '/dashboard' },
-        { name: 'Study', path: '/study-now' },
-        ...(isPremium ? [
-          { name: 'AI Planner', path: '/ai-planner' },
-          { name: 'Analytics', path: '/analytics' },
-        ] : []),
-        ...(isProPlus ? [{ name: 'Pro+ Library', path: '/pro-plus-library' }] : []),
-        { name: 'Tests', path: '/tests' },
+        ...(studyNowEnabled ? [{ name: 'Study', path: '/study-now' }] : []),
+        ...(isPremium && aiPlannerEnabled ? [{ name: 'AI Planner', path: '/ai-planner' }] : []),
+        ...(isPremium && analyticsEnabled ? [{ name: 'Analytics', path: '/analytics' }] : []),
+        ...(isProPlus && proPlusEnabled ? [{ name: 'Pro+ Library', path: '/pro-plus-library' }] : []),
+        ...(testsEnabled ? [{ name: 'Tests', path: '/tests' }] : []),
         { name: 'Profile', path: '/profile' },
       ]
     : navItems;
