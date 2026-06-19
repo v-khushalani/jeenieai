@@ -28,7 +28,6 @@ const getTitleForPath = (pathname: string): string => {
     '/refund-policy': 'Refund Policy',
     '/install': 'Install App',
     '/goal-selection': 'Choose Your Goal',
-    '/diagnostic': 'Diagnostic Quiz',
     '/dashboard': 'Dashboard',
     '/study-now': 'Study Now',
     '/practice': 'Practice',
