@@ -34,5 +34,5 @@ export function useAutoSubscribePush() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [user?.id, isSupported, isSubscribed, permission, subscribe]);
+  }, [pushEnabled, user?.id, isSupported, isSubscribed, permission, subscribe]);
 }
