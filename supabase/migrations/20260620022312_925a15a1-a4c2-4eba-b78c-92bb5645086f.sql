@@ -1,0 +1,1 @@
+DELETE FROM public.feature_flags WHERE flag_key IN ('diagnostic_quiz','pro_plus_library','pyq_explorer','topic_mastery','virtual_lab','voice_input','wrapped_recap');
