@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Zap, BookOpen, Trophy, MessageSquare, Sparkles, Bell, Users, CreditCard, FileText, TestTube, DatabaseZap, BarChart3, ArrowRightLeft, History, Layers3 } from 'lucide-react';
+import { Zap, Trophy, MessageSquare, Sparkles, Bell, Users, CreditCard, FileText, TestTube, DatabaseZap, BarChart3, ArrowRightLeft, History, Layers3 } from 'lucide-react';
 import { logger } from '@/utils/logger';
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -25,7 +25,7 @@ const FLAG_ICONS: Record<string, React.ElementType> = {
   study_planner: Zap,
   push_notifications: Bell,
   referral_system: Users,
-  pyq_explorer: BookOpen,
+  
   test_mode: TestTube,
   educator_content: FileText,
   pricing_plans: CreditCard,

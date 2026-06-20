@@ -183,19 +183,14 @@ export const mergeFeatureFlagRows = (rows: FeatureFlagDefinition[]) => {
   const defaults = createDefaultFeatureFlagMap();
   rows.forEach((row) => {
     const base = byKey(row.flag_key);
+    // Ignore DB rows for flags that are no longer in the registry (deleted features).
+    if (!base) return;
     defaults[row.flag_key] = {
-      ...(base ?? {
-        flag_key: row.flag_key,
-        label: row.label,
-        description: row.description,
-        is_enabled: row.is_enabled,
-        rollout_percentage: row.rollout_percentage,
-        category: row.category,
-      }),
+      ...base,
       ...row,
-      rollout_percentage: row.rollout_percentage ?? base?.rollout_percentage ?? 100,
-      description: row.description ?? base?.description ?? null,
-      category: row.category ?? base?.category ?? 'general',
+      rollout_percentage: row.rollout_percentage ?? base.rollout_percentage ?? 100,
+      description: row.description ?? base.description ?? null,
+      category: row.category ?? base.category ?? 'general',
     };
   });
   return defaults;
