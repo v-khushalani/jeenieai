@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
 import { usePushNotifications } from './usePushNotifications';
 import { logger } from '@/utils/logger';
 
@@ -9,10 +10,12 @@ import { logger } from '@/utils/logger';
  */
 export function useAutoSubscribePush() {
   const { user } = useAuth();
+  const pushEnabled = useFeatureFlag('push_notifications');
   const { isSupported, isSubscribed, permission, subscribe } = usePushNotifications();
   const attemptedUserId = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!pushEnabled) return;
     if (!user?.id || !isSupported || isSubscribed || attemptedUserId.current === user.id) return;
     if (permission === 'denied') return; // respect previous denial
 
