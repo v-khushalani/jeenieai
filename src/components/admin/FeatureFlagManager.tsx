@@ -25,7 +25,7 @@ const FLAG_ICONS: Record<string, React.ElementType> = {
   study_planner: Zap,
   push_notifications: Bell,
   referral_system: Users,
-  pyq_explorer: BookOpen,
+  
   test_mode: TestTube,
   educator_content: FileText,
   pricing_plans: CreditCard,
