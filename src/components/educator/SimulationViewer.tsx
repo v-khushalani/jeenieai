@@ -130,7 +130,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           {!isLoaded && !hasError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted z-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading virtual lab content…</p>
+              <p className="text-sm text-muted-foreground">Loading Interactive Animation…</p>
             </div>
           )}
           {hasError && (

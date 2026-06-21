@@ -112,7 +112,7 @@ export const EducatorContentManager: React.FC = () => {
     } else {
       const validExts = ['.jsx', '.tsx', '.js', '.html', '.htm'];
       if (!validExts.some((ext) => f.name.toLowerCase().endsWith(ext))) {
-        toast.error(`Please upload a JSX/TSX/JS or HTML ${uploadType === 'game' ? 'game' : 'simulation'} file.`);
+        toast.error(`Please upload a JSX/TSX/JS or HTML ${uploadType === 'game' ? 'game' : 'Interactive Animation'} file.`);
         return;
       }
     }
@@ -139,8 +139,8 @@ export const EducatorContentManager: React.FC = () => {
         file: form.file,
       });
     } else if (uploadType === 'simulation') {
-      if (form.sourceType === 'url' && !form.embed_url) { toast.error('Enter Virtual Lab URL.'); setUploading(false); return; }
-      if (form.sourceType === 'file' && !form.file) { toast.error('Select Virtual Lab file.'); setUploading(false); return; }
+      if (form.sourceType === 'url' && !form.embed_url) { toast.error('Enter Interactive Animation URL.'); setUploading(false); return; }
+      if (form.sourceType === 'file' && !form.file) { toast.error('Select Interactive Animation file.'); setUploading(false); return; }
       ok = await addSimulation({
         title: form.title,
         description: form.description,
