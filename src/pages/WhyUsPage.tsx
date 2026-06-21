@@ -53,16 +53,37 @@ const coreFeatures = [
     desc: 'Points, streaks, and badges that reward consistency.',
   },
 ];
-];
 
 const WhyUsPage = () => {
   const navigate = useNavigate();
+  const { data: plans = [] } = useSubscriptionPlans();
+
+  const lowestMonthly = useMemo(() => {
+    const monthlyPrices = plans
+      .filter((p) => p.duration_days < 365)
+      .map((p) => Number(p.price))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    if (monthlyPrices.length === 0) return null;
+    return Math.min(...monthlyPrices);
+  }, [plans]);
+
+  const priceLabel = lowestMonthly ? `₹${lowestMonthly}/mo` : 'Affordable';
+
+  const comparisonData = [
+    { feature: 'AI Doubt Solving', us: true as const, others: false as const },
+    { feature: 'Adaptive Difficulty', us: true as const, others: false as const },
+    { feature: 'Personalized Study Plan', us: true as const, others: false as const },
+    { feature: 'Parent Dashboard', us: true as const, others: false as const },
+    { feature: 'Smart Analytics', us: true as const, others: 'Basic' },
+    { feature: 'Gamification', us: true as const, others: 'Basic' },
+    { feature: 'Affordable Pricing', us: priceLabel, others: '₹500+' },
+  ];
 
   return (
     <div className="mobile-app-shell bg-background">
       <SEOHead
         title="Why Choose JEEnie AI for JEE &amp; NEET Prep"
-        description="Compare JEEnie AI with other coaching apps. AI doubt solving, adaptive difficulty, personalized study plans, parent dashboard & gamified learning at ₹99/mo."
+        description="Compare JEEnie AI with other coaching apps. AI doubt solving, adaptive difficulty, personalized study plans, parent dashboard & gamified learning."
         canonical="https://www.jeenie.website/why-us"
       />
       <JsonLd
