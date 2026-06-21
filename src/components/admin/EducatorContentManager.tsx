@@ -334,7 +334,7 @@ export const EducatorContentManager: React.FC = () => {
 
             {(uploadType === 'simulation' || uploadType === 'game') && (
               <div className="space-y-2">
-                <Label>{uploadType === 'game' ? 'Game Source' : 'Virtual Lab Source'} <span className="text-destructive">*</span></Label>
+                <Label>{uploadType === 'game' ? 'Game Source' : 'Interactive Animation Source'} <span className="text-destructive">*</span></Label>
                 <RadioGroup value={form.sourceType} onValueChange={(v) => setForm((p) => ({ ...p, sourceType: v as 'url' | 'file' }))} className="flex gap-4">
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="url" id="src-url" />
@@ -350,7 +350,7 @@ export const EducatorContentManager: React.FC = () => {
 
             {(uploadType === 'simulation' || uploadType === 'game') && form.sourceType === 'url' ? (
               <div className="space-y-1">
-                <Label>{uploadType === 'game' ? 'Game URL' : 'Virtual Lab URL'} <span className="text-destructive">*</span></Label>
+                <Label>{uploadType === 'game' ? 'Game URL' : 'Interactive Animation URL'} <span className="text-destructive">*</span></Label>
                 <Input value={form.embed_url} onChange={(e) => setForm((p) => ({ ...p, embed_url: e.target.value }))} placeholder={uploadType === 'game' ? 'https://example.com/your-game' : 'https://phet.colorado.edu/sims/html/…'} type="url" />
               </div>
             ) : null}
