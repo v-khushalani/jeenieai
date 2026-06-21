@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import { Badge } from '@/components/ui/badge';
@@ -5,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import SEOHead from '@/components/SEOHead';
 import JsonLd, { breadcrumbSchema } from '@/components/JsonLd';
+import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
 import {
   ArrowRight,
   BarChart3,
@@ -51,15 +53,6 @@ const coreFeatures = [
     desc: 'Points, streaks, and badges that reward consistency.',
   },
 ];
-
-const comparisonData = [
-  { feature: 'AI Doubt Solving', us: true, others: false },
-  { feature: 'Adaptive Difficulty', us: true, others: false },
-  { feature: 'Personalized Study Plan', us: true, others: false },
-  { feature: 'Parent Dashboard', us: true, others: false },
-  { feature: 'Smart Analytics', us: true, others: 'Basic' },
-  { feature: 'Gamification', us: true, others: 'Basic' },
-  { feature: 'Affordable Pricing', us: '₹99/mo', others: '₹500+' },
 ];
 
 const WhyUsPage = () => {
