@@ -110,8 +110,8 @@ const VirtualLab: React.FC = () => {
               <div className="flex items-center justify-center h-full text-muted-foreground">
                 <div className="text-center space-y-3">
                   <Beaker className="h-16 w-16 mx-auto text-primary/30" />
-                  <p className="text-lg font-medium">Virtual lab content is loading</p>
-                  <p className="text-sm">The uploaded simulation will appear here when the source is ready.</p>
+                  <p className="text-lg font-medium">Interactive Animation is loading</p>
+                  <p className="text-sm">The uploaded animation will appear here when the source is ready.</p>
                 </div>
               </div>
             )}
@@ -120,9 +120,9 @@ const VirtualLab: React.FC = () => {
       )}
 
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Virtual Lab</h2>
+        <h2 className="text-2xl font-bold text-foreground">Interactive Animations</h2>
         <p className="text-muted-foreground text-sm mt-1">
-          Uploaded simulations from the admin panel appear here for educators to launch.
+          Uploaded Interactive Animations from the admin panel appear here for educators to launch.
         </p>
       </div>
 
@@ -131,7 +131,7 @@ const VirtualLab: React.FC = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-9 h-9"
-            placeholder="Search virtual lab content…"
+            placeholder="Search Interactive Animations…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -162,9 +162,9 @@ const VirtualLab: React.FC = () => {
           <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
             <Beaker className="h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">
-              {searchQuery || subjectFilter ? 'No virtual lab items match your search.' : 'No virtual lab content uploaded yet.'}
+              {searchQuery || subjectFilter ? 'No Interactive Animations match your search.' : 'No Interactive Animations uploaded yet.'}
             </p>
-            <p className="text-xs text-muted-foreground">Upload simulations from the admin panel to make them available here.</p>
+            <p className="text-xs text-muted-foreground">Upload Interactive Animations from the admin panel to make them available here.</p>
           </CardContent>
         </Card>
       ) : (
@@ -222,16 +222,16 @@ const VirtualLab: React.FC = () => {
       >
         <DialogContent className="max-w-5xl w-full p-0 overflow-hidden" style={{ maxHeight: '95vh' }}>
           <DialogHeader className="sr-only">
-            <DialogTitle>{viewerItem?.title ?? 'Virtual Lab'}</DialogTitle>
-            <DialogDescription>Uploaded simulation viewer</DialogDescription>
+            <DialogTitle>{viewerItem?.title ?? 'Interactive Animation'}</DialogTitle>
+            <DialogDescription>Interactive Animation viewer</DialogDescription>
           </DialogHeader>
           {viewerSrc ? (
-            <SimulationViewer src={viewerSrc} title={viewerItem?.title ?? 'Virtual Lab'} onClose={() => { setViewerOpen(false); setViewerSrc(''); }} />
+            <SimulationViewer src={viewerSrc} title={viewerItem?.title ?? 'Interactive Animation'} onClose={() => { setViewerOpen(false); setViewerSrc(''); }} />
           ) : (
             <div className="flex items-center justify-center h-[500px] text-muted-foreground">
               <div className="text-center space-y-3">
                 <Beaker className="h-16 w-16 mx-auto text-primary/30" />
-                <p className="text-lg font-medium">Virtual lab source is not available</p>
+                <p className="text-lg font-medium">Interactive Animation source is not available</p>
                 <p className="text-sm">Please check the uploaded file or embed URL.</p>
               </div>
             </div>

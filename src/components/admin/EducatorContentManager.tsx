@@ -194,7 +194,7 @@ export const EducatorContentManager: React.FC = () => {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <p className="text-muted-foreground text-sm">
-            Upload PPT/simulations/games and review every submission before it goes live.
+            Upload PPTs / Interactive Animations / games and review every submission before it goes live.
           </p>
         </div>
         <div className="flex gap-2">
@@ -202,7 +202,7 @@ export const EducatorContentManager: React.FC = () => {
             <Upload className="h-4 w-4" /> Upload PPT
           </Button>
           <Button onClick={() => openUpload('simulation')} className="gap-2">
-            <Plus className="h-4 w-4" /> Add Virtual Lab
+            <Plus className="h-4 w-4" /> Add Interactive Animation
           </Button>
           <Button onClick={() => openUpload('game')} variant="secondary" className="gap-2">
             <Plus className="h-4 w-4" /> Add Game
@@ -214,7 +214,7 @@ export const EducatorContentManager: React.FC = () => {
         <div className="flex flex-wrap items-center gap-4">
           <TabsList>
             <TabsTrigger value="presentation">Presentations</TabsTrigger>
-            <TabsTrigger value="simulation">Virtual Lab</TabsTrigger>
+            <TabsTrigger value="simulation">Interactive Animations</TabsTrigger>
             <TabsTrigger value="game">Games</TabsTrigger>
           </TabsList>
 
@@ -281,13 +281,13 @@ export const EducatorContentManager: React.FC = () => {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {uploadType === 'presentation' ? 'Upload Presentation' : uploadType === 'simulation' ? 'Add Virtual Lab' : 'Add Game'}
+              {uploadType === 'presentation' ? 'Upload Presentation' : uploadType === 'simulation' ? 'Add Interactive Animation' : 'Add Game'}
             </DialogTitle>
             <DialogDescription>
               {uploadType === 'presentation'
                 ? 'Upload a PDF or PowerPoint file. Only educators can view this.'
                 : uploadType === 'simulation'
-                  ? 'Upload an HTML simulation file, embed a PhET/GeoGebra URL, or upload a JSX/TSX React component.'
+                  ? 'Upload an HTML Interactive Animation file, embed a PhET/GeoGebra URL, or upload a JSX/TSX React component.'
                   : 'Upload an HTML game file, embed a game URL, or upload a JSX/TSX React game component.'}
             </DialogDescription>
           </DialogHeader>
