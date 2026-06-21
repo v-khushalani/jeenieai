@@ -26,10 +26,10 @@ const COMPARISON: ComparisonRow[] = [
   { feature: 'AI Study Planner', free: false, pro: true, proPlus: 'Adaptive' },
   { feature: 'AI Rank Predictor', free: false, pro: false, proPlus: true },
   { feature: 'Performance analytics', free: 'Basic', pro: 'Advanced', proPlus: 'AI-powered' },
-  { feature: 'Educator PPTs & simulations', free: false, pro: false, proPlus: true },
+  { feature: 'Educator PPTs', free: false, pro: false, proPlus: true },
+  { feature: 'Interactive Animations', free: false, pro: false, proPlus: true },
   { feature: 'Leaderboard & badges', free: true, pro: true, proPlus: true },
   { feature: 'Create group tests', free: '2/month', pro: 'Unlimited', proPlus: 'Unlimited' },
-  { feature: 'Priority support', free: false, pro: 'Email', proPlus: 'WhatsApp + Email' },
 ];
 
 interface PerPlanResult {

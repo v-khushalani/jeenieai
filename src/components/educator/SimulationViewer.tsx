@@ -14,7 +14,7 @@ interface SimulationViewerProps {
 
 const SimulationViewer: React.FC<SimulationViewerProps> = ({
   src,
-  title = 'Virtual Lab',
+  title = 'Interactive Animation',
   className,
   onClose,
   hideHeader = false,
@@ -130,13 +130,13 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           {!isLoaded && !hasError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted z-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading virtual lab content…</p>
+              <p className="text-sm text-muted-foreground">Loading Interactive Animation…</p>
             </div>
           )}
           {hasError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted z-10 text-destructive">
               <AlertTriangle className="h-8 w-8" />
-              <p className="text-sm">{src ? 'Failed to load content.' : 'No virtual lab source configured.'}</p>
+              <p className="text-sm">{src ? 'Failed to load content.' : 'No Interactive Animation source configured.'}</p>
             </div>
           )}
           <AnnotationOverlay />

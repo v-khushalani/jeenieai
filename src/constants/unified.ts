@@ -176,7 +176,6 @@ export const SUBSCRIPTION_CONFIG = {
     aiDoubtSolver: false,
     aiStudyPlanner: false,
     analyticsAdvanced: false,
-    prioritySupport: false
   },
   PRO: {
     dailyQuestionLimit: Infinity,
@@ -184,7 +183,6 @@ export const SUBSCRIPTION_CONFIG = {
     aiDoubtSolver: true,
     aiStudyPlanner: true,
     analyticsAdvanced: true,
-    prioritySupport: true
   }
 };
 

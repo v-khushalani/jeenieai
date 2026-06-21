@@ -22,7 +22,7 @@ type Tab = 'chapters' | 'virtual-lab' | 'games' | 'group-tests';
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'chapters', label: 'Chapters', icon: <BookOpen className="h-4 w-4" /> },
-  { id: 'virtual-lab', label: 'Virtual Lab', icon: <Beaker className="h-4 w-4" /> },
+  { id: 'virtual-lab', label: 'Interactive Animations', icon: <Beaker className="h-4 w-4" /> },
   { id: 'games', label: 'Games', icon: <Gamepad2 className="h-4 w-4" /> },
   { id: 'group-tests', label: 'Group Tests', icon: <Users className="h-4 w-4" /> },
 ];
