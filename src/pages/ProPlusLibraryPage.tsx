@@ -14,7 +14,7 @@ const ProPlusLibraryPage: React.FC = () => {
     <div className="mobile-app-shell bg-background">
       <SEOHead
         title="JEEnie Pro+ Library"
-        description="View educator presentations and interactive simulations with JEEnie Pro+."
+        description="View educator presentations and Interactive Animations with JEEnie Pro+."
         noIndex
       />
       <Header />
@@ -24,7 +24,7 @@ const ProPlusLibraryPage: React.FC = () => {
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">JEEnie Pro+ Visual Learning Library</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Access educator presentations and interactive simulations in secure, view-only mode.
+              Access educator presentations and Interactive Animations in secure, view-only mode.
             </p>
           </div>
 
@@ -34,7 +34,7 @@ const ProPlusLibraryPage: React.FC = () => {
                 <BookOpen className="h-4 w-4" /> Presentations
               </TabsTrigger>
               <TabsTrigger value="simulations" className="gap-2 py-2.5">
-                <Beaker className="h-4 w-4" /> Simulations
+                <Beaker className="h-4 w-4" /> Interactive Animations
               </TabsTrigger>
             </TabsList>
 
