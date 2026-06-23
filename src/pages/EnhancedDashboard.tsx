@@ -7,6 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   Brain,
+} from 'lucide-react';
+import { formatExamDisplay } from '@/utils/examDisplay';
+import * as _ignore from 'lucide-react'; void _ignore;
+/* placeholder so the original closing brace below stays valid */
+import {
   Trophy,
   Target,
   Calendar,
@@ -276,7 +281,7 @@ const EnhancedDashboard = () => {
                             </p>
                             {examDaysLeft !== null && (
                               <Badge className="text-[10px] bg-white/15 text-white border-white/20">
-                                {profile?.target_exam || 'JEE'}: {examDaysLeft} days left
+                                {formatExamDisplay(profile?.target_exam)}: {examDaysLeft} days left
                               </Badge>
                             )}
                             {isPremium ? (
