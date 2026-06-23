@@ -78,12 +78,12 @@ export const QuestionReportDialog: React.FC<QuestionReportDialogProps> = ({
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 overflow-y-auto" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="report-dialog-title"
-        className="bg-background rounded-2xl shadow-2xl w-full max-w-sm border border-border overflow-hidden"
+        className="bg-background rounded-2xl shadow-2xl w-full max-w-sm border border-border overflow-hidden flex flex-col max-h-[85vh] my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-border">
@@ -104,7 +104,7 @@ export const QuestionReportDialog: React.FC<QuestionReportDialogProps> = ({
           </div>
         )}
 
-        <div className="p-4 space-y-2" role="radiogroup" aria-label="Report reason">
+        <div className="p-4 space-y-2 overflow-y-auto flex-1 min-h-0" role="radiogroup" aria-label="Report reason">
           <p className="text-xs font-medium text-muted-foreground mb-2">What's wrong?</p>
           {REPORT_REASONS.map((reason, idx) => (
             <button
@@ -144,7 +144,7 @@ export const QuestionReportDialog: React.FC<QuestionReportDialogProps> = ({
           </div>
         )}
 
-        <div className="p-4 pt-2 flex gap-2">
+        <div className="p-4 pt-2 flex gap-2 border-t border-border bg-background shrink-0">
           <Button variant="outline" size="sm" className="flex-1" onClick={onClose}>
             Cancel
           </Button>

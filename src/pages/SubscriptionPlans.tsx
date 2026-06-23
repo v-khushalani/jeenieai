@@ -321,28 +321,65 @@ const SubscriptionPlansPage = () => {
           {isLoading ? (
             <div className="text-center py-12 text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-              {/* Free */}
-              <div className="rounded-2xl border border-border bg-card p-6">
-                <h2 className="text-lg font-semibold text-foreground">Free</h2>
-                <p className="text-xs text-muted-foreground mt-1 mb-4">Try JEEnie before upgrading.</p>
-                <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-bold text-foreground">₹0</span>
-                  <span className="text-sm text-muted-foreground">forever</span>
+            <>
+              {/* Mobile: horizontal swipeable carousel */}
+              <div className="md:hidden -mx-4 px-4 mb-2">
+                <div
+                  className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 pt-3 scroll-smooth"
+                  style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+                >
+                  <div className="snap-center shrink-0 w-[85%] first:ml-2">
+                    <div className="rounded-2xl border border-border bg-card p-6 h-full">
+                      <h2 className="text-lg font-semibold text-foreground">Free</h2>
+                      <p className="text-xs text-muted-foreground mt-1 mb-4">Try JEEnie before upgrading.</p>
+                      <div className="flex items-baseline gap-1 mb-6">
+                        <span className="text-4xl font-bold text-foreground">₹0</span>
+                        <span className="text-sm text-muted-foreground">forever</span>
+                      </div>
+                      <ul className="space-y-1.5 mb-5 min-h-[120px]">
+                        <li className="text-xs text-foreground flex items-start gap-1.5"><Check className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" /> 15 questions/day</li>
+                        <li className="text-xs text-foreground flex items-start gap-1.5"><Check className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" /> 2 mock tests/month</li>
+                        <li className="text-xs text-foreground flex items-start gap-1.5"><Check className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" /> Leaderboard & badges</li>
+                        <li className="text-xs text-foreground flex items-start gap-1.5"><Check className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" /> Basic analytics</li>
+                      </ul>
+                      <Button variant="outline" onClick={() => navigate('/dashboard')} className="w-full h-10 text-sm font-semibold">
+                        Continue Free
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="snap-center shrink-0 w-[85%]">
+                    {renderPlanCard(proPlan, { highlight: true, ctaLabel: 'Choose Pro' })}
+                  </div>
+                  <div className="snap-center shrink-0 w-[85%] last:mr-2">
+                    {renderPlanCard(proPlusPlan, { outline: true, ctaLabel: 'Choose Pro+', tier: 'pro_plus' })}
+                  </div>
                 </div>
-                <ul className="space-y-1.5 mb-5 min-h-[120px]">
-                  <li className="text-xs text-foreground flex items-start gap-1.5"><Check className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" /> 15 questions/day</li>
-                  <li className="text-xs text-foreground flex items-start gap-1.5"><Check className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" /> 2 mock tests/month</li>
-                  <li className="text-xs text-foreground flex items-start gap-1.5"><Check className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" /> Leaderboard & badges</li>
-                  <li className="text-xs text-foreground flex items-start gap-1.5"><Check className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" /> Basic analytics</li>
-                </ul>
-                <Button variant="outline" onClick={() => navigate('/dashboard')} className="w-full h-10 text-sm font-semibold">
-                  Continue Free
-                </Button>
+                <p className="text-center text-[11px] text-muted-foreground mt-1 mb-6">← swipe to compare plans →</p>
               </div>
-              {renderPlanCard(proPlan, { highlight: true, ctaLabel: 'Choose Pro' })}
-              {renderPlanCard(proPlusPlan, { outline: true, ctaLabel: 'Choose Pro+', tier: 'pro_plus' })}
-            </div>
+
+              {/* Desktop: 3-column grid */}
+              <div className="hidden md:grid grid-cols-3 gap-4 mb-10">
+                <div className="rounded-2xl border border-border bg-card p-6">
+                  <h2 className="text-lg font-semibold text-foreground">Free</h2>
+                  <p className="text-xs text-muted-foreground mt-1 mb-4">Try JEEnie before upgrading.</p>
+                  <div className="flex items-baseline gap-1 mb-6">
+                    <span className="text-4xl font-bold text-foreground">₹0</span>
+                    <span className="text-sm text-muted-foreground">forever</span>
+                  </div>
+                  <ul className="space-y-1.5 mb-5 min-h-[120px]">
+                    <li className="text-xs text-foreground flex items-start gap-1.5"><Check className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" /> 15 questions/day</li>
+                    <li className="text-xs text-foreground flex items-start gap-1.5"><Check className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" /> 2 mock tests/month</li>
+                    <li className="text-xs text-foreground flex items-start gap-1.5"><Check className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" /> Leaderboard & badges</li>
+                    <li className="text-xs text-foreground flex items-start gap-1.5"><Check className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" /> Basic analytics</li>
+                  </ul>
+                  <Button variant="outline" onClick={() => navigate('/dashboard')} className="w-full h-10 text-sm font-semibold">
+                    Continue Free
+                  </Button>
+                </div>
+                {renderPlanCard(proPlan, { highlight: true, ctaLabel: 'Choose Pro' })}
+                {renderPlanCard(proPlusPlan, { outline: true, ctaLabel: 'Choose Pro+', tier: 'pro_plus' })}
+              </div>
+            </>
           )}
 
           {/* Comparison table */}

@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { formatExamDisplay } from '@/utils/examDisplay';
 import {
   Brain,
+
   Trophy,
   Target,
   Calendar,
@@ -276,7 +278,7 @@ const EnhancedDashboard = () => {
                             </p>
                             {examDaysLeft !== null && (
                               <Badge className="text-[10px] bg-white/15 text-white border-white/20">
-                                {profile?.target_exam || 'JEE'}: {examDaysLeft} days left
+                                {formatExamDisplay(profile?.target_exam)}: {examDaysLeft} days left
                               </Badge>
                             )}
                             {isPremium ? (
