@@ -5,13 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { formatExamDisplay } from '@/utils/examDisplay';
 import {
   Brain,
-} from 'lucide-react';
-import { formatExamDisplay } from '@/utils/examDisplay';
-import * as _ignore from 'lucide-react'; void _ignore;
-/* placeholder so the original closing brace below stays valid */
-import {
+
   Trophy,
   Target,
   Calendar,
