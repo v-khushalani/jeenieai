@@ -89,28 +89,25 @@ serve(async (req) => {
 
     const RAZORPAY_KEY_ID = Deno.env.get('RAZORPAY_KEY_ID')
     const RAZORPAY_KEY_SECRET = Deno.env.get('RAZORPAY_KEY_SECRET')
-    const RAZORPAY_MODE = (Deno.env.get('RAZORPAY_MODE') || 'live').toLowerCase()
     if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
       return new Response(
         JSON.stringify({ success: false, error: 'Payment system not configured. Please contact support.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
+    // Auto-detect mode from the key prefix instead of failing on a strict
+    // RAZORPAY_MODE env mismatch. Whatever key the admin configured is the
+    // mode we use (rzp_test_* => test, rzp_live_* => live).
     const isLiveKey = RAZORPAY_KEY_ID.startsWith('rzp_live_')
     const isTestKey = RAZORPAY_KEY_ID.startsWith('rzp_test_')
-    console.log(`[create-razorpay-order] mode=${RAZORPAY_MODE} key_prefix=${RAZORPAY_KEY_ID.substring(0, 8)} isLive=${isLiveKey} isTest=${isTestKey}`)
-    if (RAZORPAY_MODE === 'live' && !isLiveKey) {
+    if (!isLiveKey && !isTestKey) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Payment gateway is in LIVE mode but TEST keys are configured. Admin must update RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET to rzp_live_* values.' }),
+        JSON.stringify({ success: false, error: 'Invalid Razorpay key configured. Key must start with rzp_test_ or rzp_live_.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
-    if (RAZORPAY_MODE === 'test' && !isTestKey) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Payment gateway is in TEST mode but non-test keys are configured.' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      )
-    }
+    console.log(`[create-razorpay-order] key_prefix=${RAZORPAY_KEY_ID.substring(0, 8)} mode=${isLiveKey ? 'live' : 'test'}`)
+
 
     const orderData = {
       amount: amountPaise,
@@ -168,9 +165,10 @@ serve(async (req) => {
     )
 
   } catch (error: any) {
-    console.error('create-razorpay-order error:', error?.message || error)
+    const msg = error?.message || String(error) || 'Unknown error'
+    console.error('create-razorpay-order error:', msg)
     return new Response(
-      JSON.stringify({ success: false, error: 'Payment system is temporarily unavailable. Please try again in a moment.' }),
+      JSON.stringify({ success: false, error: `Payment system error: ${msg}` }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
   }
