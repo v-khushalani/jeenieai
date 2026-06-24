@@ -251,19 +251,20 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       const isGeneral = !question?.option_a || question?.question?.includes("koi bhi");
       const history = buildConversationHistory(messages);
 
-      // Tone rules — ALWAYS Hinglish "bada bhai" vibe, never English-teacher mode.
-      const TONE_RULES = `\n\nSTRICT TONE RULES (non-negotiable):\n- Reply in NATURAL HINGLISH (Roman script, Hindi + English mix) — jaise ek smart bada bhai apne chhote bhai ko samjha raha ho. NEVER pure English. NEVER pure Hindi (Devanagari).\n- Address the student as "Puttar", "bhai" ya "yaar" — friendly, warm, thoda mazaak bhi.\n- Bullets + bold + emojis + short punchy lines (format rules from system prompt apply).\n- Concept ko intuition se samjha — "dekh bhai, hota kya hai ye…" wali vibe. Real-life analogy / desi example use kar jab fit ho.\n- Har important step ke baad ek choti si "kyun" wali line — sirf formula mat thook.\n- End with a 1-line takeaway + emoji ("Toh bhai, yaad rakhna…" type).\n- Examiner tone, "Dear student", "In this question we observe…" — STRICTLY BANNED.`;
-
+      // Personality + formatting + mode-specific teaching rules now live in the
+      // server's modular system prompt (supabase/functions/_shared/jeeniePrompt.ts).
+      // We send only the user's actual content here — keeps per-request tokens minimal.
       let prompt: string;
       if (currentImage) {
-        prompt = (userContent !== "📸 Photo se doubt solve karo"
-          ? `Student ne apne doubt ki photo bheji hai aur saath mein bola: "${userContent}". Image ko dhyaan se dekh, question identify kar, aur poora step-by-step solution de — bada bhai style mein, Hinglish mein.`
-          : `Student ne apne doubt ki photo bheji hai. Image ko dhyaan se dekh, question identify kar, aur complete step-by-step solution de — Hinglish mein, bada bhai jaise samjhaata hai.`) + TONE_RULES;
+        prompt = userContent !== "📸 Photo se doubt solve karo"
+          ? `Student ne photo bheji hai aur saath bola: "${userContent}". Image dekh, question identify kar, complete solution de.`
+          : `Student ne doubt ki photo bheji hai. Image dekh, question identify kar, complete solution de.`;
       } else if (isGeneral) {
-        prompt = `Student ka doubt: "${userContent}".\n\nIs doubt ko aise samjha jaise tu uska bada bhai hai — concept clear kar, intuition de, ek chhota example/analogy daal, aur agar numerical hai toh step-by-step solve kar. Sirf ek line ka dry answer mat de — proper samjha, par bakwaas filler bhi mat bhar.${TONE_RULES}`;
+        prompt = `Student ka doubt: "${userContent}"`;
       } else {
-        prompt = `Question: ${question.question}\nOptions: A) ${question.option_a}, B) ${question.option_b}, C) ${question.option_c}, D) ${question.option_d}\n\nStudent ka doubt: "${userContent}".\n\nIs question ka solution bada bhai style mein samjha — pehle bata kya pucha hai, phir kaunsa concept/formula lagega aur kyun, phir step-by-step solve kar with reasoning, aur end mein correct option (✅) confirm kar. Trap option bhi mention kar agar obvious hai.${TONE_RULES}`;
+        prompt = `Question: ${question.question}\nOptions: A) ${question.option_a}, B) ${question.option_b}, C) ${question.option_c}, D) ${question.option_d}\n\nStudent ka doubt: "${userContent}"`;
       }
+
 
       setTyping(true);
       const aiResponse = await callEdgeFunction(prompt, history, currentImage || undefined);
