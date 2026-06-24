@@ -11,7 +11,7 @@ import {
   ArrowRight,
   BarChart3,
   BookOpen,
-  Brain,
+  Sparkles,
   CheckCircle2,
   CircleAlert,
   Sparkles,
@@ -23,7 +23,7 @@ import {
 
 const coreFeatures = [
   {
-    icon: Brain,
+    icon: Sparkles,
     title: 'AI Doubt Solver',
     desc: 'Step-by-step explanation in simple Hinglish, instantly.',
   },

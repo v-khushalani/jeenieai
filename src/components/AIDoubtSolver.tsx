@@ -18,7 +18,7 @@ import DOMPurify from "dompurify";
 import { logger } from "@/utils/logger";
 import { replaceGreekLetters } from "@/constants/unified";
 import { renderLatex, containsLatex } from "@/utils/mathRenderer";
-import { sanitizeRoast } from '@/lib/roastUtils';
+
 import 'katex/dist/katex.min.css';
 
 interface Message {
@@ -261,8 +261,10 @@ Student's current doubt: "${userContent}". Give direct solution, explain only wh
 
       setTyping(true);
       const aiResponse = await callEdgeFunction(prompt, history, currentImage || undefined);
-      const sanitized = sanitizeRoast(aiResponse, 2000);
-      const formatted = cleanAndFormatJeenieText(sanitized, true);
+      // Note: do NOT run sanitizeRoast here — it strips "Hello Puttar!", markdown
+      // and salutations which JEEnie's doubt-solver answers rely on for tone.
+      const isFirstResponse = messages.filter((m) => m.role === 'user').length === 0;
+      const formatted = cleanAndFormatJeenieText(aiResponse, isFirstResponse);
       playSound("receive");
       setMessages((prev) => [...prev, { role: "assistant", content: formatted }]);
     } catch (error: any) {

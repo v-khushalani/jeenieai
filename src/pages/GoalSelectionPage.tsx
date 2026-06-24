@@ -8,7 +8,7 @@ import safeLocalStorage from '@/utils/safeStorage';
 import { 
   ChevronRight, ChevronLeft, Calendar, BookOpen, Stethoscope, Calculator, 
   Clock, Rocket, Trophy, Target, Sparkles, Lock,
-  GraduationCap, Atom, FlaskConical, Brain, Loader2
+  GraduationCap, Atom, FlaskConical, Sparkles, Loader2
 } from 'lucide-react';
 import { logger } from '@/utils/logger';
 import { toast } from 'sonner';
@@ -676,7 +676,7 @@ const GoalSelectionPage = () => {
             <div className="space-y-2.5 mb-6 text-left">
               {[
                 { icon: <Target className="w-4 h-4 text-green-500" />, title: 'Personalized Study Plans', desc: 'Built for your grade & goals' },
-                { icon: <Brain className="w-4 h-4 text-blue-500" />, title: 'Adaptive Learning', desc: 'Questions match your level' },
+                { icon: <Sparkles className="w-4 h-4 text-blue-500" />, title: 'Adaptive Learning', desc: 'Questions match your level' },
                 { icon: <Sparkles className="w-4 h-4 text-purple-500" />, title: 'AI-Powered Insights', desc: 'Get smarter every day' },
               ].map((feature, idx) => (
                 <div key={idx} className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/50">
