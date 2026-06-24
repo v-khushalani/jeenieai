@@ -7,8 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { formatExamDisplay } from '@/utils/examDisplay';
 import {
-  Brain,
-
   Trophy,
   Target,
   Calendar,
@@ -137,15 +135,15 @@ const EnhancedDashboard = () => {
   const getSmartNotification = () => {
     if (!stats) return null;
     if (stats.todayAccuracy < 60 && stats.questionsToday >= 10)
-      return { message: "Focus needed! Review mistakes.", color: "orange", icon: AlertCircle };
+      return { message: "Focus needed! Review mistakes.", color: "orange", icon: AlertCircle, route: "/analytics" };
     if (streak >= 7 && stats.questionsToday < 10)
-      return { message: `🔥 Don't break your ${streak}-day streak!`, color: "orange", icon: Flame };
+      return { message: `🔥 Don't break your ${streak}-day streak!`, color: "orange", icon: Flame, route: "/study-now" };
     if (stats.todayProgress >= stats.todayGoal && stats.todayAccuracy >= 80)
-      return { message: "🎉 Daily goal smashed!", color: "green", icon: Trophy };
+      return { message: "🎉 Daily goal smashed!", color: "green", icon: Trophy, route: "/analytics" };
     if (stats.questionsToday >= 50 && stats.todayAccuracy >= 85)
-      return { message: "⭐ Outstanding performance!", color: "green", icon: Sparkles };
+      return { message: "⭐ Outstanding performance!", color: "green", icon: Sparkles, route: "/analytics" };
     if (stats.rankChange && stats.rankChange >= 3)
-      return { message: `📈 Climbed ${stats.rankChange} ranks!`, color: "blue", icon: TrendingUp };
+      return { message: `📈 Climbed ${stats.rankChange} ranks!`, color: "blue", icon: TrendingUp, route: "/analytics" };
     return null;
   };
 
@@ -215,20 +213,27 @@ const EnhancedDashboard = () => {
               
               {/* Notification Banner */}
               {showBanner && notification && (
-                <div className={`hidden lg:block rounded-xl p-3 sm:p-3.5 shadow-lg transition-all duration-300 ${
+                <div className={`hidden lg:block rounded-xl p-3 sm:p-3.5 shadow-lg transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-[1.01] ${
                   notification.color === "green" ? "bg-linear-to-r from-green-500 to-emerald-600 text-white" :
                   notification.color === "orange" ? "bg-linear-to-r from-orange-500 to-red-600 text-white" :
                   "bg-linear-to-r from-blue-500 to-indigo-600 text-white"
-                }`}>
+                }`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => notification.route && navigate(notification.route)}
+                  onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && notification.route) navigate(notification.route); }}
+                >
                   <div className="flex items-center justify-between gap-2 sm:gap-3">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                       <div className="p-1.5 sm:p-2 bg-white/20 rounded-lg shrink-0">
                         <notification.icon className="h-4 w-4 sm:h-5 sm:w-5" />
                       </div>
                       <p className="text-xs sm:text-sm font-semibold truncate">{notification.message}</p>
+                      <span className="text-[10px] sm:text-xs font-medium opacity-80 hidden sm:inline">Tap to view →</span>
                     </div>
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         safeLocalStorage.setItem(`notification_seen_${user?.id}_${new Date().toDateString()}`, "true");
                         setShowBanner(false);
                       }}
@@ -260,19 +265,15 @@ const EnhancedDashboard = () => {
                     <div className="flex flex-col gap-3 sm:gap-4">
                       <div className="flex items-start gap-3 sm:gap-4">
                         <div className="flex-1 min-w-0">
-                          <h2 className="text-base sm:text-2xl font-bold mb-0.5 sm:mb-1 line-clamp-2">
-                            {timeMessage.greeting}, {displayName}! {timeMessage.icon}
+                          <h2 className="text-base sm:text-2xl font-bold mb-1 line-clamp-2">
+                            {timeMessage.greeting}, {displayName}
                           </h2>
-                          <p className="text-[11px] sm:text-base text-slate-200">
-                            {timeMessage.message}
-                            {daysRemaining ? ` • Pro active for ${daysRemaining} more days` : ""}
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5 sm:mt-1 flex-wrap">
-                            <p className="text-xs text-slate-400">
-                              {stats?.questionsToday && stats.questionsToday > 0
-                                ? `${stats.questionsToday} questions today!`
-                                : "Let's make today count!"}
+                          {daysRemaining && (
+                            <p className="text-[11px] sm:text-base text-slate-200">
+                              Pro active for {daysRemaining} more days
                             </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                             {examDaysLeft !== null && (
                               <Badge className="text-[10px] bg-white/15 text-white border-white/20">
                                 {formatExamDisplay(profile?.target_exam)}: {examDaysLeft} days left

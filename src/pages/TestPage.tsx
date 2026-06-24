@@ -1007,7 +1007,8 @@ const TestPage: React.FC = () => {
         </div>
         <Header />
         <div className="flex-1 min-h-0 overflow-y-auto relative z-10">
-          <div className="container mx-auto px-3 sm:px-4 lg:px-8 max-w-7xl">
+          <div className="container mx-auto px-3 sm:px-4 lg:px-8 max-w-7xl min-h-full flex flex-col justify-center py-4 sm:py-6">
+
             {!hasProAccess && (
               <div className="mb-4 p-3 sm:p-4 rounded-2xl bg-secondary border border-primary/10 shadow-xs">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
