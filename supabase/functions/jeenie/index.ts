@@ -86,30 +86,34 @@ async function callGemini(prompt: string, apiKey: string): Promise<string | null
   } catch (e) { console.error("[ADMIN] ❌ Gemini error:", e); return null; }
 }
 
-async function callOpenAI(prompt: string, apiKey: string): Promise<string | null> {
+async function callOpenAI(systemPrompt: string, prompt: string, maxTokens: number, apiKey: string): Promise<string | null> {
   try {
-    console.log("[ADMIN] 🔄 Trying OpenAI (fallback)...");
+    console.log("[JEENIE] 🔄 Trying OpenAI (fallback)...");
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 20000);
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: prompt }], temperature: 0.7, max_tokens: 4000 }),
+      body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }], temperature: 0.7, max_tokens: maxTokens }),
       signal: ctrl.signal,
     });
     clearTimeout(timer);
-    if (!res.ok) { const err = await res.text(); console.error(`[ADMIN] ❌ OpenAI failed (${res.status}):`, err.substring(0, 300)); return null; }
+    if (!res.ok) { const err = await res.text(); console.error(`[JEENIE] ❌ OpenAI failed (${res.status}):`, err.substring(0, 300)); return null; }
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content;
-    if (text) { console.log("[ADMIN] ✅ OpenAI success"); return text; }
-    return null;
-  } catch (e) { console.error("[ADMIN] ❌ OpenAI error:", e); return null; }
+    return text || null;
+  } catch (e) { console.error("[JEENIE] ❌ OpenAI error:", e); return null; }
 }
+
+// Rough char-based token estimate when the provider doesn't return usage.
+const estTokens = (s: string) => Math.ceil((s || "").length / 4);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const startedAt = Date.now();
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -134,14 +138,14 @@ serve(async (req) => {
       );
     }
 
-    const { data: profile } = await supabase.from("profiles").select("is_premium, subscription_end_date, subscription_tier, subscription_status").eq("id", user.id).single();
-    // Canonical premium check — matches src/utils/subscriptionEntitlement.ts.
-    // Avoids locking out users who paid (tier=pro) but where is_premium wasn't flipped.
-    const tier = String(profile?.subscription_tier || '').toLowerCase();
-    const status = String(profile?.subscription_status || '').toLowerCase();
-    const activeStatus = ['active', 'trialing', 'paid', 'completed', 'verified'].includes(status);
-    const notExpired = !profile?.subscription_end_date || new Date(profile.subscription_end_date) > new Date();
-    const isPremium = (tier === 'pro' || tier === 'pro_plus' || profile?.is_premium === true || activeStatus) && notExpired;
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_premium, subscription_end_date, subscription_tier, subscription_status")
+      .eq("id", user.id)
+      .single();
+
+    const userTier: Tier = resolveTier(profile);
+    const isPremium = userTier !== "free";
 
     if (!isPremium) {
       const today = new Date();
@@ -159,7 +163,22 @@ serve(async (req) => {
       }
     }
 
-    const { contextPrompt, subject, conversationHistory, image } = await req.json();
+    const body = await req.json();
+    const {
+      contextPrompt,
+      subject,
+      conversationHistory,
+      image,
+      mode: rawMode,
+      modeSource: rawModeSource,
+    }: {
+      contextPrompt: string;
+      subject?: string;
+      conversationHistory?: Array<{ role: string; content: string }>;
+      image?: string;
+      mode?: Mode | "auto";
+      modeSource?: ModeSource;
+    } = body;
 
     if (!contextPrompt || contextPrompt.length > 8000) {
       return new Response(
@@ -171,12 +190,25 @@ serve(async (req) => {
       );
     }
 
-    const messages: Array<{role: string; content: any}> = [
-      { role: "system", content: SYSTEM_PROMPT + (subject ? `\n\nCurrent subject context: ${subject}` : "") },
-    ];
+    // Resolve mode: explicit override wins, else auto-detect.
+    const hasImage = !!image;
+    const resolvedMode: Mode = rawMode && rawMode !== "auto"
+      ? (rawMode as Mode)
+      : detectMode(contextPrompt, hasImage);
+    const modeSource: ModeSource = rawMode && rawMode !== "auto"
+      ? (rawModeSource || "manual")
+      : "auto";
 
-    if (conversationHistory && Array.isArray(conversationHistory)) {
-      for (const msg of conversationHistory.slice(-10)) {
+    const systemPrompt = buildSystemPrompt(userTier, resolvedMode, subject);
+    const maxTokens = computeMaxTokens(userTier, contextPrompt, hasImage);
+
+    // History window: trim by tier. Free = single-shot.
+    const historyWindow = userTier === "free" ? 0 : userTier === "pro" ? 4 : 6;
+    const messages: Array<{ role: string; content: any }> = [
+      { role: "system", content: systemPrompt },
+    ];
+    if (historyWindow > 0 && conversationHistory && Array.isArray(conversationHistory)) {
+      for (const msg of conversationHistory.slice(-historyWindow)) {
         if (msg.role && msg.content) {
           messages.push({ role: msg.role === "assistant" ? "assistant" : "user", content: msg.content });
         }
@@ -184,7 +216,7 @@ serve(async (req) => {
     }
 
     if (image) {
-      console.log("[ADMIN] 📸 Image received — using vision mode");
+      console.log("[JEENIE] 📸 Image received — vision mode");
       messages.push({
         role: "user",
         content: [
@@ -196,57 +228,109 @@ serve(async (req) => {
       messages.push({ role: "user", content: contextPrompt });
     }
 
+    // Model routing: Pro+ deep/master may route to Pro model when flag enabled.
+    const usePro = PRO_MODEL_ENABLED && userTier === "pro_plus" && (resolvedMode === "deep" || resolvedMode === "master");
+    const primaryModel = usePro ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash";
+
     let responseText: string | null = null;
     let provider = "fallback";
+    let modelUsed = primaryModel;
+    let fallbackUsed: string | null = null;
+    let inputTokens = 0;
+    let outputTokens = 0;
 
-    responseText = await callLovableGateway(messages);
-    if (responseText) provider = "lovable-gateway";
+    const primary = await callLovableGateway(messages, primaryModel, maxTokens);
+    if (primary.text) {
+      responseText = primary.text;
+      provider = "lovable-gateway";
+      inputTokens = primary.usage?.prompt_tokens ?? estTokens(systemPrompt + contextPrompt);
+      outputTokens = primary.usage?.completion_tokens ?? estTokens(primary.text);
+    }
 
     if (!responseText && !image) {
       const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY");
       if (GEMINI_KEY) {
-        const flatPrompt = `${SYSTEM_PROMPT}\n\nQuestion: ${contextPrompt}\n\nAnswer:`;
+        const flatPrompt = `${systemPrompt}\n\nQuestion: ${contextPrompt}\n\nAnswer:`;
         responseText = await callGemini(flatPrompt, GEMINI_KEY);
-        if (responseText) provider = "gemini-direct";
+        if (responseText) {
+          provider = "gemini-direct";
+          fallbackUsed = "gemini";
+          modelUsed = "google/gemini-2.5-flash";
+          inputTokens = estTokens(flatPrompt);
+          outputTokens = estTokens(responseText);
+        }
       }
     }
 
     if (!responseText && !image) {
       const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY");
       if (OPENAI_KEY) {
-        responseText = await callOpenAI(contextPrompt, OPENAI_KEY);
-        if (responseText) provider = "openai";
+        responseText = await callOpenAI(systemPrompt, contextPrompt, maxTokens, OPENAI_KEY);
+        if (responseText) {
+          provider = "openai";
+          fallbackUsed = "openai";
+          modelUsed = "openai/gpt-4o-mini";
+          inputTokens = estTokens(systemPrompt + contextPrompt);
+          outputTokens = estTokens(responseText);
+        }
       }
     }
 
     if (!responseText) {
-      console.error("[ADMIN] 🚨 ALL AI PROVIDERS FAILED! Using humor fallback.");
+      console.error("[JEENIE] 🚨 ALL AI PROVIDERS FAILED! Using humor fallback.");
       responseText = getRandomFunnyFallback();
       provider = "humor-fallback";
+      fallbackUsed = "humor";
     }
 
-    console.log(`[ADMIN] 📊 Response via: ${provider} | Length: ${responseText.length} | Vision: ${!!image}`);
+    const latencyMs = Date.now() - startedAt;
+    const estimatedCostInr = provider === "humor-fallback" ? 0 : estimateCostInr(modelUsed, inputTokens, outputTokens);
 
-    // Log AI query usage for quota tracking but do NOT award or deduct JEEnie points.
-    // This keeps AI usage accounting while ensuring points are unaffected.
+    console.log(`[JEENIE] 📊 ${provider} | tier=${userTier} mode=${resolvedMode}(${modeSource}) model=${modelUsed} in=${inputTokens} out=${outputTokens} cost=₹${estimatedCostInr} ${latencyMs}ms`);
+
+    // Quota counter (unchanged).
     supabase.from("points_log").insert({
       user_id: user.id,
       action_type: "ai_query",
       points: 0,
-      description: `${provider}${subject ? ` | ${subject}` : ""}`,
+      description: `${provider}${subject ? ` | ${subject}` : ""} | ${resolvedMode}`,
+    }).then(() => {}, () => {});
+
+    // Telemetry row for cost analytics.
+    supabase.from("ai_request_log").insert({
+      user_id: user.id,
+      tier: userTier,
+      mode: resolvedMode,
+      mode_source: modeSource,
+      model: modelUsed,
+      input_tokens: inputTokens || null,
+      output_tokens: outputTokens || null,
+      latency_ms: latencyMs,
+      estimated_cost_inr: estimatedCostInr,
+      had_image: hasImage,
+      fallback_used: fallbackUsed,
+      subject: subject || null,
     }).then(() => {}, () => {});
 
     return new Response(
-      JSON.stringify({ response: responseText.trim(), suggestions: [], content: responseText.trim() }),
+      JSON.stringify({
+        response: responseText.trim(),
+        suggestions: [],
+        content: responseText.trim(),
+        resolvedMode,
+        modeSource,
+        tier: userTier,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
-    console.error("[ADMIN] 🚨 CATASTROPHIC ERROR in jeenie:", error);
+    console.error("[JEENIE] 🚨 CATASTROPHIC ERROR:", error);
     const funnyMsg = getRandomFunnyFallback();
     return new Response(
       JSON.stringify({ response: funnyMsg, suggestions: [], content: funnyMsg }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
+
 });
