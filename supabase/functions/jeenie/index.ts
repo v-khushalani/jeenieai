@@ -31,27 +31,31 @@ function getRandomFunnyFallback(): string {
 }
 
 
-async function callLovableGateway(messages: Array<{role: string; content: any}>): Promise<string | null> {
+async function callLovableGateway(
+  messages: Array<{ role: string; content: any }>,
+  model: string,
+  maxTokens: number,
+): Promise<{ text: string | null; usage?: { prompt_tokens?: number; completion_tokens?: number } }> {
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey) { console.error("[ADMIN] ❌ LOVABLE_API_KEY not configured"); return null; }
+  if (!apiKey) { console.error("[JEENIE] ❌ LOVABLE_API_KEY not configured"); return { text: null }; }
   try {
-    console.log("[ADMIN] 🔄 Trying Lovable AI Gateway (PRIMARY)...");
+    console.log(`[JEENIE] 🔄 Lovable AI Gateway → ${model} (max ${maxTokens})`);
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 30000);
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: "google/gemini-2.5-flash", messages, temperature: 0.7, max_tokens: 2000 }),
+      body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: maxTokens }),
       signal: ctrl.signal,
     });
     clearTimeout(timer);
-    if (!res.ok) { const err = await res.text(); console.error(`[ADMIN] ❌ Lovable Gateway failed (${res.status}):`, err.substring(0, 300)); return null; }
+    if (!res.ok) { const err = await res.text(); console.error(`[JEENIE] ❌ Gateway ${res.status}:`, err.substring(0, 300)); return { text: null }; }
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content;
-    if (text) { console.log("[ADMIN] ✅ Lovable Gateway success"); return text; }
-    return null;
-  } catch (e) { console.error("[ADMIN] ❌ Lovable Gateway error:", e); return null; }
+    return { text: text || null, usage: data.usage };
+  } catch (e) { console.error("[JEENIE] ❌ Gateway error:", e); return { text: null }; }
 }
+
 
 async function callGemini(prompt: string, apiKey: string): Promise<string | null> {
   try {
