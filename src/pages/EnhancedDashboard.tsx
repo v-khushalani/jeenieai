@@ -7,8 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { formatExamDisplay } from '@/utils/examDisplay';
 import {
-  Brain,
-
   Trophy,
   Target,
   Calendar,
