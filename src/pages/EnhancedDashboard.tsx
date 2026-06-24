@@ -259,9 +259,7 @@ const EnhancedDashboard = () => {
                   <div className="relative z-10">
                     <div className="flex flex-col gap-3 sm:gap-4">
                       <div className="flex items-start gap-3 sm:gap-4">
-                        <div className="w-9 h-9 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl bg-linear-to-br from-blue-400 to-indigo-500 flex items-center justify-center shadow-lg shrink-0 text-xl sm:text-3xl">
-                          {timeMessage.icon}
-                        </div>
+                        <div className="flex-1 min-w-0 sm:pr-8">
                         <div className="flex-1 min-w-0">
                           <h2 className="text-base sm:text-2xl font-bold mb-0.5 sm:mb-1 line-clamp-2">
                             {timeMessage.greeting}, {displayName}! {timeMessage.icon}
