@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
-  Calendar, BookOpen, Target, Brain, Flame,
-  TrendingUp, Sparkles, RefreshCw, Loader2,
+  Calendar, BookOpen, Target, Sparkles, Flame,
+  TrendingUp, RefreshCw, Loader2,
   Sun, Sunset, Moon, AlertTriangle, CheckCircle2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -456,7 +456,7 @@ export default function AIStudyPlanner() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-            <Brain className="w-6 h-6 text-primary" />
+            <Sparkles className="w-6 h-6 text-primary" />
             AI Study Planner
           </h1>
           <p className="text-xs text-muted-foreground mt-1">Personalized plan based on your performance</p>

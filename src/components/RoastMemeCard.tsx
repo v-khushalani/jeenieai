@@ -48,12 +48,16 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
     }
     setLoading(true);
     try {
-      const prompt = `Write a single sharp, shareable Hinglish roast in JEEnie's voice. Keep it witty, observational, and playful, with fast punchline energy, layered wordplay, and meme-friendly phrasing. Do not imitate any specific comedian or use names. Avoid cruelty, slurs, or humiliation. Topic: "${weakestTopic}", accuracy: ${weakestAccuracy}%. Return only the roast text, max 220 characters.`;
+      const prompt = `You are JEEnie roasting an Indian JEE student. Output ONE single-line Hinglish roast — savage, unhinged, meme-tier, with crazy punchline energy, layered wordplay, fast rhythm and pop-culture/Bollywood/cricket/desi-internet vibes. Hard rules: (1) DO NOT start with the topic name, do NOT prefix with "Topic:", "${weakestTopic}:", labels, intros, greetings, "Hello", "Puttar", "Bhai", "Yo", or any salutation. (2) Reference the weakness naturally inside the roast, not as a header. (3) No markdown, no quotes, no bullet points, no asterisks, no emojis at the start, no newlines. (4) Plain prose, max 220 chars. Context (DO NOT echo as label): weakness=${weakestTopic}, accuracy=${weakestAccuracy}%. Return only the roast sentence.`;
       const { data, error } = await supabase.functions.invoke('jeenie', {
         body: { contextPrompt: prompt, subject: 'roast' },
       });
       let text = data?.response || data?.content || '';
       text = sanitizeRoast(text, 220);
+      // Strip leading "Topic:" / "<topic>:" / "<topic> —" patterns that some models prepend
+      const topicEsc = weakestTopic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      text = text.replace(new RegExp(`^\\s*(?:topic\\s*:?\\s*)?${topicEsc}\\s*[:\\-—–|]+\\s*`, 'i'), '').trim();
+      text = text.replace(/^\s*topic\s*:\s*/i, '').trim();
       if (error || !text) text = pickFallback(weakestTopic, weakestAccuracy);
       setRoast(text);
     } catch {

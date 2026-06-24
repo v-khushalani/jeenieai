@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   BarChart3, TrendingUp, Target, Clock, Trophy,
-  AlertTriangle, CheckCircle2, Circle, Flame, Brain,
+  AlertTriangle, CheckCircle2, Circle, Flame, Sparkles,
   Zap, BookOpen, ArrowRight, CalendarDays, Crosshair,
   TrendingDown, Award, ChevronDown, ChevronRight
 } from "lucide-react";
@@ -354,7 +354,7 @@ const AnalyticsPage = () => {
         <Header />
         <div className="flex-1 min-h-0 flex items-center justify-center">
           <div className="text-center space-y-3">
-            <Brain className="h-16 w-16 text-muted-foreground/40 mx-auto" />
+            <Sparkles className="h-16 w-16 text-muted-foreground/40 mx-auto" />
             <h2 className="text-xl font-semibold text-foreground">No Data Yet</h2>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto">Start practicing to see your performance analytics here.</p>
             <Button onClick={() => navigate("/study-now")} className="mt-4">Start Practicing <ArrowRight className="ml-2 h-4 w-4" /></Button>
@@ -394,7 +394,7 @@ const AnalyticsPage = () => {
               {/* Hero Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
                 {[
-                  { label: "Questions", value: overview.total, icon: Brain, color: "text-blue-600" },
+                  { label: "Questions", value: overview.total, icon: Sparkles, color: "text-blue-600" },
                   { label: "Accuracy", value: `${overview.accuracy.toFixed(0)}%`, icon: Target, color: "text-emerald-600" },
                   { label: "Streak", value: profile?.current_streak || 0, icon: Flame, color: "text-orange-600" },
                   { label: "Topics", value: overview.topicsAttempted, icon: BookOpen, color: "text-pink-600" },
@@ -668,7 +668,7 @@ const AnalyticsPage = () => {
 
               {/* Targets */}
               {[
-                { label: "Questions Solved", current: monthTargets.questionsDone, target: monthTargets.questionsTarget, icon: Brain, color: "bg-blue-500" },
+                { label: "Questions Solved", current: monthTargets.questionsDone, target: monthTargets.questionsTarget, icon: Sparkles, color: "bg-blue-500" },
                 { label: "Monthly Accuracy", current: monthTargets.accuracyCurrent, target: monthTargets.accuracyTarget, icon: Target, color: "bg-emerald-500", suffix: "%" },
                 { label: "Topics Mastered", current: monthTargets.topicsMastered, target: monthTargets.topicsMasteredTarget, icon: Award, color: "bg-purple-500" },
               ].map((item) => {

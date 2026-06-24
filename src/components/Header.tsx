@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, LogOut, ChevronDown, Shield, Trophy, Award, LayoutDashboard, BookOpen, Brain, BarChart3, Home, HelpCircle, FileText, Settings, User as UserIcon, Sun, Moon } from 'lucide-react';
+import { Menu, X, LogOut, ChevronDown, Shield, Trophy, Award, LayoutDashboard, BookOpen, Sparkles, BarChart3, Home, HelpCircle, FileText, Settings, User as UserIcon, Sun, Moon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -87,7 +87,7 @@ const Header = () => {
     Dashboard: <LayoutDashboard className="w-4 h-4" />,
     Study: <BookOpen className="w-4 h-4" />,
     'Study Now': <BookOpen className="w-4 h-4" />,
-    'AI Planner': <Brain className="w-4 h-4" />,
+    'AI Planner': <Sparkles className="w-4 h-4" />,
     Tests: <FileText className="w-4 h-4" />,
     Analytics: <BarChart3 className="w-4 h-4" />,
     'Pro+ Library': <BookOpen className="w-4 h-4" />,
