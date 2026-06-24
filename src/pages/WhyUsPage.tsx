@@ -14,7 +14,6 @@ import {
   Sparkles,
   CheckCircle2,
   CircleAlert,
-  Sparkles,
   Target,
   Trophy,
   Zap,

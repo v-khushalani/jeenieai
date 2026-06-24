@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   Calendar, BookOpen, Target, Sparkles, Flame,
-  TrendingUp, Sparkles, RefreshCw, Loader2,
+  TrendingUp, RefreshCw, Loader2,
   Sun, Sunset, Moon, AlertTriangle, CheckCircle2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';

@@ -12,7 +12,7 @@ import LoadingScreen from '@/components/ui/LoadingScreen';
 import safeLocalStorage from '@/utils/safeStorage';
 import {
   BookOpen, Trophy, Play, Clock, Target, FileText, ArrowLeft, CheckCircle2,
-  Sparkles, Sparkles, Crown, Award, Users, Calendar
+  Sparkles, Crown, Award, Users, Calendar
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PricingModal from '@/components/PricingModal';

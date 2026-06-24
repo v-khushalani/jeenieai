@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { 
   CheckCircle2, XCircle, Edit2, Loader2, ChevronLeft, ChevronRight, 
   RefreshCw, FileText, BookOpen, AlertTriangle, Copy, SkipForward, 
-  Replace, Sparkles, Filter, Database, Sparkles, Undo2, ImageOff, Eye
+  Replace, Sparkles, Filter, Database, Undo2, ImageOff, Eye
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MathDisplay } from "./MathDisplay";
