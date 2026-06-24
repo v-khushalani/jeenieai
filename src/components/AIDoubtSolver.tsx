@@ -169,9 +169,13 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   const callEdgeFunction = async (prompt: string, conversationHistory: string, base64Image?: string): Promise<string> => {
     try {
       logger.info("Calling JEEnie via API layer...");
-      
+
       const payload: any = {
         contextPrompt: prompt,
+        // Auto-mode: server detects best mode from question.
+        // Future: action chips will pass an explicit mode + modeSource: 'manual_chip'.
+        mode: 'auto',
+        modeSource: 'auto',
         conversationHistory: conversationHistory ? [
           { role: 'user', content: conversationHistory, timestamp: new Date().toISOString() }
         ] : undefined,
@@ -181,13 +185,13 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       if (base64Image) {
         payload.image = base64Image;
       }
-      
+
       const { data, error: apiError } = await aiAPI.askJeenie(payload);
-      
+
       if (apiError) {
         logger.error("API error from JEEnie:", apiError);
         const errorType = apiError.code;
-        
+
         if (errorType === "RATE_LIMITED" || apiError.message.includes("rate")) {
           throw new Error("JEEnie abhi chai pe gaya hai! ☕ 2 second ruk, wapas aata hai!");
         } else if (apiError.message.includes("overloaded") || apiError.message.includes("unavailable")) {
@@ -198,19 +202,20 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
           throw new Error("Oho! JEEnie thoda confuse ho gaya! 🤪 Ek aur baar try kar, pakka answer dega!");
         }
       }
-      
+
       if (!data || !data.response) {
         throw new Error("JEEnie ko kuch samajh nahi aaya! 😅 Thoda aur detail mein pooch!");
       }
-      
+
       return data.response.trim();
-      
+
     } catch (error) {
       logger.error("Error calling JEEnie Edge Function:", error);
       if (error instanceof Error) throw error;
       throw new Error("Internet connection check karo! 🌐 JEEnie se baat nahi ho pa rahi.");
     }
   };
+
 
   const handleSendMessage = async (overrideInput?: string) => {
     const effectiveInput = (overrideInput ?? input).trim();
