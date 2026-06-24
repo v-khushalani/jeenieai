@@ -48,17 +48,40 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
     }
     setLoading(true);
     try {
-      const prompt = `You are JEEnie roasting an Indian JEE student. Output ONE single-line Hinglish roast — savage, unhinged, meme-tier, with crazy punchline energy, layered wordplay, fast rhythm and pop-culture/Bollywood/cricket/desi-internet vibes. Hard rules: (1) DO NOT start with the topic name, do NOT prefix with "Topic:", "${weakestTopic}:", labels, intros, greetings, "Hello", "Puttar", "Bhai", "Yo", or any salutation. (2) Reference the weakness naturally inside the roast, not as a header. (3) No markdown, no quotes, no bullet points, no asterisks, no emojis at the start, no newlines. (4) Plain prose, max 220 chars. Context (DO NOT echo as label): weakness=${weakestTopic}, accuracy=${weakestAccuracy}%. Return only the roast sentence.`;
+      // Accuracy-bucket tone — roast intensity scales with how badly the student is doing.
+      const acc = Math.max(0, Math.min(100, Math.round(weakestAccuracy)));
+      let bucket = '';
+      if (acc < 20) bucket = 'BRUTAL bucket (<20%): full savage, "ye topic tujhe dekhke bhaag jaata hai" vibe, RIP-level burns.';
+      else if (acc < 40) bucket = 'HEAVY bucket (20-39%): clearly struggling, roast hard but with a tiny hope spark at the end.';
+      else if (acc < 60) bucket = 'MEDIUM bucket (40-59%): mid-table mediocrity roast — "situationship with the topic" energy.';
+      else if (acc < 80) bucket = 'LIGHT bucket (60-79%): playful jab — "ek aur dhakka aur ye topic tera ho jaayega" vibe.';
+      else bucket = 'CHEEKY bucket (80%+): light flex-roast — "showoff ban gaya, but ek do galti abhi bhi karta hai" energy.';
+
+      const prompt = `Tu JEEnie hai — ek Indian JEE student ko uske WEAKEST topic pe roast kar raha hai. Ek single-line Hinglish roast de — savage, unhinged, meme-tier, crazy punchline energy, layered wordplay, fast rhythm, aur Bollywood/cricket/desi-internet/meme references jahan fit ho.
+
+CONTEXT (sirf roast banane ke liye, label/heading mat banana):
+- Weakest topic/chapter: "${weakestTopic}"
+- Accuracy: ${acc}%
+- Tone bucket: ${bucket}
+
+HARD RULES:
+1. Roast MUST be specific to "${weakestTopic}" — uska actual concept/keyword/cliché use kar (jaise Thermodynamics → entropy/heat, Rotational Motion → torque/inertia, Organic Chem → reactions/mechanism, Calculus → integration/limits, Electrostatics → charge/field, etc.). Generic mat likhna.
+2. Accuracy ${acc}% ko bhi naturally roast mein ghusao — number ka mazaak uda ya usse implication nikal (without saying "accuracy is"). Bucket ki intensity match honi chahiye.
+3. DO NOT start with the topic name. DO NOT prefix with "Topic:", "${weakestTopic}:", labels, intros, greetings, "Hello", "Puttar", "Bhai", "Yo", "Are", ya koi salutation.
+4. No markdown, no quotes, no bullets, no asterisks, no emojis at the very start, no newlines.
+5. Plain Hinglish prose, max 240 chars, single line, punchline at the end.
+
+Sirf roast sentence return kar — aur kuch nahi.`;
       const { data, error } = await supabase.functions.invoke('jeenie', {
         body: { contextPrompt: prompt, subject: 'roast' },
       });
       let text = data?.response || data?.content || '';
-      text = sanitizeRoast(text, 220);
+      text = sanitizeRoast(text, 240);
       // Strip leading "Topic:" / "<topic>:" / "<topic> —" patterns that some models prepend
       const topicEsc = weakestTopic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       text = text.replace(new RegExp(`^\\s*(?:topic\\s*:?\\s*)?${topicEsc}\\s*[:\\-—–|]+\\s*`, 'i'), '').trim();
       text = text.replace(/^\s*topic\s*:\s*/i, '').trim();
-      if (error || !text) text = pickFallback(weakestTopic, weakestAccuracy);
+      if (error || !text) text = pickFallback(weakestTopic, acc);
       setRoast(text);
     } catch {
       setRoast(pickFallback(weakestTopic, weakestAccuracy));
