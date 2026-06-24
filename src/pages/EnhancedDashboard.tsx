@@ -137,15 +137,15 @@ const EnhancedDashboard = () => {
   const getSmartNotification = () => {
     if (!stats) return null;
     if (stats.todayAccuracy < 60 && stats.questionsToday >= 10)
-      return { message: "Focus needed! Review mistakes.", color: "orange", icon: AlertCircle };
+      return { message: "Focus needed! Review mistakes.", color: "orange", icon: AlertCircle, route: "/analytics" };
     if (streak >= 7 && stats.questionsToday < 10)
-      return { message: `🔥 Don't break your ${streak}-day streak!`, color: "orange", icon: Flame };
+      return { message: `🔥 Don't break your ${streak}-day streak!`, color: "orange", icon: Flame, route: "/study-now" };
     if (stats.todayProgress >= stats.todayGoal && stats.todayAccuracy >= 80)
-      return { message: "🎉 Daily goal smashed!", color: "green", icon: Trophy };
+      return { message: "🎉 Daily goal smashed!", color: "green", icon: Trophy, route: "/analytics" };
     if (stats.questionsToday >= 50 && stats.todayAccuracy >= 85)
-      return { message: "⭐ Outstanding performance!", color: "green", icon: Sparkles };
+      return { message: "⭐ Outstanding performance!", color: "green", icon: Sparkles, route: "/analytics" };
     if (stats.rankChange && stats.rankChange >= 3)
-      return { message: `📈 Climbed ${stats.rankChange} ranks!`, color: "blue", icon: TrendingUp };
+      return { message: `📈 Climbed ${stats.rankChange} ranks!`, color: "blue", icon: TrendingUp, route: "/analytics" };
     return null;
   };
 
