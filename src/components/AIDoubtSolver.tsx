@@ -169,9 +169,13 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   const callEdgeFunction = async (prompt: string, conversationHistory: string, base64Image?: string): Promise<string> => {
     try {
       logger.info("Calling JEEnie via API layer...");
-      
+
       const payload: any = {
         contextPrompt: prompt,
+        // Auto-mode: server detects best mode from question.
+        // Future: action chips will pass an explicit mode + modeSource: 'manual_chip'.
+        mode: 'auto',
+        modeSource: 'auto',
         conversationHistory: conversationHistory ? [
           { role: 'user', content: conversationHistory, timestamp: new Date().toISOString() }
         ] : undefined,
@@ -181,13 +185,13 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       if (base64Image) {
         payload.image = base64Image;
       }
-      
+
       const { data, error: apiError } = await aiAPI.askJeenie(payload);
-      
+
       if (apiError) {
         logger.error("API error from JEEnie:", apiError);
         const errorType = apiError.code;
-        
+
         if (errorType === "RATE_LIMITED" || apiError.message.includes("rate")) {
           throw new Error("JEEnie abhi chai pe gaya hai! ☕ 2 second ruk, wapas aata hai!");
         } else if (apiError.message.includes("overloaded") || apiError.message.includes("unavailable")) {
@@ -198,19 +202,20 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
           throw new Error("Oho! JEEnie thoda confuse ho gaya! 🤪 Ek aur baar try kar, pakka answer dega!");
         }
       }
-      
+
       if (!data || !data.response) {
         throw new Error("JEEnie ko kuch samajh nahi aaya! 😅 Thoda aur detail mein pooch!");
       }
-      
+
       return data.response.trim();
-      
+
     } catch (error) {
       logger.error("Error calling JEEnie Edge Function:", error);
       if (error instanceof Error) throw error;
       throw new Error("Internet connection check karo! 🌐 JEEnie se baat nahi ho pa rahi.");
     }
   };
+
 
   const handleSendMessage = async (overrideInput?: string) => {
     const effectiveInput = (overrideInput ?? input).trim();
@@ -246,19 +251,20 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       const isGeneral = !question?.option_a || question?.question?.includes("koi bhi");
       const history = buildConversationHistory(messages);
 
-      // Tone rules — ALWAYS Hinglish "bada bhai" vibe, never English-teacher mode.
-      const TONE_RULES = `\n\nSTRICT TONE RULES (non-negotiable):\n- Reply in NATURAL HINGLISH (Roman script, Hindi + English mix) — jaise ek smart bada bhai apne chhote bhai ko samjha raha ho. NEVER pure English. NEVER pure Hindi (Devanagari).\n- Address the student as "Puttar", "bhai" ya "yaar" — friendly, warm, thoda mazaak bhi.\n- Bullets + bold + emojis + short punchy lines (format rules from system prompt apply).\n- Concept ko intuition se samjha — "dekh bhai, hota kya hai ye…" wali vibe. Real-life analogy / desi example use kar jab fit ho.\n- Har important step ke baad ek choti si "kyun" wali line — sirf formula mat thook.\n- End with a 1-line takeaway + emoji ("Toh bhai, yaad rakhna…" type).\n- Examiner tone, "Dear student", "In this question we observe…" — STRICTLY BANNED.`;
-
+      // Personality + formatting + mode-specific teaching rules now live in the
+      // server's modular system prompt (supabase/functions/_shared/jeeniePrompt.ts).
+      // We send only the user's actual content here — keeps per-request tokens minimal.
       let prompt: string;
       if (currentImage) {
-        prompt = (userContent !== "📸 Photo se doubt solve karo"
-          ? `Student ne apne doubt ki photo bheji hai aur saath mein bola: "${userContent}". Image ko dhyaan se dekh, question identify kar, aur poora step-by-step solution de — bada bhai style mein, Hinglish mein.`
-          : `Student ne apne doubt ki photo bheji hai. Image ko dhyaan se dekh, question identify kar, aur complete step-by-step solution de — Hinglish mein, bada bhai jaise samjhaata hai.`) + TONE_RULES;
+        prompt = userContent !== "📸 Photo se doubt solve karo"
+          ? `Student ne photo bheji hai aur saath bola: "${userContent}". Image dekh, question identify kar, complete solution de.`
+          : `Student ne doubt ki photo bheji hai. Image dekh, question identify kar, complete solution de.`;
       } else if (isGeneral) {
-        prompt = `Student ka doubt: "${userContent}".\n\nIs doubt ko aise samjha jaise tu uska bada bhai hai — concept clear kar, intuition de, ek chhota example/analogy daal, aur agar numerical hai toh step-by-step solve kar. Sirf ek line ka dry answer mat de — proper samjha, par bakwaas filler bhi mat bhar.${TONE_RULES}`;
+        prompt = `Student ka doubt: "${userContent}"`;
       } else {
-        prompt = `Question: ${question.question}\nOptions: A) ${question.option_a}, B) ${question.option_b}, C) ${question.option_c}, D) ${question.option_d}\n\nStudent ka doubt: "${userContent}".\n\nIs question ka solution bada bhai style mein samjha — pehle bata kya pucha hai, phir kaunsa concept/formula lagega aur kyun, phir step-by-step solve kar with reasoning, aur end mein correct option (✅) confirm kar. Trap option bhi mention kar agar obvious hai.${TONE_RULES}`;
+        prompt = `Question: ${question.question}\nOptions: A) ${question.option_a}, B) ${question.option_b}, C) ${question.option_c}, D) ${question.option_d}\n\nStudent ka doubt: "${userContent}"`;
       }
+
 
       setTyping(true);
       const aiResponse = await callEdgeFunction(prompt, history, currentImage || undefined);

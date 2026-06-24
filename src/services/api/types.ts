@@ -177,17 +177,26 @@ export interface JeenieMessage {
   timestamp: string;
 }
 
+export type JeenieMode = 'auto' | 'quick' | 'steps' | 'deep' | 'exam' | 'master';
+export type JeenieModeSource = 'auto' | 'manual_chip' | 'manual_dropdown' | 'manual';
+
 export interface JeenieRequest {
   contextPrompt: string;
   subject?: string;
   conversationHistory?: JeenieMessage[];
   image?: string;
+  mode?: JeenieMode;
+  modeSource?: JeenieModeSource;
 }
 
 export interface JeenieResponse {
   response: string;
   suggestions?: string[];
+  resolvedMode?: Exclude<JeenieMode, 'auto'>;
+  modeSource?: JeenieModeSource;
+  tier?: 'free' | 'pro' | 'pro_plus';
 }
+
 
 export interface StudyPlanRequest {
   userId: string;
