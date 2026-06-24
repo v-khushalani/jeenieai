@@ -260,19 +260,15 @@ const EnhancedDashboard = () => {
                     <div className="flex flex-col gap-3 sm:gap-4">
                       <div className="flex items-start gap-3 sm:gap-4">
                         <div className="flex-1 min-w-0">
-                          <h2 className="text-base sm:text-2xl font-bold mb-0.5 sm:mb-1 line-clamp-2">
-                            {timeMessage.greeting}, {displayName}! {timeMessage.icon}
+                          <h2 className="text-base sm:text-2xl font-bold mb-1 line-clamp-2">
+                            {timeMessage.greeting}, {displayName}
                           </h2>
-                          <p className="text-[11px] sm:text-base text-slate-200">
-                            {timeMessage.message}
-                            {daysRemaining ? ` • Pro active for ${daysRemaining} more days` : ""}
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5 sm:mt-1 flex-wrap">
-                            <p className="text-xs text-slate-400">
-                              {stats?.questionsToday && stats.questionsToday > 0
-                                ? `${stats.questionsToday} questions today!`
-                                : "Let's make today count!"}
+                          {daysRemaining && (
+                            <p className="text-[11px] sm:text-base text-slate-200">
+                              Pro active for {daysRemaining} more days
                             </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                             {examDaysLeft !== null && (
                               <Badge className="text-[10px] bg-white/15 text-white border-white/20">
                                 {formatExamDisplay(profile?.target_exam)}: {examDaysLeft} days left
