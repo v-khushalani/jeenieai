@@ -223,10 +223,10 @@ const PricingModal: React.FC<PricingModalProps> = ({
         <div className="mx-6 mb-4 rounded-xl border border-border overflow-hidden bg-card">
           <div className="grid grid-cols-3 bg-muted/30 border-b border-border">
             <div className="p-3 text-xs font-semibold text-muted-foreground">Feature</div>
-            <div className="p-3 text-xs font-semibold text-muted-foreground text-center">Free</div>
+            <div className="p-3 text-xs font-semibold text-muted-foreground text-center">{isProPlusUpsell ? 'Pro' : 'Free'}</div>
             <div className="p-3 text-xs font-semibold text-center flex items-center justify-center gap-1">
               <Crown className="w-3 h-3 text-primary" />
-              <span className="text-foreground">Paid</span>
+              <span className="text-foreground">{isProPlusUpsell ? 'Pro+' : 'Paid'}</span>
             </div>
           </div>
           {comparison.map((item, idx) => (
