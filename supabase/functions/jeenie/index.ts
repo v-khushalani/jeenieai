@@ -13,10 +13,10 @@ import {
   type Tier,
 } from "../_shared/jeeniePrompt.ts";
 
-// Hard per-request output ceiling. Raised to 1500 so chip-driven Pro+ "deep"
-// and "master" answers don't get cut mid-step. Still gated by computeMaxTokens
-// (which honours user length-intent first).
-const MAX_OUTPUT_TOKENS_CEILING = 1500;
+// Hard per-request output ceiling. Auto-retry path can grow up to this on
+// truncation. Default budgets stay tight (see computeMaxTokens) — only
+// truncated responses get the extra headroom, so cost stays minimal.
+const MAX_OUTPUT_TOKENS_CEILING = 2500;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
