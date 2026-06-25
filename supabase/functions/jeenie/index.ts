@@ -269,15 +269,33 @@ serve(async (req) => {
       modeSource?: ModeSource;
     } = body;
 
-    if (!contextPrompt || contextPrompt.length > 8000) {
+    if (!contextPrompt || contextPrompt.length > MAX_INPUT_CHARS) {
       return new Response(
         JSON.stringify({
-          response: "**Hello Puttar!** 🧞‍♂️\n\nItna lamba question?! 😅 Thoda chhota karke puch — 8000 characters max!\n\n✂️ **Short & sweet question = fast & accurate answer!**",
+          response: `**Hello Puttar!** 🧞‍♂️\n\nItna lamba question?! 😅 Thoda chhota karke puch — **${MAX_INPUT_CHARS} characters max**.\n\n✂️ Short & sweet question = fast & accurate answer!`,
           suggestions: [], content: "",
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // De-dupe: identical prompt from same user within 60s is rejected silently.
+    {
+      gcRecentPrompts();
+      const key = `${user.id}|${djb2((contextPrompt || "").trim().toLowerCase())}`;
+      const last = RECENT_PROMPTS.get(key) || 0;
+      if (Date.now() - last < DEDUPE_WINDOW_MS) {
+        return new Response(
+          JSON.stringify({
+            response: "**Hello Puttar!** 🧞‍♂️\n\nAbhi-abhi same question puchha tha! 😄 Pehle wala answer scroll kar le — ya thoda alag word use kar.",
+            suggestions: [], content: "",
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      RECENT_PROMPTS.set(key, Date.now());
+    }
+
 
     // Resolve mode: explicit override wins, else auto-detect.
     const hasImage = !!image;
