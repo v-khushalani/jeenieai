@@ -670,6 +670,7 @@ const TestPage: React.FC = () => {
           subjects: pattern.subjects,
           testDuration: pattern.duration,
           difficulty: 'Mixed',
+          excludeIds: Array.from(attemptedIds),
         });
 
         logger.info('Full mock test questions fetched', {
