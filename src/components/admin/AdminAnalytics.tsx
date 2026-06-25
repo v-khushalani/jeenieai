@@ -14,7 +14,7 @@ import {
 import { logger } from '@/utils/logger';
 import { cn } from '@/lib/utils';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
-import { JeenieCostPanel } from '@/components/admin/JeenieCostPanel';
+
 
 type TimeRange = '7d' | '14d' | '30d';
 
@@ -218,7 +218,6 @@ export const AdminAnalytics: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <JeenieCostPanel />
       {/* Header with time range */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
