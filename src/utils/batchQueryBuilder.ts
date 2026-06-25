@@ -249,10 +249,13 @@ export const getTestSeriesQuestions = async (filters: {
   subjects?: string[];
   testDuration?: number; // in minutes
   difficulty?: 'Easy' | 'Medium' | 'Hard' | 'Mixed';
+  excludeIds?: string[];
 }) => {
   try {
     const examValues = mapBatchToExamValues(filters.examType);
     const questionCount = filters.testDuration ? Math.ceil(filters.testDuration / 1.5) : 30;
+    // Over-fetch so we still have plenty after random shuffle / attempted-exclude.
+    const fetchLimit = Math.min(questionCount * 6, 600);
     const subjectAliases = filters.subjects
       ? Array.from(new Set(filters.subjects.flatMap((subject) => getSubjectAliases(subject))))
       : [];
@@ -263,19 +266,23 @@ export const getTestSeriesQuestions = async (filters: {
       .or('is_active.is.null,is_active.eq.true')
       .or(buildExamOrClause(examValues));
 
-    // Removed strict batch_id.or() to fix HTTP 500 errors on questions view.
-
-    // Filter by subjects if provided
     if (subjectAliases.length > 0) {
       query = query.in('subject', subjectAliases);
     }
 
-    // Filter by difficulty if not 'Mixed'
     if (filters.difficulty && filters.difficulty !== 'Mixed') {
       query = query.eq('difficulty', filters.difficulty);
     }
 
-    query = query.limit(questionCount);
+    // Server-side exclusion of already-attempted IDs (cap to keep URL sane).
+    if (filters.excludeIds && filters.excludeIds.length > 0 && filters.excludeIds.length <= 500) {
+      const idList = filters.excludeIds.map((id) => `"${id}"`).join(',');
+      query = query.not('id', 'in', `(${idList})`);
+    }
+
+    // Randomize the window we pull so we don't always hit the same first-N rows.
+    const randomOffset = Math.floor(Math.random() * 2000);
+    query = query.range(randomOffset, randomOffset + fetchLimit - 1);
 
     const { data, error } = await query;
 
@@ -288,7 +295,9 @@ export const getTestSeriesQuestions = async (filters: {
       examType: filters.examType,
       subjects: filters.subjects,
       questionCount: data?.length || 0,
-      totalRequested: questionCount
+      totalRequested: questionCount,
+      fetchLimit,
+      randomOffset,
     });
 
     return data || [];
