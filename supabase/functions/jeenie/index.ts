@@ -262,6 +262,36 @@ serve(async (req) => {
       outputTokens = primary.usage?.completion_tokens ?? estTokens(primary.text);
     }
 
+    // 🔁 Silent auto-retry on truncation. If the model stopped because it hit
+    // the output cap (finish_reason === "length"), retry once with a larger
+    // budget so the student never sees a cut-off answer. User never knows.
+    // Only triggers when user did NOT explicitly ask for ultra-short/short.
+    const truncated = primary.finishReason === "length";
+    const userWantsShort = lengthIntent === "ultra_short" || lengthIntent === "short";
+    if (truncated && !userWantsShort && responseText) {
+      const retryTokens = Math.min(Math.max(maxTokens * 2, 1200), MAX_OUTPUT_TOKENS_CEILING);
+      if (retryTokens > maxTokens) {
+        console.log(`[JEENIE] ✂️ Truncated at ${maxTokens} → silent retry with ${retryTokens}`);
+        // Nudge the model: continue from scratch with explicit "complete it" instruction.
+        const retryMessages = [
+          ...messages.slice(0, -1),
+          {
+            role: "user",
+            content: typeof messages[messages.length - 1].content === "string"
+              ? `${messages[messages.length - 1].content}\n\n(Important: pichli baar reply beech mein kat gayi thi. Is baar complete answer dena — concise but never truncated. Skip unnecessary fluff.)`
+              : messages[messages.length - 1].content,
+          },
+        ];
+        const retry = await callLovableGateway(retryMessages, primaryModel, retryTokens);
+        if (retry.text && retry.text.length > responseText.length * 0.9) {
+          responseText = retry.text;
+          inputTokens = retry.usage?.prompt_tokens ?? inputTokens;
+          outputTokens = retry.usage?.completion_tokens ?? estTokens(retry.text);
+          fallbackUsed = fallbackUsed ? `${fallbackUsed}+retry_truncation` : "retry_truncation";
+        }
+      }
+    }
+
     if (!responseText && !image) {
       const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY");
       if (GEMINI_KEY) {
