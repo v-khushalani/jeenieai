@@ -1,55 +1,168 @@
-## Goal
-Make `/badges` page shareable + visually exciting. Currently it's a plain grid of emoji tiles with gradient backgrounds — no share, no personality, no progress drama.
+# Plan
 
-## 1. Add Share for Badges
-Reuse existing `ShareCardDialog` + `generateShareCard` infrastructure (already used by Roast/Test/Streak/Wrapped).
+## 1. Badge QA preview — make achievements visible
 
-**a. New share card type — `badge`** in `src/lib/shareCard.ts`
-- Add `BadgeShareOpts { type: 'badge'; badgeName; badgeIcon; badgeDescription; category; earnedAt?; tagline }`
-- Add `paintBadge(ctx, o)` painter: giant trophy/medallion treatment — large icon in a circular gradient medallion, badge name in display weight, category eyebrow, "Earned on {date}" or "Just unlocked" line, branded tagline ("Mere wallet mein ek aur badge 🏅 — tu kab aayega JEEnie pe?").
-- Wire `badge` case in `generateShareCard` switch.
+The current `BadgesShowcase` reads two sources:
+- **Dynamic badges** (streaks / answer streaks): it checks `profiles.badges` for exact strings like `'Hot Streak'`.
+- **Table badges**: it reads `public.badges` and `public.user_badges`.
 
-**b. BadgesShowcase share UX**
-- Show a small `Share2` icon button in the top-right corner of every **earned** badge tile (both dynamic + table-based). Hidden on locked tiles.
-- Click → opens `ShareCardDialog` with `type: 'badge'` opts + referral URL (via `ReferralService.getReferralLink(user.id)`).
-- Add a top-right "Share collection" button on the page header that generates a single summary card: "{N} badges earned" + top 3 icons + tagline. (Reuse `paintWrapped` style or add a `badgeCollection` sub-mode of `paintBadge` — keep it inside one new painter for simplicity.)
+Right now `public.badges` is empty, so only dynamic badges can ever show. To let you see the full cabinet, we will:
 
-## 2. Make Badges Catchy
+- Insert a few sample rows into `public.badges` (name, icon, description, category, points_required).
+- Insert matching rows into `public.user_badges` for the QA test users.
+- Optionally flip the dynamic strings in `profiles.badges` for users you want to see streak badges.
+- Provide a single `SELECT` that mirrors exactly what the UI renders: earned status, rarity, progress, and earned date.
 
-Current look = generic gradient tile + emoji + name. Replacing it with a more game-like, premium showcase.
+After this, changing a value in Supabase will actually reflect on the badges page.
 
-**a. Hero strip at top of page** (new)
-- Big "Trophy Cabinet" header with user's earned count, total available, % completion ring, and the **rarest earned badge** highlighted as a "Featured" medallion with subtle float animation.
-- Confetti burst (framer-motion + canvas-confetti or pure CSS) when a brand-new badge is detected (compare against `localStorage` last-seen set).
+### SQL for the QA preview
 
-**b. Tile redesign**
-- Replace flat gradient square with a **medallion**: circular emblem + ribbon banner under it with the badge name, soft inner shadow, metallic-style gradient ring (bronze / silver / gold / platinum depending on tier — derived from `points_required` buckets or category color).
-- Earned tiles: subtle continuous glow pulse (animate-pulse on a blurred halo), tilt-on-hover (CSS transform).
-- Locked tiles: greyscale medallion + frosted lock overlay + progress ring around the medallion (not a flat bar) showing % to unlock.
-- Rarity chip ("Common / Rare / Epic / Legendary / Mythic") on each tile, derived from points threshold or category seriousness.
+```sql
+-- 1. Seed a few sample table badges
+INSERT INTO public.badges (code, name, description, icon, category, points_required, points_reward, is_active) VALUES
+('first_blood', 'First Blood', 'Pehla question sahi kiya 🎯', '🩸', 'achievement', 10, 20, true),
+('100_club', '100 Club', '100 questions complete', '💯', 'achievement', 100, 50, true),
+('500_club', '500 Club', '500 questions complete — serious player', '⚡', 'achievement', 500, 100, true),
+('point_pioneer', 'Point Pioneer', '1000 JEEnie points earned', '💰', 'skill', 1000, 50, true),
+('night_owl', 'Night Owl', 'Raat ko bhi padhai', '🦉', 'streak', 1, 10, true)
+ON CONFLICT (code) DO NOTHING;
 
-**c. Category sections**
-- Each category gets a colored header strip with category icon, themed background tint, and a horizontal progress bar showing `earned/all` with milestone ticks instead of the plain "3/8" badge.
-- Add short, fun Hinglish flavor copy per category ("Answer Streaks — ek galat answer aur sab gaya 💀", "Day Streaks — daily showup karne walon ka club", etc.).
+-- 2. Assign some badges to a QA user (replace with the actual user id)
+INSERT INTO public.user_badges (user_id, badge_id, earned_at)
+SELECT '00000000-0000-0000-0000-000000000000'::uuid, id, now()
+FROM public.badges
+WHERE code IN ('first_blood', '100_club', 'point_pioneer', 'night_owl')
+ON CONFLICT DO NOTHING;
 
-**d. Empty / next-up callout**
-- If user has 0 earned in a category, show "Closest to unlocking" card at the bottom of that category with the next badge highlighted and exactly what's needed ("4 more correct in a row → Hot Streak").
+-- 3. Unlock a dynamic streak badge for the same user
+UPDATE public.profiles
+SET badges = COALESCE(badges, '[]'::jsonb) || '["Hot Streak", "7-Day Warrior"]'::jsonb
+WHERE id = '00000000-0000-0000-0000-000000000000'::uuid;
 
-**e. Micro-interactions**
-- framer-motion stagger entrance for tiles
-- Hover lift + ring glow
-- Tap on a tile (mobile) opens a small bottom-sheet with full description, earned date, share button — replaces the current hover tooltip which doesn't work on touch.
+-- 4. Preview the badge cabinet exactly as the UI sees it
+WITH user_summary AS (
+  SELECT
+    p.id AS user_id,
+    p.total_points,
+    COALESCE(p.badges, '[]'::jsonb) AS badges_array
+  FROM public.profiles p
+  WHERE p.id = '00000000-0000-0000-0000-000000000000'::uuid
+)
+SELECT
+  b.name,
+  b.category,
+  b.icon,
+  b.points_required,
+  CASE WHEN ub.user_id IS NOT NULL THEN true ELSE false END AS earned,
+  ub.earned_at,
+  CASE
+    WHEN b.points_required >= 5000 THEN 'Mythic'
+    WHEN b.points_required >= 2000 THEN 'Legendary'
+    WHEN b.points_required >= 800  THEN 'Epic'
+    WHEN b.points_required >= 200  THEN 'Rare'
+    ELSE 'Common'
+  END AS rarity,
+  LEAST(100, ROUND((us.total_points::numeric / NULLIF(b.points_required, 0)) * 100)) AS progress_pct
+FROM public.badges b
+CROSS JOIN user_summary us
+LEFT JOIN public.user_badges ub
+       ON ub.badge_id = b.id AND ub.user_id = us.user_id
+ORDER BY b.points_required;
+```
 
-## Files
+Replace the placeholder UUID with the QA user id from `auth.users`.
 
-- `src/lib/shareCard.ts` — add `BadgeShareOpts`, `paintBadge`, switch case
-- `src/components/gamification/BadgesShowcase.tsx` — full visual rebuild + share buttons + bottom-sheet detail + framer-motion + featured medallion + rarity logic
-- `src/components/gamification/BadgeMedallion.tsx` *(new)* — extracted medallion tile component (earned/locked/progress variants)
-- `src/components/gamification/BadgeDetailSheet.tsx` *(new)* — shadcn `Sheet` for tap-to-view + share
-- `src/pages/BadgesPage.tsx` — minor: wrap in framer-motion page transition, add page-level "Share collection" CTA
+## 2. Accuracy — best way to compute it
 
-No DB changes. No backend changes.
+My recommendation is a **hybrid approach** with a single column as the source of truth for the dashboard:
 
-## Out of scope
-- New badge definitions / new earn rules (purely a UI + share polish pass)
-- Changing how badges are awarded
+- **Authoritative display value**: `profiles.overall_accuracy` is what the dashboard shows. This is fast, cache-friendly, and lets you override it in Supabase during QA without fighting the UI.
+- **Authoritative underlying data**: `question_attempts` remains the single source of truth for every attempt. A Postgres trigger keeps `overall_accuracy` in sync automatically.
+- **Period / subject / topic accuracy**: computed from `question_attempts` or `daily_progress` on the fly, because these are slices and change every day.
+
+### Why this is better than only live-aggregating in the UI
+
+- The current dashboard recomputes overall accuracy from the last 3000 practice attempts. If you edit `profiles.overall_accuracy` in Supabase, the dashboard ignores it.
+- Keeping a derived column in `profiles` gives a single fast read and still guarantees correctness because the trigger recalculates from every attempt.
+- It also lets you show a "last calculated" state during heavy ingestion.
+
+### Trigger to keep `overall_accuracy` synced
+
+```sql
+CREATE OR REPLACE FUNCTION public.recalc_user_accuracy()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  target_user_id uuid;
+  total bigint;
+  correct bigint;
+  new_accuracy numeric;
+BEGIN
+  target_user_id := COALESCE(NEW.user_id, OLD.user_id);
+
+  SELECT COUNT(*), COUNT(*) FILTER (WHERE is_correct = true)
+  INTO total, correct
+  FROM public.question_attempts
+  WHERE user_id = target_user_id
+    AND mode = 'practice'
+    AND is_correct IS NOT NULL;
+
+  IF total = 0 THEN
+    new_accuracy := 0;
+  ELSE
+    new_accuracy := ROUND((correct::numeric / total::numeric) * 100, 2);
+  END IF;
+
+  UPDATE public.profiles
+  SET overall_accuracy = new_accuracy,
+      total_questions_solved = total
+  WHERE id = target_user_id;
+
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS question_attempts_accuracy_trigger ON public.question_attempts;
+CREATE TRIGGER question_attempts_accuracy_trigger
+AFTER INSERT OR UPDATE OR DELETE ON public.question_attempts
+FOR EACH ROW
+EXECUTE FUNCTION public.recalc_user_accuracy();
+```
+
+### Code change
+
+In `src/hooks/useUserStats.ts`, switch the main `accuracy` stat from the live-aggregate to the already-fetched profile value:
+
+```ts
+const accuracy = Number(profileData?.overall_accuracy ?? 0);
+```
+
+Keep `todayAccuracy`, `subjectStats`, and `topicStats` computed from `daily_progress` / `question_attempts` because those are period-specific.
+
+### Manual recalc for existing data
+
+After deploying the trigger, run a one-off backfill so every user's `overall_accuracy` matches their attempts:
+
+```sql
+UPDATE public.profiles p
+SET overall_accuracy = sub.accuracy,
+    total_questions_solved = sub.total
+FROM (
+  SELECT user_id,
+         COUNT(*) AS total,
+         ROUND((COUNT(*) FILTER (WHERE is_correct = true)::numeric / COUNT(*)) * 100, 2) AS accuracy
+  FROM public.question_attempts
+  WHERE mode = 'practice' AND is_correct IS NOT NULL
+  GROUP BY user_id
+) sub
+WHERE p.id = sub.user_id;
+```
+
+## Outcome
+
+- Badges table will have sample data and you can see the full "Trophy Cabinet" for any QA user by tweaking `user_badges` or `profiles.badges`.
+- Overall accuracy becomes a single, editable, auto-synced column. Editing it in Supabase will reflect instantly on the dashboard, while the trigger guarantees it stays correct as attempts come in.
+- Period/subject/topic accuracy still computes from real attempt data so students get meaningful breakdowns.
