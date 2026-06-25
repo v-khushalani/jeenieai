@@ -172,22 +172,25 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     }).join("\n");
   };
 
-  const callEdgeFunction = async (prompt: string, conversationHistory: string, base64Image?: string): Promise<string> => {
+  const callEdgeFunction = async (
+    prompt: string,
+    conversationHistory: string,
+    base64Image: string | undefined,
+    mode: JeenieMode,
+    modeSource: JeenieModeSource,
+  ): Promise<string> => {
     try {
       logger.info("Calling JEEnie via API layer...");
 
       const payload: any = {
         contextPrompt: prompt,
-        // Auto-mode: server detects best mode from question.
-        // Future: action chips will pass an explicit mode + modeSource: 'manual_chip'.
-        mode: 'auto',
-        modeSource: 'auto',
+        mode,
+        modeSource,
         conversationHistory: conversationHistory ? [
           { role: 'user', content: conversationHistory, timestamp: new Date().toISOString() }
         ] : undefined,
       };
 
-      // Add image for vision processing
       if (base64Image) {
         payload.image = base64Image;
       }
@@ -223,7 +226,11 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   };
 
 
-  const handleSendMessage = async (overrideInput?: string) => {
+  const handleSendMessage = async (
+    overrideInput?: string,
+    explicitMode?: JeenieMode,
+    explicitModeSource?: JeenieModeSource,
+  ) => {
     const effectiveInput = (overrideInput ?? input).trim();
     if (!effectiveInput && !imageBase64) return;
     setError(null);
