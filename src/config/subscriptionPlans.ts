@@ -71,7 +71,7 @@ export const CONVERSION_MESSAGES = {
     title: '⚡ AI Doubt Quota Reached',
     message: 'Aaj ke doubts khatam ho gaye. Kal naye doubts milenge ya plan upgrade kar le.',
     cta: 'See Plans',
-    subtitle: 'Free: 3/day • Pro: 30/day • Pro+: 100/day',
+    subtitle: 'Free: 5/day • Pro: 20/day • Pro+: 50/day',
   },
   studyPlannerBlocked: {
     title: '📅 AI Study Planner — Pro Feature',
