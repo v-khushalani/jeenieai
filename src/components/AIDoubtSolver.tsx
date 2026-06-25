@@ -280,7 +280,9 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 
 
       setTyping(true);
-      const aiResponse = await callEdgeFunction(prompt, history, currentImage || undefined);
+      const mode: JeenieMode = explicitMode ?? 'auto';
+      const modeSource: JeenieModeSource = explicitModeSource ?? (explicitMode ? 'manual_chip' : 'auto');
+      const aiResponse = await callEdgeFunction(prompt, history, currentImage || undefined, mode, modeSource);
       // Note: do NOT run sanitizeRoast here — it strips "Hello Puttar!", markdown
       // and salutations which JEEnie's doubt-solver answers rely on for tone.
       const isFirstResponse = messages.filter((m) => m.role === 'user').length === 0;
