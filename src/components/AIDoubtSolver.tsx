@@ -569,7 +569,24 @@ function cleanAndFormatJeenieText(text: string, isFirstResponse: boolean = false
   }
   
   formatted = replaceGreekLetters(formatted);
-  
+
+  // ---- Strip raw LaTeX artifacts that escape KaTeX (text outside $...$). ----
+  // \textbf{X} → **X**, \text{X} → X, \mathrm{X} → X
+  formatted = formatted
+    .replace(/\\textbf\{([^}]*)\}/g, '**$1**')
+    .replace(/\\(?:text|mathrm|mathbf|mathit|mathsf|operatorname)\{([^}]*)\}/g, '$1')
+    // \circ outside math → °  (handles "20\circ", "20^\circ", "20°\circ")
+    .replace(/\^?\\circ/g, '°')
+    // \times, \cdot, \div, \pm outside math
+    .replace(/\\times/g, '×')
+    .replace(/\\cdot/g, '·')
+    .replace(/\\div/g, '÷')
+    .replace(/\\pm/g, '±')
+    // Orphan single `$` followed by a number with stray backslash like "$60^\"
+    .replace(/\$([^$\n]{0,40})\\\s*$/gm, '$1')
+    // Collapse leftover lone backslashes at line ends
+    .replace(/\\\s*$/gm, '');
+
   formatted = formatted
     .replace(/->/g, '→')
     .replace(/<-/g, '←')
@@ -595,13 +612,14 @@ function cleanAndFormatJeenieText(text: string, isFirstResponse: boolean = false
     .replace(/([A-Za-z])_([A-Za-z0-9]+)/g, '$1<sub>$2</sub>');
 
   // NOTE: we intentionally do NOT synthesize bullets from "**Title**:" patterns
-  // anymore. That was shredding short prose into noisy bullet lists. The model
-  // now decides when to use bullets and we just render its markdown as-is.
+  // anymore. That was shredding short prose into noisy bullet lists.
 
-
-  // Markdown → HTML: headings, lists, bold, italics (do this BEFORE \n→<br>)
-  // Headings: ### / ## / # at line start
+  // Markdown → HTML headings. Convert numbered sub-headings ("#### 5. Title")
+  // into a clean "Step 5: Title" so students don't see literal '####'.
   formatted = formatted
+    .replace(/^####\s*(\d+)\.\s*(.+)$/gm, '<h4 class="font-bold text-primary mt-3 mb-1 text-sm">Step $1: $2</h4>')
+    .replace(/^####\s+(.+)$/gm, '<h4 class="font-bold text-primary mt-3 mb-1 text-sm">$1</h4>')
+    .replace(/^###\s*(\d+)\.\s*(.+)$/gm, '<h4 class="font-bold text-primary mt-3 mb-1 text-sm">Step $1: $2</h4>')
     .replace(/^###\s+(.+)$/gm, '<h4 class="font-bold text-primary mt-3 mb-1 text-sm">$1</h4>')
     .replace(/^##\s+(.+)$/gm, '<h3 class="font-extrabold text-primary mt-3 mb-1 text-base">$1</h3>')
     .replace(/^#\s+(.+)$/gm, '<h3 class="font-extrabold text-primary mt-3 mb-1 text-base">$1</h3>');
