@@ -42,7 +42,7 @@ async function callLovableGateway(
   messages: Array<{ role: string; content: any }>,
   model: string,
   maxTokens: number,
-): Promise<{ text: string | null; usage?: { prompt_tokens?: number; completion_tokens?: number } }> {
+): Promise<{ text: string | null; usage?: { prompt_tokens?: number; completion_tokens?: number }; finishReason?: string }> {
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) { console.error("[JEENIE] ❌ LOVABLE_API_KEY not configured"); return { text: null }; }
   try {
@@ -59,7 +59,8 @@ async function callLovableGateway(
     if (!res.ok) { const err = await res.text(); console.error(`[JEENIE] ❌ Gateway ${res.status}:`, err.substring(0, 300)); return { text: null }; }
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content;
-    return { text: text || null, usage: data.usage };
+    const finishReason = data.choices?.[0]?.finish_reason;
+    return { text: text || null, usage: data.usage, finishReason };
   } catch (e) { console.error("[JEENIE] ❌ Gateway error:", e); return { text: null }; }
 }
 
