@@ -7,7 +7,8 @@
 export const FREE_LIMITS = {
   questionsPerDay: 15,
   testsPerMonth: 2,
-  aiDoubtSolver: false,
+  aiDoubtSolver: true,
+  aiDoubtQuotaPerDay: 3,
   aiStudyPlanner: false,
   analyticsAdvanced: false,
   pyqAccess: false,
