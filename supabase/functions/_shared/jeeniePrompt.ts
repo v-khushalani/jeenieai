@@ -1,6 +1,9 @@
 // JEEnie modular prompt system.
-// Total per-request system tokens: ~240–320 (vs ~660 in the old single block).
-// Layers compose: PERSONALITY + FORMATTING + TEACHING[mode] + ENTITLEMENTS[tier].
+// Layers compose: PERSONALITY + FORMATTING + TEACHING[mode] + LENGTH[tier].
+//
+// TIER-BLINDNESS RULE: JEEnie itself never references plans / pricing /
+// upgrades / quotas. Those concerns belong to the UI (chips, paywall modals).
+// The LENGTH layer only constrains output size — it never names the tier.
 
 export type Tier = "free" | "pro" | "pro_plus";
 export type Mode = "quick" | "steps" | "deep" | "exam" | "master";
@@ -9,7 +12,14 @@ export type ModeSource = "auto" | "manual_chip" | "manual_dropdown" | "manual";
 const PERSONALITY = `You are JEEnie — JEE/NEET student's bada-bhai mentor.
 Voice: Natural Hinglish (Roman script). Address as "Puttar", "bhai" or "yaar".
 Warm, witty, smart-senior vibe. Bollywood/cricket/meme refs welcome jab fit ho.
-NEVER pure English. NEVER Devanagari. NEVER "Dear student" / examiner tone.`;
+NEVER pure English. NEVER Devanagari. NEVER "Dear student" / examiner tone.
+
+STRICT — Tu sirf padhai ka mentor hai. NEVER mention or discuss: "free", "pro",
+"pro plus", "premium", "subscription", "plan", "upgrade", "paid", "trial",
+"quota", "limit", "credits", pricing, billing, ya kya feature kis ko milta hai.
+Agar student plan/pricing/upgrade ke baare mein puche, sirf yeh bol aur turant
+doubt pe wapas aa: "Bhai, woh sab app ke andar mil jayega — main toh sirf
+padhai mein help karne ke liye hoon. Ab bata kya doubt hai? 💪"`;
 
 const FORMATTING = `Every reply:
 - Open with "**Hello Puttar!** 🧞‍♂️" (skip on follow-ups).
@@ -29,14 +39,15 @@ const TEACHING: Record<Mode, string> = {
   master:`Mode: JEE/NEET MASTER. Full depth + link 1 relevant PYQ (year + exam) + common trap students fall for.`,
 };
 
-const ENTITLEMENTS: Record<Tier, string> = {
-  free:    `Tier: FREE. Cap output ~120 words. Single-shot — no follow-up context expected.`,
-  pro:     `Tier: PRO. Cap output ~250 words. Use last few turns of context.`,
-  pro_plus:`Tier: PRO+. No hard cap; prefer concise. PYQ references allowed.`,
+// Length-only guidance. NO tier name leaks into the prompt.
+const LENGTH: Record<Tier, string> = {
+  free:    `Keep the reply under ~120 words. Single-shot — no follow-up assumed.`,
+  pro:     `Keep the reply under ~250 words. Use recent context if relevant.`,
+  pro_plus:`No hard length cap; prefer concise. Use recent context if relevant.`,
 };
 
 export function buildSystemPrompt(tier: Tier, mode: Mode, subject?: string): string {
-  const parts = [PERSONALITY, FORMATTING, TEACHING[mode], ENTITLEMENTS[tier]];
+  const parts = [PERSONALITY, FORMATTING, TEACHING[mode], LENGTH[tier]];
   if (subject) parts.push(`Current subject context: ${subject}.`);
   return parts.join("\n\n");
 }
@@ -57,6 +68,7 @@ export function detectMode(question: string, hasImage: boolean): Mode {
 }
 
 // Adaptive output length: base cap (tier) × complexity factor (question).
+// Hard ceiling of 1200 tokens applies in the edge function — see jeenie/index.ts.
 export function computeMaxTokens(tier: Tier, question: string, hasImage: boolean): number {
   const base = tier === "free" ? 400 : tier === "pro" ? 700 : 1200;
   const q = (question || "").trim();
@@ -66,7 +78,7 @@ export function computeMaxTokens(tier: Tier, question: string, hasImage: boolean
   const isNumeric = /[=∫Σ√]/.test(q) || /\b(derive|prove|solve|calculate)\b/i.test(q);
   const isMultiPart = /\b(everything|all|complete|entire chapter|full)\b/i.test(q);
 
-  let factor = 0.6; // standard concept
+  let factor = 0.6;
   if (isShortFact && !hasImage) factor = 0.3;
   if (isNumeric || hasImage) factor = 1.0;
   if (isMultiPart) factor = 1.0;
@@ -74,8 +86,7 @@ export function computeMaxTokens(tier: Tier, question: string, hasImage: boolean
   return Math.max(150, Math.round(base * factor));
 }
 
-// Rough INR cost estimator (Lovable Gateway ≈ direct Gemini pricing).
-// Flash: $0.075/M in, $0.30/M out. Pro: $1.25/M in, $5/M out. USD→INR ≈ 84.
+// Rough INR cost estimator. Flash: $0.075/M in, $0.30/M out. Pro: $1.25/M, $5/M. USD→INR ≈ 84.
 const RATE_USD_PER_TOKEN: Record<string, { input: number; output: number }> = {
   "google/gemini-2.5-flash": { input: 0.075 / 1_000_000, output: 0.30 / 1_000_000 },
   "google/gemini-2.5-pro":   { input: 1.25  / 1_000_000, output: 5.00 / 1_000_000 },
@@ -101,4 +112,22 @@ export function resolveTier(profile: {
   if (tier === "pro_plus" && notExpired) return "pro_plus";
   if ((tier === "pro" || profile?.is_premium === true || activeStatus) && notExpired) return "pro";
   return "free";
+}
+
+// Server-side safety net: if JEEnie ever leaks a tier/plan/upgrade word, scrub the
+// offending sentence and replace with a neutral redirect. Returns the cleaned text
+// plus a `tripped` flag so the caller can log it to ai_request_log.
+const FORBIDDEN_RX = /\b(pro\s*plus|pro\+|pro plan|premium|subscription|subscribe|upgrade|upgraded|paid plan|free tier|free plan|trial|quota|credits?|pricing|paywall|locked behind)\b/i;
+
+const REDIRECT_LINE = "Bhai, woh sab app ke andar mil jayega — main toh sirf padhai mein help karne ke liye hoon. Ab bata kya doubt hai? 💪";
+
+export function scrubTierMentions(text: string): { text: string; tripped: boolean } {
+  if (!text) return { text, tripped: false };
+  if (!FORBIDDEN_RX.test(text)) return { text, tripped: false };
+
+  // Split into sentences and drop any sentence that trips the regex.
+  const sentences = text.split(/(?<=[.!?\n])\s+/);
+  const kept = sentences.filter((s) => !FORBIDDEN_RX.test(s));
+  const cleaned = (kept.join(" ").trim() || "") + (kept.length < sentences.length ? `\n\n${REDIRECT_LINE}` : "");
+  return { text: cleaned.trim(), tripped: true };
 }
