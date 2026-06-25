@@ -123,9 +123,11 @@ export function computeMaxTokens(
 ): number {
   // User intent ALWAYS wins. Ultra-short means ultra-short — no exceptions.
   if (intent === "ultra_short") return 120;
-  if (intent === "short") return 280;
+  if (intent === "short") return 240;
 
-  const base = tier === "free" ? 400 : tier === "pro" ? 900 : 1400;
+  // Tight defaults. Edge function auto-retries with a bigger budget if the
+  // model truncates, so the typical request stays cheap.
+  const base = tier === "free" ? 280 : tier === "pro" ? 600 : 1000;
   const q = (question || "").trim();
   const words = q.split(/\s+/).length;
 
@@ -133,12 +135,12 @@ export function computeMaxTokens(
   const isNumeric = /[=∫Σ√]/.test(q) || /\b(derive|prove|solve|calculate)\b/i.test(q);
   const isMultiPart = /\b(everything|all|complete|entire chapter|full)\b/i.test(q) || intent === "long";
 
-  let factor = 0.6;
-  if (isShortFact && !hasImage) factor = 0.35;
-  if (isNumeric || hasImage) factor = 1.0;
-  if (isMultiPart) factor = 1.15;
+  let factor = 0.55;
+  if (isShortFact && !hasImage) factor = 0.3;
+  if (isNumeric || hasImage) factor = 0.9;
+  if (isMultiPart) factor = 1.1;
 
-  return Math.max(180, Math.round(base * factor));
+  return Math.max(160, Math.round(base * factor));
 }
 
 // Rough INR cost estimator. Flash: $0.075/M in, $0.30/M out. Pro: $1.25/M, $5/M. USD→INR ≈ 84.
