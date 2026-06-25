@@ -76,10 +76,12 @@ export const aiAPI = {
    * Ask JEEnie AI a question
    */
   async askJeenie(request: JeenieRequest): Promise<ApiResponse<JeenieResponse>> {
-    // Normalize question for cache lookup
+    // NOTE: No response caching. Conversational tutoring must always re-run —
+    // context, mode, follow-ups and the student's framing all vary. Caching
+    // makes repeats return instantly with identical text and breaks trust.
     const normalizedQuestion = request.contextPrompt.toLowerCase().trim();
-    
-    // Check precomputed answers first
+
+    // Precomputed canned answers for trivial repeats are still fine.
     for (const [key, answer] of Object.entries(COMMON_ANSWERS)) {
       if (normalizedQuestion.includes(key)) {
         return {
@@ -96,30 +98,13 @@ export const aiAPI = {
       }
     }
 
-    // Check cache for similar questions
-    const cacheKey = this.generateCacheKey(request.contextPrompt);
-    const cached = cache.get<JeenieResponse>(cacheKey);
-    if (cached) {
-      return { data: cached, error: null };
-    }
-
-    // Queue the API request
     return aiQueue.enqueue(
-      async () => {
-        const result = await apiClient.callEdgeFunction<JeenieRequest, JeenieResponse>(
-          'jeenie',
-          request,
-          { useQueue: false }
-        );
-
-        // Cache successful responses
-        if (result.data && !result.error) {
-          cache.set(cacheKey, result.data, CACHE_TTL.DAY, [CACHE_TAGS.AI]);
-        }
-
-        return result;
-      },
-      { priority: 'normal', maxRetries: 2 }
+      async () => apiClient.callEdgeFunction<JeenieRequest, JeenieResponse>(
+        'jeenie',
+        request,
+        { useQueue: false },
+      ),
+      { priority: 'normal', maxRetries: 2 },
     );
   },
 
