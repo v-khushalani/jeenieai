@@ -8,7 +8,8 @@ export const FREE_LIMITS = {
   questionsPerDay: 15,
   testsPerMonth: 2,
   aiDoubtSolver: true,
-  aiDoubtQuotaPerDay: 3,
+  aiDoubtQuotaPerDay: 5,
+  aiDoubtQuotaPerMonth: 50,
   aiStudyPlanner: false,
   analyticsAdvanced: false,
   pyqAccess: false,
@@ -17,7 +18,8 @@ export const FREE_LIMITS = {
 export const PRO_FEATURES = {
   questionsPerDay: Infinity,
   testsPerMonth: Infinity,
-  aiDoubtQuotaPerDay: 30,
+  aiDoubtQuotaPerDay: 20,
+  aiDoubtQuotaPerMonth: 400,
   aiStudyPlanner: true,
   analyticsAdvanced: true,
   pyqYears: 5,
@@ -28,7 +30,8 @@ export const PRO_FEATURES = {
 export const PRO_PLUS_FEATURES = {
   questionsPerDay: Infinity,
   testsPerMonth: Infinity,
-  aiDoubtQuotaPerDay: 100,
+  aiDoubtQuotaPerDay: 50,
+  aiDoubtQuotaPerMonth: 1000,
   aiStudyPlanner: true,
   analyticsAdvanced: true,
   pyqYears: 10,
@@ -36,6 +39,7 @@ export const PRO_PLUS_FEATURES = {
   educatorContent: true,
   adaptiveStudyPlanner: true,
 };
+
 
 export const REFERRAL_CONFIG = {
   enabled: true,
@@ -67,7 +71,7 @@ export const CONVERSION_MESSAGES = {
     title: '⚡ AI Doubt Quota Reached',
     message: 'Aaj ke doubts khatam ho gaye. Kal naye doubts milenge ya plan upgrade kar le.',
     cta: 'See Plans',
-    subtitle: 'Free: 3/day • Pro: 30/day • Pro+: 100/day',
+    subtitle: 'Free: 5/day • Pro: 20/day • Pro+: 50/day',
   },
   studyPlannerBlocked: {
     title: '📅 AI Study Planner — Pro Feature',

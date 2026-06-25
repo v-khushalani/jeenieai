@@ -25,12 +25,22 @@ export const DB_EXAM_VALUES = {
  * Maps a batch examType to the list of DB `exam` values to match.
  */
 export function getDbExamValuesForBatch(examType: string): string[] {
-  const n = (examType || '').trim().toUpperCase();
+  // Normalize: trim, uppercase, and convert underscores/hyphens to spaces
+  // so that 'JEE_MAINS', 'jee-main', 'JEE Mains' all collapse to the same key.
+  const n = (examType || '').trim().toUpperCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
 
   if (n.startsWith('FOUNDATION')) return [DB_EXAM_VALUES.FOUNDATION];
   if (n === 'SCHOLARSHIP') return [DB_EXAM_VALUES.SCHOLARSHIP];
 
-  if (n === 'JEE' || n === 'JEE MAIN' || n === 'JEE MAINS' || n === 'JEE ADVANCED') {
+  if (
+    n === 'JEE' ||
+    n === 'JEE MAIN' ||
+    n === 'JEE MAINS' ||
+    n === 'JEE ADVANCED' ||
+    n === 'JEE ADV' ||
+    n === 'IIT JEE' ||
+    n === 'PCM'
+  ) {
     return [
       DB_EXAM_VALUES.JEE_GENERIC,
       DB_EXAM_VALUES.JEE_MAIN,
@@ -39,10 +49,11 @@ export function getDbExamValuesForBatch(examType: string): string[] {
     ];
   }
 
-  if (n === 'NEET') {
+  if (n === 'NEET' || n === 'NEET UG' || n === 'PCB') {
     return [DB_EXAM_VALUES.NEET];
   }
 
-  // Unknown batch — return verbatim
+  // Unknown batch — return verbatim (preserves original for unmapped exam types)
   return [examType];
 }
+

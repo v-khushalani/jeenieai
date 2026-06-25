@@ -1,168 +1,115 @@
-# Plan
+## AI Doubt Solver limits — recommendation
 
-## 1. Badge QA preview — make achievements visible
+Current: Free 3 / Pro 30 / Pro+ 100 per day.
 
-The current `BadgesShowcase` reads two sources:
-- **Dynamic badges** (streaks / answer streaks): it checks `profiles.badges` for exact strings like `'Hot Streak'`.
-- **Table badges**: it reads `public.badges` and `public.user_badges`.
+Recommended:
 
-Right now `public.badges` is empty, so only dynamic badges can ever show. To let you see the full cabinet, we will:
 
-- Insert a few sample rows into `public.badges` (name, icon, description, category, points_required).
-- Insert matching rows into `public.user_badges` for the QA test users.
-- Optionally flip the dynamic strings in `profiles.badges` for users you want to see streak badges.
-- Provide a single `SELECT` that mirrors exactly what the UI renders: earned status, rarity, progress, and earned date.
+| Tier     | Daily doubts | Monthly soft cap | Per-minute cap | Voice / Image | Why                                                                                                     |
+| -------- | ------------ | ---------------- | -------------- | ------------- | ------------------------------------------------------------------------------------------------------- |
+| **Free** | **5/day**    | **50/month**     | 1 every 20s    | Text only     | Enough for students to genuinely experience JEEnie before upgrading while keeping AI costs predictable. |
+| **Pro**  | **20/day**   | **400/month**    | 1 every 8s     | Image support | Designed for regular daily study with generous usage while preventing abuse.                            |
+| **Pro+** | **50/day**   | **1000/month**   | 1 every 4s     | Voice + Image | Built for serious aspirants and heavy revision sessions while maintaining sustainable AI costs.         |
 
-After this, changing a value in Supabase will actually reflect on the badges page.
 
-### SQL for the QA preview
+### Anti-abuse safeguards (low-cost, high-impact)
 
-```sql
--- 1. Seed a few sample table badges
-INSERT INTO public.badges (code, name, description, icon, category, points_required, points_reward, is_active) VALUES
-('first_blood', 'First Blood', 'Pehla question sahi kiya 🎯', '🩸', 'achievement', 10, 20, true),
-('100_club', '100 Club', '100 questions complete', '💯', 'achievement', 100, 50, true),
-('500_club', '500 Club', '500 questions complete — serious player', '⚡', 'achievement', 500, 100, true),
-('point_pioneer', 'Point Pioneer', '1000 JEEnie points earned', '💰', 'skill', 1000, 50, true),
-('night_owl', 'Night Owl', 'Raat ko bhi padhai', '🦉', 'streak', 1, 10, true)
-ON CONFLICT (code) DO NOTHING;
+- Reject prompts longer than **800 characters**.
+- Keep tier-based output token limits.
+- Block identical questions repeated within **60 seconds** using server-side hashing.
+- Maintain per-minute rate limiting.
+- Track input tokens, output tokens, latency, model and estimated cost for every request.
+- Apply a soft monthly quota similar to Lovable AI. Once the monthly quota is exhausted, politely ask the user to wait until the quota resets or upgrade to a higher plan.
 
--- 2. Assign some badges to a QA user (replace with the actual user id)
-INSERT INTO public.user_badges (user_id, badge_id, earned_at)
-SELECT '00000000-0000-0000-0000-000000000000'::uuid, id, now()
-FROM public.badges
-WHERE code IN ('first_blood', '100_club', 'point_pioneer', 'night_owl')
-ON CONFLICT DO NOTHING;
+### Cost optimization
 
--- 3. Unlock a dynamic streak badge for the same user
-UPDATE public.profiles
-SET badges = COALESCE(badges, '[]'::jsonb) || '["Hot Streak", "7-Day Warrior"]'::jsonb
-WHERE id = '00000000-0000-0000-0000-000000000000'::uuid;
+- Keep **Gemini 2.5 Flash** as the default model for all requests.
+- Prompt compression remains the biggest cost-saving optimization.
+- Trim conversation history to only the minimum required context.
+- Use adaptive response lengths instead of fixed long explanations.
+- Keep Gemini Pro integration disabled for now, but design the routing layer so it can be enabled later through configuration if production analytics justify it.
 
--- 4. Preview the badge cabinet exactly as the UI sees it
-WITH user_summary AS (
-  SELECT
-    p.id AS user_id,
-    p.total_points,
-    COALESCE(p.badges, '[]'::jsonb) AS badges_array
-  FROM public.profiles p
-  WHERE p.id = '00000000-0000-0000-0000-000000000000'::uuid
-)
-SELECT
-  b.name,
-  b.category,
-  b.icon,
-  b.points_required,
-  CASE WHEN ub.user_id IS NOT NULL THEN true ELSE false END AS earned,
-  ub.earned_at,
-  CASE
-    WHEN b.points_required >= 5000 THEN 'Mythic'
-    WHEN b.points_required >= 2000 THEN 'Legendary'
-    WHEN b.points_required >= 800  THEN 'Epic'
-    WHEN b.points_required >= 200  THEN 'Rare'
-    ELSE 'Common'
-  END AS rarity,
-  LEAST(100, ROUND((us.total_points::numeric / NULLIF(b.points_required, 0)) * 100)) AS progress_pct
-FROM public.badges b
-CROSS JOIN user_summary us
-LEFT JOIN public.user_badges ub
-       ON ub.badge_id = b.id AND ub.user_id = us.user_id
-ORDER BY b.points_required;
+### Estimated AI Cost (after prompt optimization)
+
+
+| Tier                          | Estimated Cost                  |
+| ----------------------------- | ------------------------------- |
+| **Free (5/day, 50/month)**    | **~₹0.30–₹0.50 per user/month** |
+| **Pro (20/day, 400/month)**   | **~₹5–₹8 per user/month**       |
+| **Pro+ (50/day, 1000/month)** | **~₹15–₹30 per user/month**     |
+
+
+These estimates assume Gemini 2.5 Flash, compressed prompts, adaptive response lengths, and normal educational usage. Actual production analytics should be used to fine-tune quotas after launch.
+
+## 2) "No questions available" when starting tests
+
+Looking at `src/pages/TestPage.tsx` the toast fires from three paths — PYQ (L596), Full Mock (L688), Chapter Test (L821) — all driven by `getTestSeriesQuestions` / `getPracticeQuestions` in `src/utils/batchQueryBuilder.ts`.
+
+The query chain that gates everything:
+
+```text
+questions_public view
+  → .or(is_active null OR true)
+  → .or(exam IN (mapped values) OR exam IS NULL)
+  → .in(subject, subjectAliases)
+  → .eq(chapter | topic | difficulty)
 ```
 
-Replace the placeholder UUID with the QA user id from `auth.users`.
+Most likely root causes (in order of probability):
 
-## 2. Accuracy — best way to compute it
+1. `**mapBatchToExamValues()` returns the wrong DB spellings.** `src/constants/examValues.ts` is the single source of truth; if the seeded `questions.exam` rows say `"JEE Mains"` but the mapping returns `["JEE_MAINS","JEE"]`, the `.in()` matches nothing. (This is the same family of mismatch that produced the `JEE_MAINS` display bug earlier.)
+2. **Subject alias mismatch** — `getSubjectAliases('Physics')` may not include the casing/spelling actually stored (`"physics"`, `"Phy"`, etc.).
+3. `**questions_public` view RLS** — when we recently locked down public access, `anon` GRANT may have been dropped while the student session still uses `authenticated`. If the view's underlying policy uses `auth.uid()` checks that fail for the test student profile, count = 0.
+4. **Exam pattern mismatch** — `getExamPattern()` asks for e.g. 75 questions; if fewer than that exist for the batch+subject, the *info* toast fires saying "Only N available" — but if the join above returns 0, it's the *error* toast.
 
-My recommendation is a **hybrid approach** with a single column as the source of truth for the dashboard:
+### Fix workflow (build mode)
 
-- **Authoritative display value**: `profiles.overall_accuracy` is what the dashboard shows. This is fast, cache-friendly, and lets you override it in Supabase during QA without fighting the UI.
-- **Authoritative underlying data**: `question_attempts` remains the single source of truth for every attempt. A Postgres trigger keeps `overall_accuracy` in sync automatically.
-- **Period / subject / topic accuracy**: computed from `question_attempts` or `daily_progress` on the fly, because these are slices and change every day.
+a. Run a diagnostic SQL: count rows in `questions_public` grouped by `exam` and by `subject` for the failing student's batch.
+b. Reconcile `src/constants/examValues.ts` ↔ actual distinct values in `questions.exam`.
+c. Reconcile `getSubjectAliases()` ↔ distinct `questions.subject`.
+d. Verify GRANT/RLS on `questions_public` for `authenticated`.
+e. Add a console.debug log inside `getTestSeriesQuestions` printing the final filter set + result count when 0, so future regressions are visible in 1 click.
 
-### Why this is better than only live-aggregating in the UI
+## 3) New badges to add
 
-- The current dashboard recomputes overall accuracy from the last 3000 practice attempts. If you edit `profiles.overall_accuracy` in Supabase, the dashboard ignores it.
-- Keeping a derived column in `profiles` gives a single fast read and still guarantees correctness because the trigger recalculates from every attempt.
-- It also lets you show a "last calculated" state during heavy ingestion.
+Current showcase already has streaks, "Galat Hi Nahi" (30 in a row), 3-Day Spark, etc. Best additions (Hinglish flavor, mythic→common spread):
 
-### Trigger to keep `overall_accuracy` synced
+**Skill-based**
 
-```sql
-CREATE OR REPLACE FUNCTION public.recalc_user_accuracy()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  target_user_id uuid;
-  total bigint;
-  correct bigint;
-  new_accuracy numeric;
-BEGIN
-  target_user_id := COALESCE(NEW.user_id, OLD.user_id);
+- *Comeback Kid* — finish a test scoring 80%+ after a previous test < 40%.
+- *Speed Demon* — 10 correct answers in under 60s total.
+- *Marathoner* — 100 questions solved in a single day.
+- *Iron Brain* — 5 consecutive Hard questions correct.
+- *Bug-Free Day* — perfect (100%) score on any chapter test.
 
-  SELECT COUNT(*), COUNT(*) FILTER (WHERE is_correct = true)
-  INTO total, correct
-  FROM public.question_attempts
-  WHERE user_id = target_user_id
-    AND mode = 'practice'
-    AND is_correct IS NOT NULL;
+**Consistency**
 
-  IF total = 0 THEN
-    new_accuracy := 0;
-  ELSE
-    new_accuracy := ROUND((correct::numeric / total::numeric) * 100, 2);
-  END IF;
+- *Morning Person* — 7 sessions started before 8 AM.
+- *Night Owl* — 7 sessions after 11 PM.
+- *Weekend Warrior* — questions solved both Sat + Sun for 4 weeks.
 
-  UPDATE public.profiles
-  SET overall_accuracy = new_accuracy,
-      total_questions_solved = total
-  WHERE id = target_user_id;
+**Subject mastery**
 
-  RETURN NULL;
-END;
-$$;
+- *Newton ka Beta* — 95% accuracy on 50 Mechanics questions.
+- *Mole Master* — 95% accuracy on 50 Mole Concept questions.
+- *Integration Ninja* — Solve 30 Hard Calculus questions.
 
-DROP TRIGGER IF EXISTS question_attempts_accuracy_trigger ON public.question_attempts;
-CREATE TRIGGER question_attempts_accuracy_trigger
-AFTER INSERT OR UPDATE OR DELETE ON public.question_attempts
-FOR EACH ROW
-EXECUTE FUNCTION public.recalc_user_accuracy();
-```
+**Social / engagement**
 
-### Code change
+- *Influencer* — Share 5 result/badge cards.
+- *Doubt Slayer* — Use JEEnie AI 20 times in a week.
+- *Roast Survivor* — Get roasted 5 times and still come back.
 
-In `src/hooks/useUserStats.ts`, switch the main `accuracy` stat from the live-aggregate to the already-fetched profile value:
+**Mythic / rare**
 
-```ts
-const accuracy = Number(profileData?.overall_accuracy ?? 0);
-```
+- *Centurion* — 100-day streak.
+- *Topper Mode* — Rank #1 on weekly leaderboard.
+- *Perfectionist* — 1000 questions solved at ≥ 90% overall accuracy.
 
-Keep `todayAccuracy`, `subjectStats`, and `topicStats` computed from `daily_progress` / `question_attempts` because those are period-specific.
+---
 
-### Manual recalc for existing data
+**Awaiting your sign-off on:**
 
-After deploying the trigger, run a one-off backfill so every user's `overall_accuracy` matches their attempts:
-
-```sql
-UPDATE public.profiles p
-SET overall_accuracy = sub.accuracy,
-    total_questions_solved = sub.total
-FROM (
-  SELECT user_id,
-         COUNT(*) AS total,
-         ROUND((COUNT(*) FILTER (WHERE is_correct = true)::numeric / COUNT(*)) * 100, 2) AS accuracy
-  FROM public.question_attempts
-  WHERE mode = 'practice' AND is_correct IS NOT NULL
-  GROUP BY user_id
-) sub
-WHERE p.id = sub.user_id;
-```
-
-## Outcome
-
-- Badges table will have sample data and you can see the full "Trophy Cabinet" for any QA user by tweaking `user_badges` or `profiles.badges`.
-- Overall accuracy becomes a single, editable, auto-synced column. Editing it in Supabase will reflect instantly on the dashboard, while the trigger guarantees it stays correct as attempts come in.
-- Period/subject/topic accuracy still computes from real attempt data so students get meaningful breakdowns.
+- (1) Adopt the desired limit table (mentioned above) + anti-abuse safeguards?
+- (2) Proceed with the test-engine diagnostic + fix?
+- (3) Implement all ~17 new badges, or pick a shortlist?

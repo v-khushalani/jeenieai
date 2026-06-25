@@ -103,7 +103,7 @@ const PricingModal: React.FC<PricingModalProps> = ({
 
   const comparison = isProPlusUpsell
     ? [
-        { feature: 'JEEnie AI doubts/day', free: '30', pro: '100' },
+        { feature: 'JEEnie AI doubts/day', free: '20', pro: '50' },
         { feature: 'Previous-Year Qs', free: false, pro: true },
         { feature: 'Smart Notes (save AI replies)', free: false, pro: true },
         { feature: 'Deep / Master mode', free: 'Limited', pro: '✓' },
@@ -112,7 +112,8 @@ const PricingModal: React.FC<PricingModalProps> = ({
     : [
         { feature: 'Questions/Day', free: FREE_LIMITS.questionsPerDay.toString(), pro: '∞' },
         { feature: 'Mock Tests', free: `${FREE_LIMITS.testsPerMonth}/mo`, pro: '∞' },
-        { feature: 'JEEnie AI doubts/day', free: '3', pro: '30 (Pro) • 100 (Pro+)' },
+        { feature: 'JEEnie AI doubts/day', free: '5', pro: '20 (Pro) • 50 (Pro+)' },
+
         { feature: 'Study Planner', free: false, pro: true },
         { feature: 'Analytics', free: false, pro: true },
       ];
