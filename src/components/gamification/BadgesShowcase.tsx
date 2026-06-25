@@ -1,276 +1,542 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Lock, Award, Trophy, Star, Flame, Zap } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Lock, Trophy, Share2, Sparkles } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import ReferralService from '@/services/referralService';
+import ShareCardDialog from '@/components/ShareCardDialog';
+import type { ShareCardOpts } from '@/lib/shareCard';
 import { logger } from '@/utils/logger';
 
-interface BadgeType {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  points_required: number;
-  color: string;
-  category: string;
-  earned?: boolean;
-  earned_at?: string;
-}
-
+// ---------- Badge meta ----------
 interface DynamicBadge {
   name: string;
   icon: string;
-  color: string;
   category: string;
   description: string;
+  threshold: number; // for progress + rarity
+  metric: 'answer_streak' | 'day_streak';
 }
 
-// Map of dynamic badges that are awarded via profiles.badges JSON
 const DYNAMIC_BADGE_META: Record<string, DynamicBadge> = {
-  // Answer streak badges (PointsService)
-  'Hot Streak': { name: 'Hot Streak', icon: '🔥', color: 'orange', category: 'Answer Streaks', description: '5 correct answers in a row!' },
-  'On Fire': { name: 'On Fire', icon: '🔥', color: 'red', category: 'Answer Streaks', description: '10 correct answers in a row!' },
-  'Unstoppable': { name: 'Unstoppable', icon: '⚡', color: 'purple', category: 'Answer Streaks', description: '20 correct answers in a row!' },
-  'BEAST MODE': { name: 'BEAST MODE', icon: '👑', color: 'gold', category: 'Answer Streaks', description: '50 correct answers in a row!' },
-  // Day streak badges (StreakService)
-  '7-Day Warrior': { name: '7-Day Warrior', icon: '⚔️', color: 'blue', category: 'Day Streaks', description: '7 consecutive days of practice!' },
-  '15-Day Champion': { name: '15-Day Champion', icon: '🏆', color: 'blue', category: 'Day Streaks', description: '15 consecutive days of practice!' },
-  'Monthly Master': { name: 'Monthly Master', icon: '📅', color: 'green', category: 'Day Streaks', description: '30 consecutive days of practice!' },
-  'Consistent Learner': { name: 'Consistent Learner', icon: '📚', color: 'green', category: 'Day Streaks', description: '60 consecutive days of practice!' },
-  'Quarter Master': { name: 'Quarter Master', icon: '🎯', color: 'purple', category: 'Day Streaks', description: '90 consecutive days of practice!' },
-  '4-Month Hero': { name: '4-Month Hero', icon: '🦸', color: 'purple', category: 'Day Streaks', description: '120 consecutive days of practice!' },
-  'Half Year Legend': { name: 'Half Year Legend', icon: '⭐', color: 'gold', category: 'Day Streaks', description: '180 consecutive days of practice!' },
-  'YEARLY CHAMPION': { name: 'YEARLY CHAMPION', icon: '👑', color: 'gold', category: 'Day Streaks', description: '365 consecutive days of practice!' },
+  'Hot Streak':         { name: 'Hot Streak',         icon: '🔥', category: 'Answer Streaks', description: '5 correct answers in a row',  threshold: 5,   metric: 'answer_streak' },
+  'On Fire':            { name: 'On Fire',            icon: '🚀', category: 'Answer Streaks', description: '10 correct answers in a row', threshold: 10,  metric: 'answer_streak' },
+  'Unstoppable':        { name: 'Unstoppable',        icon: '⚡', category: 'Answer Streaks', description: '20 correct answers in a row', threshold: 20,  metric: 'answer_streak' },
+  'BEAST MODE':         { name: 'BEAST MODE',         icon: '👑', category: 'Answer Streaks', description: '50 correct answers in a row', threshold: 50,  metric: 'answer_streak' },
+  '7-Day Warrior':      { name: '7-Day Warrior',      icon: '⚔️', category: 'Day Streaks',    description: '7 consecutive days of practice',   threshold: 7,   metric: 'day_streak' },
+  '15-Day Champion':    { name: '15-Day Champion',    icon: '🏆', category: 'Day Streaks',    description: '15 consecutive days of practice',  threshold: 15,  metric: 'day_streak' },
+  'Monthly Master':     { name: 'Monthly Master',     icon: '📅', category: 'Day Streaks',    description: '30 consecutive days of practice',  threshold: 30,  metric: 'day_streak' },
+  'Consistent Learner': { name: 'Consistent Learner', icon: '📚', category: 'Day Streaks',    description: '60 consecutive days of practice',  threshold: 60,  metric: 'day_streak' },
+  'Quarter Master':     { name: 'Quarter Master',     icon: '🎯', category: 'Day Streaks',    description: '90 consecutive days of practice',  threshold: 90,  metric: 'day_streak' },
+  '4-Month Hero':       { name: '4-Month Hero',       icon: '🦸', category: 'Day Streaks',    description: '120 consecutive days of practice', threshold: 120, metric: 'day_streak' },
+  'Half Year Legend':   { name: 'Half Year Legend',   icon: '⭐', category: 'Day Streaks',    description: '180 consecutive days of practice', threshold: 180, metric: 'day_streak' },
+  'YEARLY CHAMPION':    { name: 'YEARLY CHAMPION',    icon: '💎', category: 'Day Streaks',    description: '365 consecutive days of practice', threshold: 365, metric: 'day_streak' },
 };
 
+const CATEGORY_FLAVOR: Record<string, string> = {
+  'Answer Streaks': 'Ek galat answer aur sab gaya 💀',
+  'Day Streaks':    'Daily showup karne walon ka elite club',
+  achievement:      'Milestones jo dikhate hain — tu serious hai',
+  skill:            'Skill flex — yahan se respect milti hai',
+  subject:          'Subject ka boss ban gaya tu',
+  streak:           'Consistency = compounding',
+};
+
+const RARITY_RINGS: Record<string, { ring: string; chip: string; glow: string }> = {
+  Common:    { ring: 'from-slate-300 to-slate-500',     chip: 'bg-slate-200 text-slate-700',         glow: 'shadow-slate-400/40' },
+  Rare:      { ring: 'from-sky-400 to-blue-600',        chip: 'bg-sky-100 text-sky-700',             glow: 'shadow-sky-400/50' },
+  Epic:      { ring: 'from-fuchsia-400 to-purple-700',  chip: 'bg-fuchsia-100 text-fuchsia-700',     glow: 'shadow-fuchsia-500/50' },
+  Legendary: { ring: 'from-amber-300 to-orange-600',    chip: 'bg-amber-100 text-amber-800',         glow: 'shadow-amber-500/60' },
+  Mythic:    { ring: 'from-rose-400 via-red-500 to-rose-700', chip: 'bg-rose-100 text-rose-700',     glow: 'shadow-rose-500/60' },
+};
+
+const RARITY_HEX: Record<string, string> = {
+  Common: '#94a3b8', Rare: '#3b82f6', Epic: '#a855f7', Legendary: '#f59e0b', Mythic: '#ef4444',
+};
+
+function rarityFromThreshold(t: number): keyof typeof RARITY_RINGS {
+  if (t >= 180) return 'Mythic';
+  if (t >= 60)  return 'Legendary';
+  if (t >= 20)  return 'Epic';
+  if (t >= 10)  return 'Rare';
+  return 'Common';
+}
+
+function rarityFromPoints(p: number): keyof typeof RARITY_RINGS {
+  if (p >= 5000) return 'Mythic';
+  if (p >= 2000) return 'Legendary';
+  if (p >= 800)  return 'Epic';
+  if (p >= 200)  return 'Rare';
+  return 'Common';
+}
+
+// ---------- Unified item shape ----------
+interface UnifiedBadge {
+  key: string;
+  name: string;
+  icon: string;
+  description: string;
+  category: string;
+  earned: boolean;
+  earnedAt?: string;
+  rarity: keyof typeof RARITY_RINGS;
+  progressPct: number;     // 0-100
+  progressLabel?: string;  // e.g. "12 / 20 in a row"
+}
+
+// ---------- Medallion tile ----------
+const Medallion = ({ b, onClick }: { b: UnifiedBadge; onClick: () => void }) => {
+  const skin = RARITY_RINGS[b.rarity];
+  const size = 96;
+  const r = 44;
+  const c = 2 * Math.PI * r;
+  const dashOffset = c - (c * (b.earned ? 100 : b.progressPct)) / 100;
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      whileHover={{ y: -4, scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 320, damping: 20 }}
+      className="relative flex flex-col items-center gap-2 group focus:outline-none"
+    >
+      {/* Halo glow for earned */}
+      {b.earned && (
+        <span className={`absolute -inset-2 rounded-full blur-xl opacity-60 bg-linear-to-br ${skin.ring} animate-pulse pointer-events-none`} />
+      )}
+
+      <div className="relative" style={{ width: size, height: size }}>
+        {/* Outer rotating ring (earned) */}
+        {b.earned ? (
+          <motion.div
+            className={`absolute inset-0 rounded-full bg-linear-to-br ${skin.ring} shadow-lg ${skin.glow}`}
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 12, ease: 'linear' }}
+            style={{ padding: 4 }}
+          >
+            <div className="w-full h-full rounded-full bg-white" />
+          </motion.div>
+        ) : (
+          <svg className="absolute inset-0 -rotate-90" width={size} height={size}>
+            <circle cx={size/2} cy={size/2} r={r} stroke="#e2e8f0" strokeWidth={6} fill="white" />
+            <circle
+              cx={size/2} cy={size/2} r={r}
+              stroke={RARITY_HEX[b.rarity]}
+              strokeWidth={6}
+              fill="transparent"
+              strokeDasharray={c}
+              strokeDashoffset={dashOffset}
+              strokeLinecap="round"
+            />
+          </svg>
+        )}
+
+        {/* Icon */}
+        <div className={`absolute inset-2 rounded-full flex items-center justify-center text-4xl ${
+          b.earned ? '' : 'grayscale opacity-60'
+        }`}>
+          <span>{b.icon}</span>
+        </div>
+
+        {/* Lock overlay */}
+        {!b.earned && (
+          <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow border border-slate-200">
+            <Lock className="w-3 h-3 text-slate-500" />
+          </div>
+        )}
+      </div>
+
+      {/* Ribbon name */}
+      <div className={`relative px-2 py-1 rounded-md text-[11px] font-extrabold text-center max-w-[110px] leading-tight ${
+        b.earned ? `bg-linear-to-r ${skin.ring} text-white` : 'bg-slate-100 text-slate-600'
+      }`}>
+        {b.name}
+      </div>
+
+      {/* Rarity chip */}
+      <span className={`text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded ${skin.chip}`}>
+        {b.rarity}
+      </span>
+    </motion.button>
+  );
+};
+
+// ---------- Main ----------
 const BadgesShowcase = () => {
-  const [badges, setBadges] = useState<BadgeType[]>([]);
-  const [dynamicBadges, setDynamicBadges] = useState<string[]>([]);
-  const [userPoints, setUserPoints] = useState(0);
+  const { user } = useAuth();
+  const [items, setItems] = useState<UnifiedBadge[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [active, setActive] = useState<UnifiedBadge | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareOpts, setShareOpts] = useState<ShareCardOpts | null>(null);
 
   useEffect(() => {
-    fetchBadges();
-  }, []);
+    if (!user) return;
+    void fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
-  const fetchBadges = async () => {
+  const fetchAll = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { user: u } } = await supabase.auth.getUser();
+      if (!u) return;
 
-      // Fetch profile (points + dynamic badges), table badges, and user_badges in parallel
-      const [profileResult, allBadgesResult, userBadgesResult] = await Promise.all([
-        supabase.from('profiles').select('total_points, badges').eq('id', user.id).single(),
+      const [profileRes, allBadgesRes, userBadgesRes, statsRes] = await Promise.all([
+        supabase.from('profiles').select('total_points, badges').eq('id', u.id).single(),
         supabase.from('badges').select('*').order('points_required', { ascending: true }),
-        supabase.from('user_badges').select('badge_id, earned_at').eq('user_id', user.id),
+        supabase.from('user_badges').select('badge_id, earned_at').eq('user_id', u.id),
+        supabase.from('user_stats').select('best_answer_streak, best_day_streak, current_answer_streak, current_streak').eq('user_id', u.id).maybeSingle(),
       ]);
 
-      setUserPoints(profileResult.data?.total_points || 0);
-
-      // Dynamic badges from profiles.badges JSON
-      const rawBadges = profileResult.data?.badges;
-      const earnedDynamic: string[] = Array.isArray(rawBadges)
-        ? rawBadges.filter((b): b is string => typeof b === 'string')
+      const userPoints = profileRes.data?.total_points || 0;
+      const earnedDynamic: string[] = Array.isArray(profileRes.data?.badges)
+        ? (profileRes.data!.badges as unknown[]).filter((b): b is string => typeof b === 'string')
         : [];
-      setDynamicBadges(earnedDynamic);
 
-      // Table-based badges
-      const badgeMap = (userBadgesResult.data || []).reduce((acc: Record<string, string>, ub) => {
-        acc[ub.badge_id] = ub.earned_at || '';
-        return acc;
-      }, {});
+      const bestAnswerStreak = (statsRes.data as { best_answer_streak?: number; current_answer_streak?: number } | null)?.best_answer_streak
+        ?? (statsRes.data as { current_answer_streak?: number } | null)?.current_answer_streak ?? 0;
+      const bestDayStreak = (statsRes.data as { best_day_streak?: number; current_streak?: number } | null)?.best_day_streak
+        ?? (statsRes.data as { current_streak?: number } | null)?.current_streak ?? 0;
 
-      const enrichedBadges = (allBadgesResult.data || []).map(badge => ({
-        ...badge,
-        earned: !!badgeMap[badge.id],
-        earned_at: badgeMap[badge.id],
-      }));
+      const earnedAtMap = new Map<string, string>();
+      (userBadgesRes.data || []).forEach(ub => earnedAtMap.set(ub.badge_id, ub.earned_at || ''));
 
-      setBadges(enrichedBadges);
-    } catch (error) {
-      logger.error('Error fetching badges:', error);
+      const dyn: UnifiedBadge[] = Object.values(DYNAMIC_BADGE_META).map(d => {
+        const earned = earnedDynamic.includes(d.name);
+        const current = d.metric === 'answer_streak' ? bestAnswerStreak : bestDayStreak;
+        const pct = Math.min(100, Math.round((current / d.threshold) * 100));
+        return {
+          key: `dyn:${d.name}`,
+          name: d.name,
+          icon: d.icon,
+          description: d.description,
+          category: d.category,
+          earned,
+          earnedAt: undefined,
+          rarity: rarityFromThreshold(d.threshold),
+          progressPct: earned ? 100 : pct,
+          progressLabel: `${Math.min(current, d.threshold)} / ${d.threshold}`,
+        };
+      });
+
+      const tableBadges: UnifiedBadge[] = (allBadgesRes.data || []).map((b) => {
+        const earned = earnedAtMap.has(b.id);
+        const req = b.points_required || 1;
+        const pct = Math.min(100, Math.round((userPoints / req) * 100));
+        return {
+          key: `tbl:${b.id}`,
+          name: b.name,
+          icon: b.icon || '🏅',
+          description: b.description || '',
+          category: b.category || 'achievement',
+          earned,
+          earnedAt: earnedAtMap.get(b.id) || undefined,
+          rarity: rarityFromPoints(req),
+          progressPct: earned ? 100 : pct,
+          progressLabel: `${userPoints} / ${req} pts`,
+        };
+      });
+
+      const all = [...dyn, ...tableBadges];
+      setItems(all);
+
+      // Confetti on newly-earned since last visit
+      try {
+        const seenKey = `jeenie.badges.seen.${u.id}`;
+        const seen = new Set<string>(JSON.parse(localStorage.getItem(seenKey) || '[]'));
+        const nowEarned = all.filter(x => x.earned).map(x => x.key);
+        const fresh = nowEarned.filter(k => !seen.has(k));
+        if (fresh.length > 0 && seen.size > 0) {
+          confetti({ particleCount: 120, spread: 80, origin: { y: 0.3 } });
+        }
+        localStorage.setItem(seenKey, JSON.stringify(nowEarned));
+      } catch { /* noop */ }
+    } catch (err) {
+      logger.error('Error fetching badges:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const categoryIcons: Record<string, React.ElementType> = {
-    achievement: Trophy,
-    skill: Star,
-    subject: Award,
-    streak: Flame,
-    'Answer Streaks': Zap,
-    'Day Streaks': Flame,
+  const earnedCount = useMemo(() => items.filter(i => i.earned).length, [items]);
+  const totalCount = items.length;
+  const completion = totalCount ? Math.round((earnedCount / totalCount) * 100) : 0;
+
+  const rarestEarned = useMemo(() => {
+    const order: (keyof typeof RARITY_RINGS)[] = ['Mythic', 'Legendary', 'Epic', 'Rare', 'Common'];
+    for (const r of order) {
+      const hit = items.find(i => i.earned && i.rarity === r);
+      if (hit) return hit;
+    }
+    return null;
+  }, [items]);
+
+  const categories = useMemo(() => {
+    const grouped: Record<string, UnifiedBadge[]> = {};
+    items.forEach(i => {
+      grouped[i.category] = grouped[i.category] || [];
+      grouped[i.category].push(i);
+    });
+    return grouped;
+  }, [items]);
+
+  const openDetail = (b: UnifiedBadge) => {
+    setActive(b);
+    setSheetOpen(true);
   };
 
-  const colorClasses: Record<string, string> = {
-    blue: 'from-blue-500 to-blue-600',
-    yellow: 'from-yellow-500 to-yellow-600',
-    purple: 'from-purple-500 to-purple-600',
-    green: 'from-green-500 to-green-600',
-    orange: 'from-orange-500 to-orange-600',
-    red: 'from-red-500 to-red-600',
-    gold: 'from-yellow-400 to-yellow-600',
+  const shareBadge = (b: UnifiedBadge) => {
+    if (!user) return;
+    const opts: ShareCardOpts = {
+      type: 'badge',
+      badgeName: b.name,
+      badgeIcon: b.icon,
+      category: b.category,
+      description: b.description,
+      rarity: b.rarity,
+      earnedAt: b.earnedAt,
+      ringColor: RARITY_HEX[b.rarity],
+      referralUrl: ReferralService.getReferralLink(user.id),
+    };
+    setShareOpts(opts);
+    setShareOpen(true);
   };
 
-  // Build dynamic badge categories
-  const dynamicCategories: Record<string, { earned: DynamicBadge[]; all: DynamicBadge[] }> = {};
-  for (const [name, meta] of Object.entries(DYNAMIC_BADGE_META)) {
-    if (!dynamicCategories[meta.category]) {
-      dynamicCategories[meta.category] = { earned: [], all: [] };
-    }
-    dynamicCategories[meta.category].all.push(meta);
-    if (dynamicBadges.includes(name)) {
-      dynamicCategories[meta.category].earned.push(meta);
-    }
+  const shareCollection = () => {
+    if (!user) return;
+    const topIcons = items.filter(i => i.earned).slice(0, 5).map(i => i.icon);
+    const opts: ShareCardOpts = {
+      type: 'badgeCollection',
+      earnedCount,
+      totalCount,
+      topIcons,
+      referralUrl: ReferralService.getReferralLink(user.id),
+    };
+    setShareOpts(opts);
+    setShareOpen(true);
+  };
+
+  if (loading) {
+    return <Card className="p-8 text-center">Loading badges…</Card>;
   }
-
-  // Table-based badge categories
-  const tableCategories = Array.from(new Set(badges.map(b => b.category)));
-
-  if (loading) return <Card className="p-8 text-center">Loading badges...</Card>;
 
   return (
     <div className="space-y-6">
-      <Card className="bg-linear-to-br from-purple-50 to-pink-50 border-purple-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-purple-600" />
-            Your Badge Collection
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-
-            {/* Dynamic Badges (Answer Streaks + Day Streaks) */}
-            {Object.entries(dynamicCategories).map(([category, { earned, all }]) => {
-              const CategoryIcon = categoryIcons[category] || Trophy;
-              return (
-                <div key={category} className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CategoryIcon className="w-5 h-5 text-gray-700" />
-                      <h3 className="font-bold text-gray-800">{category}</h3>
-                    </div>
-                    <Badge variant="secondary">{earned.length}/{all.length}</Badge>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {all.map(badge => {
-                      const isEarned = dynamicBadges.includes(badge.name);
-                      return (
-                        <div key={badge.name} className="relative group">
-                          <div className={`p-4 rounded-xl border-2 transition-all ${
-                            isEarned
-                              ? `bg-linear-to-br ${colorClasses[badge.color] || 'from-gray-400 to-gray-500'} border-white shadow-lg scale-105`
-                              : 'bg-gray-100 border-gray-300 opacity-60'
-                          }`}>
-                            <div className="text-center space-y-2">
-                              <div className={`text-4xl ${isEarned ? '' : 'grayscale'}`}>
-                                {badge.icon}
-                              </div>
-                              <p className={`text-xs font-bold ${isEarned ? 'text-white' : 'text-gray-600'}`}>
-                                {badge.name}
-                              </p>
-                            </div>
-                          </div>
-                          {!isEarned && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-xl backdrop-blur-[2px]">
-                              <Lock className="w-6 h-6 text-gray-600" />
-                            </div>
-                          )}
-                          <div className="absolute top-full left-0 right-0 mt-2 bg-black/80 text-white text-xs p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                            <p className="font-semibold">{badge.name}</p>
-                            <p className="text-gray-300">{badge.description}</p>
-                            {isEarned && <p className="text-green-400 mt-1">✓ Earned</p>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Table-based Badges (admin-defined) */}
-            {tableCategories.map(category => {
-              const categoryBadges = badges.filter(b => b.category === category);
-              const CategoryIcon = categoryIcons[category] || Trophy;
-              const earnedCount = categoryBadges.filter(b => b.earned).length;
-
-              return (
-                <div key={category} className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CategoryIcon className="w-5 h-5 text-gray-700" />
-                      <h3 className="font-bold text-gray-800 capitalize">{category}</h3>
-                    </div>
-                    <Badge variant="secondary">{earnedCount}/{categoryBadges.length}</Badge>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {categoryBadges.map(badge => {
-                      const progress = Math.min(100, (userPoints / badge.points_required) * 100);
-                      
-                      return (
-                        <div key={badge.id} className="relative group">
-                          <div className={`p-4 rounded-xl border-2 transition-all ${
-                            badge.earned
-                              ? `bg-linear-to-br ${colorClasses[badge.color] || 'from-gray-400 to-gray-500'} border-white shadow-lg scale-105`
-                              : 'bg-gray-100 border-gray-300 opacity-60'
-                          }`}>
-                            <div className="text-center space-y-2">
-                              <div className={`text-4xl ${badge.earned ? '' : 'grayscale'}`}>
-                                {badge.icon}
-                              </div>
-                              <p className={`text-xs font-bold ${badge.earned ? 'text-white' : 'text-gray-600'}`}>
-                                {badge.name}
-                              </p>
-                              {!badge.earned && (
-                                <div className="space-y-1">
-                                  <Progress value={progress} className="h-1" />
-                                  <p className="text-[10px] text-gray-500">
-                                    {badge.points_required} pts
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {!badge.earned && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-xl backdrop-blur-[2px]">
-                              <Lock className="w-6 h-6 text-gray-600" />
-                            </div>
-                          )}
-                          
-                          <div className="absolute top-full left-0 right-0 mt-2 bg-black/80 text-white text-xs p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                            <p className="font-semibold">{badge.name}</p>
-                            <p className="text-gray-300">{badge.description}</p>
-                            {badge.earned && badge.earned_at && (
-                              <p className="text-green-400 mt-1">
-                                ✓ Earned {new Date(badge.earned_at).toLocaleDateString()}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Empty state */}
-            {badges.length === 0 && Object.keys(dynamicCategories).length === 0 && (
-              <div className="text-center py-8 text-slate-500">
-                <Trophy className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                <p>Start practicing to earn badges!</p>
+      {/* HERO */}
+      <Card className="relative overflow-hidden border-[#013062]/15 bg-linear-to-br from-[#013062] via-[#013062] to-[#0a4080] text-white">
+        <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-amber-400/20 blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-fuchsia-400/20 blur-3xl" />
+        <CardContent className="relative p-5 md:p-6">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/70 font-bold">
+                <Trophy className="w-4 h-4" /> Trophy Cabinet
               </div>
+              <div className="mt-2 flex items-end gap-2">
+                <span className="text-5xl md:text-6xl font-black leading-none">{earnedCount}</span>
+                <span className="text-lg text-white/70 pb-1">/ {totalCount}</span>
+              </div>
+              <div className="mt-1 text-sm text-white/80">badges unlocked — {completion}% collection</div>
+
+              <div className="mt-4 w-full max-w-xs h-2 bg-white/15 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${completion}%` }}
+                  transition={{ duration: 0.9, ease: 'easeOut' }}
+                  className="h-full bg-linear-to-r from-amber-300 via-amber-400 to-orange-500"
+                />
+              </div>
+
+              <Button
+                size="sm"
+                onClick={shareCollection}
+                disabled={earnedCount === 0}
+                className="mt-4 bg-white text-[#013062] hover:bg-white/90 font-bold"
+              >
+                <Share2 className="w-3.5 h-3.5 mr-1.5" /> Share cabinet
+              </Button>
+            </div>
+
+            {/* Featured medallion */}
+            {rarestEarned && (
+              <motion.div
+                animate={{ y: [0, -6, 0] }}
+                transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className="text-[10px] uppercase tracking-widest text-white/70 font-bold">Featured</div>
+                <div className={`relative w-28 h-28 rounded-full p-1 bg-linear-to-br ${RARITY_RINGS[rarestEarned.rarity].ring} shadow-2xl`}>
+                  <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-5xl">
+                    {rarestEarned.icon}
+                  </div>
+                  <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-amber-300 drop-shadow" />
+                </div>
+                <div className="text-xs font-bold text-center max-w-[120px] leading-tight">{rarestEarned.name}</div>
+                <span className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded bg-white/20 text-white">
+                  {rarestEarned.rarity}
+                </span>
+              </motion.div>
             )}
           </div>
         </CardContent>
       </Card>
+
+      {/* CATEGORIES */}
+      {Object.entries(categories).map(([cat, list]) => {
+        const earnedInCat = list.filter(l => l.earned).length;
+        const nextUp = !list.some(l => l.earned)
+          ? [...list].sort((a, b) => b.progressPct - a.progressPct)[0]
+          : null;
+
+        return (
+          <Card key={cat} className="border-slate-200">
+            <CardContent className="p-4 md:p-5">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <h3 className="font-extrabold text-[#013062] capitalize">{cat}</h3>
+                <span className="text-xs font-bold text-slate-500">{earnedInCat} / {list.length}</span>
+              </div>
+              <p className="text-xs text-slate-500 mb-3 italic">{CATEGORY_FLAVOR[cat] || 'Earn these by playing the long game.'}</p>
+
+              {/* Milestone bar */}
+              <div className="relative w-full h-1.5 bg-slate-100 rounded-full mb-5">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${list.length ? (earnedInCat / list.length) * 100 : 0}%` }}
+                  transition={{ duration: 0.8 }}
+                  className="h-full rounded-full bg-linear-to-r from-amber-400 to-orange-500"
+                />
+                {list.map((_, i) => (
+                  <span
+                    key={i}
+                    className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white border border-slate-300"
+                    style={{ left: `calc(${(i / Math.max(1, list.length - 1)) * 100}% - 4px)` }}
+                  />
+                ))}
+              </div>
+
+              <motion.div
+                initial="hidden"
+                animate="show"
+                variants={{ show: { transition: { staggerChildren: 0.04 } } }}
+                className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-y-5 gap-x-3"
+              >
+                {list.map(b => (
+                  <motion.div
+                    key={b.key}
+                    variants={{
+                      hidden: { opacity: 0, y: 12 },
+                      show:   { opacity: 1, y: 0 },
+                    }}
+                  >
+                    <Medallion b={b} onClick={() => openDetail(b)} />
+                  </motion.div>
+                ))}
+              </motion.div>
+
+              {nextUp && (
+                <div className="mt-5 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-3 flex items-center gap-3">
+                  <div className="text-2xl">{nextUp.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-amber-900">Closest to unlocking: {nextUp.name}</div>
+                    <div className="text-[11px] text-amber-800/80 truncate">{nextUp.description}</div>
+                  </div>
+                  <div className="text-xs font-bold text-amber-900 shrink-0">{nextUp.progressPct}%</div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+
+      {items.length === 0 && (
+        <div className="text-center py-12 text-slate-500">
+          <Trophy className="h-12 w-12 mx-auto mb-3 opacity-40" />
+          <p>Start practicing to earn badges!</p>
+        </div>
+      )}
+
+      {/* Detail sheet */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <AnimatePresence>
+            {active && (
+              <motion.div
+                key={active.key}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="max-w-md mx-auto"
+              >
+                <SheetHeader>
+                  <SheetTitle className="text-center">Badge details</SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col items-center gap-3 py-4">
+                  <div className={`relative w-28 h-28 rounded-full p-1 bg-linear-to-br ${RARITY_RINGS[active.rarity].ring} shadow-xl ${active.earned ? '' : 'opacity-70'}`}>
+                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-5xl">
+                      {active.earned ? active.icon : <Lock className="w-8 h-8 text-slate-400" />}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-extrabold text-[#013062]">{active.name}</div>
+                    <span className={`inline-block mt-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded ${RARITY_RINGS[active.rarity].chip}`}>
+                      {active.rarity}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-600 text-center">{active.description}</p>
+
+                  {!active.earned && (
+                    <div className="w-full mt-2">
+                      <div className="flex justify-between text-[11px] text-slate-500 mb-1">
+                        <span>Progress</span>
+                        <span>{active.progressLabel}</span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-linear-to-r from-amber-400 to-orange-500"
+                          style={{ width: `${active.progressPct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {active.earned && active.earnedAt && (
+                    <p className="text-xs text-emerald-600 font-semibold">
+                      ✓ Earned {new Date(active.earnedAt).toLocaleDateString()}
+                    </p>
+                  )}
+
+                  {active.earned ? (
+                    <Button
+                      onClick={() => { setSheetOpen(false); shareBadge(active); }}
+                      className="mt-3 w-full bg-[#013062] hover:bg-[#013062]/90 text-white"
+                    >
+                      <Share2 className="w-4 h-4 mr-1.5" /> Share this badge
+                    </Button>
+                  ) : (
+                    <Button disabled className="mt-3 w-full">
+                      <Lock className="w-4 h-4 mr-1.5" /> Locked
+                    </Button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </SheetContent>
+      </Sheet>
+
+      <ShareCardDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        opts={shareOpts}
+        shareText="Naya badge unlock ho gaya on JEEnie 🏅"
+        filename="jeenie-badge.png"
+      />
     </div>
   );
 };
