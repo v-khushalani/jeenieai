@@ -13,10 +13,10 @@ import {
   type Tier,
 } from "../_shared/jeeniePrompt.ts";
 
-// Hard per-request output ceiling. Raised to 1500 so chip-driven Pro+ "deep"
-// and "master" answers don't get cut mid-step. Still gated by computeMaxTokens
-// (which honours user length-intent first).
-const MAX_OUTPUT_TOKENS_CEILING = 1500;
+// Hard per-request output ceiling. Auto-retry path can grow up to this on
+// truncation. Default budgets stay tight (see computeMaxTokens) — only
+// truncated responses get the extra headroom, so cost stays minimal.
+const MAX_OUTPUT_TOKENS_CEILING = 2500;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +42,7 @@ async function callLovableGateway(
   messages: Array<{ role: string; content: any }>,
   model: string,
   maxTokens: number,
-): Promise<{ text: string | null; usage?: { prompt_tokens?: number; completion_tokens?: number } }> {
+): Promise<{ text: string | null; usage?: { prompt_tokens?: number; completion_tokens?: number }; finishReason?: string }> {
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) { console.error("[JEENIE] ❌ LOVABLE_API_KEY not configured"); return { text: null }; }
   try {
@@ -59,7 +59,8 @@ async function callLovableGateway(
     if (!res.ok) { const err = await res.text(); console.error(`[JEENIE] ❌ Gateway ${res.status}:`, err.substring(0, 300)); return { text: null }; }
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content;
-    return { text: text || null, usage: data.usage };
+    const finishReason = data.choices?.[0]?.finish_reason;
+    return { text: text || null, usage: data.usage, finishReason };
   } catch (e) { console.error("[JEENIE] ❌ Gateway error:", e); return { text: null }; }
 }
 
@@ -259,6 +260,36 @@ serve(async (req) => {
       provider = "lovable-gateway";
       inputTokens = primary.usage?.prompt_tokens ?? estTokens(systemPrompt + contextPrompt);
       outputTokens = primary.usage?.completion_tokens ?? estTokens(primary.text);
+    }
+
+    // 🔁 Silent auto-retry on truncation. If the model stopped because it hit
+    // the output cap (finish_reason === "length"), retry once with a larger
+    // budget so the student never sees a cut-off answer. User never knows.
+    // Only triggers when user did NOT explicitly ask for ultra-short/short.
+    const truncated = primary.finishReason === "length";
+    const userWantsShort = lengthIntent === "ultra_short" || lengthIntent === "short";
+    if (truncated && !userWantsShort && responseText) {
+      const retryTokens = Math.min(Math.max(maxTokens * 2, 1200), MAX_OUTPUT_TOKENS_CEILING);
+      if (retryTokens > maxTokens) {
+        console.log(`[JEENIE] ✂️ Truncated at ${maxTokens} → silent retry with ${retryTokens}`);
+        // Nudge the model: continue from scratch with explicit "complete it" instruction.
+        const retryMessages = [
+          ...messages.slice(0, -1),
+          {
+            role: "user",
+            content: typeof messages[messages.length - 1].content === "string"
+              ? `${messages[messages.length - 1].content}\n\n(Important: pichli baar reply beech mein kat gayi thi. Is baar complete answer dena — concise but never truncated. Skip unnecessary fluff.)`
+              : messages[messages.length - 1].content,
+          },
+        ];
+        const retry = await callLovableGateway(retryMessages, primaryModel, retryTokens);
+        if (retry.text && retry.text.length > responseText.length * 0.9) {
+          responseText = retry.text;
+          inputTokens = retry.usage?.prompt_tokens ?? inputTokens;
+          outputTokens = retry.usage?.completion_tokens ?? estTokens(retry.text);
+          fallbackUsed = fallbackUsed ? `${fallbackUsed}+retry_truncation` : "retry_truncation";
+        }
+      }
     }
 
     if (!responseText && !image) {
