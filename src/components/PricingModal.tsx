@@ -11,12 +11,16 @@ interface PricingModalProps {
   onClose: () => void;
   limitType?: LimitType;
   userStats?: Record<string, unknown>;
+  /** When set to 'pro_plus', the modal upsells Pro+ instead of Pro. Used when a
+   *  Pro user clicks a Pro+-only feature so we don't tell them to "upgrade to Pro". */
+  requiredTier?: 'pro' | 'pro_plus';
 }
 
-const PricingModal: React.FC<PricingModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  limitType = 'daily_limit'
+const PricingModal: React.FC<PricingModalProps> = ({
+  isOpen,
+  onClose,
+  limitType = 'daily_limit',
+  requiredTier = 'pro',
 }) => {
   const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
