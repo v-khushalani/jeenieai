@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
-import { Sparkles, AlertTriangle, TrendingDown } from 'lucide-react';
+import { Sparkles, AlertTriangle, TrendingDown, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 /**
  * Admin-only "JEEnie cost" panel. Reads ai_request_log directly (RLS limits
@@ -42,30 +43,46 @@ function percentile(sorted: number[], p: number): number {
 
 export const JeenieCostPanel: React.FC = () => {
   const [rows, setRows] = useState<LogRow[]>([]);
+  const [exactCount, setExactCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
   const [range, setRange] = useState<7 | 30>(7);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setErr(null);
       try {
         const since = new Date(Date.now() - range * 86400000).toISOString();
+        // Authoritative count first (bypasses 1000-row default cap)
+        const countRes = await supabase
+          .from('ai_request_log')
+          .select('id', { count: 'exact', head: true })
+          .gte('created_at', since);
+        if (countRes.error) throw countRes.error;
+
         const { data, error } = await supabase
           .from('ai_request_log')
           .select('tier, mode, mode_source, model, estimated_cost_inr, latency_ms, fallback_used, user_id, created_at')
           .gte('created_at', since)
+          .order('created_at', { ascending: false })
           .limit(10000);
         if (error) throw error;
-        if (!cancelled) setRows((data || []) as LogRow[]);
-      } catch (e) {
+        if (!cancelled) {
+          setRows((data || []) as LogRow[]);
+          setExactCount(countRes.count ?? (data?.length || 0));
+        }
+      } catch (e: any) {
         logger.error('[JEEnie cost panel] load failed', e);
+        if (!cancelled) setErr(e?.message || 'Failed to load JEEnie logs');
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [range]);
+  }, [range, tick]);
 
   if (loading) {
     return (
@@ -75,8 +92,24 @@ export const JeenieCostPanel: React.FC = () => {
     );
   }
 
-  const totalSpend = rows.reduce((s, r) => s + (r.estimated_cost_inr || 0), 0);
-  const totalRequests = rows.length;
+  if (err) {
+    return (
+      <Card className="border-red-200">
+        <CardHeader>
+          <CardTitle className="text-base text-red-700">JEEnie cost · failed to load</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-red-700 space-y-2">
+          <div>{err}</div>
+          <Button size="sm" variant="outline" onClick={() => setTick((t) => t + 1)}>
+            <RefreshCw className="w-3 h-3 mr-1" /> Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const totalSpend = rows.reduce((s, r) => s + (Number(r.estimated_cost_inr) || 0), 0);
+  const totalRequests = exactCount ?? rows.length;
 
   const byTier: Record<string, { count: number; cost: number; users: Set<string> }> = {};
   const byMode: Record<string, { count: number; cost: number }> = {};
@@ -128,7 +161,7 @@ export const JeenieCostPanel: React.FC = () => {
         <CardTitle className="text-base flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-primary" /> JEEnie cost · last {range}d
         </CardTitle>
-        <div className="flex gap-1 text-xs">
+        <div className="flex gap-1 text-xs items-center">
           {[7, 30].map((d) => (
             <button
               key={d}
@@ -136,6 +169,15 @@ export const JeenieCostPanel: React.FC = () => {
               className={`px-2 py-1 rounded-md border ${range === d ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}
             >{d}d</button>
           ))}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2"
+            onClick={() => setTick((t) => t + 1)}
+            title="Refresh"
+          >
+            <RefreshCw className="w-3 h-3" />
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
