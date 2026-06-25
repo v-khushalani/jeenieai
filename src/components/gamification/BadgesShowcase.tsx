@@ -68,13 +68,19 @@ const DYNAMIC_BADGE_META: Record<string, DynamicBadge> = {
 
 
 const CATEGORY_FLAVOR: Record<string, string> = {
-  'Answer Streaks': 'Ek galat answer aur sab gaya 💀',
-  'Day Streaks':    'Daily showup karne walon ka elite club',
-  achievement:      'Milestones jo dikhate hain — tu serious hai',
-  skill:            'Skill flex — yahan se respect milti hai',
-  subject:          'Subject ka boss ban gaya tu',
-  streak:           'Consistency = compounding',
+  'Answer Streaks':  'Ek galat answer aur sab gaya 💀',
+  'Day Streaks':     'Daily showup karne walon ka elite club',
+  'Skill':           'Skill flex — yahan se respect milti hai',
+  'Consistency':     'Same time, same energy — bina excuse',
+  'Subject Mastery': 'Topic ka boss tu hi hai',
+  'Engagement':      'JEEnie family ka active member',
+  'Mythic':          'Sirf chosen ones — legend tier',
+  achievement:       'Milestones jo dikhate hain — tu serious hai',
+  skill:             'Skill flex — yahan se respect milti hai',
+  subject:           'Subject ka boss ban gaya tu',
+  streak:            'Consistency = compounding',
 };
+
 
 const RARITY_RINGS: Record<string, { ring: string; chip: string; glow: string }> = {
   Common:    { ring: 'from-slate-300 to-slate-500',     chip: 'bg-slate-200 text-slate-700',         glow: 'shadow-slate-400/40' },
