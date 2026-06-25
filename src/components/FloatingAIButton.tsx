@@ -31,11 +31,10 @@ const FloatingAIButton = () => {
   const [isDragging, setIsDragging] = useState(false);
   const suppressNextClickRef = useRef(false);
   const dragStateRef = useRef<{ startX: number; startY: number; pointerOffsetX: number; pointerOffsetY: number; moved: boolean } | null>(null);
-  const { isAuthenticated, subscriptionTier } = useAuth();
+  const { isAuthenticated } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const aiEnabled = useFeatureFlag('ai_doubt_solver');
-  const isPaidUser = subscriptionTier === 'pro' || subscriptionTier === 'pro_plus';
   const liveQuestion = useCurrentJeenieQuestion();
 
   const hiddenPaths = ['/test-attempt', '/admin', '/educator', '/auth/callback', '/login', '/signup'];
@@ -123,9 +122,9 @@ const FloatingAIButton = () => {
   };
 
   // Hide the floating AI button on paths where it's not applicable,
-  // when the AI feature flag is off, when user isn't authenticated,
-  // or when user is not on a paid plan (pro / pro+).
-  if (shouldHide || !aiEnabled || !isAuthenticated || !isPaidUser) return null;
+  // when the AI feature flag is off, or when the user isn't authenticated.
+  // Free users get a small daily quota (enforced server-side).
+  if (shouldHide || !aiEnabled || !isAuthenticated) return null;
 
   const handleOpenAI = () => {
     if (!isAuthenticated) {
