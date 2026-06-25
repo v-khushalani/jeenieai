@@ -57,3 +57,55 @@ describe('mathRenderer OCR normalization', () => {
     expect(output).not.toContain('array');
   });
 });
+
+describe('mathRenderer artifact fixes', () => {
+  it('converts <sub> and <sup> HTML tags into LaTeX subscripts/superscripts', () => {
+    const input = 'V<sub>max</sub> = αt<sub>1</sub> = βt<sub>2</sub>, x<sup>2</sup>';
+    const output = renderMathText(input);
+    expect(output).not.toContain('<sub>');
+    expect(output).not.toContain('< sub >');
+    expect(output).toContain('₁');
+    expect(output).toContain('₂');
+  });
+
+  it('keeps backslash-prefixed LaTeX commands intact (\\omega is not split)', () => {
+    const input = 'since 100\\omega through';
+    const output = renderMathText(input);
+    expect(output).toContain('\\omega');
+    expect(output).not.toContain('\\ω');
+  });
+
+  it('repairs UTF-8 mojibake like Ã— and Î¿', () => {
+    const input = '1.25 Ã— 10^19 and O Î¿ at Â°C';
+    const output = renderMathText(input);
+    expect(output).toContain('×');
+    expect(output).toContain('ο');
+    expect(output).toContain('°');
+    expect(output).not.toContain('Ã');
+    expect(output).not.toContain('Î');
+  });
+
+  it('converts vector hat notation x ^ into combining circumflex', () => {
+    const input = '-1) x ^, y ^, z ^ are unit vectors';
+    const output = renderMathText(input);
+    expect(output).toContain('x\u0302');
+    expect(output).toContain('y\u0302');
+    expect(output).toContain('z\u0302');
+  });
+
+  it('collapses OCR letter-spacing in chemistry words', () => {
+    const input = 'M o l e f r a c t i o n o f M i n s o l u t i o n';
+    const output = renderMathText(input);
+    // segmenter should reintroduce word breaks
+    expect(output.toLowerCase()).toContain('mole');
+    expect(output.toLowerCase()).toContain('fraction');
+    expect(output.toLowerCase()).toContain('solution');
+    expect(output).not.toMatch(/\bM o l e\b/);
+  });
+
+  it('joins letter-spaced chemical formula tokens', () => {
+    const input = 'C o e n 2 B r C l N O 3';
+    const output = renderMathText(input);
+    expect(output).toContain('Coen2BrClNO₃');
+  });
+});

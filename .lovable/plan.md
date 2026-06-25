@@ -1,115 +1,45 @@
-## AI Doubt Solver limits — recommendation
+## Goal
+Make weird artifacts in question text disappear at render time — no DB changes, no risk to imported content. One file: `src/utils/mathRenderer.ts`.
 
-Current: Free 3 / Pro 30 / Pro+ 100 per day.
+## Artifacts to fix (from your screenshots)
 
-Recommended:
+| Pattern seen | Cause | Fix |
+|---|---|---|
+| `t < sub > 1 < /sub >` | HTML `<sub>`/`<sup>` passed into KaTeX, which treats `<` as a relation operator | Pre-convert `<sub>x</sub>` → `_{x}`, `<sup>x</sup>` → `^{x}` before LaTeX detection |
+| `100\ω throu` | Greek-word regex matched `omega` inside `\omega`, replacing only the word | Add negative lookbehind for `\\` in greek-word regex so `\omega` stays intact for KaTeX |
+| `1.25 Ã 10¹⁹`, `O Î¿`, `O Î¾` | UTF-8 double-encoded (mojibake) from importer | Add mojibake repair table: `Ã—`→`×`, `Ã·`→`÷`, `Î¼`→`μ`, `Î©`→`Ω`, `Î¿`→`ο`, `Î¾`→`ξ`, `Â°`→`°`, `Â±`→`±`, `â€"`→`–`, `â€™`→`'`, `â€œ`/`â€`→`"`/`"`, plus the generic `Ã` + low-ASCII pair → reconstruct via `decodeURIComponent(escape(...))` fallback for unknown pairs |
+| `x ^, y ^, z ^` | Vector hat notation lost its argument | Convert standalone ` ^` after a single letter to Unicode hat: `x ^` → `x̂` (combining circumflex U+0302) |
+| `C o e n 2 B r C l N O 3`, `M o l e f r a c t i o n o f 'M' i n s o l u t i o n` | OCR letter-spacing artifact (every char separated by single space) | Heuristic: detect runs of 4+ consecutive single-letter tokens separated by single spaces → collapse to a word; restore word boundaries on common stems (`Mole`, `fraction`, `solution`, `vapour`, `phase`) via a small word-break pass using a dictionary of frequent chem/physics terms |
+| `\[ array … array \]` etc. | Already handled | Keep existing OCR-matrix path |
 
+## Implementation outline (single file, no behavior change for already-clean text)
 
-| Tier     | Daily doubts | Monthly soft cap | Per-minute cap | Voice / Image | Why                                                                                                     |
-| -------- | ------------ | ---------------- | -------------- | ------------- | ------------------------------------------------------------------------------------------------------- |
-| **Free** | **5/day**    | **50/month**     | 1 every 20s    | Text only     | Enough for students to genuinely experience JEEnie before upgrading while keeping AI costs predictable. |
-| **Pro**  | **20/day**   | **400/month**    | 1 every 8s     | Image support | Designed for regular daily study with generous usage while preventing abuse.                            |
-| **Pro+** | **50/day**   | **1000/month**   | 1 every 4s     | Voice + Image | Built for serious aspirants and heavy revision sessions while maintaining sustainable AI costs.         |
+1. **New `repairMojibake(text)`** — runs first in `normalizeOcrArtifacts`. Static replacement table for the ~20 most common double-encoded sequences seen in JEE/NEET content.
+2. **New `normalizeHtmlMathTags(text)`** — runs before `containsLatex` check in `renderLatex` and inside `renderMathText`. Regexes:
+   - `/<\s*sub\s*>([\s\S]*?)<\s*\/\s*sub\s*>/gi` → `_{ $1 }` (or subscript-unicode if single digit)
+   - `/<\s*sup\s*>([\s\S]*?)<\s*\/\s*sup\s*>/gi` → `^{ $1 }`
+   - Also strip stray `<br>`, `<p>`, `<span>` that slipped through.
+3. **Fix Greek-word regex** in `normalizeOcrArtifacts`: change `(alpha|beta|…)(?![A-Za-z])` to `(?<![\\\\A-Za-z])(alpha|beta|…)(?![A-Za-z])` so `\omega` is left for KaTeX.
+4. **New `normalizeVectorHats(text)`** — `/\b([A-Za-z])\s*\^(?![{(0-9])/g` → `$1\u0302` (combining hat). Skips real exponents.
+5. **New `collapseOcrLetterSpacing(text)`** — only triggers when a span has 4+ single-letter tokens in a row; joins them, then runs a small word-segmenter against a frequency list of ~150 chemistry/physics words (Mole, fraction, solution, vapour, phase, ionisation, isomers, given, compound, particular, point, temperature, statements, correct, etc.) to reintroduce spaces. Conservative: if segmentation confidence is low, leaves joined token as-is rather than guessing.
+6. **Pipeline order** in `normalizeOcrArtifacts`:
+   `repairMojibake → normalizeHtmlMathTags → existing OCR matrix/greek/sqrt → normalizeVectorHats → collapseOcrLetterSpacing → existing whitespace cleanup`
 
+## Verification
 
-### Anti-abuse safeguards (low-cost, high-impact)
+- Add unit tests in `src/utils/__tests__/mathRenderer.test.ts` covering each artifact from your screenshots.
+- Manually re-open the same questions in StudyNow / TestPage to confirm.
+- Run `bunx vitest run` for the renderer suite.
 
-- Reject prompts longer than **800 characters**.
-- Keep tier-based output token limits.
-- Block identical questions repeated within **60 seconds** using server-side hashing.
-- Maintain per-minute rate limiting.
-- Track input tokens, output tokens, latency, model and estimated cost for every request.
-- Apply a soft monthly quota similar to Lovable AI. Once the monthly quota is exhausted, politely ask the user to wait until the quota resets or upgrade to a higher plan.
+## Risk
 
-### Cost optimization
+- **Zero DB risk** — display-only.
+- **Low regression risk** — all transforms are additive and guarded (vector-hat regex skips exponents, letter-spacing collapser requires 4+ run, mojibake table only touches known pairs).
+- Per-render cost: negligible (string regexes on already-short question text, KaTeX itself dominates).
 
-- Keep **Gemini 2.5 Flash** as the default model for all requests.
-- Prompt compression remains the biggest cost-saving optimization.
-- Trim conversation history to only the minimum required context.
-- Use adaptive response lengths instead of fixed long explanations.
-- Keep Gemini Pro integration disabled for now, but design the routing layer so it can be enabled later through configuration if production analytics justify it.
+## Files touched
 
-### Estimated AI Cost (after prompt optimization)
+- `src/utils/mathRenderer.ts` — add 4 helpers, wire into pipeline, fix greek regex.
+- `src/utils/__tests__/mathRenderer.test.ts` — add ~8 new test cases.
 
-
-| Tier                          | Estimated Cost                  |
-| ----------------------------- | ------------------------------- |
-| **Free (5/day, 50/month)**    | **~₹0.30–₹0.50 per user/month** |
-| **Pro (20/day, 400/month)**   | **~₹5–₹8 per user/month**       |
-| **Pro+ (50/day, 1000/month)** | **~₹15–₹30 per user/month**     |
-
-
-These estimates assume Gemini 2.5 Flash, compressed prompts, adaptive response lengths, and normal educational usage. Actual production analytics should be used to fine-tune quotas after launch.
-
-## 2) "No questions available" when starting tests
-
-Looking at `src/pages/TestPage.tsx` the toast fires from three paths — PYQ (L596), Full Mock (L688), Chapter Test (L821) — all driven by `getTestSeriesQuestions` / `getPracticeQuestions` in `src/utils/batchQueryBuilder.ts`.
-
-The query chain that gates everything:
-
-```text
-questions_public view
-  → .or(is_active null OR true)
-  → .or(exam IN (mapped values) OR exam IS NULL)
-  → .in(subject, subjectAliases)
-  → .eq(chapter | topic | difficulty)
-```
-
-Most likely root causes (in order of probability):
-
-1. `**mapBatchToExamValues()` returns the wrong DB spellings.** `src/constants/examValues.ts` is the single source of truth; if the seeded `questions.exam` rows say `"JEE Mains"` but the mapping returns `["JEE_MAINS","JEE"]`, the `.in()` matches nothing. (This is the same family of mismatch that produced the `JEE_MAINS` display bug earlier.)
-2. **Subject alias mismatch** — `getSubjectAliases('Physics')` may not include the casing/spelling actually stored (`"physics"`, `"Phy"`, etc.).
-3. `**questions_public` view RLS** — when we recently locked down public access, `anon` GRANT may have been dropped while the student session still uses `authenticated`. If the view's underlying policy uses `auth.uid()` checks that fail for the test student profile, count = 0.
-4. **Exam pattern mismatch** — `getExamPattern()` asks for e.g. 75 questions; if fewer than that exist for the batch+subject, the *info* toast fires saying "Only N available" — but if the join above returns 0, it's the *error* toast.
-
-### Fix workflow (build mode)
-
-a. Run a diagnostic SQL: count rows in `questions_public` grouped by `exam` and by `subject` for the failing student's batch.
-b. Reconcile `src/constants/examValues.ts` ↔ actual distinct values in `questions.exam`.
-c. Reconcile `getSubjectAliases()` ↔ distinct `questions.subject`.
-d. Verify GRANT/RLS on `questions_public` for `authenticated`.
-e. Add a console.debug log inside `getTestSeriesQuestions` printing the final filter set + result count when 0, so future regressions are visible in 1 click.
-
-## 3) New badges to add
-
-Current showcase already has streaks, "Galat Hi Nahi" (30 in a row), 3-Day Spark, etc. Best additions (Hinglish flavor, mythic→common spread):
-
-**Skill-based**
-
-- *Comeback Kid* — finish a test scoring 80%+ after a previous test < 40%.
-- *Speed Demon* — 10 correct answers in under 60s total.
-- *Marathoner* — 100 questions solved in a single day.
-- *Iron Brain* — 5 consecutive Hard questions correct.
-- *Bug-Free Day* — perfect (100%) score on any chapter test.
-
-**Consistency**
-
-- *Morning Person* — 7 sessions started before 8 AM.
-- *Night Owl* — 7 sessions after 11 PM.
-- *Weekend Warrior* — questions solved both Sat + Sun for 4 weeks.
-
-**Subject mastery**
-
-- *Newton ka Beta* — 95% accuracy on 50 Mechanics questions.
-- *Mole Master* — 95% accuracy on 50 Mole Concept questions.
-- *Integration Ninja* — Solve 30 Hard Calculus questions.
-
-**Social / engagement**
-
-- *Influencer* — Share 5 result/badge cards.
-- *Doubt Slayer* — Use JEEnie AI 20 times in a week.
-- *Roast Survivor* — Get roasted 5 times and still come back.
-
-**Mythic / rare**
-
-- *Centurion* — 100-day streak.
-- *Topper Mode* — Rank #1 on weekly leaderboard.
-- *Perfectionist* — 1000 questions solved at ≥ 90% overall accuracy.
-
----
-
-**Awaiting your sign-off on:**
-
-- (1) Adopt the desired limit table (mentioned above) + anti-abuse safeguards?
-- (2) Proceed with the test-engine diagnostic + fix?
-- (3) Implement all ~17 new badges, or pick a shortlist?
+No DB migrations, no edge functions, no schema changes.
