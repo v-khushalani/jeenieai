@@ -23,16 +23,18 @@ interface DynamicBadge {
 }
 
 const DYNAMIC_BADGE_META: Record<string, DynamicBadge> = {
+  // Answer streaks (in-a-row correct)
   'Hot Streak':         { name: 'Hot Streak',         icon: '🔥', category: 'Answer Streaks', description: '5 correct answers in a row',  threshold: 5,   metric: 'answer_streak' },
   'On Fire':            { name: 'On Fire',            icon: '🚀', category: 'Answer Streaks', description: '10 correct answers in a row', threshold: 10,  metric: 'answer_streak' },
   'Unstoppable':        { name: 'Unstoppable',        icon: '⚡', category: 'Answer Streaks', description: '20 correct answers in a row', threshold: 20,  metric: 'answer_streak' },
+  'Galat Hi Nahi':      { name: 'Galat Hi Nahi',      icon: '🧠', category: 'Answer Streaks', description: '30 correct in a row — machine mode', threshold: 30, metric: 'answer_streak' },
   'BEAST MODE':         { name: 'BEAST MODE',         icon: '👑', category: 'Answer Streaks', description: '50 correct answers in a row', threshold: 50,  metric: 'answer_streak' },
+  // Day streaks (consecutive days practiced)
+  '3-Day Spark':        { name: '3-Day Spark',        icon: '✨', category: 'Day Streaks',    description: '3 din lagataar — momentum on',     threshold: 3,   metric: 'day_streak' },
   '7-Day Warrior':      { name: '7-Day Warrior',      icon: '⚔️', category: 'Day Streaks',    description: '7 consecutive days of practice',   threshold: 7,   metric: 'day_streak' },
   '15-Day Champion':    { name: '15-Day Champion',    icon: '🏆', category: 'Day Streaks',    description: '15 consecutive days of practice',  threshold: 15,  metric: 'day_streak' },
   'Monthly Master':     { name: 'Monthly Master',     icon: '📅', category: 'Day Streaks',    description: '30 consecutive days of practice',  threshold: 30,  metric: 'day_streak' },
-  'Consistent Learner': { name: 'Consistent Learner', icon: '📚', category: 'Day Streaks',    description: '60 consecutive days of practice',  threshold: 60,  metric: 'day_streak' },
   'Quarter Master':     { name: 'Quarter Master',     icon: '🎯', category: 'Day Streaks',    description: '90 consecutive days of practice',  threshold: 90,  metric: 'day_streak' },
-  '4-Month Hero':       { name: '4-Month Hero',       icon: '🦸', category: 'Day Streaks',    description: '120 consecutive days of practice', threshold: 120, metric: 'day_streak' },
   'Half Year Legend':   { name: 'Half Year Legend',   icon: '⭐', category: 'Day Streaks',    description: '180 consecutive days of practice', threshold: 180, metric: 'day_streak' },
   'YEARLY CHAMPION':    { name: 'YEARLY CHAMPION',    icon: '💎', category: 'Day Streaks',    description: '365 consecutive days of practice', threshold: 365, metric: 'day_streak' },
 };
