@@ -206,9 +206,13 @@ serve(async (req) => {
       ? (rawModeSource || "manual")
       : "auto";
 
-    const systemPrompt = buildSystemPrompt(userTier, resolvedMode, subject);
+    // Detect explicit user length intent ("1 line", "sirf answer", "in detail"…).
+    // This overrides tier/mode token budgets — student's words win.
+    const lengthIntent = detectLengthIntent(contextPrompt);
+
+    const systemPrompt = buildSystemPrompt(userTier, resolvedMode, subject, lengthIntent);
     const maxTokens = Math.min(
-      computeMaxTokens(userTier, contextPrompt, hasImage),
+      computeMaxTokens(userTier, contextPrompt, hasImage, lengthIntent),
       MAX_OUTPUT_TOKENS_CEILING,
     );
 
