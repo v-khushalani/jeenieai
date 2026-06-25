@@ -45,11 +45,13 @@ const TEACHING: Record<Mode, string> = {
   master:`Mode: JEE/NEET MASTER. Full depth + link 1 relevant PYQ (year + exam) + common trap students fall for.`,
 };
 
-// Length-only guidance. NO tier name leaks into the prompt.
+// Length-only guidance. NO tier name leaks into the prompt. Defaults are
+// deliberately TIGHT — the edge function auto-retries with more budget if the
+// model truncates, so we keep typical replies short by default.
 const LENGTH: Record<Tier, string> = {
-  free:    `Keep the reply under ~120 words. Single-shot — no follow-up assumed.`,
-  pro:     `Keep the reply under ~300 words. Use recent context if relevant.`,
-  pro_plus:`Aim for ~450 words; never cut a step mid-way. Use recent context if relevant.`,
+  free:    `Default: keep the reply under ~100 words. Single-shot — no follow-up assumed.`,
+  pro:     `Default: keep the reply under ~220 words. Expand only if the question clearly needs it.`,
+  pro_plus:`Default: keep the reply under ~350 words; never cut a step mid-way. Expand only when the question needs depth.`,
 };
 
 // User length intent — derived from the student's own words.
