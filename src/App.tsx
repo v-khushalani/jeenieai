@@ -162,11 +162,13 @@ const MobileBottomNav = () => {
 
 const FloatingAIEntry = () => {
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
   const enabled = useFeatureFlag('ai_doubt_solver');
   if (!enabled) return null;
   if (location.pathname.startsWith('/educator')) return null;
   if (location.pathname.startsWith('/battle')) return null;
-  if (location.pathname === '/') return null;
+  // Hide on landing only when signed-out. Authenticated users see dashboard at "/".
+  if (location.pathname === '/' && !isAuthenticated) return null;
   return <FloatingAIButton />;
 };
 
