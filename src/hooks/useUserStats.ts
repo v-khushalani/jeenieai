@@ -139,9 +139,14 @@ export const useUserStats = () => {
       const practiceCount = (countRes as any)?.count;
       if (typeof practiceCount === 'number') trueTotal = practiceCount;
       const totalQuestions = trueTotal;
-      const accuracy = attemptsWithDate.length > 0
+      // Source of truth: profiles.overall_accuracy (auto-synced by DB trigger).
+      // Falls back to live aggregate from sampled attempts if profile value is null.
+      const liveAccuracy = attemptsWithDate.length > 0
         ? Math.round((attemptsWithDate.filter(a => a.is_correct).length / attemptsWithDate.length) * 100)
         : 0;
+      const accuracy = profileData?.overall_accuracy != null
+        ? Math.round(Number(profileData.overall_accuracy))
+        : liveAccuracy;
       const correctAnswers = Math.round((totalQuestions * accuracy) / 100);
 
       // Today's stats — use daily_progress (already fetched above)
