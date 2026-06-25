@@ -23,7 +23,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const FREE_AI_DAILY_LIMIT = 20;
+// Keep in sync with src/constants/aiLimits.ts
+const FREE_AI_DAILY_LIMIT = 3;
+const PRO_AI_DAILY_LIMIT = 30;
+const PRO_PLUS_AI_DAILY_LIMIT = 100;
+const DAILY_LIMIT_BY_TIER: Record<string, number> = {
+  free: FREE_AI_DAILY_LIMIT,
+  pro: PRO_AI_DAILY_LIMIT,
+  pro_plus: PRO_PLUS_AI_DAILY_LIMIT,
+};
 const PRO_MODEL_ENABLED = Deno.env.get("JEENIE_PRO_MODEL_ENABLED") === "true";
 
 const FUNNY_FALLBACKS = [
