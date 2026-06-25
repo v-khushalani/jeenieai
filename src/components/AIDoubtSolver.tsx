@@ -304,14 +304,14 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   const hasQuestionContext = !!question?.option_a && !question?.question?.includes("koi bhi");
   // Show quick-actions only when no user message has been sent yet
   const showQuickActions = hasQuestionContext && !loading && !messages.some((m) => m.role === "user");
-  const quickActions: { label: string; emoji: string; prompt: string }[] = [
-    { label: "Sirf Answer", emoji: "✅", prompt: "Sirf final correct answer batao (A/B/C/D), bina kuch extra explanation ke. 1 line max." },
-    { label: "Solution", emoji: "📝", prompt: "Step-by-step short solution do is question ka. Sirf zaroori steps, koi filler nahi." },
-    { label: "Formula", emoji: "💡", prompt: "Sirf woh key formula(s) batao jo is question mein use hote hain. Symbols ka matlab bhi 1 line mein." },
+  const quickActions: { label: string; emoji: string; prompt: string; mode: JeenieMode }[] = [
+    { label: "Sirf Answer", emoji: "✅", mode: 'quick', prompt: "Sirf final correct answer batao (A/B/C/D), bina kuch extra explanation ke. 1 line max — no greeting, no headings." },
+    { label: "Solution", emoji: "📝", mode: 'steps', prompt: "Step-by-step short solution do is question ka. Sirf zaroori steps, koi filler nahi. Complete answer dena — beech mein kabhi mat ruko." },
+    { label: "Formula", emoji: "💡", mode: 'quick', prompt: "Sirf woh key formula(s) batao jo is question mein use hote hain. Symbols ka matlab bhi 1 line mein. Short mein." },
   ];
 
-  const handleQuickAction = (prompt: string) => {
-    handleSendMessage(prompt);
+  const handleQuickAction = (qa: { prompt: string; mode: JeenieMode }) => {
+    handleSendMessage(qa.prompt, qa.mode, 'manual_chip');
   };
 
 
@@ -473,7 +473,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                 <button
                   key={qa.label}
                   type="button"
-                  onClick={() => handleQuickAction(qa.prompt)}
+                  onClick={() => handleQuickAction(qa)}
                   disabled={loading}
                   className="flex-1 min-w-[30%] text-[11px] sm:text-xs font-medium px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent text-foreground hover:text-accent-foreground transition-all disabled:opacity-50"
                 >

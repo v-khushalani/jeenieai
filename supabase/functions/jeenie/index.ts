@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   buildSystemPrompt,
   detectMode,
+  detectLengthIntent,
   computeMaxTokens,
   estimateCostInr,
   resolveTier,
@@ -12,9 +13,10 @@ import {
   type Tier,
 } from "../_shared/jeeniePrompt.ts";
 
-// Hard per-request output ceiling. Protects margin even on Pro+ "explain
-// everything" prompts. Applies to all tiers regardless of adaptive sizing.
-const MAX_OUTPUT_TOKENS_CEILING = 1200;
+// Hard per-request output ceiling. Raised to 1500 so chip-driven Pro+ "deep"
+// and "master" answers don't get cut mid-step. Still gated by computeMaxTokens
+// (which honours user length-intent first).
+const MAX_OUTPUT_TOKENS_CEILING = 1500;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -204,9 +206,13 @@ serve(async (req) => {
       ? (rawModeSource || "manual")
       : "auto";
 
-    const systemPrompt = buildSystemPrompt(userTier, resolvedMode, subject);
+    // Detect explicit user length intent ("1 line", "sirf answer", "in detail"…).
+    // This overrides tier/mode token budgets — student's words win.
+    const lengthIntent = detectLengthIntent(contextPrompt);
+
+    const systemPrompt = buildSystemPrompt(userTier, resolvedMode, subject, lengthIntent);
     const maxTokens = Math.min(
-      computeMaxTokens(userTier, contextPrompt, hasImage),
+      computeMaxTokens(userTier, contextPrompt, hasImage, lengthIntent),
       MAX_OUTPUT_TOKENS_CEILING,
     );
 
@@ -305,7 +311,7 @@ serve(async (req) => {
     const latencyMs = Date.now() - startedAt;
     const estimatedCostInr = provider === "humor-fallback" ? 0 : estimateCostInr(modelUsed, inputTokens, outputTokens);
 
-    console.log(`[JEENIE] 📊 ${provider} | tier=${userTier} mode=${resolvedMode}(${modeSource}) model=${modelUsed} in=${inputTokens} out=${outputTokens} cost=₹${estimatedCostInr} ${latencyMs}ms${fallbackUsed ? ` fallback=${fallbackUsed}` : ""}`);
+    console.log(`[JEENIE] 📊 ${provider} | tier=${userTier} mode=${resolvedMode}(${modeSource}) intent=${lengthIntent} model=${modelUsed} in=${inputTokens} out=${outputTokens} cost=₹${estimatedCostInr} ${latencyMs}ms${fallbackUsed ? ` fallback=${fallbackUsed}` : ""}`);
 
     // Quota counter (unchanged).
     supabase.from("points_log").insert({

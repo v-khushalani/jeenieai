@@ -42,12 +42,50 @@ const TEACHING: Record<Mode, string> = {
 // Length-only guidance. NO tier name leaks into the prompt.
 const LENGTH: Record<Tier, string> = {
   free:    `Keep the reply under ~120 words. Single-shot — no follow-up assumed.`,
-  pro:     `Keep the reply under ~250 words. Use recent context if relevant.`,
-  pro_plus:`No hard length cap; prefer concise. Use recent context if relevant.`,
+  pro:     `Keep the reply under ~300 words. Use recent context if relevant.`,
+  pro_plus:`Aim for ~450 words; never cut a step mid-way. Use recent context if relevant.`,
 };
 
-export function buildSystemPrompt(tier: Tier, mode: Mode, subject?: string): string {
-  const parts = [PERSONALITY, FORMATTING, TEACHING[mode], LENGTH[tier]];
+// User length intent — derived from the student's own words.
+// When set, this OVERRIDES tier/mode defaults. Honour the student first.
+export type LengthIntent = "ultra_short" | "short" | "normal" | "long";
+
+const ULTRA_SHORT_OVERRIDE = `CRITICAL — Student ne explicitly choti reply maangi hai:
+- SKIP "Hello Puttar" greeting.
+- SKIP all headings, bullets, formatting fluff.
+- Reply MUST be 1–2 sentences max. Direct answer only. No "kyun", no examples, no analogy.
+- If MCQ: just "Answer: <X>" + optional 5-word reason. Done.`;
+
+const SHORT_OVERRIDE = `Student ne short reply maangi — keep under ~80 words, 3–4 bullets max, skip greeting on follow-ups, no extra explanation beyond what was asked.`;
+
+const LONG_OVERRIDE = `Student wants the full picture — go deep, but stay structured. Never stop mid-step; if you're running long, tighten earlier bullets rather than truncating the final answer.`;
+
+export function detectLengthIntent(question: string): LengthIntent {
+  const q = (question || "").toLowerCase().trim();
+  // Explicit ultra-short cues (English + Hinglish)
+  if (/\b(1\s*(line|liner|sentence)|one\s*(line|liner|sentence)|sirf\s+(final\s+)?answer|only\s+(the\s+)?answer|just\s+(the\s+)?answer|in\s+one\s+word|ek\s+line|short\s+mein|briefly|in\s+brief|tldr|tl;dr|directly\s+answer|bina\s+(kuch\s+)?(extra|explanation))\b/.test(q)) {
+    return "ultra_short";
+  }
+  if (/\b(short|chhota|chota|concise|crisp|quickly|jaldi|summary|summarise|summarize)\b/.test(q)) {
+    return "short";
+  }
+  if (/\b(in\s+detail|deeply|fully|everything|complete|full\s+(answer|solution|explanation)|expand|elaborate|vistar\s+se|detailed)\b/.test(q)) {
+    return "long";
+  }
+  return "normal";
+}
+
+export function buildSystemPrompt(tier: Tier, mode: Mode, subject?: string, intent: LengthIntent = "normal"): string {
+  const parts: string[] = [PERSONALITY, FORMATTING];
+
+  // When the student wants ultra-short, kill the verbose teaching layer.
+  if (intent !== "ultra_short") parts.push(TEACHING[mode]);
+  parts.push(LENGTH[tier]);
+
+  if (intent === "ultra_short") parts.push(ULTRA_SHORT_OVERRIDE);
+  else if (intent === "short") parts.push(SHORT_OVERRIDE);
+  else if (intent === "long") parts.push(LONG_OVERRIDE);
+
   if (subject) parts.push(`Current subject context: ${subject}.`);
   return parts.join("\n\n");
 }
@@ -67,23 +105,32 @@ export function detectMode(question: string, hasImage: boolean): Mode {
   return "quick";
 }
 
-// Adaptive output length: base cap (tier) × complexity factor (question).
-// Hard ceiling of 1200 tokens applies in the edge function — see jeenie/index.ts.
-export function computeMaxTokens(tier: Tier, question: string, hasImage: boolean): number {
-  const base = tier === "free" ? 400 : tier === "pro" ? 700 : 1200;
+// Adaptive output length: base cap (tier) × complexity factor (question) ×
+// user length-intent multiplier. Hard ceiling applies in the edge function.
+export function computeMaxTokens(
+  tier: Tier,
+  question: string,
+  hasImage: boolean,
+  intent: LengthIntent = "normal",
+): number {
+  // User intent ALWAYS wins. Ultra-short means ultra-short — no exceptions.
+  if (intent === "ultra_short") return 120;
+  if (intent === "short") return 280;
+
+  const base = tier === "free" ? 400 : tier === "pro" ? 900 : 1400;
   const q = (question || "").trim();
   const words = q.split(/\s+/).length;
 
   const isShortFact = words < 15 && !/[=∫Σ]/.test(q) && !/\d.*[+\-*/].*\d/.test(q);
   const isNumeric = /[=∫Σ√]/.test(q) || /\b(derive|prove|solve|calculate)\b/i.test(q);
-  const isMultiPart = /\b(everything|all|complete|entire chapter|full)\b/i.test(q);
+  const isMultiPart = /\b(everything|all|complete|entire chapter|full)\b/i.test(q) || intent === "long";
 
   let factor = 0.6;
-  if (isShortFact && !hasImage) factor = 0.3;
+  if (isShortFact && !hasImage) factor = 0.35;
   if (isNumeric || hasImage) factor = 1.0;
-  if (isMultiPart) factor = 1.0;
+  if (isMultiPart) factor = 1.15;
 
-  return Math.max(150, Math.round(base * factor));
+  return Math.max(180, Math.round(base * factor));
 }
 
 // Rough INR cost estimator. Flash: $0.075/M in, $0.30/M out. Pro: $1.25/M, $5/M. USD→INR ≈ 84.
@@ -117,7 +164,11 @@ export function resolveTier(profile: {
 // Server-side safety net: if JEEnie ever leaks a tier/plan/upgrade word, scrub the
 // offending sentence and replace with a neutral redirect. Returns the cleaned text
 // plus a `tripped` flag so the caller can log it to ai_request_log.
-const FORBIDDEN_RX = /\b(pro\s*plus|pro\+|pro plan|premium|subscription|subscribe|upgrade|upgraded|paid plan|free tier|free plan|trial|quota|credits?|pricing|paywall|locked behind)\b/i;
+// Server-side safety net: if JEEnie clearly leaks a tier/billing line, scrub it.
+// Use MULTI-WORD phrases only — single benign words like "trial" (trial-and-error),
+// "credit" (extra credit), "subscribe" can occur in legit study content and must
+// NOT trip. We only catch clear app/billing context.
+const FORBIDDEN_RX = /\b(pro\s*\+?\s*plan|pro\s*plus|pro\+\s*tier|premium\s*plan|paid\s*plan|free\s*(tier|plan)|your\s*subscription|upgrade\s*(to|now|your|kar)|pricing\s*page|paywall|locked\s*behind|subscribe\s*to|trial\s*period)\b/i;
 
 const REDIRECT_LINE = "Bhai, woh sab app ke andar mil jayega — main toh sirf padhai mein help karne ke liye hoon. Ab bata kya doubt hai? 💪";
 
