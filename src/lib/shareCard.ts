@@ -50,7 +50,33 @@ export interface RoastOpts extends BaseOpts {
   roast: string;
 }
 
-export type ShareCardOpts = TestScoreOpts | StreakOpts | WrappedSlideOpts | RoastOpts;
+export interface BadgeShareOpts extends BaseOpts {
+  type: 'badge';
+  badgeName: string;
+  badgeIcon: string;
+  category: string;
+  description: string;
+  rarity: string;
+  earnedAt?: string;
+  ringColor?: string;
+  tagline?: string;
+}
+
+export interface BadgeCollectionOpts extends BaseOpts {
+  type: 'badgeCollection';
+  earnedCount: number;
+  totalCount: number;
+  topIcons: string[];
+  tagline?: string;
+}
+
+export type ShareCardOpts =
+  | TestScoreOpts
+  | StreakOpts
+  | WrappedSlideOpts
+  | RoastOpts
+  | BadgeShareOpts
+  | BadgeCollectionOpts;
 
 async function loadQR(url: string): Promise<HTMLImageElement> {
   const dataUrl = await QRCode.toDataURL(url, {
