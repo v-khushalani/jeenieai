@@ -417,6 +417,22 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             </div>
           )}
 
+          {/* Follow-up action chips — appear after first real assistant reply.
+              Hidden for Free tier (single-shot enforced). UI handles upsell —
+              JEEnie itself never mentions tiers or upgrades. */}
+          {!loading && !typing && messages.some((m) => m.role === 'user') && messages[messages.length - 1]?.role === 'assistant' && (
+            <div className="px-1">
+              <AIDoubtActionChips
+                tier={subscriptionTier}
+                disabled={loading}
+                onChip={(chip: ChipDef) => {
+                  handleSendMessage(chip.prompt, chip.mode, 'manual_chip');
+                }}
+                onLocked={() => setPricingOpen(true)}
+              />
+            </div>
+          )}
+
           {error && (
             <div className="flex justify-center">
               <div className="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 rounded-xl flex items-center gap-2 text-sm">
