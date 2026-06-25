@@ -258,6 +258,115 @@ function paintRoast(ctx: CanvasRenderingContext2D, o: RoastOpts) {
   wrapText(ctx, `"${o.roast}"`, 60, 560, 960, 44);
 }
 
+const RARITY_COLORS: Record<string, string> = {
+  Common: '#94a3b8',
+  Rare: '#3b82f6',
+  Epic: '#a855f7',
+  Legendary: '#f59e0b',
+  Mythic: '#ef4444',
+};
+
+function paintBadge(ctx: CanvasRenderingContext2D, o: BadgeShareOpts) {
+  ctx.textBaseline = 'top';
+
+  // Eyebrow
+  ctx.fillStyle = 'rgba(1,48,98,0.72)';
+  ctx.font = '600 26px Saira, system-ui, sans-serif';
+  ctx.fillText(`${o.category.toUpperCase()}  •  ${o.rarity.toUpperCase()}`, 60, 220);
+
+  // Headline
+  ctx.font = '900 80px Saira, system-ui, sans-serif';
+  ctx.fillStyle = BRAND.primary;
+  ctx.fillText('BADGE UNLOCKED', 60, 260);
+
+  // Medallion (centered)
+  const cx = W / 2;
+  const cy = 560;
+  const ringColor = o.ringColor || RARITY_COLORS[o.rarity] || BRAND.primary;
+
+  // Outer glow
+  const outer = ctx.createRadialGradient(cx, cy, 40, cx, cy, 260);
+  outer.addColorStop(0, ringColor + 'cc');
+  outer.addColorStop(1, ringColor + '00');
+  ctx.fillStyle = outer;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 260, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Ring
+  ctx.lineWidth = 14;
+  const ring = ctx.createLinearGradient(cx - 180, cy - 180, cx + 180, cy + 180);
+  ring.addColorStop(0, ringColor);
+  ring.addColorStop(1, BRAND.primary);
+  ctx.strokeStyle = ring;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 170, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Inner fill
+  const inner = ctx.createRadialGradient(cx - 40, cy - 60, 30, cx, cy, 170);
+  inner.addColorStop(0, '#ffffff');
+  inner.addColorStop(1, BRAND.accent);
+  ctx.fillStyle = inner;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 160, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Icon (emoji)
+  ctx.font = '200px "Apple Color Emoji","Segoe UI Emoji",Saira,sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(o.badgeIcon, cx, cy + 8);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+
+  // Badge name
+  ctx.font = '900 64px Saira, system-ui, sans-serif';
+  ctx.fillStyle = BRAND.primary;
+  ctx.textAlign = 'center';
+  ctx.fillText(o.badgeName, cx, 760);
+
+  // Earned line
+  ctx.font = '500 26px Saira, system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(1,48,98,0.72)';
+  const earned = o.earnedAt
+    ? `Earned on ${new Date(o.earnedAt).toLocaleDateString()}`
+    : 'Just unlocked 🎉';
+  ctx.fillText(earned, cx, 840);
+
+  ctx.textAlign = 'left';
+}
+
+function paintBadgeCollection(ctx: CanvasRenderingContext2D, o: BadgeCollectionOpts) {
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = 'rgba(1,48,98,0.72)';
+  ctx.font = '600 28px Saira, system-ui, sans-serif';
+  ctx.fillText('TROPHY CABINET', 60, 220);
+
+  ctx.font = '900 240px Saira, system-ui, sans-serif';
+  ctx.fillStyle = BRAND.primary;
+  ctx.fillText(`${o.earnedCount}`, 60, 270);
+
+  ctx.font = '700 44px Saira, system-ui, sans-serif';
+  ctx.fillStyle = BRAND.primary;
+  ctx.fillText(`badges earned`, 60, 540);
+
+  ctx.font = '500 28px Saira, system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(1,48,98,0.72)';
+  ctx.fillText(`out of ${o.totalCount} available`, 60, 600);
+
+  // Icon row
+  const icons = o.topIcons.slice(0, 5);
+  ctx.font = '110px "Apple Color Emoji","Segoe UI Emoji",Saira,sans-serif';
+  ctx.textBaseline = 'middle';
+  let x = 60;
+  for (const ic of icons) {
+    ctx.fillText(ic, x, 740);
+    x += 130;
+  }
+  ctx.textBaseline = 'top';
+}
+
 export async function generateShareCard(opts: ShareCardOpts): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = W;
@@ -268,11 +377,14 @@ export async function generateShareCard(opts: ShareCardOpts): Promise<Blob> {
   paintHeader(ctx);
 
   switch (opts.type) {
-    case 'test':    paintTest(ctx, opts);    break;
-    case 'streak':  paintStreak(ctx, opts);  break;
-    case 'wrapped': paintWrapped(ctx, opts); break;
-    case 'roast':   paintRoast(ctx, opts);   break;
+    case 'test':             paintTest(ctx, opts);             break;
+    case 'streak':           paintStreak(ctx, opts);           break;
+    case 'wrapped':          paintWrapped(ctx, opts);          break;
+    case 'roast':            paintRoast(ctx, opts);            break;
+    case 'badge':            paintBadge(ctx, opts);            break;
+    case 'badgeCollection':  paintBadgeCollection(ctx, opts);  break;
   }
+
 
   const qr = await loadQR(opts.referralUrl);
   paintFooter(ctx, qr, opts.referralUrl);
