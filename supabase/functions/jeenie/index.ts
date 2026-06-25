@@ -192,27 +192,65 @@ serve(async (req) => {
 
     {
       const dailyLimit = DAILY_LIMIT_BY_TIER[userTier] ?? FREE_AI_DAILY_LIMIT;
+      const monthlyLimit = MONTHLY_LIMIT_BY_TIER[userTier] ?? MONTHLY_LIMIT_BY_TIER.free;
+      const minIntervalSec = MIN_INTERVAL_SECONDS_BY_TIER[userTier] ?? MIN_INTERVAL_SECONDS_BY_TIER.free;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const { data: todayQueries } = await supabase
-        .from("points_log")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("action_type", "ai_query")
-        .gte("created_at", today.toISOString());
-      const queriesUsed = todayQueries?.length || 0;
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+
+      const [todayRes, monthRes, lastRes] = await Promise.all([
+        supabase.from("points_log").select("id", { count: "exact", head: true })
+          .eq("user_id", user.id).eq("action_type", "ai_query")
+          .gte("created_at", today.toISOString()),
+        supabase.from("points_log").select("id", { count: "exact", head: true })
+          .eq("user_id", user.id).eq("action_type", "ai_query")
+          .gte("created_at", monthStart.toISOString()),
+        supabase.from("points_log").select("created_at")
+          .eq("user_id", user.id).eq("action_type", "ai_query")
+          .order("created_at", { ascending: false }).limit(1),
+      ]);
+
+      const queriesUsed = todayRes.count || 0;
+      const monthlyUsed = monthRes.count || 0;
+      const lastTs = lastRes.data?.[0]?.created_at ? new Date(lastRes.data[0].created_at).getTime() : 0;
+      const sinceLast = (Date.now() - lastTs) / 1000;
+
+      if (sinceLast < minIntervalSec) {
+        const wait = Math.ceil(minIntervalSec - sinceLast);
+        return new Response(
+          JSON.stringify({
+            response: `**Hello Puttar!** 🧞‍♂️\n\nThoda saans le yaar — JEEnie type kar raha hai abhi! ⏳\n\n**${wait} second ruk** aur dobara bhej.`,
+            suggestions: [], content: "",
+          }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       if (queriesUsed >= dailyLimit) {
         const msg = userTier === "pro_plus"
           ? `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} doubts khatam ho gaye! 😅 Kal fresh ho ke wapas aa — JEEnie ready rahega! 💪`
           : userTier === "pro"
           ? `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} doubts khatam ho gaye! 😅 Kal naye doubts milenge — ya Pro+ pe jaake aur badha le! 🚀`
-          : `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} free doubts khatam! 😅\n\n💎 **Pro le le** — 30 doubts/day, ya **Pro+** — 100 doubts/day!\n\n⏰ Free doubts kal milenge.`;
+          : `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} free doubts khatam! 😅\n\n💎 **Pro** — 20/day, ya **Pro+** — 50/day!\n\n⏰ Free doubts kal milenge.`;
+        return new Response(
+          JSON.stringify({ response: msg, suggestions: [], content: "" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (monthlyUsed >= monthlyLimit) {
+        const msg = userTier === "free"
+          ? `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka free quota (${monthlyLimit}) khatam! 😅\n\n💎 **Pro le le** — 400/month, ya **Pro+** — 1000/month.\n\n📅 Free quota next month reset hoga.`
+          : `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka quota (${monthlyLimit}) khatam ho gaya! 😅\n\n📅 Next month reset hoga — ya plan upgrade kar le.`;
         return new Response(
           JSON.stringify({ response: msg, suggestions: [], content: "" }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
+
 
     const body = await req.json();
     const {
