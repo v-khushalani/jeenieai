@@ -525,6 +525,12 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
           </p>
         </div>
       </div>
+
+      <PricingModal
+        isOpen={pricingOpen}
+        onClose={() => setPricingOpen(false)}
+        limitType="ai_doubt_locked"
+      />
     </div>
   );
 };
