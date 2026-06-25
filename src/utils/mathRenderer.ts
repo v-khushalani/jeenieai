@@ -110,9 +110,113 @@ function normalizeOcrMatrix(text: string): string {
   return normalized;
 }
 
-function normalizeOcrArtifacts(text: string): string {
-  let normalized = text;
+// ── Mojibake repair: UTF-8 bytes mis-decoded as Latin-1 ──
+const MOJIBAKE_MAP: Array<[RegExp, string]> = [
+  [/Ã—/g, '×'], [/Ã·/g, '÷'], [/Ã©/g, 'é'], [/Ã¨/g, 'è'], [/Ã /g, 'à'],
+  [/Â°/g, '°'], [/Â±/g, '±'], [/Â²/g, '²'], [/Â³/g, '³'], [/Â·/g, '·'], [/Â½/g, '½'],
+  [/Î±/g, 'α'], [/Î²/g, 'β'], [/Î³/g, 'γ'], [/Î´/g, 'δ'], [/Îµ/g, 'ε'],
+  [/Î¶/g, 'ζ'], [/Î·/g, 'η'], [/Î¸/g, 'θ'], [/Î¹/g, 'ι'], [/Îº/g, 'κ'],
+  [/Î»/g, 'λ'], [/Î¼/g, 'μ'], [/Î½/g, 'ν'], [/Î¾/g, 'ξ'], [/Î¿/g, 'ο'],
+  [/Ï€/g, 'π'], [/Ï/g, 'ρ'], [/Ïƒ/g, 'σ'], [/Ï„/g, 'τ'], [/Ï†/g, 'φ'],
+  [/Ï‡/g, 'χ'], [/Ïˆ/g, 'ψ'], [/Ï‰/g, 'ω'],
+  [/Î©/g, 'Ω'], [/Î”/g, 'Δ'], [/Î£/g, 'Σ'], [/Î/g, 'Π'],
+  [/â€™/g, '\u2019'], [/â€˜/g, '\u2018'], [/â€œ/g, '\u201C'], [/â€\u009D/g, '\u201D'],
+  [/â€"/g, '\u2014'], [/â€"/g, '\u2013'], [/â€¦/g, '…'],
+  [/â†'/g, '→'], [/â†/g, '←'], [/â‰¥/g, '≥'], [/â‰¤/g, '≤'], [/â‰ /g, '≠'], [/â‰ˆ/g, '≈'],
+  [/âˆž/g, '∞'], [/âˆš/g, '√'], [/âˆ«/g, '∫'], [/âˆ'/g, '∑'], [/âˆ‚/g, '∂'],
+  // Lone "Ã" followed by space/digit (commonly the × sign that lost its trailing byte)
+  [/\bÃ\s+(?=\d)/g, '× '],
+  [/\bÃ\s*\uFFFD/g, '×'],
+];
 
+function repairMojibake(text: string): string {
+  let out = text;
+  for (const [re, rep] of MOJIBAKE_MAP) out = out.replace(re, rep);
+  // Strip replacement char artifacts that remain after repair
+  out = out.replace(/\uFFFD/g, '');
+  return out;
+}
+
+// ── HTML sub/sup tags → LaTeX subscripts/superscripts ──
+function normalizeHtmlMathTags(text: string): string {
+  let out = text;
+  // Tolerate whitespace inside the tag: <sub>, < sub >, etc.
+  out = out.replace(/<\s*sub\s*>([\s\S]*?)<\s*\/\s*sub\s*>/gi, (_, inner) => {
+    const t = String(inner).trim();
+    if (/^\d$/.test(t)) return SUBSCRIPT_DIGITS[t] ?? `_{${t}}`;
+    return `_{${t}}`;
+  });
+  out = out.replace(/<\s*sup\s*>([\s\S]*?)<\s*\/\s*sup\s*>/gi, (_, inner) => {
+    const t = String(inner).trim();
+    return `^{${t}}`;
+  });
+  // Strip stray block tags that sometimes slip through importer
+  out = out.replace(/<\/?(?:br|p|span|div)\b[^>]*>/gi, ' ');
+  return out;
+}
+
+// ── Vector hats: "x ^" or "x^" (with no exponent argument) → x̂ ──
+function normalizeVectorHats(text: string): string {
+  // Only when ^ is followed by a non-alphanumeric / end-of-string (so real exponents are skipped)
+  return text.replace(/\b([A-Za-z])\s*\^(?![\w{(])/g, '$1\u0302');
+}
+
+// ── OCR letter-spacing collapse ──
+// Common chem/physics stems used to re-introduce word boundaries after joining.
+const OCR_WORD_DICT = [
+  'mole','fraction','of','in','solution','vapour','phase','total','number','ionisation','ionization','isomers',
+  'including','the','given','compound','are','and','or','is','a','an','at','to','from','with','for','by',
+  'particular','point','temperature','statements','correct','same','different','then','this','that','these',
+  'molecule','atom','electron','proton','neutron','energy','velocity','acceleration','displacement','time',
+  'mass','force','field','charge','current','voltage','resistance','frequency','wavelength','amplitude',
+  'oxygen','hydrogen','carbon','nitrogen','sulphur','sulfur','chlorine','bromine','iodine','sodium','potassium',
+  'water','acid','base','salt','metal','organic','inorganic','reaction','product','reactant',
+];
+const OCR_WORD_SET = new Set(OCR_WORD_DICT);
+
+function segmentWord(token: string): string {
+  // Greedy longest-match word segmentation against dictionary (case-insensitive)
+  const lower = token.toLowerCase();
+  const n = lower.length;
+  if (n < 4) return token;
+  const parts: string[] = [];
+  let i = 0;
+  let lastBreak = 0;
+  while (i < n) {
+    let matched = '';
+    for (let j = Math.min(n, i + 14); j > i + 1; j--) {
+      const slice = lower.slice(i, j);
+      if (OCR_WORD_SET.has(slice)) { matched = slice; break; }
+    }
+    if (matched) {
+      if (i > lastBreak) parts.push(token.slice(lastBreak, i));
+      parts.push(token.slice(i, i + matched.length));
+      i += matched.length;
+      lastBreak = i;
+    } else {
+      i += 1;
+    }
+  }
+  if (lastBreak < n) parts.push(token.slice(lastBreak));
+  // If we got at least 2 dict matches, accept; otherwise return original token to avoid mangling
+  const dictHits = parts.filter(p => OCR_WORD_SET.has(p.toLowerCase())).length;
+  return dictHits >= 2 ? parts.join(' ') : token;
+}
+
+function collapseOcrLetterSpacing(text: string): string {
+  // Match runs of 4+ single alphanum tokens separated by single spaces.
+  return text.replace(/(?:\b[A-Za-z0-9]\b(?: \b[A-Za-z0-9]\b){3,})/g, (run) => {
+    const joined = run.replace(/ /g, '');
+    // Split on digit/letter boundaries first (e.g. "Coen2BrClNO3" → keep as-is, it's a formula)
+    // If joined token has mixed letters+digits, just return joined (formula).
+    if (/[A-Za-z]/.test(joined) && /\d/.test(joined)) return joined;
+    return segmentWord(joined);
+  });
+}
+
+function normalizeOcrArtifacts(text: string): string {
+  let normalized = repairMojibake(text);
+  normalized = normalizeHtmlMathTags(normalized);
   normalized = normalizeOcrMatrix(normalized);
 
   // OCR sometimes emits ^() for degree and ^(n) for exponent.
@@ -125,10 +229,14 @@ function normalizeOcrArtifacts(text: string): string {
     return `${symbol}${toSubscriptDigits(digits)}`;
   });
 
+  // Greek word → unicode, but DON'T touch backslash-prefixed LaTeX commands (\omega, \alpha…)
   normalized = normalized.replace(
-    /(alpha|beta|gamma|delta|theta|lambda|mu|nu|sigma|pi|rho|phi|omega|eta|zeta|xi)(?![A-Za-z])/gi,
+    /(?<![\\A-Za-z])(alpha|beta|gamma|delta|theta|lambda|mu|nu|sigma|pi|rho|phi|omega|eta|zeta|xi)(?![A-Za-z])/gi,
     (match) => GREEK_UNICODE_MAP[match.toLowerCase()] ?? match
   );
+
+  normalized = normalizeVectorHats(normalized);
+  normalized = collapseOcrLetterSpacing(normalized);
 
   // Remove OCR tildes used in place of spacing/units markers.
   normalized = normalized.replace(/\s*~\s*/g, ' ');
@@ -139,6 +247,7 @@ function normalizeOcrArtifacts(text: string): string {
 
   return normalized;
 }
+
 
 /**
  * Converts common text patterns to proper Unicode symbols
