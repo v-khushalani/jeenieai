@@ -766,6 +766,7 @@ const TestPage: React.FC = () => {
           subjects: [selectedSubject],
           testDuration: 60,
           difficulty: 'Mixed',
+          excludeIds: Array.from(attemptedIds),
         });
       } else if (mode === "chapter" && selectedChapters.length > 0) {
         const perChapterLimit = 25;
