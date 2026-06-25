@@ -6,10 +6,15 @@ import {
   computeMaxTokens,
   estimateCostInr,
   resolveTier,
+  scrubTierMentions,
   type Mode,
   type ModeSource,
   type Tier,
 } from "../_shared/jeeniePrompt.ts";
+
+// Hard per-request output ceiling. Protects margin even on Pro+ "explain
+// everything" prompts. Applies to all tiers regardless of adaptive sizing.
+const MAX_OUTPUT_TOKENS_CEILING = 1200;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -200,7 +205,10 @@ serve(async (req) => {
       : "auto";
 
     const systemPrompt = buildSystemPrompt(userTier, resolvedMode, subject);
-    const maxTokens = computeMaxTokens(userTier, contextPrompt, hasImage);
+    const maxTokens = Math.min(
+      computeMaxTokens(userTier, contextPrompt, hasImage),
+      MAX_OUTPUT_TOKENS_CEILING,
+    );
 
     // History window: trim by tier. Free = single-shot.
     const historyWindow = userTier === "free" ? 0 : userTier === "pro" ? 4 : 6;
@@ -283,10 +291,21 @@ serve(async (req) => {
       fallbackUsed = "humor";
     }
 
+    // Tier-blindness scrub — if the model leaked any plan/upgrade word, strip
+    // those sentences and replace with a neutral redirect. We log it so we can
+    // monitor false positives via the analytics panel.
+    if (provider !== "humor-fallback") {
+      const scrubbed = scrubTierMentions(responseText);
+      if (scrubbed.tripped) {
+        responseText = scrubbed.text;
+        fallbackUsed = fallbackUsed ? `${fallbackUsed}+tier_scrub` : "tier_scrub";
+      }
+    }
+
     const latencyMs = Date.now() - startedAt;
     const estimatedCostInr = provider === "humor-fallback" ? 0 : estimateCostInr(modelUsed, inputTokens, outputTokens);
 
-    console.log(`[JEENIE] 📊 ${provider} | tier=${userTier} mode=${resolvedMode}(${modeSource}) model=${modelUsed} in=${inputTokens} out=${outputTokens} cost=₹${estimatedCostInr} ${latencyMs}ms`);
+    console.log(`[JEENIE] 📊 ${provider} | tier=${userTier} mode=${resolvedMode}(${modeSource}) model=${modelUsed} in=${inputTokens} out=${outputTokens} cost=₹${estimatedCostInr} ${latencyMs}ms${fallbackUsed ? ` fallback=${fallbackUsed}` : ""}`);
 
     // Quota counter (unchanged).
     supabase.from("points_log").insert({

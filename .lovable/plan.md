@@ -1,226 +1,115 @@
-# JEEnie AI Doubt Solver — Architecture Refactor + Cost Optimization
+# Ship chips + analytics + margin guardrail — and make JEEnie tier-blind in conversation
 
-## Goals (per your direction)
-
-1. Compress the prompt to 250–400 tokens without losing personality or quality.
-2. Auto-pick the response style (Quick / Deep / Exam / Steps / Master) from the question itself. Manual chips only override.
-3. "Bada-bhai" Hinglish personality is **identical across Free / Pro / Pro+** — it's brand, not a paywall.
-4. Adaptive response length — short questions get short answers.
-5. Progressive disclosure — answer first, follow-up action chips after.
-6. Replace mode dropdown with horizontal action chips (mobile-first).
-7. Stay on Gemini 2.5 Flash for all tiers. Pro model upgrade is config-gated for later.
-8. Per-request telemetry: tokens, latency, model, mode, cost — to drive future pricing.
-9. Refactor the giant prompt into 4 modular layers.
-
-Tier feature gating (image, voice, quota, history, PYQ) stays as already discussed and is **not** changed in this plan — only the AI architecture is refactored.
+Same scope as before, **plus one important behavior change**: JEEnie itself must never mention tiers, quotas, plans, upgrades, or pricing in its replies. Those concerns belong to the UI (chips, modals, paywalls), not the AI's voice. A Free user asking a doubt should get the same bada-bhai answer with no "upgrade to Pro+" line.
 
 ---
 
-## 1. Modular prompt layers
+## 0. Tier-blindness rule (NEW, threads through every layer)
 
-Replace the single 480-token `SYSTEM_PROMPT` + 180-token client-injected `TONE_RULES` with **4 composable pieces** in a new shared module `supabase/functions/_shared/jeeniePrompt.ts`.
+### `supabase/functions/_shared/jeeniePrompt.ts`
+Rewrite the `ENTITLEMENTS` layer so it instructs **length** but never names the tier or any plan word:
 
 ```text
-┌──────────────────────────────────────────────┐
-│  PERSONALITY  (always on, ~80 tokens)        │  ← brand voice
-├──────────────────────────────────────────────┤
-│  FORMATTING   (always on, ~90 tokens)        │  ← bullets/headings/emoji
-├──────────────────────────────────────────────┤
-│  TEACHING     (mode-specific, ~40-80 tokens) │  ← depth & structure
-├──────────────────────────────────────────────┤
-│  ENTITLEMENTS (tier-specific, ~20-40 tokens) │  ← max length, PYQ on/off
-└──────────────────────────────────────────────┘
+# Before (leaks tier)
+Tier: FREE. Cap output ~120 words...
+Tier: PRO. Cap output ~250 words...
+Tier: PRO+. No hard cap...
+
+# After (length only, no tier identity)
+Keep reply under ~120 words. Single shot — no follow-up assumed.
+Keep reply under ~250 words.
+No hard cap; prefer concise.
 ```
 
-### PERSONALITY (constant, all tiers)
-```
-You are JEEnie — JEE/NEET student's bada-bhai mentor.
-Voice: Natural Hinglish (Roman script). Address "Puttar/bhai/yaar".
-Warm, witty, smart-senior vibe. Bollywood/cricket/meme refs welcome.
-NEVER pure English. NEVER Devanagari. NEVER "Dear student" examiner tone.
-```
-
-### FORMATTING (constant, all tiers)
-```
-Every reply:
-- Open "**Hello Puttar!** 🧞‍♂️" (skip on follow-ups)
-- Use ### headings + "- <emoji> **Key:** content" bullets
-- Bold every term/number/formula with **...**
-- Max 2 sentences per bullet. No 3+ sentence paragraphs.
-- End with 1-line takeaway + emoji.
-Math symbols allowed: α β γ θ λ μ π Δ Σ ∫ → ⇒ ≈ ≤ ≥
-```
-
-### TEACHING blocks (one chosen per request)
-```
-quick: 4–8 bullets. 1–2 headings. Concept + 1 example.
-steps: ### Given / ### Formula / ### Solution (numbered) / ### Answer
-deep:  + intuition + real-life analogy + "kyun" line after each step
-exam:  + marking-scheme structure (define / derive / substitute / box answer)
-master:+ link 1 relevant PYQ (year + exam) + common trap
-```
-
-### ENTITLEMENTS (server-injected per tier)
-```
-Free:  Cap output at ~120 words. No follow-up context.
-Pro:   Cap output at ~250 words. Use up to last 4 turns.
-Pro+:  No hard cap; prefer concise. Use last 6 turns. PYQ refs allowed.
-```
-
-**Total per request: 240–320 input tokens** (vs current ~1500–2000 with history). **~70% cheaper.**
-
-Personality + Formatting strings live as constants. Final prompt = `PERSONALITY + FORMATTING + TEACHING[mode] + ENTITLEMENTS[tier]`. Brand voice stays identical because the first two blocks are unchanged across tiers.
-
----
-
-## 2. Auto-mode detection
-
-New helper `detectMode(question: string, hasImage: boolean): Mode` in `_shared/jeeniePrompt.ts`. Lightweight regex/keyword classifier — no extra LLM call:
+Add an explicit forbidden-topics line to `PERSONALITY`:
 
 ```text
-hasImage + "solve" / numbers / "="           → steps
-"derive" / "prove" / "show that"             → exam
-"why" / "kaise" / "samjha" / "intuition"     → deep
-"previous year" / "PYQ" / "JEE 2023"         → master
-short factual (<15 words, no math)           → quick
-default                                       → quick
+NEVER mention: "free", "pro", "pro plus", "premium", "subscription",
+"plan", "upgrade", "paid", "trial", "quota", "limit", "credits", pricing,
+or what the user "can/can't" access. If the user asks about plans/pricing/upgrade,
+reply once: "Bhai, woh sab app ke andar mil jayega — main toh sirf padhai mein
+help karne ke liye hoon. Ab bata kya doubt hai? 💪"
 ```
 
-Client sends `{ question, mode: 'auto' | <explicit> }`. Server resolves: if `auto`, run `detectMode`; else use override. Pro+ unlocks all manual overrides; Pro gets quick/steps overrides; Free gets none (auto only). Returns `resolvedMode` in response so the UI can highlight the active chip.
+### `supabase/functions/jeenie/index.ts` — server-side safety net
+After the model returns, run a tiny regex scrub on the output. If any forbidden token slips through (`/\b(pro\+?|premium|subscription|upgrade|paid plan|free tier|quota)\b/i`), replace that sentence with the canned redirect line above. Log the event to `ai_request_log.fallback_used = 'tier_scrub'` so we can monitor false positives.
+
+### `src/components/AIDoubtSolver.tsx`
+- Remove any client-side strings that pass tier names into the prompt or pre/post-pend tier mentions.
+- The "Auto-picked: Quick Explain · change" hint stays — that's a mode name, not a tier.
 
 ---
 
-## 3. Adaptive length
+## 1. Action chips — `src/components/AIDoubtActionChips.tsx` (new)
 
-Drop fixed word counts. Replace `max_tokens: 2000` with tier-aware soft caps **plus a per-question complexity factor**:
+Renders **after** the first assistant message in the thread.
 
 ```text
-maxTokens = baseCap[tier] × complexityFactor(question)
-  complexityFactor:
-    short fact (<15 words, no math)       → 0.3   (~80–150 tokens)
-    standard concept doubt                 → 0.6   (~250–400 tokens)
-    numerical / derivation                 → 1.0   (full cap)
-    multi-part / "explain everything"      → 1.0
+[ Explain More ] [ Numericals ] [ Exam Answer ] [ PYQs 🔒 ] [ Smart Notes 🔒 ]
 ```
 
-Base caps: Free 400, Pro 700, Pro+ 1200. Result: 1-line questions get 1-paragraph answers, not 6 headings.
+- Locked chips show 🔒 and open `PricingModal` on tap — **the UI** does the upselling, not JEEnie.
+- Free → component hidden entirely (single-shot stays enforced; no chip = no follow-up).
+- Pro → Explain More / Numericals / Exam Answer unlocked. PYQs + Smart Notes locked.
+- Pro+ → all unlocked. Smart Notes saves to `study_notes` tagged `from:jeenie`.
+- Mobile: `overflow-x-auto snap-x snap-mandatory`, 44 px touch target.
+- Click → follow-up request with `{ mode, modeSource: 'manual_chip' }`.
+
+## 2. `AIDoubtSolver.tsx`
+- Remove the mode dropdown.
+- Mount `<AIDoubtActionChips />` under the latest assistant turn.
+- Tiny "Auto: **Quick** · change" affordance for one-tap mode correction (logs as `manual_chip`).
+
+## 3. `src/utils/aiDoubtTelemetry.ts` (new, tiny)
+Stamps `modeSource` + measures end-to-end latency. No PII.
+
+## 4. `supabase/functions/jeenie/index.ts`
+- Accept `modeSource` in body → log in `ai_request_log`.
+- **Hard ceiling: `maxTokens = min(computeMaxTokens(...), 1200)` for all tiers.** Stops any single doubt from burning >₹0.02. This is the margin guardrail.
+- Apply the tier-scrub from §0.
+- Keep `JEENIE_PRO_MODEL_ENABLED` default `false`.
+
+## 5. `src/pages/AnalyticsPage.tsx` — admin-only "JEEnie cost" panel
+Reads `ai_request_log` (gated by `has_role(uid, 'admin')`):
+- Spend last 7 / 30 days (₹)
+- Cost per tier · per mode
+- p50 / p95 latency
+- Fallback rate (Gateway → Gemini direct → OpenAI)
+- **Tier-scrub rate** — if >2% of replies trip the regex, the prompt needs tuning
+- **Margin tracker**: avg cost per active Pro user vs ₹100 effective/mo (yearly), Pro+ vs ₹167. Red badge below 60% margin.
+
+## 6. `src/services/api/types.ts`
+Add `modeSource?: 'auto' | 'manual_chip' | 'manual_dropdown'` to `JeenieRequest`.
 
 ---
 
-## 4. Progressive disclosure (action chips)
+## Quick margin recap against your real pricing (₹149 Pro, ₹249 Pro+)
 
-Replace the mode dropdown in `AIDoubtSolver.tsx` with a horizontal chip row that appears **after** the first answer renders:
+Yearly buyers effectively pay ₹100 / ₹167 per month. Worst case (user maxes quota every day, Flash only, refactored prompt):
 
-```text
-[ Explain More ]  [ Exam Answer ]  [ Numericals ]  [ Diagram ]  [ PYQs ]
-```
-
-Behavior:
-- Each chip = a follow-up request with that mode injected, reusing the same thread.
-- Chips locked by tier render with 🔒 and open the upgrade modal on click.
-- Free tier: chips hidden entirely (single-shot enforced).
-- Pro: `Explain More`, `Numericals` unlocked.
-- Pro+: all chips unlocked, plus `Smart Notes` (saves to "My Weak Topics").
-- Mobile: horizontal scroll, snap-to-chip, 44 px touch target.
-- The existing mode dropdown is removed. Manual override still possible via the chips (a chip click = override).
-
----
-
-## 5. Model strategy
-
-- **All tiers use `google/gemini-2.5-flash` today.**
-- New env-driven flag `JEENIE_PRO_MODEL_ENABLED` (default `false`). When true, Pro+ requests with `mode ∈ {deep, master}` route to `google/gemini-2.5-pro`. Ship the routing code now, leave the flag off until telemetry justifies it.
-- Keep the existing OpenAI / direct-Gemini fallback chain unchanged for reliability.
-
----
-
-## 6. Telemetry
-
-New table via migration:
-
-```sql
-CREATE TABLE public.ai_request_log (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  tier text NOT NULL,                  -- free | pro | pro_plus
-  mode text NOT NULL,                  -- quick|steps|deep|exam|master
-  mode_source text NOT NULL,           -- auto | manual_chip | manual_dropdown
-  model text NOT NULL,
-  input_tokens int,
-  output_tokens int,
-  latency_ms int,
-  estimated_cost_inr numeric(10,4),
-  had_image boolean DEFAULT false,
-  fallback_used text,                  -- null | gemini | openai
-  created_at timestamptz DEFAULT now()
-);
-GRANT SELECT, INSERT ON public.ai_request_log TO authenticated;
-GRANT ALL ON public.ai_request_log TO service_role;
-ALTER TABLE public.ai_request_log ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "users read own logs" ON public.ai_request_log
-  FOR SELECT TO authenticated USING (user_id = auth.uid());
-CREATE POLICY "service inserts" ON public.ai_request_log
-  FOR INSERT TO service_role WITH CHECK (true);
-```
-
-Server writes one row per request from `jeenie/index.ts` finally-block. Cost computed inline using a per-model rate table.
-
-Admin analytics page (existing `AnalyticsPage.tsx`) gets a "JEEnie cost" panel: total spend, cost per tier, cost per mode, p95 latency, fallback rate. Drives future quota decisions.
-
----
-
-## 7. Cost projection (after refactor, Flash only)
-
-Per-doubt avg with compressed prompt + adaptive length:
-
-| Question type | Input | Output | Cost/doubt |
+| Tier | Doubts/mo | AI cost | Margin on yearly |
 |---|---|---|---|
-| Short factual | 280 | 120 | ₹0.005 |
-| Standard concept | 350 | 350 | ₹0.011 |
-| Numerical/derivation | 450 | 600 | ₹0.018 |
-| With image | 600 | 400 | ₹0.015 |
+| Pro | 900 | ~₹12 | **86%** ✅ |
+| Pro+ | 3,000 | ~₹42 | **73%** ✅ |
+| Pro+ image-heavy | 3,000 | ~₹54 | **66%** ✅ |
+| Pro+ with Pro-model flag ON | 3,000 | ~₹120 | **26%** ⚠️ |
 
-**Per heavy user / month (using existing quotas 2 / 15 / 40):**
-| Tier | Doubts/mo | Avg cost/doubt | Cost/user/mo |
-|---|---|---|---|
-| Free | 60 | ₹0.007 | **~₹0.42** |
-| Pro | 450 | ₹0.012 | **~₹5.4** |
-| Pro+ | 1200 | ₹0.014 | **~₹17** (Flash only) |
-| Pro+ worst case if Pro-model flag on | 1200 | mix → ₹0.08 avg | **~₹95** |
-
-Margin check (illustrative pricing, you confirm):
-- Pro ₹299 → ~98% gross margin on AI
-- Pro+ ₹599 → ~97% margin (Flash only) / ~84% (with Pro model on)
-
-**Comparison to today (no refactor):** ~₹14/Pro user/mo, ~₹45/Pro+ user/mo on Flash. The refactor saves ~60–65% of AI cost across the board, mostly from prompt compression + adaptive length + history trim.
+Conclusion: safe at current pricing. The only loss-risk is enabling Gemini Pro routing for Pro+ deep/master — keep that flag off in prod for now, the 1200-token ceiling is the safety net.
 
 ---
 
-## 8. Implementation order (one PR each, can ship independently)
+## Files touched
 
-1. **`supabase/functions/_shared/jeeniePrompt.ts`** — Personality / Formatting / Teaching / Entitlements constants + `buildPrompt({ tier, mode })` + `detectMode()` + `complexityFactor()`.
-2. **`supabase/functions/jeenie/index.ts`** — Replace inline `SYSTEM_PROMPT` with `buildPrompt(...)`. Accept `{ question, mode, tier, hasImage }` in body. Trim history to last 4 (Pro) / 6 (Pro+) / 0 (Free). Apply adaptive `maxTokens`. Wire `JEENIE_PRO_MODEL_ENABLED` flag. Write `ai_request_log` row. Keep fallback chain.
-3. **`src/components/AIDoubtSolver.tsx`** — Remove `TONE_RULES`. Send `mode: 'auto'` by default. Remove mode dropdown; add `<ActionChips />` row that renders after first assistant message. Show `resolvedMode` indicator.
-4. **`src/components/AIDoubtActionChips.tsx`** (new) — Horizontal chip row, tier-gated, mobile snap-scroll, 🔒 + upgrade modal on locked chips.
-5. **Migration** — `ai_request_log` table + RLS.
-6. **`src/pages/AnalyticsPage.tsx`** — Add "JEEnie cost" panel reading from `ai_request_log` (admin-only).
-7. **`src/utils/aiDoubtTelemetry.ts`** — Tiny client helper to send `mode_source` + latency back so server can record where the mode came from.
+- `supabase/functions/_shared/jeeniePrompt.ts` (tier-blind rewrite of ENTITLEMENTS + PERSONALITY)
+- `supabase/functions/jeenie/index.ts` (modeSource, 1200-token ceiling, tier-scrub)
+- `src/components/AIDoubtActionChips.tsx` (new)
+- `src/components/AIDoubtSolver.tsx` (drop dropdown, mount chips, mode-change hint)
+- `src/utils/aiDoubtTelemetry.ts` (new)
+- `src/pages/AnalyticsPage.tsx` (JEEnie cost panel, admin-only)
+- `src/services/api/types.ts` (`modeSource` field)
 
-Each step is independently shippable and reversible.
+No DB migration — `ai_request_log` already exists.
 
----
+## Deliberately deferred (flagged earlier, not in this PR)
 
-## What this plan deliberately does NOT change
-
-- Tier quotas (2 / 15 / 40) — unchanged from prior agreement.
-- Image / voice / PYQ / history retention gating — unchanged.
-- Pricing page copy — only the "modes" section needs minor wording tweak when chips ship.
-- Rollover / share links / weak-topics notebook — deferred, as before.
-
----
-
-## Risks & mitigations
-
-- **Prompt compression regressing quality** → Ship behind a `JEENIE_PROMPT_V2` flag; A/B against current prompt on 10% of Pro traffic for 48h; auto-rollback if `output_tokens` or user thumbs-down rate moves >15%.
-- **Auto-mode picking wrong mode** → Always show "Showing as Quick Explain · [change]" link under the answer; one click switches mode and re-asks. Log mismatches for tuning the classifier.
-- **Telemetry table growth** → Partition by month after 90 days; nightly aggregate into `ai_cost_daily` rollup table when row count > 1M.
+Annual nudge on quota wall · 24h answer cache · daily image sub-quota · Pro-model flag with per-user cap · long-output abuse alerting. We can pick these up after one week of telemetry from the new panel.

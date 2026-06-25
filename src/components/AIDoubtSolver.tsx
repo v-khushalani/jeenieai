@@ -18,6 +18,10 @@ import DOMPurify from "dompurify";
 import { logger } from "@/utils/logger";
 import { replaceGreekLetters } from "@/constants/unified";
 import { renderLatex, containsLatex } from "@/utils/mathRenderer";
+import { useAuth } from "@/contexts/AuthContext";
+import AIDoubtActionChips, { type ChipDef } from "@/components/AIDoubtActionChips";
+import PricingModal from "@/components/PricingModal";
+import type { JeenieMode, JeenieModeSource } from "@/services/api/types";
 
 import 'katex/dist/katex.min.css';
 
@@ -44,6 +48,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { subscriptionTier } = useAuth();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,6 +58,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [pricingOpen, setPricingOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -166,22 +172,25 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     }).join("\n");
   };
 
-  const callEdgeFunction = async (prompt: string, conversationHistory: string, base64Image?: string): Promise<string> => {
+  const callEdgeFunction = async (
+    prompt: string,
+    conversationHistory: string,
+    base64Image: string | undefined,
+    mode: JeenieMode,
+    modeSource: JeenieModeSource,
+  ): Promise<string> => {
     try {
       logger.info("Calling JEEnie via API layer...");
 
       const payload: any = {
         contextPrompt: prompt,
-        // Auto-mode: server detects best mode from question.
-        // Future: action chips will pass an explicit mode + modeSource: 'manual_chip'.
-        mode: 'auto',
-        modeSource: 'auto',
+        mode,
+        modeSource,
         conversationHistory: conversationHistory ? [
           { role: 'user', content: conversationHistory, timestamp: new Date().toISOString() }
         ] : undefined,
       };
 
-      // Add image for vision processing
       if (base64Image) {
         payload.image = base64Image;
       }
@@ -217,7 +226,11 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   };
 
 
-  const handleSendMessage = async (overrideInput?: string) => {
+  const handleSendMessage = async (
+    overrideInput?: string,
+    explicitMode?: JeenieMode,
+    explicitModeSource?: JeenieModeSource,
+  ) => {
     const effectiveInput = (overrideInput ?? input).trim();
     if (!effectiveInput && !imageBase64) return;
     setError(null);
@@ -267,7 +280,9 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 
 
       setTyping(true);
-      const aiResponse = await callEdgeFunction(prompt, history, currentImage || undefined);
+      const mode: JeenieMode = explicitMode ?? 'auto';
+      const modeSource: JeenieModeSource = explicitModeSource ?? (explicitMode ? 'manual_chip' : 'auto');
+      const aiResponse = await callEdgeFunction(prompt, history, currentImage || undefined, mode, modeSource);
       // Note: do NOT run sanitizeRoast here — it strips "Hello Puttar!", markdown
       // and salutations which JEEnie's doubt-solver answers rely on for tone.
       const isFirstResponse = messages.filter((m) => m.role === 'user').length === 0;
@@ -402,6 +417,22 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             </div>
           )}
 
+          {/* Follow-up action chips — appear after first real assistant reply.
+              Hidden for Free tier (single-shot enforced). UI handles upsell —
+              JEEnie itself never mentions tiers or upgrades. */}
+          {!loading && !typing && messages.some((m) => m.role === 'user') && messages[messages.length - 1]?.role === 'assistant' && (
+            <div className="px-1">
+              <AIDoubtActionChips
+                tier={subscriptionTier}
+                disabled={loading}
+                onChip={(chip: ChipDef) => {
+                  handleSendMessage(chip.prompt, chip.mode, 'manual_chip');
+                }}
+                onLocked={() => setPricingOpen(true)}
+              />
+            </div>
+          )}
+
           {error && (
             <div className="flex justify-center">
               <div className="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 rounded-xl flex items-center gap-2 text-sm">
@@ -494,6 +525,12 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
           </p>
         </div>
       </div>
+
+      <PricingModal
+        isOpen={pricingOpen}
+        onClose={() => setPricingOpen(false)}
+        limitType="ai_doubt_locked"
+      />
     </div>
   );
 };
