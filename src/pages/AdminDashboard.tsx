@@ -24,7 +24,7 @@ import {
   BarChart3, Users, BookOpen, Bell, FileText,
   CheckSquare, Home, Package,
   Eye, LogOut, Shield, ToggleLeft,
-  Download, CreditCard,
+  Download, CreditCard, Sparkles,
 } from 'lucide-react';
 
 // Lazy load heavy admin components
@@ -45,6 +45,7 @@ const ReportsHub = lazy(() => import('@/components/admin/ReportsHub'));
 const HuggingFaceImporter = lazy(() => import('@/components/admin/HuggingFaceImporter'));
 const NotesManager = lazy(() => import('@/components/admin/NotesManager'));
 const SubscriptionManager = lazy(() => import('@/components/admin/SubscriptionManager'));
+const JeenieCostPanel = lazy(() => import('@/components/admin/JeenieCostPanel').then(m => ({ default: m.JeenieCostPanel })));
 
 // ─── Nav Config ────────────────────────────────────────────
 
@@ -103,6 +104,7 @@ const AdminDashboard = () => {
     // Main
     { id: 'overview', label: 'Overview', icon: Home, group: 'main' },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, group: 'main' },
+    { id: 'jeenie-ai', label: 'JEEnie AI', icon: Sparkles, group: 'main' },
     { id: 'users', label: 'Users', icon: Users, group: 'main' },
     { id: 'reports', label: 'Reports', icon: FileText, group: 'main' },
     { id: 'subscriptions', label: 'Subscriptions', icon: CreditCard, group: 'main' },
@@ -140,6 +142,7 @@ const AdminDashboard = () => {
   const sectionTitles: Record<string, string> = {
     overview: 'Dashboard',
     analytics: 'Analytics',
+    'jeenie-ai': 'JEEnie AI',
     users: 'User Management',
     reports: 'Reports',
     subscriptions: 'Subscriptions',
@@ -158,6 +161,7 @@ const AdminDashboard = () => {
     switch (currentSection) {
       case 'overview': return <DashboardOverview />;
       case 'analytics': return <AdminAnalytics />;
+      case 'jeenie-ai': return <JeenieCostPanel />;
       case 'users': return <UserManagement />;
       case 'reports': return <ReportsHub />;
       case 'subscriptions': return <SubscriptionManager />;
