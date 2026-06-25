@@ -418,20 +418,24 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             </div>
           )}
 
-          {/* Follow-up action chips — appear after first real assistant reply.
-              Hidden for Free tier (single-shot enforced) AND hidden when the
-              last student message was just a greeting/chit-chat. */}
+          {/* Follow-up action chips — appear ONLY after the student has asked a
+              real doubt (question mark, digits, math, or doubt-keyword). Greetings,
+              one-word acknowledgements, and chit-chat do NOT trigger chips. */}
           {(() => {
             const lastUser = [...messages].reverse().find((m) => m.role === 'user');
-            const isGreeting = lastUser
+            const isRealDoubt = lastUser
               ? (() => {
                   const t = lastUser.content.replace(/<[^>]*>/g, '').trim().toLowerCase();
-                  if (!t || t.length > 30) return false;
-                  if (/[?=0-9]|\bsolve\b|\bderive\b|\bwhy\b|\bkyun\b|\bhow\b|\bkaise\b/.test(t)) return false;
-                  return /^(hi+|hello+|hey+|namaste|namashkar|salaam|yo|sup|thanks|thank\s*you|thx|ty|ok+|okay|cool|nice|good|great|hmm+|haan|han|haa|acha|achha|bye|gn|gm)\b/.test(t);
+                  if (!t || t.length < 6) return false;
+                  // Strong signals it's an actual question/problem.
+                  if (/[?=]/.test(t)) return true;
+                  if (/\d/.test(t) && t.length > 8) return true;
+                  if (/\b(solve|derive|prove|explain|find|calculate|compute|why|how|what|define|kya|kyun|kyu|kaise|samjha|samjhao|batao|bataye|doubt|question|formula|concept|theorem|reaction|equation|numerical|problem)\b/.test(t)) return true;
+                  // Long-ish free text — treat as a doubt.
+                  return t.length >= 25;
                 })()
               : false;
-            const showChips = !loading && !typing && lastUser && messages[messages.length - 1]?.role === 'assistant' && !isGreeting;
+            const showChips = !loading && !typing && lastUser && messages[messages.length - 1]?.role === 'assistant' && isRealDoubt;
             if (!showChips) return null;
             return (
             <div className="px-1">
