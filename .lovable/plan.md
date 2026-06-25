@@ -1,115 +1,48 @@
-# Ship chips + analytics + margin guardrail — and make JEEnie tier-blind in conversation
 
-Same scope as before, **plus one important behavior change**: JEEnie itself must never mention tiers, quotas, plans, upgrades, or pricing in its replies. Those concerns belong to the UI (chips, modals, paywalls), not the AI's voice. A Free user asking a doubt should get the same bada-bhai answer with no "upgrade to Pro+" line.
+## Four targeted fixes in JEEnie
 
----
+### 1. Same question = same instant answer (caching bug)
 
-## 0. Tier-blindness rule (NEW, threads through every layer)
+`src/services/api/modules/ai.ts` caches every `askJeenie` response by `contextPrompt` for 24 h. That's why repeats return instantly with identical text and no loader.
 
-### `supabase/functions/_shared/jeeniePrompt.ts`
-Rewrite the `ENTITLEMENTS` layer so it instructs **length** but never names the tier or any plan word:
+**Fix:** Stop caching JEEnie doubt-solver calls entirely. Conversational tutoring should never be cached — context, mode and follow-ups all vary. Remove the `cache.get`/`cache.set` block in `askJeenie` (keep caching for study-plan, TTS, insights — those are legit). Cost impact is negligible because our token budgets are already tight.
 
-```text
-# Before (leaks tier)
-Tier: FREE. Cap output ~120 words...
-Tier: PRO. Cap output ~250 words...
-Tier: PRO+. No hard cap...
+### 2. Bullet points on every line
 
-# After (length only, no tier identity)
-Keep reply under ~120 words. Single shot — no follow-up assumed.
-Keep reply under ~250 words.
-No hard cap; prefer concise.
-```
+Two layers are forcing bullets:
 
-Add an explicit forbidden-topics line to `PERSONALITY`:
+- **Server prompt** (`supabase/functions/_shared/jeeniePrompt.ts`, `FORMATTING`) says "Use ### headings + bullets" as a hard rule, and `TEACHING.quick` says "4–8 bullets".
+- **Client formatter** (`cleanAndFormatJeenieText` in `AIDoubtSolver.tsx`) auto-splits any `**Title**:` or `emoji **Title**:` mid-sentence into a new bullet — so even prose gets shredded into bullets.
 
-```text
-NEVER mention: "free", "pro", "pro plus", "premium", "subscription",
-"plan", "upgrade", "paid", "trial", "quota", "limit", "credits", pricing,
-or what the user "can/can't" access. If the user asks about plans/pricing/upgrade,
-reply once: "Bhai, woh sab app ke andar mil jayega — main toh sirf padhai mein
-help karne ke liye hoon. Ab bata kya doubt hai? 💪"
-```
+**Fix:**
+- Rewrite `FORMATTING` to *allow* bullets when listing 3+ items, otherwise prefer short prose. Drop the "Max 2 sentences per bullet" line. Drop the "open with Hello Puttar" rule for short/follow-up replies (greeting already handled by intent layer).
+- Change `TEACHING.quick` to "2–4 short sentences OR up to 5 bullets if it's truly a list."
+- In `cleanAndFormatJeenieText`, remove the two regex passes that synthesize bullets out of `**Title**:` patterns. Keep markdown→HTML rendering, just don't manufacture list items.
 
-### `supabase/functions/jeenie/index.ts` — server-side safety net
-After the model returns, run a tiny regex scrub on the output. If any forbidden token slips through (`/\b(pro\+?|premium|subscription|upgrade|paid plan|free tier|quota)\b/i`), replace that sentence with the canned redirect line above. Log the event to `ai_request_log.fallback_used = 'tier_scrub'` so we can monitor false positives.
+### 3. "hello" triggers Explain More / Numericals / etc.
 
-### `src/components/AIDoubtSolver.tsx`
-- Remove any client-side strings that pass tier names into the prompt or pre/post-pend tier mentions.
-- The "Auto-picked: Quick Explain · change" hint stays — that's a mode name, not a tier.
+Chip row renders whenever there's any user message + the latest message is assistant. A casual "hello" still shows academic follow-up chips.
 
----
+**Fix:** Add a tiny greeting / chit-chat detector in `AIDoubtSolver.tsx` (regex on the latest user message: `^(hi|hello|hey|hii+|namaste|salaam|yo|sup|thanks|thank you|ok|okay|cool|nice|good|great|hmm)\b`, length < 25 chars, no `?`/`=`/digit). When true, hide `AIDoubtActionChips`. Also tell JEEnie via prompt: for greetings/chit-chat, reply in 1 short line, no headings/bullets/chips-bait.
 
-## 1. Action chips — `src/components/AIDoubtActionChips.tsx` (new)
+### 4. Pro user clicking locked Pro+ chip sees "Upgrade to Pro"
 
-Renders **after** the first assistant message in the thread.
+`AIDoubtActionChips.onLocked` always opens `PricingModal` with `limitType="ai_doubt_locked"`. The modal only knows Pro pricing and labels everything "Paid". A Pro user is told to "upgrade to Pro" — which they already are.
 
-```text
-[ Explain More ] [ Numericals ] [ Exam Answer ] [ PYQs 🔒 ] [ Smart Notes 🔒 ]
-```
+**Fix:**
+- Add a `requiredTier?: 'pro' | 'pro_plus'` prop to `PricingModal`. When `pro_plus`, swap the comparison table to Pro vs Pro+, fetch the Pro+ plan via `useSubscriptionPlans`, change copy ("Unlock with JEEnie Pro+", "You already have Pro — Pro+ adds PYQs, Smart Notes…"), and link CTA to `/subscription-plans` with a `?highlight=pro_plus` hash so the plans page can scroll/highlight (best-effort; harmless if unused).
+- In `AIDoubtSolver.tsx`, plumb the clicked chip's `minTier` into `onLocked` and pass it into `<PricingModal requiredTier={…} />`.
 
-- Locked chips show 🔒 and open `PricingModal` on tap — **the UI** does the upselling, not JEEnie.
-- Free → component hidden entirely (single-shot stays enforced; no chip = no follow-up).
-- Pro → Explain More / Numericals / Exam Answer unlocked. PYQs + Smart Notes locked.
-- Pro+ → all unlocked. Smart Notes saves to `study_notes` tagged `from:jeenie`.
-- Mobile: `overflow-x-auto snap-x snap-mandatory`, 44 px touch target.
-- Click → follow-up request with `{ mode, modeSource: 'manual_chip' }`.
+### Files touched
 
-## 2. `AIDoubtSolver.tsx`
-- Remove the mode dropdown.
-- Mount `<AIDoubtActionChips />` under the latest assistant turn.
-- Tiny "Auto: **Quick** · change" affordance for one-tap mode correction (logs as `manual_chip`).
+- `src/services/api/modules/ai.ts` — remove JEEnie response caching
+- `supabase/functions/_shared/jeeniePrompt.ts` — relax FORMATTING + TEACHING.quick, add greeting guidance
+- `src/components/AIDoubtSolver.tsx` — drop bullet-synthesis regexes, greeting detector hides chips, pass `requiredTier` to modal
+- `src/components/AIDoubtActionChips.tsx` — pass `minTier` through `onLocked`
+- `src/components/PricingModal.tsx` — `requiredTier` prop with Pro+ variant copy + plan lookup
 
-## 3. `src/utils/aiDoubtTelemetry.ts` (new, tiny)
-Stamps `modeSource` + measures end-to-end latency. No PII.
+No DB changes, no edge-function deployment beyond the prompt file.
 
-## 4. `supabase/functions/jeenie/index.ts`
-- Accept `modeSource` in body → log in `ai_request_log`.
-- **Hard ceiling: `maxTokens = min(computeMaxTokens(...), 1200)` for all tiers.** Stops any single doubt from burning >₹0.02. This is the margin guardrail.
-- Apply the tier-scrub from §0.
-- Keep `JEENIE_PRO_MODEL_ENABLED` default `false`.
+### Verification
 
-## 5. `src/pages/AnalyticsPage.tsx` — admin-only "JEEnie cost" panel
-Reads `ai_request_log` (gated by `has_role(uid, 'admin')`):
-- Spend last 7 / 30 days (₹)
-- Cost per tier · per mode
-- p50 / p95 latency
-- Fallback rate (Gateway → Gemini direct → OpenAI)
-- **Tier-scrub rate** — if >2% of replies trip the regex, the prompt needs tuning
-- **Margin tracker**: avg cost per active Pro user vs ₹100 effective/mo (yearly), Pro+ vs ₹167. Red badge below 60% margin.
-
-## 6. `src/services/api/types.ts`
-Add `modeSource?: 'auto' | 'manual_chip' | 'manual_dropdown'` to `JeenieRequest`.
-
----
-
-## Quick margin recap against your real pricing (₹149 Pro, ₹249 Pro+)
-
-Yearly buyers effectively pay ₹100 / ₹167 per month. Worst case (user maxes quota every day, Flash only, refactored prompt):
-
-| Tier | Doubts/mo | AI cost | Margin on yearly |
-|---|---|---|---|
-| Pro | 900 | ~₹12 | **86%** ✅ |
-| Pro+ | 3,000 | ~₹42 | **73%** ✅ |
-| Pro+ image-heavy | 3,000 | ~₹54 | **66%** ✅ |
-| Pro+ with Pro-model flag ON | 3,000 | ~₹120 | **26%** ⚠️ |
-
-Conclusion: safe at current pricing. The only loss-risk is enabling Gemini Pro routing for Pro+ deep/master — keep that flag off in prod for now, the 1200-token ceiling is the safety net.
-
----
-
-## Files touched
-
-- `supabase/functions/_shared/jeeniePrompt.ts` (tier-blind rewrite of ENTITLEMENTS + PERSONALITY)
-- `supabase/functions/jeenie/index.ts` (modeSource, 1200-token ceiling, tier-scrub)
-- `src/components/AIDoubtActionChips.tsx` (new)
-- `src/components/AIDoubtSolver.tsx` (drop dropdown, mount chips, mode-change hint)
-- `src/utils/aiDoubtTelemetry.ts` (new)
-- `src/pages/AnalyticsPage.tsx` (JEEnie cost panel, admin-only)
-- `src/services/api/types.ts` (`modeSource` field)
-
-No DB migration — `ai_request_log` already exists.
-
-## Deliberately deferred (flagged earlier, not in this PR)
-
-Annual nudge on quota wall · 24h answer cache · daily image sub-quota · Pro-model flag with per-user cap · long-output abuse alerting. We can pick these up after one week of telemetry from the new panel.
+After build I'll drive the preview with Playwright using the injected session: open the doubt solver, send the same question twice (expect loader + different timing both times), send "hello" (expect no chip row), then click the **PYQs** chip as a Pro user (expect a Pro+ modal, not a Pro one). Screenshots for each.

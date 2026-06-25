@@ -59,6 +59,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [pricingOpen, setPricingOpen] = useState(false);
+  const [pricingRequiredTier, setPricingRequiredTier] = useState<'pro' | 'pro_plus'>('pro');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -418,9 +419,21 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
           )}
 
           {/* Follow-up action chips — appear after first real assistant reply.
-              Hidden for Free tier (single-shot enforced). UI handles upsell —
-              JEEnie itself never mentions tiers or upgrades. */}
-          {!loading && !typing && messages.some((m) => m.role === 'user') && messages[messages.length - 1]?.role === 'assistant' && (
+              Hidden for Free tier (single-shot enforced) AND hidden when the
+              last student message was just a greeting/chit-chat. */}
+          {(() => {
+            const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+            const isGreeting = lastUser
+              ? (() => {
+                  const t = lastUser.content.replace(/<[^>]*>/g, '').trim().toLowerCase();
+                  if (!t || t.length > 30) return false;
+                  if (/[?=0-9]|\bsolve\b|\bderive\b|\bwhy\b|\bkyun\b|\bhow\b|\bkaise\b/.test(t)) return false;
+                  return /^(hi+|hello+|hey+|namaste|namashkar|salaam|yo|sup|thanks|thank\s*you|thx|ty|ok+|okay|cool|nice|good|great|hmm+|haan|han|haa|acha|achha|bye|gn|gm)\b/.test(t);
+                })()
+              : false;
+            const showChips = !loading && !typing && lastUser && messages[messages.length - 1]?.role === 'assistant' && !isGreeting;
+            if (!showChips) return null;
+            return (
             <div className="px-1">
               <AIDoubtActionChips
                 tier={subscriptionTier}
@@ -428,10 +441,15 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                 onChip={(chip: ChipDef) => {
                   handleSendMessage(chip.prompt, chip.mode, 'manual_chip');
                 }}
-                onLocked={() => setPricingOpen(true)}
+                onLocked={(chip: ChipDef) => {
+                  setPricingRequiredTier(chip.minTier);
+                  setPricingOpen(true);
+                }}
               />
             </div>
-          )}
+            );
+          })()}
+
 
           {error && (
             <div className="flex justify-center">
@@ -530,6 +548,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
         isOpen={pricingOpen}
         onClose={() => setPricingOpen(false)}
         limitType="ai_doubt_locked"
+        requiredTier={pricingRequiredTier}
       />
     </div>
   );
@@ -571,27 +590,10 @@ function cleanAndFormatJeenieText(text: string, isFirstResponse: boolean = false
     .replace(/HNO3/g, 'HNO₃')
     .replace(/([A-Za-z])_([A-Za-z0-9]+)/g, '$1<sub>$2</sub>');
 
-  // Pre-process: split inline section markers so paragraphs don't run together.
-  const EMOJI_RX = '[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{1F000}-\\u{1F2FF}]';
-  // "emoji **Title**: rest" or "emoji Title: rest" → newline bullet
-  formatted = formatted.replace(
-    new RegExp(`\\s*(${EMOJI_RX})\\s*\\*?\\*?([A-Z][A-Za-z0-9 '’\\-]{2,40})\\*?\\*?\\s*:\\s*`, 'gu'),
-    (_m, emoji, title) => `\n\n- ${emoji} **${title.trim()}:** `
-  );
-  // "**Title**:" mid-text → newline bullet
-  formatted = formatted.replace(
-    /(^|\n|[.!?]\s+|\s)\*\*([^*\n]{2,60})\*\*\s*:\s*/g,
-    (_m, pre, title) => {
-      const sep = pre.includes('\n') ? pre : '\n';
-      return `${sep}- **${title.trim()}:** `;
-    }
-  );
-  // Split bullet lines that contain multiple sentences into separate bullets
-  // (only when sentence ends with `. ` followed by a capital letter or emoji)
-  formatted = formatted.replace(
-    new RegExp(`^(\\s*[-*•]\\s+.+?[.!?])\\s+(?=[A-Z${EMOJI_RX.slice(1, -1)}])`, 'gmu'),
-    '$1\n- '
-  );
+  // NOTE: we intentionally do NOT synthesize bullets from "**Title**:" patterns
+  // anymore. That was shredding short prose into noisy bullet lists. The model
+  // now decides when to use bullets and we just render its markdown as-is.
+
 
   // Markdown → HTML: headings, lists, bold, italics (do this BEFORE \n→<br>)
   // Headings: ### / ## / # at line start
