@@ -106,6 +106,6 @@ describe('mathRenderer artifact fixes', () => {
   it('joins letter-spaced chemical formula tokens', () => {
     const input = 'C o e n 2 B r C l N O 3';
     const output = renderMathText(input);
-    expect(output).toContain('Coen2BrClNO3');
+    expect(output).toContain('Coen2BrClNO₃');
   });
 });
