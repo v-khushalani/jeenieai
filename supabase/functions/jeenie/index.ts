@@ -24,14 +24,41 @@ const corsHeaders = {
 };
 
 // Keep in sync with src/constants/aiLimits.ts
-const FREE_AI_DAILY_LIMIT = 3;
-const PRO_AI_DAILY_LIMIT = 30;
-const PRO_PLUS_AI_DAILY_LIMIT = 100;
+const FREE_AI_DAILY_LIMIT = 5;
+const PRO_AI_DAILY_LIMIT = 20;
+const PRO_PLUS_AI_DAILY_LIMIT = 50;
 const DAILY_LIMIT_BY_TIER: Record<string, number> = {
   free: FREE_AI_DAILY_LIMIT,
   pro: PRO_AI_DAILY_LIMIT,
   pro_plus: PRO_PLUS_AI_DAILY_LIMIT,
 };
+const MONTHLY_LIMIT_BY_TIER: Record<string, number> = {
+  free: 50,
+  pro: 400,
+  pro_plus: 1000,
+};
+const MIN_INTERVAL_SECONDS_BY_TIER: Record<string, number> = {
+  free: 20,
+  pro: 8,
+  pro_plus: 4,
+};
+const MAX_INPUT_CHARS = 800;
+// In-memory de-dupe: identical question from same user within 60s is blocked.
+const RECENT_PROMPTS = new Map<string, number>(); // key: `${userId}|${hash}` → ts
+const DEDUPE_WINDOW_MS = 60_000;
+function djb2(str: string): string {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
+  return (h >>> 0).toString(36);
+}
+function gcRecentPrompts() {
+  const now = Date.now();
+  if (RECENT_PROMPTS.size < 500) return;
+  for (const [k, v] of RECENT_PROMPTS) {
+    if (now - v > DEDUPE_WINDOW_MS) RECENT_PROMPTS.delete(k);
+  }
+}
+
 const PRO_MODEL_ENABLED = Deno.env.get("JEENIE_PRO_MODEL_ENABLED") === "true";
 
 const FUNNY_FALLBACKS = [
