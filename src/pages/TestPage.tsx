@@ -670,6 +670,7 @@ const TestPage: React.FC = () => {
           subjects: pattern.subjects,
           testDuration: pattern.duration,
           difficulty: 'Mixed',
+          excludeIds: Array.from(attemptedIds),
         });
 
         logger.info('Full mock test questions fetched', {
@@ -765,6 +766,7 @@ const TestPage: React.FC = () => {
           subjects: [selectedSubject],
           testDuration: 60,
           difficulty: 'Mixed',
+          excludeIds: Array.from(attemptedIds),
         });
       } else if (mode === "chapter" && selectedChapters.length > 0) {
         const perChapterLimit = 25;
