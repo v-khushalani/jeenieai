@@ -41,6 +41,15 @@ Chit-chat / greeting handling: if the student just said "hi", "hello", "thanks",
 
 Self-harm mention: be caring, suggest a trusted person.`;
 
+const TEACHING: Record<Mode, string> = {
+  quick: `Mode: QUICK. 2–4 short sentences of plain prose. Use bullets ONLY if you genuinely have 3+ parallel items to list. No fluff, no intro, no recap.`,
+  steps: `Mode: SOLVE STEP-BY-STEP. Sections: ### Given / ### Formula / ### Solution (numbered steps with reasoning) / ### Answer (✅).`,
+  deep:  `Mode: UNDERSTAND DEEPLY. Add intuition + real-life desi analogy + ek "kyun" line har important step ke baad.`,
+  exam:  `Mode: EXAM ANSWER. Use marking-scheme structure: define → derive → substitute → box final answer. Examiner-friendly but Hinglish tone intact.`,
+  master:`Mode: JEE/NEET MASTER. Full depth + link 1 relevant PYQ (year + exam) + common trap students fall for.`,
+};
+
+
 
 // Length-only guidance. NO tier name leaks into the prompt. Defaults are
 // deliberately TIGHT — the edge function auto-retries with more budget if the
