@@ -42,12 +42,50 @@ const TEACHING: Record<Mode, string> = {
 // Length-only guidance. NO tier name leaks into the prompt.
 const LENGTH: Record<Tier, string> = {
   free:    `Keep the reply under ~120 words. Single-shot — no follow-up assumed.`,
-  pro:     `Keep the reply under ~250 words. Use recent context if relevant.`,
-  pro_plus:`No hard length cap; prefer concise. Use recent context if relevant.`,
+  pro:     `Keep the reply under ~300 words. Use recent context if relevant.`,
+  pro_plus:`Aim for ~450 words; never cut a step mid-way. Use recent context if relevant.`,
 };
 
-export function buildSystemPrompt(tier: Tier, mode: Mode, subject?: string): string {
-  const parts = [PERSONALITY, FORMATTING, TEACHING[mode], LENGTH[tier]];
+// User length intent — derived from the student's own words.
+// When set, this OVERRIDES tier/mode defaults. Honour the student first.
+export type LengthIntent = "ultra_short" | "short" | "normal" | "long";
+
+const ULTRA_SHORT_OVERRIDE = `CRITICAL — Student ne explicitly choti reply maangi hai:
+- SKIP "Hello Puttar" greeting.
+- SKIP all headings, bullets, formatting fluff.
+- Reply MUST be 1–2 sentences max. Direct answer only. No "kyun", no examples, no analogy.
+- If MCQ: just "Answer: <X>" + optional 5-word reason. Done.`;
+
+const SHORT_OVERRIDE = `Student ne short reply maangi — keep under ~80 words, 3–4 bullets max, skip greeting on follow-ups, no extra explanation beyond what was asked.`;
+
+const LONG_OVERRIDE = `Student wants the full picture — go deep, but stay structured. Never stop mid-step; if you're running long, tighten earlier bullets rather than truncating the final answer.`;
+
+export function detectLengthIntent(question: string): LengthIntent {
+  const q = (question || "").toLowerCase().trim();
+  // Explicit ultra-short cues (English + Hinglish)
+  if (/\b(1\s*(line|liner|sentence)|one\s*(line|liner|sentence)|sirf\s+(final\s+)?answer|only\s+(the\s+)?answer|just\s+(the\s+)?answer|in\s+one\s+word|ek\s+line|short\s+mein|briefly|in\s+brief|tldr|tl;dr|directly\s+answer|bina\s+(kuch\s+)?(extra|explanation))\b/.test(q)) {
+    return "ultra_short";
+  }
+  if (/\b(short|chhota|chota|concise|crisp|quickly|jaldi|summary|summarise|summarize)\b/.test(q)) {
+    return "short";
+  }
+  if (/\b(in\s+detail|deeply|fully|everything|complete|full\s+(answer|solution|explanation)|expand|elaborate|vistar\s+se|detailed)\b/.test(q)) {
+    return "long";
+  }
+  return "normal";
+}
+
+export function buildSystemPrompt(tier: Tier, mode: Mode, subject?: string, intent: LengthIntent = "normal"): string {
+  const parts: string[] = [PERSONALITY, FORMATTING];
+
+  // When the student wants ultra-short, kill the verbose teaching layer.
+  if (intent !== "ultra_short") parts.push(TEACHING[mode]);
+  parts.push(LENGTH[tier]);
+
+  if (intent === "ultra_short") parts.push(ULTRA_SHORT_OVERRIDE);
+  else if (intent === "short") parts.push(SHORT_OVERRIDE);
+  else if (intent === "long") parts.push(LONG_OVERRIDE);
+
   if (subject) parts.push(`Current subject context: ${subject}.`);
   return parts.join("\n\n");
 }
