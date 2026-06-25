@@ -31,11 +31,10 @@ const FloatingAIButton = () => {
   const [isDragging, setIsDragging] = useState(false);
   const suppressNextClickRef = useRef(false);
   const dragStateRef = useRef<{ startX: number; startY: number; pointerOffsetX: number; pointerOffsetY: number; moved: boolean } | null>(null);
-  const { isAuthenticated, subscriptionTier } = useAuth();
+  const { isAuthenticated } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const aiEnabled = useFeatureFlag('ai_doubt_solver');
-  const isPaidUser = subscriptionTier === 'pro' || subscriptionTier === 'pro_plus';
   const liveQuestion = useCurrentJeenieQuestion();
 
   const hiddenPaths = ['/test-attempt', '/admin', '/educator', '/auth/callback', '/login', '/signup'];
