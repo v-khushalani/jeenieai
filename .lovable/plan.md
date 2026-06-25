@@ -1,48 +1,55 @@
+## Goal
+Make `/badges` page shareable + visually exciting. Currently it's a plain grid of emoji tiles with gradient backgrounds — no share, no personality, no progress drama.
 
-## Four targeted fixes in JEEnie
+## 1. Add Share for Badges
+Reuse existing `ShareCardDialog` + `generateShareCard` infrastructure (already used by Roast/Test/Streak/Wrapped).
 
-### 1. Same question = same instant answer (caching bug)
+**a. New share card type — `badge`** in `src/lib/shareCard.ts`
+- Add `BadgeShareOpts { type: 'badge'; badgeName; badgeIcon; badgeDescription; category; earnedAt?; tagline }`
+- Add `paintBadge(ctx, o)` painter: giant trophy/medallion treatment — large icon in a circular gradient medallion, badge name in display weight, category eyebrow, "Earned on {date}" or "Just unlocked" line, branded tagline ("Mere wallet mein ek aur badge 🏅 — tu kab aayega JEEnie pe?").
+- Wire `badge` case in `generateShareCard` switch.
 
-`src/services/api/modules/ai.ts` caches every `askJeenie` response by `contextPrompt` for 24 h. That's why repeats return instantly with identical text and no loader.
+**b. BadgesShowcase share UX**
+- Show a small `Share2` icon button in the top-right corner of every **earned** badge tile (both dynamic + table-based). Hidden on locked tiles.
+- Click → opens `ShareCardDialog` with `type: 'badge'` opts + referral URL (via `ReferralService.getReferralLink(user.id)`).
+- Add a top-right "Share collection" button on the page header that generates a single summary card: "{N} badges earned" + top 3 icons + tagline. (Reuse `paintWrapped` style or add a `badgeCollection` sub-mode of `paintBadge` — keep it inside one new painter for simplicity.)
 
-**Fix:** Stop caching JEEnie doubt-solver calls entirely. Conversational tutoring should never be cached — context, mode and follow-ups all vary. Remove the `cache.get`/`cache.set` block in `askJeenie` (keep caching for study-plan, TTS, insights — those are legit). Cost impact is negligible because our token budgets are already tight.
+## 2. Make Badges Catchy
 
-### 2. Bullet points on every line
+Current look = generic gradient tile + emoji + name. Replacing it with a more game-like, premium showcase.
 
-Two layers are forcing bullets:
+**a. Hero strip at top of page** (new)
+- Big "Trophy Cabinet" header with user's earned count, total available, % completion ring, and the **rarest earned badge** highlighted as a "Featured" medallion with subtle float animation.
+- Confetti burst (framer-motion + canvas-confetti or pure CSS) when a brand-new badge is detected (compare against `localStorage` last-seen set).
 
-- **Server prompt** (`supabase/functions/_shared/jeeniePrompt.ts`, `FORMATTING`) says "Use ### headings + bullets" as a hard rule, and `TEACHING.quick` says "4–8 bullets".
-- **Client formatter** (`cleanAndFormatJeenieText` in `AIDoubtSolver.tsx`) auto-splits any `**Title**:` or `emoji **Title**:` mid-sentence into a new bullet — so even prose gets shredded into bullets.
+**b. Tile redesign**
+- Replace flat gradient square with a **medallion**: circular emblem + ribbon banner under it with the badge name, soft inner shadow, metallic-style gradient ring (bronze / silver / gold / platinum depending on tier — derived from `points_required` buckets or category color).
+- Earned tiles: subtle continuous glow pulse (animate-pulse on a blurred halo), tilt-on-hover (CSS transform).
+- Locked tiles: greyscale medallion + frosted lock overlay + progress ring around the medallion (not a flat bar) showing % to unlock.
+- Rarity chip ("Common / Rare / Epic / Legendary / Mythic") on each tile, derived from points threshold or category seriousness.
 
-**Fix:**
-- Rewrite `FORMATTING` to *allow* bullets when listing 3+ items, otherwise prefer short prose. Drop the "Max 2 sentences per bullet" line. Drop the "open with Hello Puttar" rule for short/follow-up replies (greeting already handled by intent layer).
-- Change `TEACHING.quick` to "2–4 short sentences OR up to 5 bullets if it's truly a list."
-- In `cleanAndFormatJeenieText`, remove the two regex passes that synthesize bullets out of `**Title**:` patterns. Keep markdown→HTML rendering, just don't manufacture list items.
+**c. Category sections**
+- Each category gets a colored header strip with category icon, themed background tint, and a horizontal progress bar showing `earned/all` with milestone ticks instead of the plain "3/8" badge.
+- Add short, fun Hinglish flavor copy per category ("Answer Streaks — ek galat answer aur sab gaya 💀", "Day Streaks — daily showup karne walon ka club", etc.).
 
-### 3. "hello" triggers Explain More / Numericals / etc.
+**d. Empty / next-up callout**
+- If user has 0 earned in a category, show "Closest to unlocking" card at the bottom of that category with the next badge highlighted and exactly what's needed ("4 more correct in a row → Hot Streak").
 
-Chip row renders whenever there's any user message + the latest message is assistant. A casual "hello" still shows academic follow-up chips.
+**e. Micro-interactions**
+- framer-motion stagger entrance for tiles
+- Hover lift + ring glow
+- Tap on a tile (mobile) opens a small bottom-sheet with full description, earned date, share button — replaces the current hover tooltip which doesn't work on touch.
 
-**Fix:** Add a tiny greeting / chit-chat detector in `AIDoubtSolver.tsx` (regex on the latest user message: `^(hi|hello|hey|hii+|namaste|salaam|yo|sup|thanks|thank you|ok|okay|cool|nice|good|great|hmm)\b`, length < 25 chars, no `?`/`=`/digit). When true, hide `AIDoubtActionChips`. Also tell JEEnie via prompt: for greetings/chit-chat, reply in 1 short line, no headings/bullets/chips-bait.
+## Files
 
-### 4. Pro user clicking locked Pro+ chip sees "Upgrade to Pro"
+- `src/lib/shareCard.ts` — add `BadgeShareOpts`, `paintBadge`, switch case
+- `src/components/gamification/BadgesShowcase.tsx` — full visual rebuild + share buttons + bottom-sheet detail + framer-motion + featured medallion + rarity logic
+- `src/components/gamification/BadgeMedallion.tsx` *(new)* — extracted medallion tile component (earned/locked/progress variants)
+- `src/components/gamification/BadgeDetailSheet.tsx` *(new)* — shadcn `Sheet` for tap-to-view + share
+- `src/pages/BadgesPage.tsx` — minor: wrap in framer-motion page transition, add page-level "Share collection" CTA
 
-`AIDoubtActionChips.onLocked` always opens `PricingModal` with `limitType="ai_doubt_locked"`. The modal only knows Pro pricing and labels everything "Paid". A Pro user is told to "upgrade to Pro" — which they already are.
+No DB changes. No backend changes.
 
-**Fix:**
-- Add a `requiredTier?: 'pro' | 'pro_plus'` prop to `PricingModal`. When `pro_plus`, swap the comparison table to Pro vs Pro+, fetch the Pro+ plan via `useSubscriptionPlans`, change copy ("Unlock with JEEnie Pro+", "You already have Pro — Pro+ adds PYQs, Smart Notes…"), and link CTA to `/subscription-plans` with a `?highlight=pro_plus` hash so the plans page can scroll/highlight (best-effort; harmless if unused).
-- In `AIDoubtSolver.tsx`, plumb the clicked chip's `minTier` into `onLocked` and pass it into `<PricingModal requiredTier={…} />`.
-
-### Files touched
-
-- `src/services/api/modules/ai.ts` — remove JEEnie response caching
-- `supabase/functions/_shared/jeeniePrompt.ts` — relax FORMATTING + TEACHING.quick, add greeting guidance
-- `src/components/AIDoubtSolver.tsx` — drop bullet-synthesis regexes, greeting detector hides chips, pass `requiredTier` to modal
-- `src/components/AIDoubtActionChips.tsx` — pass `minTier` through `onLocked`
-- `src/components/PricingModal.tsx` — `requiredTier` prop with Pro+ variant copy + plan lookup
-
-No DB changes, no edge-function deployment beyond the prompt file.
-
-### Verification
-
-After build I'll drive the preview with Playwright using the injected session: open the doubt solver, send the same question twice (expect loader + different timing both times), send "hello" (expect no chip row), then click the **PYQs** chip as a Pro user (expect a Pro+ modal, not a Pro one). Screenshots for each.
+## Out of scope
+- New badge definitions / new earn rules (purely a UI + share polish pass)
+- Changing how badges are awarded
