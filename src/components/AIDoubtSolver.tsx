@@ -59,6 +59,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [pricingOpen, setPricingOpen] = useState(false);
+  const [pricingRequiredTier, setPricingRequiredTier] = useState<'pro' | 'pro_plus'>('pro');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
