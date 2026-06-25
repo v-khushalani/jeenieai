@@ -418,20 +418,24 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             </div>
           )}
 
-          {/* Follow-up action chips — appear after first real assistant reply.
-              Hidden for Free tier (single-shot enforced) AND hidden when the
-              last student message was just a greeting/chit-chat. */}
+          {/* Follow-up action chips — appear ONLY after the student has asked a
+              real doubt (question mark, digits, math, or doubt-keyword). Greetings,
+              one-word acknowledgements, and chit-chat do NOT trigger chips. */}
           {(() => {
             const lastUser = [...messages].reverse().find((m) => m.role === 'user');
-            const isGreeting = lastUser
+            const isRealDoubt = lastUser
               ? (() => {
                   const t = lastUser.content.replace(/<[^>]*>/g, '').trim().toLowerCase();
-                  if (!t || t.length > 30) return false;
-                  if (/[?=0-9]|\bsolve\b|\bderive\b|\bwhy\b|\bkyun\b|\bhow\b|\bkaise\b/.test(t)) return false;
-                  return /^(hi+|hello+|hey+|namaste|namashkar|salaam|yo|sup|thanks|thank\s*you|thx|ty|ok+|okay|cool|nice|good|great|hmm+|haan|han|haa|acha|achha|bye|gn|gm)\b/.test(t);
+                  if (!t || t.length < 6) return false;
+                  // Strong signals it's an actual question/problem.
+                  if (/[?=]/.test(t)) return true;
+                  if (/\d/.test(t) && t.length > 8) return true;
+                  if (/\b(solve|derive|prove|explain|find|calculate|compute|why|how|what|define|kya|kyun|kyu|kaise|samjha|samjhao|batao|bataye|doubt|question|formula|concept|theorem|reaction|equation|numerical|problem)\b/.test(t)) return true;
+                  // Long-ish free text — treat as a doubt.
+                  return t.length >= 25;
                 })()
               : false;
-            const showChips = !loading && !typing && lastUser && messages[messages.length - 1]?.role === 'assistant' && !isGreeting;
+            const showChips = !loading && !typing && lastUser && messages[messages.length - 1]?.role === 'assistant' && isRealDoubt;
             if (!showChips) return null;
             return (
             <div className="px-1">
@@ -565,7 +569,24 @@ function cleanAndFormatJeenieText(text: string, isFirstResponse: boolean = false
   }
   
   formatted = replaceGreekLetters(formatted);
-  
+
+  // ---- Strip raw LaTeX artifacts that escape KaTeX (text outside $...$). ----
+  // \textbf{X} → **X**, \text{X} → X, \mathrm{X} → X
+  formatted = formatted
+    .replace(/\\textbf\{([^}]*)\}/g, '**$1**')
+    .replace(/\\(?:text|mathrm|mathbf|mathit|mathsf|operatorname)\{([^}]*)\}/g, '$1')
+    // \circ outside math → °  (handles "20\circ", "20^\circ", "20°\circ")
+    .replace(/\^?\\circ/g, '°')
+    // \times, \cdot, \div, \pm outside math
+    .replace(/\\times/g, '×')
+    .replace(/\\cdot/g, '·')
+    .replace(/\\div/g, '÷')
+    .replace(/\\pm/g, '±')
+    // Orphan single `$` followed by a number with stray backslash like "$60^\"
+    .replace(/\$([^$\n]{0,40})\\\s*$/gm, '$1')
+    // Collapse leftover lone backslashes at line ends
+    .replace(/\\\s*$/gm, '');
+
   formatted = formatted
     .replace(/->/g, '→')
     .replace(/<-/g, '←')
@@ -591,13 +612,14 @@ function cleanAndFormatJeenieText(text: string, isFirstResponse: boolean = false
     .replace(/([A-Za-z])_([A-Za-z0-9]+)/g, '$1<sub>$2</sub>');
 
   // NOTE: we intentionally do NOT synthesize bullets from "**Title**:" patterns
-  // anymore. That was shredding short prose into noisy bullet lists. The model
-  // now decides when to use bullets and we just render its markdown as-is.
+  // anymore. That was shredding short prose into noisy bullet lists.
 
-
-  // Markdown → HTML: headings, lists, bold, italics (do this BEFORE \n→<br>)
-  // Headings: ### / ## / # at line start
+  // Markdown → HTML headings. Convert numbered sub-headings ("#### 5. Title")
+  // into a clean "Step 5: Title" so students don't see literal '####'.
   formatted = formatted
+    .replace(/^####\s*(\d+)\.\s*(.+)$/gm, '<h4 class="font-bold text-primary mt-3 mb-1 text-sm">Step $1: $2</h4>')
+    .replace(/^####\s+(.+)$/gm, '<h4 class="font-bold text-primary mt-3 mb-1 text-sm">$1</h4>')
+    .replace(/^###\s*(\d+)\.\s*(.+)$/gm, '<h4 class="font-bold text-primary mt-3 mb-1 text-sm">Step $1: $2</h4>')
     .replace(/^###\s+(.+)$/gm, '<h4 class="font-bold text-primary mt-3 mb-1 text-sm">$1</h4>')
     .replace(/^##\s+(.+)$/gm, '<h3 class="font-extrabold text-primary mt-3 mb-1 text-base">$1</h3>')
     .replace(/^#\s+(.+)$/gm, '<h3 class="font-extrabold text-primary mt-3 mb-1 text-base">$1</h3>');

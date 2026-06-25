@@ -74,8 +74,8 @@ interface Props {
 }
 
 export const AIDoubtActionChips: React.FC<Props> = ({ tier, onChip, onLocked, disabled }) => {
-  if (tier === 'free') return null;
-
+  // Show chips for every tier — free users see Pro & Pro+ locks, Pro users see
+  // Pro+ locks. Clicking a locked chip opens the matching upsell modal.
   const isUnlocked = (chip: ChipDef) =>
     chip.minTier === 'pro' ? tier === 'pro' || tier === 'pro_plus' : tier === 'pro_plus';
 
