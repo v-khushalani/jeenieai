@@ -19,7 +19,7 @@ interface DynamicBadge {
   category: string;
   description: string;
   threshold: number; // for progress + rarity
-  metric: 'answer_streak' | 'day_streak';
+  metric: 'answer_streak' | 'day_streak' | 'milestone';
 }
 
 const DYNAMIC_BADGE_META: Record<string, DynamicBadge> = {
@@ -35,9 +35,37 @@ const DYNAMIC_BADGE_META: Record<string, DynamicBadge> = {
   '15-Day Champion':    { name: '15-Day Champion',    icon: '🏆', category: 'Day Streaks',    description: '15 consecutive days of practice',  threshold: 15,  metric: 'day_streak' },
   'Monthly Master':     { name: 'Monthly Master',     icon: '📅', category: 'Day Streaks',    description: '30 consecutive days of practice',  threshold: 30,  metric: 'day_streak' },
   'Quarter Master':     { name: 'Quarter Master',     icon: '🎯', category: 'Day Streaks',    description: '90 consecutive days of practice',  threshold: 90,  metric: 'day_streak' },
+  'Centurion':          { name: 'Centurion',          icon: '🛡️', category: 'Day Streaks',    description: '100-day streak — elite club',      threshold: 100, metric: 'day_streak' },
   'Half Year Legend':   { name: 'Half Year Legend',   icon: '⭐', category: 'Day Streaks',    description: '180 consecutive days of practice', threshold: 180, metric: 'day_streak' },
   'YEARLY CHAMPION':    { name: 'YEARLY CHAMPION',    icon: '💎', category: 'Day Streaks',    description: '365 consecutive days of practice', threshold: 365, metric: 'day_streak' },
+
+  // Skill milestones
+  'Comeback Kid':       { name: 'Comeback Kid',       icon: '🦅', category: 'Skill',          description: '80%+ test after a sub-40% one — phoenix mode', threshold: 1,   metric: 'milestone' },
+  'Speed Demon':        { name: 'Speed Demon',        icon: '⚡', category: 'Skill',          description: '10 correct answers in under 60s total',         threshold: 10,  metric: 'milestone' },
+  'Marathoner':         { name: 'Marathoner',         icon: '🏃', category: 'Skill',          description: '100 questions solved in a single day',          threshold: 100, metric: 'milestone' },
+  'Iron Brain':         { name: 'Iron Brain',         icon: '🧱', category: 'Skill',          description: '5 consecutive Hard questions correct',          threshold: 5,   metric: 'milestone' },
+  'Bug-Free Day':       { name: 'Bug-Free Day',       icon: '💯', category: 'Skill',          description: '100% score on any chapter test',                threshold: 1,   metric: 'milestone' },
+  'Perfectionist':      { name: 'Perfectionist',      icon: '🏵️', category: 'Skill',          description: '1000 questions solved at ≥ 90% accuracy',       threshold: 1000, metric: 'milestone' },
+
+  // Consistency
+  'Morning Person':     { name: 'Morning Person',     icon: '🌅', category: 'Consistency',    description: '7 sessions started before 8 AM',                threshold: 7,   metric: 'milestone' },
+  'Night Owl':          { name: 'Night Owl',          icon: '🦉', category: 'Consistency',    description: '7 sessions after 11 PM',                        threshold: 7,   metric: 'milestone' },
+  'Weekend Warrior':    { name: 'Weekend Warrior',    icon: '🗓️', category: 'Consistency',    description: 'Practice both Sat + Sun for 4 weeks',           threshold: 4,   metric: 'milestone' },
+
+  // Subject mastery
+  'Newton ka Beta':     { name: 'Newton ka Beta',     icon: '🍎', category: 'Subject Mastery',description: '95% accuracy on 50 Mechanics questions',        threshold: 50,  metric: 'milestone' },
+  'Mole Master':        { name: 'Mole Master',        icon: '⚗️', category: 'Subject Mastery',description: '95% accuracy on 50 Mole Concept questions',     threshold: 50,  metric: 'milestone' },
+  'Integration Ninja':  { name: 'Integration Ninja',  icon: '🥷', category: 'Subject Mastery',description: 'Solve 30 Hard Calculus questions',              threshold: 30,  metric: 'milestone' },
+
+  // Social / engagement
+  'Influencer':         { name: 'Influencer',         icon: '📣', category: 'Engagement',     description: 'Share 5 result or badge cards',                  threshold: 5,   metric: 'milestone' },
+  'Doubt Slayer':       { name: 'Doubt Slayer',       icon: '🗡️', category: 'Engagement',     description: 'Use JEEnie AI 20 times in a week',               threshold: 20,  metric: 'milestone' },
+  'Roast Survivor':     { name: 'Roast Survivor',     icon: '🔥', category: 'Engagement',     description: 'Get roasted 5 times — aur wapas aaya',           threshold: 5,   metric: 'milestone' },
+
+  // Mythic / rare
+  'Topper Mode':        { name: 'Topper Mode',        icon: '🥇', category: 'Mythic',         description: 'Rank #1 on weekly leaderboard',                  threshold: 1,   metric: 'milestone' },
 };
+
 
 const CATEGORY_FLAVOR: Record<string, string> = {
   'Answer Streaks': 'Ek galat answer aur sab gaya 💀',
