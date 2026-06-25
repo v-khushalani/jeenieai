@@ -14,6 +14,7 @@ import {
 import { logger } from '@/utils/logger';
 import { cn } from '@/lib/utils';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
+import { JeenieCostPanel } from '@/components/admin/JeenieCostPanel';
 
 type TimeRange = '7d' | '14d' | '30d';
 
