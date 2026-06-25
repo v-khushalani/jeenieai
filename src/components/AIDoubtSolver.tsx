@@ -18,6 +18,10 @@ import DOMPurify from "dompurify";
 import { logger } from "@/utils/logger";
 import { replaceGreekLetters } from "@/constants/unified";
 import { renderLatex, containsLatex } from "@/utils/mathRenderer";
+import { useAuth } from "@/contexts/AuthContext";
+import AIDoubtActionChips, { type ChipDef } from "@/components/AIDoubtActionChips";
+import PricingModal from "@/components/PricingModal";
+import type { JeenieMode, JeenieModeSource } from "@/services/api/types";
 
 import 'katex/dist/katex.min.css';
 
@@ -44,6 +48,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { subscriptionTier } = useAuth();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,6 +58,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [pricingOpen, setPricingOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
