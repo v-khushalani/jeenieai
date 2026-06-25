@@ -122,9 +122,9 @@ const FloatingAIButton = () => {
   };
 
   // Hide the floating AI button on paths where it's not applicable,
-  // when the AI feature flag is off, when user isn't authenticated,
-  // or when user is not on a paid plan (pro / pro+).
-  if (shouldHide || !aiEnabled || !isAuthenticated || !isPaidUser) return null;
+  // when the AI feature flag is off, or when the user isn't authenticated.
+  // Free users get a small daily quota (enforced server-side).
+  if (shouldHide || !aiEnabled || !isAuthenticated) return null;
 
   const handleOpenAI = () => {
     if (!isAuthenticated) {
