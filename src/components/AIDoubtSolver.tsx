@@ -419,9 +419,21 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
           )}
 
           {/* Follow-up action chips — appear after first real assistant reply.
-              Hidden for Free tier (single-shot enforced). UI handles upsell —
-              JEEnie itself never mentions tiers or upgrades. */}
-          {!loading && !typing && messages.some((m) => m.role === 'user') && messages[messages.length - 1]?.role === 'assistant' && (
+              Hidden for Free tier (single-shot enforced) AND hidden when the
+              last student message was just a greeting/chit-chat. */}
+          {(() => {
+            const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+            const isGreeting = lastUser
+              ? (() => {
+                  const t = lastUser.content.replace(/<[^>]*>/g, '').trim().toLowerCase();
+                  if (!t || t.length > 30) return false;
+                  if (/[?=0-9]|\bsolve\b|\bderive\b|\bwhy\b|\bkyun\b|\bhow\b|\bkaise\b/.test(t)) return false;
+                  return /^(hi+|hello+|hey+|namaste|namashkar|salaam|yo|sup|thanks|thank\s*you|thx|ty|ok+|okay|cool|nice|good|great|hmm+|haan|han|haa|acha|achha|bye|gn|gm)\b/.test(t);
+                })()
+              : false;
+            const showChips = !loading && !typing && lastUser && messages[messages.length - 1]?.role === 'assistant' && !isGreeting;
+            if (!showChips) return null;
+            return (
             <div className="px-1">
               <AIDoubtActionChips
                 tier={subscriptionTier}
@@ -429,10 +441,15 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                 onChip={(chip: ChipDef) => {
                   handleSendMessage(chip.prompt, chip.mode, 'manual_chip');
                 }}
-                onLocked={() => setPricingOpen(true)}
+                onLocked={(chip: ChipDef) => {
+                  setPricingRequiredTier(chip.minTier);
+                  setPricingOpen(true);
+                }}
               />
             </div>
-          )}
+            );
+          })()}
+
 
           {error && (
             <div className="flex justify-center">
