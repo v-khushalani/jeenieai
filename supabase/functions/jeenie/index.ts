@@ -163,17 +163,25 @@ serve(async (req) => {
     const userTier: Tier = resolveTier(profile);
     const isPremium = userTier !== "free";
 
-    if (!isPremium) {
+    {
+      const dailyLimit = DAILY_LIMIT_BY_TIER[userTier] ?? FREE_AI_DAILY_LIMIT;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const { data: todayQueries } = await supabase.from("points_log").select("id").eq("user_id", user.id).eq("action_type", "ai_query").gte("created_at", today.toISOString());
+      const { data: todayQueries } = await supabase
+        .from("points_log")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("action_type", "ai_query")
+        .gte("created_at", today.toISOString());
       const queriesUsed = todayQueries?.length || 0;
-      if (queriesUsed >= FREE_AI_DAILY_LIMIT) {
+      if (queriesUsed >= dailyLimit) {
+        const msg = userTier === "pro_plus"
+          ? `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} doubts khatam ho gaye! 😅 Kal fresh ho ke wapas aa — JEEnie ready rahega! 💪`
+          : userTier === "pro"
+          ? `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} doubts khatam ho gaye! 😅 Kal naye doubts milenge — ya Pro+ pe jaake aur badha le! 🚀`
+          : `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} free doubts khatam! 😅\n\n💎 **Pro le le** — 30 doubts/day, ya **Pro+** — 100 doubts/day!\n\n⏰ Free doubts kal milenge.`;
         return new Response(
-          JSON.stringify({
-            response: `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${FREE_AI_DAILY_LIMIT} free queries khatam ho gaye! 😅\n\n💎 **Premium le lo** — unlimited AI help, voice features, aur bahut kuch!\n\n⏰ Naye free queries kal milenge.`,
-            suggestions: [], content: "",
-          }),
+          JSON.stringify({ response: msg, suggestions: [], content: "" }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
