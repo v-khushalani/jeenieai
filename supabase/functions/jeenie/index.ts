@@ -311,7 +311,7 @@ serve(async (req) => {
     const latencyMs = Date.now() - startedAt;
     const estimatedCostInr = provider === "humor-fallback" ? 0 : estimateCostInr(modelUsed, inputTokens, outputTokens);
 
-    console.log(`[JEENIE] 📊 ${provider} | tier=${userTier} mode=${resolvedMode}(${modeSource}) model=${modelUsed} in=${inputTokens} out=${outputTokens} cost=₹${estimatedCostInr} ${latencyMs}ms${fallbackUsed ? ` fallback=${fallbackUsed}` : ""}`);
+    console.log(`[JEENIE] 📊 ${provider} | tier=${userTier} mode=${resolvedMode}(${modeSource}) intent=${lengthIntent} model=${modelUsed} in=${inputTokens} out=${outputTokens} cost=₹${estimatedCostInr} ${latencyMs}ms${fallbackUsed ? ` fallback=${fallbackUsed}` : ""}`);
 
     // Quota counter (unchanged).
     supabase.from("points_log").insert({
