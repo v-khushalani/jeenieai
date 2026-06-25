@@ -65,9 +65,9 @@ export const CONVERSION_MESSAGES = {
   },
   aiQuotaExceeded: {
     title: '⚡ AI Doubt Quota Reached',
-    message: 'You hit today\'s AI doubt limit. Comes back tomorrow or upgrade to Pro+.',
-    cta: 'Upgrade to Pro+',
-    subtitle: 'Pro+ gets 100 doubts/day',
+    message: 'Aaj ke doubts khatam ho gaye. Kal naye doubts milenge ya plan upgrade kar le.',
+    cta: 'See Plans',
+    subtitle: 'Free: 3/day • Pro: 30/day • Pro+: 100/day',
   },
   studyPlannerBlocked: {
     title: '📅 AI Study Planner — Pro Feature',
