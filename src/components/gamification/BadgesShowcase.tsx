@@ -187,11 +187,10 @@ const BadgesShowcase = () => {
       const { data: { user: u } } = await supabase.auth.getUser();
       if (!u) return;
 
-      const [profileRes, allBadgesRes, userBadgesRes, statsRes] = await Promise.all([
-        supabase.from('profiles').select('total_points, badges').eq('id', u.id).single(),
+      const [profileRes, allBadgesRes, userBadgesRes] = await Promise.all([
+        supabase.from('profiles').select('total_points, badges, current_streak').eq('id', u.id).single(),
         supabase.from('badges').select('*').order('points_required', { ascending: true }),
         supabase.from('user_badges').select('badge_id, earned_at').eq('user_id', u.id),
-        supabase.from('user_stats').select('best_answer_streak, best_day_streak, current_answer_streak, current_streak').eq('user_id', u.id).maybeSingle(),
       ]);
 
       const userPoints = profileRes.data?.total_points || 0;
@@ -199,10 +198,8 @@ const BadgesShowcase = () => {
         ? (profileRes.data!.badges as unknown[]).filter((b): b is string => typeof b === 'string')
         : [];
 
-      const bestAnswerStreak = (statsRes.data as { best_answer_streak?: number; current_answer_streak?: number } | null)?.best_answer_streak
-        ?? (statsRes.data as { current_answer_streak?: number } | null)?.current_answer_streak ?? 0;
-      const bestDayStreak = (statsRes.data as { best_day_streak?: number; current_streak?: number } | null)?.best_day_streak
-        ?? (statsRes.data as { current_streak?: number } | null)?.current_streak ?? 0;
+      const bestAnswerStreak = 0; // not tracked separately; rely on earned flag
+      const bestDayStreak = profileRes.data?.current_streak || 0;
 
       const earnedAtMap = new Map<string, string>();
       (userBadgesRes.data || []).forEach(ub => earnedAtMap.set(ub.badge_id, ub.earned_at || ''));
