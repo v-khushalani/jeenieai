@@ -105,23 +105,32 @@ export function detectMode(question: string, hasImage: boolean): Mode {
   return "quick";
 }
 
-// Adaptive output length: base cap (tier) × complexity factor (question).
-// Hard ceiling of 1200 tokens applies in the edge function — see jeenie/index.ts.
-export function computeMaxTokens(tier: Tier, question: string, hasImage: boolean): number {
-  const base = tier === "free" ? 400 : tier === "pro" ? 700 : 1200;
+// Adaptive output length: base cap (tier) × complexity factor (question) ×
+// user length-intent multiplier. Hard ceiling applies in the edge function.
+export function computeMaxTokens(
+  tier: Tier,
+  question: string,
+  hasImage: boolean,
+  intent: LengthIntent = "normal",
+): number {
+  // User intent ALWAYS wins. Ultra-short means ultra-short — no exceptions.
+  if (intent === "ultra_short") return 120;
+  if (intent === "short") return 280;
+
+  const base = tier === "free" ? 400 : tier === "pro" ? 900 : 1400;
   const q = (question || "").trim();
   const words = q.split(/\s+/).length;
 
   const isShortFact = words < 15 && !/[=∫Σ]/.test(q) && !/\d.*[+\-*/].*\d/.test(q);
   const isNumeric = /[=∫Σ√]/.test(q) || /\b(derive|prove|solve|calculate)\b/i.test(q);
-  const isMultiPart = /\b(everything|all|complete|entire chapter|full)\b/i.test(q);
+  const isMultiPart = /\b(everything|all|complete|entire chapter|full)\b/i.test(q) || intent === "long";
 
   let factor = 0.6;
-  if (isShortFact && !hasImage) factor = 0.3;
+  if (isShortFact && !hasImage) factor = 0.35;
   if (isNumeric || hasImage) factor = 1.0;
-  if (isMultiPart) factor = 1.0;
+  if (isMultiPart) factor = 1.15;
 
-  return Math.max(150, Math.round(base * factor));
+  return Math.max(180, Math.round(base * factor));
 }
 
 // Rough INR cost estimator. Flash: $0.075/M in, $0.30/M out. Pro: $1.25/M, $5/M. USD→INR ≈ 84.
