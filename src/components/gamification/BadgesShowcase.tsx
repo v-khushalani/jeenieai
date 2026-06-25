@@ -242,8 +242,13 @@ const BadgesShowcase = () => {
 
       const dyn: UnifiedBadge[] = Object.values(DYNAMIC_BADGE_META).map(d => {
         const earned = earnedDynamic.includes(d.name);
-        const current = d.metric === 'answer_streak' ? bestAnswerStreak : bestDayStreak;
+        const current = d.metric === 'answer_streak'
+          ? bestAnswerStreak
+          : d.metric === 'day_streak'
+          ? bestDayStreak
+          : 0; // milestone — backend awards it; no live progress bar
         const pct = Math.min(100, Math.round((current / d.threshold) * 100));
+
         return {
           key: `dyn:${d.name}`,
           name: d.name,
