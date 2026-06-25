@@ -58,12 +58,30 @@ const PricingModal: React.FC<PricingModalProps> = ({
     }
   };
 
-  const message = limitMessages[limitType] || limitMessages.daily_limit;
-  
-  const { data: plans } = useSubscriptionPlans();
+  const isProPlusUpsell = requiredTier === 'pro_plus';
+  const message = isProPlusUpsell
+    ? {
+        badge: '👑 PRO+ FEATURE',
+        title: 'Unlock with JEEnie Pro+',
+        subtitle: 'You already have Pro — Pro+ adds PYQs, Smart Notes & deep AI.',
+      }
+    : (limitMessages[limitType] || limitMessages.daily_limit);
 
-  const monthlyPlan = plans?.find((p) => p.duration_days < 365 && p.tier === 'pro');
-  const yearlyPlan = plans?.find((p) => p.duration_days >= 365 && p.tier === 'pro');
+  const { data: plans } = useSubscriptionPlans();
+  const targetTier = isProPlusUpsell ? 'pro_plus' : 'pro';
+
+  const monthlyPlan = plans?.find((p) => p.duration_days < 365 && p.tier === targetTier);
+  const yearlyPlan = plans?.find((p) => p.duration_days >= 365 && p.tier === targetTier);
+
+  const defaultPricing = isProPlusUpsell
+    ? {
+        monthly: { price: 249, originalPrice: 349, perDay: '₹8.3' },
+        yearly: { price: 1999, originalPrice: 2988, perDay: '₹5.48', savings: 989 },
+      }
+    : {
+        monthly: { price: 99, originalPrice: 149, perDay: '₹3.3' },
+        yearly: { price: 499, originalPrice: 1188, perDay: '₹1.37', savings: 689 },
+      };
 
   const pricing = {
     monthly: monthlyPlan
@@ -72,7 +90,7 @@ const PricingModal: React.FC<PricingModalProps> = ({
           originalPrice: monthlyPlan.mrp_price ?? monthlyPlan.price,
           perDay: `₹${Math.round(monthlyPlan.price / 30)}`,
         }
-      : { price: 99, originalPrice: 149, perDay: '₹3.3' },
+      : defaultPricing.monthly,
     yearly: yearlyPlan
       ? {
           price: yearlyPlan.price,
@@ -80,16 +98,24 @@ const PricingModal: React.FC<PricingModalProps> = ({
           perDay: `₹${Math.round(yearlyPlan.price / 365)}`,
           savings: (yearlyPlan.mrp_price ?? yearlyPlan.price) - yearlyPlan.price,
         }
-      : { price: 499, originalPrice: 1188, perDay: '₹1.37', savings: 689 },
+      : defaultPricing.yearly,
   };
 
-  const comparison = [
-    { feature: 'Questions/Day', free: FREE_LIMITS.questionsPerDay.toString(), pro: '∞' },
-    { feature: 'Mock Tests', free: `${FREE_LIMITS.testsPerMonth}/mo`, pro: '∞' },
-    { feature: 'JEEnie AI', free: false, pro: true },
-    { feature: 'Study Planner', free: false, pro: true },
-    { feature: 'Analytics', free: false, pro: true },
-  ];
+  const comparison = isProPlusUpsell
+    ? [
+        { feature: 'JEEnie AI doubts', free: '✓', pro: '✓ + PYQs & Smart Notes' },
+        { feature: 'Previous-Year Qs', free: false, pro: true },
+        { feature: 'Smart Notes (save AI replies)', free: false, pro: true },
+        { feature: 'Deep / Master mode', free: 'Limited', pro: '✓' },
+        { feature: 'Educator PPTs & sims', free: false, pro: true },
+      ]
+    : [
+        { feature: 'Questions/Day', free: FREE_LIMITS.questionsPerDay.toString(), pro: '∞' },
+        { feature: 'Mock Tests', free: `${FREE_LIMITS.testsPerMonth}/mo`, pro: '∞' },
+        { feature: 'JEEnie AI', free: false, pro: true },
+        { feature: 'Study Planner', free: false, pro: true },
+        { feature: 'Analytics', free: false, pro: true },
+      ];
 
   useEffect(() => {
     if (isOpen) {
@@ -104,8 +130,9 @@ const PricingModal: React.FC<PricingModalProps> = ({
 
   const handleUpgrade = () => {
     onClose();
-    navigate('/subscription-plans');
+    navigate(isProPlusUpsell ? '/subscription-plans?highlight=pro_plus' : '/subscription-plans');
   };
+
 
   if (!isOpen) return null;
 
