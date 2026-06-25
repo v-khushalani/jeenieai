@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   buildSystemPrompt,
   detectMode,
+  detectLengthIntent,
   computeMaxTokens,
   estimateCostInr,
   resolveTier,
@@ -12,9 +13,10 @@ import {
   type Tier,
 } from "../_shared/jeeniePrompt.ts";
 
-// Hard per-request output ceiling. Protects margin even on Pro+ "explain
-// everything" prompts. Applies to all tiers regardless of adaptive sizing.
-const MAX_OUTPUT_TOKENS_CEILING = 1200;
+// Hard per-request output ceiling. Raised to 1500 so chip-driven Pro+ "deep"
+// and "master" answers don't get cut mid-step. Still gated by computeMaxTokens
+// (which honours user length-intent first).
+const MAX_OUTPUT_TOKENS_CEILING = 1500;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
