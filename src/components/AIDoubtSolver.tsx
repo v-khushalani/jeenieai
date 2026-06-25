@@ -473,7 +473,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                 <button
                   key={qa.label}
                   type="button"
-                  onClick={() => handleQuickAction(qa.prompt)}
+                  onClick={() => handleQuickAction(qa)}
                   disabled={loading}
                   className="flex-1 min-w-[30%] text-[11px] sm:text-xs font-medium px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent text-foreground hover:text-accent-foreground transition-all disabled:opacity-50"
                 >
