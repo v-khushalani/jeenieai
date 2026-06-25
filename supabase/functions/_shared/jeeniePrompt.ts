@@ -164,7 +164,11 @@ export function resolveTier(profile: {
 // Server-side safety net: if JEEnie ever leaks a tier/plan/upgrade word, scrub the
 // offending sentence and replace with a neutral redirect. Returns the cleaned text
 // plus a `tripped` flag so the caller can log it to ai_request_log.
-const FORBIDDEN_RX = /\b(pro\s*plus|pro\+|pro plan|premium|subscription|subscribe|upgrade|upgraded|paid plan|free tier|free plan|trial|quota|credits?|pricing|paywall|locked behind)\b/i;
+// Server-side safety net: if JEEnie clearly leaks a tier/billing line, scrub it.
+// Use MULTI-WORD phrases only — single benign words like "trial" (trial-and-error),
+// "credit" (extra credit), "subscribe" can occur in legit study content and must
+// NOT trip. We only catch clear app/billing context.
+const FORBIDDEN_RX = /\b(pro\s*\+?\s*plan|pro\s*plus|pro\+\s*tier|premium\s*plan|paid\s*plan|free\s*(tier|plan)|your\s*subscription|upgrade\s*(to|now|your|kar)|pricing\s*page|paywall|locked\s*behind|subscribe\s*to|trial\s*period)\b/i;
 
 const REDIRECT_LINE = "Bhai, woh sab app ke andar mil jayega — main toh sirf padhai mein help karne ke liye hoon. Ab bata kya doubt hai? 💪";
 
