@@ -1874,6 +1874,33 @@ export type Database = {
           },
         ]
       }
+      study_plan_progress: {
+        Row: {
+          completed_at: string
+          id: string
+          plan_date: string
+          task_hash: string
+          task_label: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          plan_date: string
+          task_hash: string
+          task_label?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          plan_date?: string
+          task_hash?: string
+          task_label?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       study_plans: {
         Row: {
           created_at: string | null
