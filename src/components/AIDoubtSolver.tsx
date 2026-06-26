@@ -300,6 +300,12 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
         content: formatted,
         upgradeTo: aiResult.quotaExhausted ? (aiResult.upgradeTo ?? null) : undefined,
       }]);
+      // Quota exhausted → auto-open the upgrade dialog so user doesn't dead-end.
+      if (aiResult.quotaExhausted && aiResult.upgradeTo) {
+        setPricingRequiredTier(subscriptionTier === 'free' ? 'pro' : (aiResult.upgradeTo as 'pro' | 'pro_plus'));
+        setPricingOpen(true);
+      }
+
     } catch (error: any) {
       logger.error("Error in handleSendMessage:", error);
       const errorMessage = error instanceof Error
