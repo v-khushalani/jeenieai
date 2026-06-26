@@ -29,6 +29,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   imageUrl?: string;
+  upgradeTo?: 'pro' | 'pro_plus' | null;
 }
 
 interface AIDoubtSolverProps {
@@ -179,7 +180,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     base64Image: string | undefined,
     mode: JeenieMode,
     modeSource: JeenieModeSource,
-  ): Promise<string> => {
+  ): Promise<{ text: string; quotaExhausted?: boolean; upgradeTo?: 'pro' | 'pro_plus' | null }> => {
     try {
       logger.info("Calling JEEnie via API layer...");
 
@@ -217,7 +218,11 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
         throw new Error("JEEnie ko kuch samajh nahi aaya! 😅 Thoda aur detail mein pooch!");
       }
 
-      return data.response.trim();
+      return {
+        text: data.response.trim(),
+        quotaExhausted: !!data.quota_exhausted,
+        upgradeTo: data.upgrade_to ?? null,
+      };
 
     } catch (error) {
       logger.error("Error calling JEEnie Edge Function:", error);
@@ -225,6 +230,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       throw new Error("Internet connection check karo! 🌐 JEEnie se baat nahi ho pa rahi.");
     }
   };
+
 
 
   const handleSendMessage = async (
@@ -283,13 +289,17 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       setTyping(true);
       const mode: JeenieMode = explicitMode ?? 'auto';
       const modeSource: JeenieModeSource = explicitModeSource ?? (explicitMode ? 'manual_chip' : 'auto');
-      const aiResponse = await callEdgeFunction(prompt, history, currentImage || undefined, mode, modeSource);
+      const aiResult = await callEdgeFunction(prompt, history, currentImage || undefined, mode, modeSource);
       // Note: do NOT run sanitizeRoast here — it strips "Hello Puttar!", markdown
       // and salutations which JEEnie's doubt-solver answers rely on for tone.
       const isFirstResponse = messages.filter((m) => m.role === 'user').length === 0;
-      const formatted = cleanAndFormatJeenieText(aiResponse, isFirstResponse);
+      const formatted = cleanAndFormatJeenieText(aiResult.text, isFirstResponse);
       playSound("receive");
-      setMessages((prev) => [...prev, { role: "assistant", content: formatted }]);
+      setMessages((prev) => [...prev, {
+        role: "assistant",
+        content: formatted,
+        upgradeTo: aiResult.quotaExhausted ? (aiResult.upgradeTo ?? null) : undefined,
+      }]);
     } catch (error: any) {
       logger.error("Error in handleSendMessage:", error);
       const errorMessage = error instanceof Error
@@ -399,6 +409,20 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                     __html: DOMPurify.sanitize(msg.content),
                   }}
                 />
+                {msg.role === "assistant" && msg.upgradeTo && (
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                    <Button
+                      size="sm"
+                      className="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold shadow-md"
+                      onClick={() => {
+                        setPricingRequiredTier(msg.upgradeTo as 'pro' | 'pro_plus');
+                        setPricingOpen(true);
+                      }}
+                    >
+                      🚀 Upgrade to {msg.upgradeTo === 'pro_plus' ? 'Pro+' : 'Pro'}
+                    </Button>
+                  </div>
+                )}
               </div>
               {msg.role === "user" && (
                 <div className="bg-secondary p-1.5 sm:p-2 rounded-full ml-1.5 sm:ml-2 shrink-0">
