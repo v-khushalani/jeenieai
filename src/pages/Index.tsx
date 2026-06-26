@@ -24,7 +24,7 @@ const Index = () => {
   }, [isAuthenticated, navigate]);
 
   return (
-    <div className="mobile-app-shell flex flex-col bg-background">
+    <div className="mobile-app-shell-header-only flex flex-col bg-background">
       <SEOHead
         title={undefined}
         description="Crack JEE Main, JEE Advanced & NEET with AI-personalized study plans, 50,000+ questions, smart analytics & gamified learning. Start free today!"
