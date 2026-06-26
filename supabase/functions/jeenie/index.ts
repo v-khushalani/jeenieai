@@ -234,10 +234,10 @@ serve(async (req) => {
 
       if (queriesUsed >= dailyLimit) {
         const msg = userTier === "pro_plus"
-          ? `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} doubts khatam ho gaye! 😅 Kal fresh ho ke wapas aa — JEEnie ready rahega! 💪`
+          ? `**Hello Puttar!** 🧞‍♂️\n\nAaj ke doubts khatam ho gaye! 😅 Kal fresh ho ke wapas aa — JEEnie ready rahega! 💪`
           : userTier === "pro"
-          ? `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} doubts khatam ho gaye! 😅 Kal naye doubts milenge — ya **Pro+** pe upgrade kar ke aur badha le! 🚀`
-          : `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} free doubts khatam! 😅\n\nUpgrade kar le — **Pro** (20/day) ya **Pro+** (50/day) — abhi se unlimited learning! 🚀\n\n⏰ Free doubts kal reset honge.`;
+          ? `**Hello Puttar!** 🧞‍♂️\n\nAaj ke doubts khatam! 😅 **Pro+** pe upgrade kar — aur badi limit milegi. 🚀`
+          : `**Hello Puttar!** 🧞‍♂️\n\nAaj ke free doubts khatam! 😅\n\n**Pro** ya **Pro+** pe upgrade kar — unlimited learning! 🚀`;
         return new Response(
           JSON.stringify({
             response: msg, suggestions: [], content: "",
@@ -252,10 +252,10 @@ serve(async (req) => {
 
       if (monthlyUsed >= monthlyLimit) {
         const msg = userTier === "free"
-          ? `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka free quota (${monthlyLimit}) khatam! 😅\n\nUpgrade kar le — **Pro** (400/month) ya **Pro+** (1000/month). 🚀\n\n📅 Free quota next month reset hoga.`
+          ? `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka free quota khatam! 😅\n\n**Pro** ya **Pro+** pe upgrade kar. 🚀`
           : userTier === "pro"
-          ? `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka quota (${monthlyLimit}) khatam! 😅\n\n**Pro+** pe upgrade kar — 1000/month milte hain. 🚀\n\n📅 Next month reset hoga.`
-          : `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka quota (${monthlyLimit}) khatam ho gaya! 😅\n\n📅 Next month reset hoga.`;
+          ? `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka quota khatam! 😅\n\n**Pro+** pe upgrade kar. 🚀`
+          : `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka quota khatam ho gaya! 😅\n\n📅 Next month reset hoga.`;
         return new Response(
           JSON.stringify({
             response: msg, suggestions: [], content: "",
@@ -267,6 +267,7 @@ serve(async (req) => {
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
 
     }
 

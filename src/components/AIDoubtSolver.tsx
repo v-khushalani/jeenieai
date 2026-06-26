@@ -300,6 +300,12 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
         content: formatted,
         upgradeTo: aiResult.quotaExhausted ? (aiResult.upgradeTo ?? null) : undefined,
       }]);
+      // Quota exhausted → auto-open the upgrade dialog so user doesn't dead-end.
+      if (aiResult.quotaExhausted && aiResult.upgradeTo) {
+        setPricingRequiredTier(subscriptionTier === 'free' ? 'pro' : (aiResult.upgradeTo as 'pro' | 'pro_plus'));
+        setPricingOpen(true);
+      }
+
     } catch (error: any) {
       logger.error("Error in handleSendMessage:", error);
       const errorMessage = error instanceof Error
@@ -359,12 +365,11 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                     <Clock size={10} className="inline mr-1" />
                     Queue position: {queuePosition}
                   </span>
-                ) : (
-                  "Photo • Type • Solve"
-                )}
+                ) : null}
               </p>
             </div>
           </div>
+
           <button
             onClick={onClose}
             className="text-[#013062]/70 hover:text-[#013062] hover:bg-white p-1.5 sm:p-2 rounded-lg transition-all"
@@ -442,24 +447,12 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             </div>
           )}
 
-          {/* Follow-up action chips — appear ONLY after the student has asked a
-              real doubt (question mark, digits, math, or doubt-keyword). Greetings,
-              one-word acknowledgements, and chit-chat do NOT trigger chips. */}
+          {/* Follow-up action chips — appear after any user message + assistant reply.
+              Free users see locked chips that open the upgrade modal; Pro users see
+              Pro+-locked chips. Keeps the conversation alive instead of dead-ending. */}
           {(() => {
             const lastUser = [...messages].reverse().find((m) => m.role === 'user');
-            const isRealDoubt = lastUser
-              ? (() => {
-                  const t = lastUser.content.replace(/<[^>]*>/g, '').trim().toLowerCase();
-                  if (!t || t.length < 6) return false;
-                  // Strong signals it's an actual question/problem.
-                  if (/[?=]/.test(t)) return true;
-                  if (/\d/.test(t) && t.length > 8) return true;
-                  if (/\b(solve|derive|prove|explain|find|calculate|compute|why|how|what|define|kya|kyun|kyu|kaise|samjha|samjhao|batao|bataye|doubt|question|formula|concept|theorem|reaction|equation|numerical|problem)\b/.test(t)) return true;
-                  // Long-ish free text — treat as a doubt.
-                  return t.length >= 25;
-                })()
-              : false;
-            const showChips = !loading && !typing && lastUser && messages[messages.length - 1]?.role === 'assistant' && isRealDoubt;
+            const showChips = !loading && !typing && lastUser && messages[messages.length - 1]?.role === 'assistant';
             if (!showChips) return null;
             return (
             <div className="px-1">
@@ -470,13 +463,16 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                   handleSendMessage(chip.prompt, chip.mode, 'manual_chip');
                 }}
                 onLocked={(chip: ChipDef) => {
-                  setPricingRequiredTier(chip.minTier);
+                  // Free users: always show full pricing (both Pro & Pro+). Pro users
+                  // hitting a Pro+ chip see the Pro+ upsell.
+                  setPricingRequiredTier(subscriptionTier === 'free' ? 'pro' : chip.minTier);
                   setPricingOpen(true);
                 }}
               />
             </div>
             );
           })()}
+
 
 
           {error && (
@@ -566,9 +562,6 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
               )}
             </Button>
           </div>
-          <p className="text-center text-[10px] sm:text-[11px] text-muted-foreground">
-            📸 Photo-to-Doubt • 💎 Powered by <strong>JEEnie AI</strong>
-          </p>
         </div>
       </div>
 
