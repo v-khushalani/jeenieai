@@ -289,13 +289,17 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       setTyping(true);
       const mode: JeenieMode = explicitMode ?? 'auto';
       const modeSource: JeenieModeSource = explicitModeSource ?? (explicitMode ? 'manual_chip' : 'auto');
-      const aiResponse = await callEdgeFunction(prompt, history, currentImage || undefined, mode, modeSource);
+      const aiResult = await callEdgeFunction(prompt, history, currentImage || undefined, mode, modeSource);
       // Note: do NOT run sanitizeRoast here — it strips "Hello Puttar!", markdown
       // and salutations which JEEnie's doubt-solver answers rely on for tone.
       const isFirstResponse = messages.filter((m) => m.role === 'user').length === 0;
-      const formatted = cleanAndFormatJeenieText(aiResponse, isFirstResponse);
+      const formatted = cleanAndFormatJeenieText(aiResult.text, isFirstResponse);
       playSound("receive");
-      setMessages((prev) => [...prev, { role: "assistant", content: formatted }]);
+      setMessages((prev) => [...prev, {
+        role: "assistant",
+        content: formatted,
+        upgradeTo: aiResult.quotaExhausted ? (aiResult.upgradeTo ?? null) : undefined,
+      }]);
     } catch (error: any) {
       logger.error("Error in handleSendMessage:", error);
       const errorMessage = error instanceof Error
