@@ -8,9 +8,12 @@ import {
   estimateCostInr,
   resolveTier,
   scrubTierMentions,
+  buildRoastPrompt,
+  pickRoastPersona,
   type Mode,
   type ModeSource,
   type Tier,
+  type RoastPersona,
 } from "../_shared/jeeniePrompt.ts";
 
 // Hard per-request output ceiling. Auto-retry path can grow up to this on
