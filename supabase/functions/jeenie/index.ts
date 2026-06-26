@@ -184,6 +184,70 @@ serve(async (req) => {
       );
     }
 
+    // ── Peek body once so we can branch (roast mode bypasses quota/dedupe/char-cap)
+    const body = await req.json().catch(() => ({}));
+
+    // ── ROAST MODE: server-built prompt, no input cap, no dedupe, high temp.
+    if (body?.mode === "roast") {
+      const topic = String(body?.topic || "").slice(0, 120) || "this chapter";
+      const accuracy = Number(body?.accuracy ?? 0);
+      const excludeRoasts: string[] = Array.isArray(body?.excludeRoasts)
+        ? body.excludeRoasts.slice(0, 3).map((s: unknown) => String(s).slice(0, 250))
+        : [];
+      const persona: RoastPersona = (body?.persona as RoastPersona) || pickRoastPersona();
+
+      const roastPrompt = buildRoastPrompt({ topic, accuracy, persona, excludeRoasts });
+      const messages = [
+        { role: "system", content: roastPrompt },
+        { role: "user", content: `Roast me on "${topic}" (${Math.round(accuracy)}%). One line. Go.` },
+      ];
+
+      const apiKey = Deno.env.get("LOVABLE_API_KEY");
+      let roastText: string | null = null;
+      if (apiKey) {
+        try {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 15000);
+          const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash",
+              messages,
+              temperature: 1.1,
+              top_p: 0.95,
+              presence_penalty: 0.7,
+              frequency_penalty: 0.5,
+              max_tokens: 120,
+            }),
+            signal: ctrl.signal,
+          });
+          clearTimeout(timer);
+          if (res.ok) {
+            const data = await res.json();
+            roastText = data.choices?.[0]?.message?.content || null;
+          } else {
+            console.error(`[JEENIE:roast] gateway ${res.status}`);
+          }
+        } catch (e) {
+          console.error("[JEENIE:roast] error", e);
+        }
+      }
+
+      const latency = Date.now() - startedAt;
+      console.log(`[JEENIE:roast] persona=${persona} acc=${accuracy} topic="${topic}" ok=${!!roastText} ${latency}ms`);
+
+      return new Response(
+        JSON.stringify({
+          response: roastText || "",
+          content: roastText || "",
+          suggestions: [],
+          persona,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("is_premium, subscription_end_date, subscription_tier, subscription_status")
