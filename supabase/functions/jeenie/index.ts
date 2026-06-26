@@ -223,8 +223,12 @@ serve(async (req) => {
           JSON.stringify({
             response: `**Hello Puttar!** 🧞‍♂️\n\nThoda saans le yaar — JEEnie type kar raha hai abhi! ⏳\n\n**${wait} second ruk** aur dobara bhej.`,
             suggestions: [], content: "",
+            quota_exhausted: true,
+            limit_type: "interval",
+            tier: userTier,
+            upgrade_to: null,
           }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -232,23 +236,38 @@ serve(async (req) => {
         const msg = userTier === "pro_plus"
           ? `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} doubts khatam ho gaye! 😅 Kal fresh ho ke wapas aa — JEEnie ready rahega! 💪`
           : userTier === "pro"
-          ? `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} doubts khatam ho gaye! 😅 Kal naye doubts milenge — ya Pro+ pe jaake aur badha le! 🚀`
-          : `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} free doubts khatam! 😅\n\n💎 **Pro** — 20/day, ya **Pro+** — 50/day!\n\n⏰ Free doubts kal milenge.`;
+          ? `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} doubts khatam ho gaye! 😅 Kal naye doubts milenge — ya **Pro+** pe upgrade kar ke aur badha le! 🚀`
+          : `**Hello Puttar!** 🧞‍♂️\n\nAaj ke ${dailyLimit} free doubts khatam! 😅\n\nUpgrade kar le — **Pro** (20/day) ya **Pro+** (50/day) — abhi se unlimited learning! 🚀\n\n⏰ Free doubts kal reset honge.`;
         return new Response(
-          JSON.stringify({ response: msg, suggestions: [], content: "" }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({
+            response: msg, suggestions: [], content: "",
+            quota_exhausted: true,
+            limit_type: "daily",
+            tier: userTier,
+            upgrade_to: userTier === "free" ? "pro" : userTier === "pro" ? "pro_plus" : null,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       if (monthlyUsed >= monthlyLimit) {
         const msg = userTier === "free"
-          ? `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka free quota (${monthlyLimit}) khatam! 😅\n\n💎 **Pro le le** — 400/month, ya **Pro+** — 1000/month.\n\n📅 Free quota next month reset hoga.`
-          : `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka quota (${monthlyLimit}) khatam ho gaya! 😅\n\n📅 Next month reset hoga — ya plan upgrade kar le.`;
+          ? `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka free quota (${monthlyLimit}) khatam! 😅\n\nUpgrade kar le — **Pro** (400/month) ya **Pro+** (1000/month). 🚀\n\n📅 Free quota next month reset hoga.`
+          : userTier === "pro"
+          ? `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka quota (${monthlyLimit}) khatam! 😅\n\n**Pro+** pe upgrade kar — 1000/month milte hain. 🚀\n\n📅 Next month reset hoga.`
+          : `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka quota (${monthlyLimit}) khatam ho gaya! 😅\n\n📅 Next month reset hoga.`;
         return new Response(
-          JSON.stringify({ response: msg, suggestions: [], content: "" }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({
+            response: msg, suggestions: [], content: "",
+            quota_exhausted: true,
+            limit_type: "monthly",
+            tier: userTier,
+            upgrade_to: userTier === "free" ? "pro" : userTier === "pro" ? "pro_plus" : null,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
     }
 
 
