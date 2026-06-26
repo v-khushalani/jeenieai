@@ -1,5 +1,6 @@
 // src/components/RoastMemeCard.tsx
 // AI-generated roast for the user's weakest topic, shareable as an image.
+// Tiny client payload — server owns the prompt, persona roulette, and few-shot.
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,25 +19,77 @@ interface Props {
   weakestAccuracy: number;
 }
 
-const FALLBACK_ROASTS: Record<string, string[]> = {
-  default: [
-    "{topic} aur {acc}%? Ye subject nahi, abhi tak to casual rivalry chal rahi hai.",
-    "{topic} ne clearly sign kar diya: 'please do not disturb' — {acc}% pe hi lock ho gaya.",
-    "{acc}% in {topic}. JEEnie ne bola: progress hai, par confidence abhi attendance mark kar raha hai.",
-    "{topic} ko dekhke lagta hai tu padh raha hai, subject ko nahi.",
-  ],
-};
+// Wide fallback bank — 5 personas × buckets. Used when the AI call fails
+// or the user is offline. {topic}/{acc} get interpolated.
+const FALLBACK_BANK: { bucket: 'BRUTAL' | 'HEAVY' | 'MEDIUM' | 'LIGHT' | 'CHEEKY'; line: string }[] = [
+  // BRUTAL (<20)
+  { bucket: 'BRUTAL', line: "{topic} ne tujhe block kar diya — {acc}% pe seen bhi nahi kar raha 💀" },
+  { bucket: 'BRUTAL', line: "Tera {topic} ka score itna kam hai ki periodic table ne bhi tujhe noble gas declare kar diya — reactive zero." },
+  { bucket: 'BRUTAL', line: "{topic} aur tu — Newton ne dekha toh bola 'mere laws is par apply nahi karte'." },
+  { bucket: 'BRUTAL', line: "{acc}% in {topic}? Bhai ye marks nahi, ek silent cry for help hai 🥲" },
+  // HEAVY (20-39)
+  { bucket: 'HEAVY', line: "{topic} mein {acc}% — Pushpa hota toh ab tak jhuk gaya hota." },
+  { bucket: 'HEAVY', line: "{topic} samjhne ki koshish kar raha tu, par concept ne already left-swipe kar diya." },
+  { bucket: 'HEAVY', line: "Rasode mein kaun tha? {topic} ka concept — kyunki tere notes mein toh nahi hai." },
+  { bucket: 'HEAVY', line: "Tera {topic} ka prep aur Mumbai local — dono late, dono crowded, dono confusing." },
+  // MEDIUM (40-59)
+  { bucket: 'MEDIUM', line: "{topic} ke saath teri ekdum situationship — solve karta hai, commit nahi karta. {acc}% ka rishta." },
+  { bucket: 'MEDIUM', line: "{acc}% in {topic} — mid-tier hero energy. Sequel mein lead role chahiye toh aur mehnat kar." },
+  { bucket: 'MEDIUM', line: "{topic} half-clear hai, jaise YouTube tutorial 2x speed pe — chal raha hai par samajh nahi aaya." },
+  // LIGHT (60-79)
+  { bucket: 'LIGHT', line: "{acc}% in {topic} — bas ek concept aur mil jaye, tu Sharma ji ke bete ko ratio de dega." },
+  { bucket: 'LIGHT', line: "{topic} mein lagbhag-set hai, bas ek careless mistake aur tu padosi ka beta ban jayega 😎" },
+  { bucket: 'LIGHT', line: "Optics tu nahi, sirf glasses lagana baaki hai — {topic} ka picture clear ho raha hai." },
+  // CHEEKY (80+)
+  { bucket: 'CHEEKY', line: "{topic} mein {acc}%? Examiner ko shak hai paper leak hua hai — ek galti karke human prove kar 👀" },
+  { bucket: 'CHEEKY', line: "{topic} pe tu itna confident hai ki Newton bhi ab tujhse doubt clear karta hai." },
+  { bucket: 'CHEEKY', line: "{acc}% in {topic} — flex band kar, baaki students ko bhi saans lene de bro." },
+];
 
-function pickFallback(topic: string, acc: number) {
-  const arr = FALLBACK_ROASTS.default;
-  const tpl = arr[Math.floor(Math.random() * arr.length)];
-  return tpl.replace('{topic}', topic).replace('{acc}', String(acc));
+function bucketFor(acc: number): 'BRUTAL' | 'HEAVY' | 'MEDIUM' | 'LIGHT' | 'CHEEKY' {
+  if (acc < 20) return 'BRUTAL';
+  if (acc < 40) return 'HEAVY';
+  if (acc < 60) return 'MEDIUM';
+  if (acc < 80) return 'LIGHT';
+  return 'CHEEKY';
 }
+
+function pickFallback(topic: string, acc: number, exclude: string[]) {
+  const b = bucketFor(acc);
+  const pool = FALLBACK_BANK.filter(f => f.bucket === b);
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  for (const f of shuffled) {
+    const line = f.line.replace(/{topic}/g, topic).replace(/{acc}/g, String(Math.round(acc)));
+    if (!exclude.includes(line)) return line;
+  }
+  return shuffled[0]?.line.replace(/{topic}/g, topic).replace(/{acc}/g, String(Math.round(acc))) || '';
+}
+
+const RECENT_KEY = (uid: string) => `jeenie:roast:recent:${uid}`;
+function loadRecent(uid: string): string[] {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY(uid)) || '[]'); } catch { return []; }
+}
+function pushRecent(uid: string, line: string) {
+  try {
+    const cur = loadRecent(uid);
+    const next = [line, ...cur.filter(l => l !== line)].slice(0, 3);
+    localStorage.setItem(RECENT_KEY(uid), JSON.stringify(next));
+  } catch { /* ignore */ }
+}
+
+const PERSONA_LABEL: Record<string, string> = {
+  bada_bhai: '🧞‍♂️ bada bhai mode',
+  brainrot: '💀 brainrot mode',
+  desi_aunty: '👵 desi aunty mode',
+  sarcastic_prof: '🤓 sarcastic prof mode',
+  meme_lord: '🎭 meme lord mode',
+};
 
 export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
   const { user } = useAuth();
   const shareCardEnabled = useFeatureFlag('share_card');
   const [roast, setRoast] = useState<string | null>(null);
+  const [persona, setPersona] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareOpts, setShareOpts] = useState<RoastOpts | null>(null);
@@ -47,44 +100,36 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
       return;
     }
     setLoading(true);
+    const exclude = user ? loadRecent(user.id) : [];
     try {
-      // Accuracy-bucket tone — roast intensity scales with how badly the student is doing.
-      const acc = Math.max(0, Math.min(100, Math.round(weakestAccuracy)));
-      let bucket = '';
-      if (acc < 20) bucket = 'BRUTAL bucket (<20%): full savage, "ye topic tujhe dekhke bhaag jaata hai" vibe, RIP-level burns.';
-      else if (acc < 40) bucket = 'HEAVY bucket (20-39%): clearly struggling, roast hard but with a tiny hope spark at the end.';
-      else if (acc < 60) bucket = 'MEDIUM bucket (40-59%): mid-table mediocrity roast — "situationship with the topic" energy.';
-      else if (acc < 80) bucket = 'LIGHT bucket (60-79%): playful jab — "ek aur dhakka aur ye topic tera ho jaayega" vibe.';
-      else bucket = 'CHEEKY bucket (80%+): light flex-roast — "showoff ban gaya, but ek do galti abhi bhi karta hai" energy.';
-
-      const prompt = `Tu JEEnie hai — ek Indian JEE student ko uske WEAKEST topic pe roast kar raha hai. Ek single-line Hinglish roast de — savage, unhinged, meme-tier, crazy punchline energy, layered wordplay, fast rhythm, aur Bollywood/cricket/desi-internet/meme references jahan fit ho.
-
-CONTEXT (sirf roast banane ke liye, label/heading mat banana):
-- Weakest topic/chapter: "${weakestTopic}"
-- Accuracy: ${acc}%
-- Tone bucket: ${bucket}
-
-HARD RULES:
-1. Roast MUST be specific to "${weakestTopic}" — uska actual concept/keyword/cliché use kar (jaise Thermodynamics → entropy/heat, Rotational Motion → torque/inertia, Organic Chem → reactions/mechanism, Calculus → integration/limits, Electrostatics → charge/field, etc.). Generic mat likhna.
-2. Accuracy ${acc}% ko bhi naturally roast mein ghusao — number ka mazaak uda ya usse implication nikal (without saying "accuracy is"). Bucket ki intensity match honi chahiye.
-3. DO NOT start with the topic name. DO NOT prefix with "Topic:", "${weakestTopic}:", labels, intros, greetings, "Hello", "Puttar", "Bhai", "Yo", "Are", ya koi salutation.
-4. No markdown, no quotes, no bullets, no asterisks, no emojis at the very start, no newlines.
-5. Plain Hinglish prose, max 240 chars, single line, punchline at the end.
-
-Sirf roast sentence return kar — aur kuch nahi.`;
       const { data, error } = await supabase.functions.invoke('jeenie', {
-        body: { contextPrompt: prompt, subject: 'roast' },
+        body: {
+          mode: 'roast',
+          topic: weakestTopic,
+          accuracy: Math.round(weakestAccuracy),
+          excludeRoasts: exclude,
+        },
       });
-      let text = data?.response || data?.content || '';
+      let text = (data?.response || data?.content || '').toString();
       text = sanitizeRoast(text, 240);
-      // Strip leading "Topic:" / "<topic>:" / "<topic> —" patterns that some models prepend
+      // Strip leading "Topic:" / "<topic>:" / "<topic> —" patterns
       const topicEsc = weakestTopic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       text = text.replace(new RegExp(`^\\s*(?:topic\\s*:?\\s*)?${topicEsc}\\s*[:\\-—–|]+\\s*`, 'i'), '').trim();
       text = text.replace(/^\s*topic\s*:\s*/i, '').trim();
-      if (error || !text) text = pickFallback(weakestTopic, acc);
+
+      if (error || !text || exclude.includes(text)) {
+        text = pickFallback(weakestTopic, weakestAccuracy, exclude);
+        setPersona(null);
+      } else {
+        setPersona(data?.persona || null);
+      }
       setRoast(text);
+      if (user && text) pushRecent(user.id, text);
     } catch {
-      setRoast(pickFallback(weakestTopic, weakestAccuracy));
+      const text = pickFallback(weakestTopic, weakestAccuracy, exclude);
+      setRoast(text);
+      setPersona(null);
+      if (user && text) pushRecent(user.id, text);
     } finally {
       setLoading(false);
     }
@@ -109,10 +154,15 @@ Sirf roast sentence return kar — aur kuch nahi.`;
           <div className="p-2 bg-[#013062] rounded-lg shrink-0">
             <Flame className="h-4 w-4 text-white" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-[#013062]">JEEnie Roast 💀</h3>
             <p className="text-[11px] text-[#013062]/70">Tera weakest topic — sharp, shareable aur thoda sa savage.</p>
           </div>
+          {persona && PERSONA_LABEL[persona] && (
+            <span className="text-[9px] font-medium text-[#013062]/70 bg-white/70 border border-[#013062]/15 rounded-full px-2 py-0.5 shrink-0">
+              {PERSONA_LABEL[persona]}
+            </span>
+          )}
         </div>
 
         {roast ? (
