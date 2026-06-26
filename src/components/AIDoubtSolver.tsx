@@ -565,9 +565,6 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
               )}
             </Button>
           </div>
-          <p className="text-center text-[10px] sm:text-[11px] text-muted-foreground">
-            📸 Photo-to-Doubt • 💎 Powered by <strong>JEEnie AI</strong>
-          </p>
         </div>
       </div>
 
