@@ -195,6 +195,9 @@ export interface JeenieResponse {
   resolvedMode?: Exclude<JeenieMode, 'auto'>;
   modeSource?: JeenieModeSource;
   tier?: 'free' | 'pro' | 'pro_plus';
+  quota_exhausted?: boolean;
+  limit_type?: 'daily' | 'monthly' | 'interval';
+  upgrade_to?: 'pro' | 'pro_plus' | null;
 }
 
 
