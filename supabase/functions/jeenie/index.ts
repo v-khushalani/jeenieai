@@ -339,7 +339,6 @@ serve(async (req) => {
     }
 
 
-    const body = await req.json();
     const {
       contextPrompt,
       subject,
