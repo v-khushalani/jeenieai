@@ -180,7 +180,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     base64Image: string | undefined,
     mode: JeenieMode,
     modeSource: JeenieModeSource,
-  ): Promise<string> => {
+  ): Promise<{ text: string; quotaExhausted?: boolean; upgradeTo?: 'pro' | 'pro_plus' | null }> => {
     try {
       logger.info("Calling JEEnie via API layer...");
 
@@ -218,7 +218,11 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
         throw new Error("JEEnie ko kuch samajh nahi aaya! 😅 Thoda aur detail mein pooch!");
       }
 
-      return data.response.trim();
+      return {
+        text: data.response.trim(),
+        quotaExhausted: !!data.quota_exhausted,
+        upgradeTo: data.upgrade_to ?? null,
+      };
 
     } catch (error) {
       logger.error("Error calling JEEnie Edge Function:", error);
@@ -226,6 +230,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       throw new Error("Internet connection check karo! 🌐 JEEnie se baat nahi ho pa rahi.");
     }
   };
+
 
 
   const handleSendMessage = async (
