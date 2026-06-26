@@ -29,6 +29,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   imageUrl?: string;
+  upgradeTo?: 'pro' | 'pro_plus' | null;
 }
 
 interface AIDoubtSolverProps {
