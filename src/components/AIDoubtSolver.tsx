@@ -359,12 +359,11 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                     <Clock size={10} className="inline mr-1" />
                     Queue position: {queuePosition}
                   </span>
-                ) : (
-                  "Photo • Type • Solve"
-                )}
+                ) : null}
               </p>
             </div>
           </div>
+
           <button
             onClick={onClose}
             className="text-[#013062]/70 hover:text-[#013062] hover:bg-white p-1.5 sm:p-2 rounded-lg transition-all"
