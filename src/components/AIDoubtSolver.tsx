@@ -409,6 +409,20 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                     __html: DOMPurify.sanitize(msg.content),
                   }}
                 />
+                {msg.role === "assistant" && msg.upgradeTo && (
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                    <Button
+                      size="sm"
+                      className="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold shadow-md"
+                      onClick={() => {
+                        setPricingRequiredTier(msg.upgradeTo as 'pro' | 'pro_plus');
+                        setPricingOpen(true);
+                      }}
+                    >
+                      🚀 Upgrade to {msg.upgradeTo === 'pro_plus' ? 'Pro+' : 'Pro'}
+                    </Button>
+                  </div>
+                )}
               </div>
               {msg.role === "user" && (
                 <div className="bg-secondary p-1.5 sm:p-2 rounded-full ml-1.5 sm:ml-2 shrink-0">
