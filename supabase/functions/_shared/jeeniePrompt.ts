@@ -203,3 +203,148 @@ export function scrubTierMentions(text: string): { text: string; tripped: boolea
   const cleaned = (kept.join(" ").trim() || "") + (kept.length < sentences.length ? `\n\n${REDIRECT_LINE}` : "");
   return { text: cleaned.trim(), tripped: true };
 }
+
+// ============================================================================
+// ROAST MODE — single-line savage Hinglish roasts for the user's weakest topic
+// ============================================================================
+
+export type RoastPersona = "bada_bhai" | "brainrot" | "desi_aunty" | "sarcastic_prof" | "meme_lord";
+
+export const ROAST_PERSONAS: RoastPersona[] = [
+  "bada_bhai", "brainrot", "desi_aunty", "sarcastic_prof", "meme_lord",
+];
+
+export function pickRoastPersona(): RoastPersona {
+  return ROAST_PERSONAS[Math.floor(Math.random() * ROAST_PERSONAS.length)];
+}
+
+// Topic → concept keyword hooks. The model is told to weave at least one in,
+// so roasts feel SPECIFIC to the chapter, not generic "you're bad at physics".
+const TOPIC_HOOKS: Record<string, string[]> = {
+  thermodynamics: ["entropy", "heat death", "Carnot", "ΔS > 0", "isothermal"],
+  "kinetic theory": ["rms velocity", "mean free path", "Boltzmann", "degrees of freedom"],
+  rotational: ["torque", "moment of inertia", "angular momentum", "ω²"],
+  "rotational motion": ["torque", "moment of inertia", "angular momentum"],
+  electrostatics: ["Gauss law", "flux", "field lines", "Coulomb"],
+  "current electricity": ["Kirchhoff", "EMF", "internal resistance", "Wheatstone"],
+  magnetism: ["right-hand rule", "Lorentz", "B field"],
+  optics: ["Snell", "mirror formula", "magnification", "TIR"],
+  "wave optics": ["fringe width", "Young's slits", "coherence"],
+  modern: ["photoelectric", "de Broglie", "work function", "Bohr radius"],
+  organic: ["SN1", "SN2", "Markovnikov", "carbocation", "resonance"],
+  inorganic: ["periodic trends", "coordination", "hybridization", "ligand"],
+  "physical chem": ["mole fraction", "Kp/Kc", "Nernst", "rate law"],
+  equilibrium: ["Kc", "Le Chatelier", "Q vs K"],
+  thermochemistry: ["enthalpy", "Hess law", "bond energy"],
+  calculus: ["limits", "L'Hôpital", "integration by parts", "dy/dx"],
+  "differential calculus": ["derivative", "tangent", "L'Hôpital"],
+  "integral calculus": ["substitution", "by parts", "definite integral"],
+  algebra: ["roots", "discriminant", "AM-GM"],
+  trigonometry: ["identity", "sin²+cos²", "compound angle"],
+  vectors: ["dot product", "cross product", "i j k"],
+  "3d geometry": ["direction cosines", "shortest distance", "plane equation"],
+  probability: ["Bayes", "conditional", "sample space"],
+  mechanics: ["free body diagram", "pseudo force", "Newton 2nd law"],
+  "kinematics": ["v=u+at", "displacement", "projectile"],
+  gravitation: ["Kepler", "escape velocity", "g vs G"],
+  "simple harmonic": ["SHM", "amplitude", "ω = √(k/m)"],
+  waves: ["beats", "Doppler", "standing wave"],
+};
+
+function hooksFor(topic: string): string[] {
+  const t = (topic || "").toLowerCase();
+  for (const key of Object.keys(TOPIC_HOOKS)) {
+    if (t.includes(key)) return TOPIC_HOOKS[key];
+  }
+  // Fallback — generic JEE-flavoured words tied loosely to the topic name.
+  return [`${topic} concept`, `${topic} formula`, `${topic} problem`];
+}
+
+type Bucket = "BRUTAL" | "HEAVY" | "MEDIUM" | "LIGHT" | "CHEEKY";
+
+function bucketFor(acc: number): Bucket {
+  if (acc < 20) return "BRUTAL";
+  if (acc < 40) return "HEAVY";
+  if (acc < 60) return "MEDIUM";
+  if (acc < 80) return "LIGHT";
+  return "CHEEKY";
+}
+
+// Few-shot examples per bucket — these are what made the old version land.
+// Generic enough that the model adapts them to the actual topic.
+const FEWSHOT: Record<Bucket, string[]> = {
+  BRUTAL: [
+    "Tera entropy infinite hai, knowledge zero — thermodynamics ne tujhe dekh ke heat death declare kar diya 💀",
+    "SN1 mechanism tujhe dekh ke khud SN2 ban gaya — bhaag liya bhai, ruka bhi nahi.",
+  ],
+  HEAVY: [
+    "Torque samajhne mein itna time laga ki Earth ne 2 rotation poori kar li — angular momentum tera bhi conserved nahi.",
+    "Limits padh raha hai par tera score ka limit x→0 se aage badh hi nahi raha 🥲",
+  ],
+  MEDIUM: [
+    "Tera relationship with Calculus ekdum situationship hai — integrate karta hai, definite nahi hota.",
+    "Equilibrium samjhe baith ke — Le Chatelier ne bola 'isko disturb karo, tabhi padhega'.",
+  ],
+  LIGHT: [
+    "Optics mein 60% — mirror formula clear hai, par image abhi virtual hi ban rahi hai. Ek dhakka aur. 🪞",
+    "Bas thoda sa flux aur dena hai — Gauss tera fan ban jayega.",
+  ],
+  CHEEKY: [
+    "Itna accurate ki examiner ko shak hai tu paper leak karke aaya hai 👀 — ek galti karke human prove kar de.",
+    "SHM mein amplitude full, frequency steady — bas thoda showoff kam kar, JEE tera ho gaya samajh.",
+  ],
+};
+
+const PERSONA_STYLE: Record<RoastPersona, string> = {
+  bada_bhai:
+    "Persona: BADA BHAI. Older-brother savage tease. Bollywood/cricket references allowed (Dhoni helicopter, Pushpa jhukega nahi, Gabbar, kitne aadmi the). Tough love — burn first, faint hope at the end.",
+  brainrot:
+    "Persona: GEN-Z BRAINROT. Maximum chaos. Allowed: 'it's giving DNF', 'ratio + L', 'skibidi physics', 'bro thought…', 'no cap', 'fr fr', '💀', 'NPC behaviour', 'topic said: not today'. Punchy, short, unhinged. Mix Hinglish + Gen-Z slang.",
+  desi_aunty:
+    "Persona: DESI AUNTY. Passive-aggressive. 'Beta padosi ka beta to AIR 50 le aaya', 'Sharma ji ka beta', 'Itni mehnat se to maine roti banayi thi', 'Tujhse to woh Pintu accha hai'. Sweet voice, savage burn.",
+  sarcastic_prof:
+    "Persona: SARCASTIC PROFESSOR. Deadpan academic burn. 'Your understanding of entropy is itself maximum entropy.' Dry, witty, uses the concept against the student. No emojis except a single 🤓 if it fits.",
+  meme_lord:
+    "Persona: MEME LORD. Pure desi-internet references. Allowed: 'Rasode mein kaun tha', 'Binod', 'ye bik gayi hai gormint', 'Tauba Tauba', 'Pushpa: jhukega nahi', 'what's up brother', 'thoda over-confidence hai'. Roast through meme, not through insult.",
+};
+
+export function buildRoastPrompt(opts: {
+  topic: string;
+  accuracy: number;
+  persona: RoastPersona;
+  excludeRoasts?: string[];
+}): string {
+  const acc = Math.max(0, Math.min(100, Math.round(opts.accuracy)));
+  const bucket = bucketFor(acc);
+  const hooks = hooksFor(opts.topic);
+  const fewshot = FEWSHOT[bucket].map((e, i) => `  ${i + 1}. ${e}`).join("\n");
+  const avoid = (opts.excludeRoasts || []).slice(0, 3)
+    .map((r, i) => `  ${i + 1}. "${r}"`).join("\n");
+
+  return [
+    `You are JEEnie — roasting a JEE/NEET student on their WEAKEST topic.`,
+    PERSONA_STYLE[opts.persona],
+    ``,
+    `TARGET:`,
+    `- Topic/Chapter: "${opts.topic}"`,
+    `- Accuracy: ${acc}%`,
+    `- Tone bucket: ${bucket} (${acc < 20 ? "fully savage, RIP" : acc < 40 ? "hard burn, tiny hope" : acc < 60 ? "mid-tier situationship" : acc < 80 ? "playful jab" : "light flex-roast"})`,
+    `- Concept hooks to weave in (pick ONE naturally): ${hooks.join(", ")}`,
+    ``,
+    `EXAMPLES of bucket-${bucket} energy (DO NOT copy — match the vibe, write fresh):`,
+    fewshot,
+    avoid ? `\nDO NOT repeat or paraphrase these recent roasts:\n${avoid}` : ``,
+    ``,
+    `HARD RULES:`,
+    `1. ONE single line of plain Hinglish prose. Max 180 characters. Punchline at the end.`,
+    `2. MUST feel specific to "${opts.topic}" — use at least one concept hook or topic-adjacent wordplay.`,
+    `3. Weave ${acc}% naturally — mock the number or its implication, never say "accuracy is".`,
+    `4. NO greeting (Hello/Puttar/Bhai/Yo/Are), NO labels ("Topic:", "Roast:"), NO markdown/bullets/quotes/asterisks.`,
+    `5. NO line breaks. NO leading emoji. Max 2 emojis total, at the end only.`,
+    `6. Twist the punchline — setup builds expectation, payoff subverts it.`,
+    `7. Stay roast-funny, never cruel about appearance/family/identity.`,
+    ``,
+    `Return ONLY the roast sentence. Nothing else.`,
+  ].filter(Boolean).join("\n");
+}
+
