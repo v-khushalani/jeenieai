@@ -674,6 +674,7 @@ export type Database = {
           mission_date: string
           mode: string
           progress_count: number
+          reset_count: number
           reward_granted: boolean
           reward_points: number
           rule_id: string
@@ -695,6 +696,7 @@ export type Database = {
           mission_date?: string
           mode?: string
           progress_count?: number
+          reset_count?: number
           reward_granted?: boolean
           reward_points?: number
           rule_id: string
@@ -716,6 +718,7 @@ export type Database = {
           mission_date?: string
           mode?: string
           progress_count?: number
+          reset_count?: number
           reward_granted?: boolean
           reward_points?: number
           rule_id?: string
@@ -2882,6 +2885,7 @@ export type Database = {
           mission_date: string
           mode: string
           progress_count: number
+          reset_count: number
           reward_granted: boolean
           reward_points: number
           rule_id: string
@@ -2969,7 +2973,7 @@ export type Database = {
             }
             Returns: string
           }
-      reset_today_mission: { Args: never; Returns: undefined }
+      reset_today_mission: { Args: never; Returns: Json }
       reset_user_progress: { Args: { p_user_id: string }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

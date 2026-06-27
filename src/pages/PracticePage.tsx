@@ -22,6 +22,8 @@ import 'katex/dist/katex.min.css';
 import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
 import StudyNotesPanel from '@/components/study/StudyNotesPanel';
 import StudyNotesIntro from '@/components/study/StudyNotesIntro';
+import { useTodaysMission } from '@/hooks/useTodaysMission';
+import confetti from 'canvas-confetti';
 
 interface Question {
   id: string;
@@ -148,7 +150,21 @@ const PracticePage: React.FC = () => {
   const topicId = searchParams.get('topic_id') || '';
   const topicName = searchParams.get('topic') || '';
   const topicFilterName = topicName.trim();
+  const missionMode = searchParams.get('mission') === '1';
+  const bonusMode = searchParams.get('bonus') === '1';
   const studyNotesEnabled = useFeatureFlag('study_notes');
+  const { mission: todayMission, justCompleted: missionJustCompleted, acknowledgeCompletion } = useTodaysMission();
+  const [missionBannerDismissed, setMissionBannerDismissed] = useState(false);
+
+  // Fire celebration when this session completes the daily mission
+  useEffect(() => {
+    if (!missionJustCompleted || !todayMission) return;
+    try { confetti({ particleCount: 140, spread: 80, origin: { y: 0.5 }, zIndex: 9999 }); } catch {/* noop */}
+    toast.success(`Mission Complete! +${todayMission.reward_points} pts 🎉`, {
+      description: 'Bonus rounds chalu rakho — no points cap, but streak & accuracy count hoti hai.',
+    });
+    acknowledgeCompletion();
+  }, [missionJustCompleted, todayMission, acknowledgeCompletion]);
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -809,6 +825,35 @@ const PracticePage: React.FC = () => {
 
       {/* Question Area — flex-1 with internal scroll */}
       <div className="flex-1 min-h-0 overflow-y-auto container mx-auto max-w-3xl px-4 py-3">
+        {/* 🎯 Mission progress strip (only when launched from mission CTA) */}
+        {(missionMode || bonusMode) && todayMission && (
+          <div className={`mb-3 rounded-xl border-2 px-3 py-2 flex items-center justify-between gap-2 ${
+            todayMission.status === 'completed' || bonusMode
+              ? 'border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/30'
+              : 'border-primary/30 bg-primary/5'
+          }`}>
+            <div className="flex items-center gap-2 min-w-0">
+              <Target className={`h-4 w-4 shrink-0 ${todayMission.status === 'completed' || bonusMode ? 'text-emerald-600' : 'text-primary'}`} />
+              <span className="text-xs sm:text-sm font-semibold truncate">
+                {bonusMode
+                  ? `🔥 Bonus round — ${todayMission.chapter || 'Practice'}`
+                  : todayMission.status === 'completed'
+                    ? `Mission Complete! +${todayMission.reward_points} pts 🎉`
+                    : `🎯 Mission: ${todayMission.progress_count}/${todayMission.target_count} — keep going!`}
+              </span>
+            </div>
+            {todayMission.status === 'completed' && !bonusMode && !missionBannerDismissed && (
+              <div className="flex gap-1 shrink-0">
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => navigate('/dashboard')}>
+                  Stop
+                </Button>
+                <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setMissionBannerDismissed(true)}>
+                  Keep going
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
         {studyNotesEnabled && chapterId && (
           <StudyNotesIntro chapterId={chapterId} topicId={topicId || undefined} />
         )}
