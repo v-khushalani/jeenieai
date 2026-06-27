@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/utils/logger';
@@ -27,14 +27,17 @@ export interface DailyMissionRow {
   status: 'pending' | 'in_progress' | 'completed';
   cta_route: string | null;
   reward_granted: boolean;
+  reset_count?: number;
 }
 
 export interface UseTodaysMissionResult {
   mission: DailyMissionRow | null;
   needsColdStart: boolean;
   loading: boolean;
+  justCompleted: boolean;
+  acknowledgeCompletion: () => void;
   refresh: () => Promise<void>;
-  regenerate: () => Promise<void>;
+  regenerate: () => Promise<{ ok: boolean; reason?: string }>;
 }
 
 export function useTodaysMission(): UseTodaysMissionResult {
@@ -42,12 +45,23 @@ export function useTodaysMission(): UseTodaysMissionResult {
   const [mission, setMission] = useState<DailyMissionRow | null>(null);
   const [needsColdStart, setNeedsColdStart] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [justCompleted, setJustCompleted] = useState(false);
+  const prevStatusRef = useRef<string | null>(null);
+
+  const setMissionTracked = useCallback((next: DailyMissionRow | null) => {
+    if (next && prevStatusRef.current && prevStatusRef.current !== 'completed' && next.status === 'completed') {
+      setJustCompleted(true);
+    }
+    prevStatusRef.current = next?.status ?? null;
+    setMission(next);
+  }, []);
+
+  const acknowledgeCompletion = useCallback(() => setJustCompleted(false), []);
 
   const generate = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
     try {
-      // 1. Already exists?
       const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000)
         .toISOString()
         .split('T')[0];
@@ -57,20 +71,16 @@ export function useTodaysMission(): UseTodaysMissionResult {
         .eq('user_id', user.id)
         .eq('mission_date', todayIST)
         .maybeSingle();
-      if (existing) {
-        setMission(existing as any);
+      // If a real (non-placeholder) row exists, use it.
+      if (existing && (existing as any).rule_id !== '_pending_reset') {
+        setMissionTracked(existing as any);
         setNeedsColdStart(false);
         setLoading(false);
         return;
       }
 
-      // 2. Gather inputs and build payload
       const [profRes, attemptsRes] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('grade, target_exam')
-          .eq('id', user.id)
-          .maybeSingle(),
+        supabase.from('profiles').select('grade, target_exam').eq('id', user.id).maybeSingle(),
         supabase
           .from('question_attempts')
           .select('question_id, created_at, is_correct')
@@ -84,7 +94,6 @@ export function useTodaysMission(): UseTodaysMissionResult {
       const examTrack = normalizeProgram((profRes.data as any)?.target_exam) as any;
       const attempts = attemptsRes.data || [];
 
-      // Chapter pool for this exam track
       let chapQuery = supabase
         .from('chapters')
         .select('id, chapter_name, name, subject, chapter_number')
@@ -94,7 +103,6 @@ export function useTodaysMission(): UseTodaysMissionResult {
       if (grade) chapQuery = chapQuery.eq('class_level', grade);
       const { data: chapterPool } = await chapQuery;
 
-      // Hydrate question metadata for attempted questions
       const qIds = Array.from(new Set(attempts.map((a) => a.question_id))).slice(0, 500);
       const questionMeta: Record<string, { subject: string | null; chapter: string | null }> = {};
       if (qIds.length > 0) {
@@ -118,7 +126,7 @@ export function useTodaysMission(): UseTodaysMissionResult {
 
       if (payload.rule_id === 'cold_start') {
         setNeedsColdStart(true);
-        setMission(null);
+        setMissionTracked(null);
         setLoading(false);
         return;
       }
@@ -129,14 +137,14 @@ export function useTodaysMission(): UseTodaysMissionResult {
         { p_payload: full as any }
       );
       if (error) throw error;
-      setMission(created as any);
+      setMissionTracked(created as any);
       setNeedsColdStart(false);
     } catch (e) {
       logger.error('useTodaysMission generate error', e);
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, setMissionTracked]);
 
   const refresh = useCallback(async () => {
     if (!user?.id) return;
@@ -149,27 +157,23 @@ export function useTodaysMission(): UseTodaysMissionResult {
       .eq('user_id', user.id)
       .eq('mission_date', todayIST)
       .maybeSingle();
-    if (data) setMission(data as any);
-  }, [user?.id]);
+    if (data && (data as any).rule_id !== '_pending_reset') setMissionTracked(data as any);
+  }, [user?.id, setMissionTracked]);
 
-  const regenerate = useCallback(async () => {
-    if (!user?.id) return;
-    await supabase.rpc('reset_today_mission' as any);
+  const regenerate = useCallback(async (): Promise<{ ok: boolean; reason?: string }> => {
+    if (!user?.id) return { ok: false, reason: 'no_user' };
+    const { data } = await supabase.rpc('reset_today_mission' as any);
+    const result = (data as any) || { ok: true };
+    if (result?.ok === false) return { ok: false, reason: result.reason };
     await generate();
+    return { ok: true };
   }, [user?.id, generate]);
 
   useEffect(() => {
     if (user?.id) generate();
-    // also flag cold-start state if no picked chapter yet
-    if (user?.id) {
-      const picked = getPickedStartingChapter(user.id);
-      if (!picked) {
-        // wait for generate() to settle; needsColdStart will be set there
-      }
-    }
+    if (user?.id) getPickedStartingChapter(user.id);
   }, [user?.id, generate]);
 
-  // realtime: progress trigger updates the row
   useEffect(() => {
     if (!user?.id) return;
     const channel = supabase
@@ -183,14 +187,16 @@ export function useTodaysMission(): UseTodaysMissionResult {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          setMission(payload.new as any);
+          const next = payload.new as any;
+          if (next?.rule_id === '_pending_reset') return;
+          setMissionTracked(next);
         }
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user?.id, setMissionTracked]);
 
-  return { mission, needsColdStart, loading, refresh, regenerate };
+  return { mission, needsColdStart, loading, justCompleted, acknowledgeCompletion, refresh, regenerate };
 }
