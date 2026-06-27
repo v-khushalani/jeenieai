@@ -168,6 +168,25 @@ export function buildMissionPayload(input: MissionInput): MissionPayload | { rul
     return { rule_id: 'cold_start' };
   }
 
+  // 2. Weak topic — fix the worst chapter first
+  const weak = findWeakChapter(input);
+  if (weak) {
+    const target = 10;
+    return {
+      rule_id: 'weak_topic',
+      title: `Revise Weak Spot — ${weak.chapter}`,
+      subtitle: `Accuracy ${weak.accuracy}% — aaj ${target} questions se chapter strong karte hain 🔧`,
+      subject: weak.subject,
+      chapter: weak.chapter,
+      chapter_id: weak.chapter_id,
+      mode: 'practice',
+      target_count: target,
+      est_minutes: 20,
+      reward_points: 50,
+      cta_route: ctaForChapter(weak.subject, weak.chapter, weak.chapter_id),
+    };
+  }
+
   // 2. Active chapter (continue learning)
   const active = findActiveChapter(input);
   if (active) {
