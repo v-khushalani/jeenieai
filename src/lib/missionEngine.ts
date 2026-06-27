@@ -69,8 +69,48 @@ function chName(c: { chapter_name?: string | null; name?: string | null }) {
 }
 
 function ctaForChapter(subject: string, chapter: string, chapterId?: string | null) {
-  const base = `/practice?subject=${encodeURIComponent(subject)}&chapter=${encodeURIComponent(chapter)}&source=mission`;
+  const base = `/practice?subject=${encodeURIComponent(subject)}&chapter=${encodeURIComponent(chapter)}&source=mission&mission=1`;
   return chapterId ? `${base}&chapter_id=${chapterId}` : base;
+}
+
+/**
+ * Weak topic detection: any chapter where accuracy < 50% across the last 20 attempts
+ * in that chapter (min 8 attempts to be statistically meaningful).
+ */
+function findWeakChapter(input: MissionInput) {
+  const byChapter: Record<string, { subject: string; correct: number; total: number; last: number }> = {};
+  // walk newest → oldest, cap at 20 per chapter
+  const seen: Record<string, number> = {};
+  for (const a of input.attempts) {
+    const meta = input.questionMeta[a.question_id];
+    const ch = (meta?.chapter || '').trim();
+    if (!ch || !meta?.subject) continue;
+    const key = `${meta.subject}::${ch}`;
+    seen[key] = (seen[key] || 0) + 1;
+    if (seen[key] > 20) continue;
+    if (!byChapter[key]) byChapter[key] = { subject: meta.subject, correct: 0, total: 0, last: 0 };
+    byChapter[key].total++;
+    if (a.is_correct) byChapter[key].correct++;
+    const t = new Date(a.created_at).getTime();
+    if (!isNaN(t) && t > byChapter[key].last) byChapter[key].last = t;
+  }
+  const weak = Object.entries(byChapter)
+    .filter(([, v]) => v.total >= 8 && v.correct / v.total < 0.5)
+    .sort(([, a], [, b]) => a.correct / a.total - b.correct / b.total);
+  if (weak.length === 0) return null;
+  const [key, v] = weak[0];
+  const chapter = key.split('::')[1];
+  const poolMatch = input.chapterPool.find(
+    (c) =>
+      c.subject?.toLowerCase() === v.subject.toLowerCase() &&
+      chName(c).toLowerCase() === chapter.toLowerCase()
+  );
+  return {
+    subject: v.subject,
+    chapter,
+    chapter_id: poolMatch?.id || null,
+    accuracy: Math.round((v.correct / v.total) * 100),
+  };
 }
 
 /**
