@@ -20,6 +20,7 @@ import {
   Lightbulb, Zap,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import TodaysMissionCard from '@/components/mission/TodaysMissionCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useExamDates } from '@/hooks/useExamDates';
 import { useNavigate } from 'react-router-dom';
@@ -390,69 +391,56 @@ export default function AIStudyPlanner() {
           <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
         </TabsList>
 
-        {/* TODAY */}
+        {/* TODAY — single source of truth: same mission as dashboard */}
         <TabsContent value="today" className="space-y-3 mt-3">
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold">Aaj ka mission</p>
-                <span className="text-xs font-bold text-primary">{todayDoneCount}/{plan.today.length}</span>
-              </div>
-              <Progress value={plan.today.length ? (todayDoneCount / plan.today.length) * 100 : 0} className="h-2" />
-            </CardContent>
-          </Card>
+          <TodaysMissionCard />
 
-          {plan.today.map((task) => {
-            const hash = hashTask(task, todayISO());
-            const done = completedHashes.has(hash);
-            const Icon = SLOT_ICON[task.timeSlot];
-            return (
-              <Card key={task.id} className={`${PRIO_BORDER[task.priority]} ${done ? 'opacity-60' : ''} transition-all`}>
-                <CardContent className="p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Icon className={`w-4 h-4 ${SLOT_COLOR[task.timeSlot]}`} />
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-                      {task.timeSlot} • {task.duration} min
-                    </span>
-                    <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'} className="text-[9px] ml-auto">
-                      {task.priority.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className={`text-sm font-semibold ${done ? 'line-through' : ''}`}>{task.topic}</p>
-                    <p className="text-[10px] text-muted-foreground">{task.subject}{task.chapter && task.chapter !== task.topic ? ` • ${task.chapter}` : ''}</p>
-                  </div>
-                  {task.accuracy !== undefined && (
-                    <div className="flex items-center gap-2">
-                      <Progress value={task.accuracy} className="h-1 flex-1" />
-                      <span className={`text-[10px] font-medium ${task.accuracy >= 80 ? 'text-emerald-600' : task.accuracy >= 60 ? 'text-amber-600' : 'text-red-600'}`}>
-                        {Math.round(task.accuracy)}%
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex gap-2 pt-1">
-                    <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => startPractice(task)} disabled={done}>
-                      <Play className="w-3 h-3 mr-1" /> {task.type === 'mock_test' ? 'Start Mock' : 'Start'}
-                    </Button>
-                    <Button size="sm" variant={done ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => toggleDone(task)}>
-                      <CheckCircle2 className="w-3 h-3 mr-1" /> {done ? 'Done' : 'Mark done'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-
-          {plan.suggestion && (
-            <Card className="border-amber-300 bg-amber-50/50 dark:bg-amber-950/20">
-              <CardContent className="p-3 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-600 shrink-0" />
-                <p className="text-xs flex-1">{plan.suggestion.label}</p>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => navigate(plan.suggestion!.navTo)}>
-                  {plan.suggestion.cta}
-                </Button>
-              </CardContent>
-            </Card>
+          {plan.today.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground px-1">
+                Supporting tasks (optional)
+              </p>
+              {plan.today.map((task) => {
+                const hash = hashTask(task, todayISO());
+                const done = completedHashes.has(hash);
+                const Icon = SLOT_ICON[task.timeSlot];
+                return (
+                  <Card key={task.id} className={`${PRIO_BORDER[task.priority]} ${done ? 'opacity-60' : ''} transition-all`}>
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Icon className={`w-4 h-4 ${SLOT_COLOR[task.timeSlot]}`} />
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                          {task.timeSlot} • {task.duration} min
+                        </span>
+                        <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'} className="text-[9px] ml-auto">
+                          {task.priority.toUpperCase()}
+                        </Badge>
+                      </div>
+                      <div>
+                        <p className={`text-sm font-semibold ${done ? 'line-through' : ''}`}>{task.topic}</p>
+                        <p className="text-[10px] text-muted-foreground">{task.subject}{task.chapter && task.chapter !== task.topic ? ` • ${task.chapter}` : ''}</p>
+                      </div>
+                      {task.accuracy !== undefined && (
+                        <div className="flex items-center gap-2">
+                          <Progress value={task.accuracy} className="h-1 flex-1" />
+                          <span className={`text-[10px] font-medium ${task.accuracy >= 80 ? 'text-emerald-600' : task.accuracy >= 60 ? 'text-amber-600' : 'text-red-600'}`}>
+                            {Math.round(task.accuracy)}%
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex gap-2 pt-1">
+                        <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => startPractice(task)} disabled={done}>
+                          <Play className="w-3 h-3 mr-1" /> {task.type === 'mock_test' ? 'Start Mock' : 'Start'}
+                        </Button>
+                        <Button size="sm" variant={done ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => toggleDone(task)}>
+                          <CheckCircle2 className="w-3 h-3 mr-1" /> {done ? 'Done' : 'Mark done'}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </TabsContent>
 

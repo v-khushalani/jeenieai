@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import LoadingScreen from "@/components/ui/LoadingScreen";
+import TodaysMissionCard from "@/components/mission/TodaysMissionCard";
 import Leaderboard from "@/components/Leaderboard";
 
 import { useUserStats } from "@/hooks/useUserStats";
@@ -210,7 +211,10 @@ const EnhancedDashboard = () => {
           <div className="container mx-auto px-2 sm:px-4 lg:px-6 max-w-7xl py-2 sm:py-3 min-h-full flex flex-col">
             
             <div className="flex flex-col gap-2 sm:gap-3 h-full min-h-0">
-              
+
+              {/* 🎯 Today's Mission — highest-priority card */}
+              <TodaysMissionCard />
+
               {/* Notification Banner */}
               {showBanner && notification && (
                 <div className={`hidden lg:block rounded-xl p-3 sm:p-3.5 shadow-lg transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-[1.01] ${
