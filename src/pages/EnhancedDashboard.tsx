@@ -21,7 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import LoadingScreen from "@/components/ui/LoadingScreen";
-import TodaysMissionStrip from "@/components/mission/TodaysMissionStrip";
+
 import Leaderboard from "@/components/Leaderboard";
 
 import { useUserStats } from "@/hooks/useUserStats";
