@@ -812,35 +812,8 @@ const PracticePage: React.FC = () => {
 
       {/* Question Area — flex-1 with internal scroll */}
       <div className="flex-1 min-h-0 overflow-y-auto container mx-auto max-w-3xl px-4 py-3">
-        {/* 🎯 Mission progress strip (only when launched from mission CTA) */}
-        {(missionMode || bonusMode) && todayMission && (
-          <div className={`mb-3 rounded-xl border-2 px-3 py-2 flex items-center justify-between gap-2 ${
-            todayMission.status === 'completed' || bonusMode
-              ? 'border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/30'
-              : 'border-primary/30 bg-primary/5'
-          }`}>
-            <div className="flex items-center gap-2 min-w-0">
-              <Target className={`h-4 w-4 shrink-0 ${todayMission.status === 'completed' || bonusMode ? 'text-emerald-600' : 'text-primary'}`} />
-              <span className="text-xs sm:text-sm font-semibold truncate">
-                {bonusMode
-                  ? `🔥 Bonus round — ${todayMission.chapter || 'Practice'}`
-                  : todayMission.status === 'completed'
-                    ? `Mission Complete! +${todayMission.reward_points} pts 🎉`
-                    : `🎯 Mission: ${todayMission.progress_count}/${todayMission.target_count} — keep going!`}
-              </span>
-            </div>
-            {todayMission.status === 'completed' && !bonusMode && !missionBannerDismissed && (
-              <div className="flex gap-1 shrink-0">
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => navigate('/dashboard')}>
-                  Stop
-                </Button>
-                <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setMissionBannerDismissed(true)}>
-                  Keep going
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+        {/* mission strip removed */}
+
         {studyNotesEnabled && chapterId && (
           <StudyNotesIntro chapterId={chapterId} topicId={topicId || undefined} />
         )}
