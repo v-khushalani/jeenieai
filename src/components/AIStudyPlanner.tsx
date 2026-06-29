@@ -391,9 +391,9 @@ export default function AIStudyPlanner() {
           <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
         </TabsList>
 
-        {/* TODAY — single source of truth: same mission as dashboard */}
+        {/* TODAY */}
         <TabsContent value="today" className="space-y-3 mt-3">
-          <TodaysMissionCard />
+
 
           {plan.today.length > 0 && (
             <div className="space-y-2">
