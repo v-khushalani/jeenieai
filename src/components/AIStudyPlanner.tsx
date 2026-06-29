@@ -212,11 +212,17 @@ export default function AIStudyPlanner() {
       setTotalQuestions(qCountRes.count || 0);
       setMastery(masteryRes.data || []);
 
-      // chapter pool for new-user defaults
-      const examTag = goal.toUpperCase().includes('NEET') ? 'NEET' : goal.toUpperCase().includes('JEE') ? 'JEE' : null;
-      let chapQuery = supabase.from('chapters').select('chapter_name, name, subject').eq('is_active', true).limit(60);
-      if (examTag) chapQuery = chapQuery.contains('exam_relevance', [examTag]);
-      const { data: chapData } = await chapQuery;
+      // chapter pool for new-user defaults — DB tags use JEE_MAINS / NEET
+      const isNeet = goal.toUpperCase().includes('NEET');
+      const examVariants = isNeet
+        ? ['NEET', 'NEET_UG']
+        : ['JEE', 'JEE_MAIN', 'JEE_MAINS', 'JEE_ADVANCED', 'JEE Main', 'JEE Mains'];
+      const { data: chapData } = await supabase
+        .from('chapters')
+        .select('chapter_name, name, subject')
+        .eq('is_active', true)
+        .overlaps('exam_relevance', examVariants)
+        .limit(60);
       const pool = (chapData || []).filter((c: any) => c.subject && (c.chapter_name || c.name));
       // shuffle deterministically by today's date
       const seed = new Date().getDate();
