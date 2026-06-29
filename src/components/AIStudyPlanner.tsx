@@ -31,6 +31,8 @@ import { normalizeTargetExam } from '@/config/goalConfig';
 import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { predictRank, generateSWOTAnalysis, categorizeTopics } from '@/lib/studyPlannerCore';
 import safeLocalStorage from '@/utils/safeStorage';
+import RoadmapView from '@/components/planner/RoadmapView';
+import { normalizeExam } from '@/lib/roadmapEngine';
 
 type SlotType = 'morning' | 'afternoon' | 'evening';
 type TaskType = 'study' | 'revision' | 'mock_test';
