@@ -22,7 +22,7 @@ import 'katex/dist/katex.min.css';
 import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
 import StudyNotesPanel from '@/components/study/StudyNotesPanel';
 import StudyNotesIntro from '@/components/study/StudyNotesIntro';
-import { useTodaysMission } from '@/hooks/useTodaysMission';
+
 import confetti from 'canvas-confetti';
 
 interface Question {
