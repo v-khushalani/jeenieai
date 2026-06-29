@@ -1876,30 +1876,56 @@ export type Database = {
       }
       study_plan_progress: {
         Row: {
+          chapter_id: string | null
           completed_at: string
           id: string
+          last_synced_at: string
+          milestone: Database["public"]["Enums"]["roadmap_milestone"] | null
           plan_date: string
+          progress_current: number
+          progress_target: number
+          status: Database["public"]["Enums"]["roadmap_status"]
           task_hash: string
           task_label: string | null
           user_id: string
         }
         Insert: {
+          chapter_id?: string | null
           completed_at?: string
           id?: string
+          last_synced_at?: string
+          milestone?: Database["public"]["Enums"]["roadmap_milestone"] | null
           plan_date: string
+          progress_current?: number
+          progress_target?: number
+          status?: Database["public"]["Enums"]["roadmap_status"]
           task_hash: string
           task_label?: string | null
           user_id: string
         }
         Update: {
+          chapter_id?: string | null
           completed_at?: string
           id?: string
+          last_synced_at?: string
+          milestone?: Database["public"]["Enums"]["roadmap_milestone"] | null
           plan_date?: string
+          progress_current?: number
+          progress_target?: number
+          status?: Database["public"]["Enums"]["roadmap_status"]
           task_hash?: string
           task_label?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "study_plan_progress_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       study_plans: {
         Row: {
@@ -2987,6 +3013,8 @@ export type Database = {
         | "assertion_reason"
         | "matrix_match"
         | "comprehension"
+      roadmap_milestone: "learn" | "drill" | "review" | "test"
+      roadmap_status: "pending" | "in_progress" | "done"
       staging_status:
         | "pending"
         | "validated"
@@ -3149,6 +3177,8 @@ export const Constants = {
         "matrix_match",
         "comprehension",
       ],
+      roadmap_milestone: ["learn", "drill", "review", "test"],
+      roadmap_status: ["pending", "in_progress", "done"],
       staging_status: [
         "pending",
         "validated",
