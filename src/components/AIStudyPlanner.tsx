@@ -20,7 +20,7 @@ import {
   Lightbulb, Zap,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import TodaysMissionCard from '@/components/mission/TodaysMissionCard';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { useExamDates } from '@/hooks/useExamDates';
 import { useNavigate } from 'react-router-dom';
