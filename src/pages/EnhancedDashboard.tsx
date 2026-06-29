@@ -212,8 +212,8 @@ const EnhancedDashboard = () => {
             
             <div className="flex flex-col gap-2 sm:gap-3 h-full min-h-0">
 
-              {/* 🎯 Today's Mission — compact strip (tap to expand) */}
-              <TodaysMissionStrip />
+
+
 
               {/* Notification Banner */}
               {showBanner && notification && (
