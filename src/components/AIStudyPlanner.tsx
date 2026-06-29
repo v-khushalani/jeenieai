@@ -210,7 +210,11 @@ export default function AIStudyPlanner() {
       setProfile(prof);
       setTargetExam(goal);
       setTotalQuestions(qCountRes.count || 0);
-      setMastery(masteryRes.data || []);
+      // drop ghost mastery rows missing subject/topic (would render as "undefined: undefined")
+      const cleanMastery = (masteryRes.data || []).filter(
+        (m: any) => (m?.subject || '').toString().trim() && ((m?.topic || m?.chapter || '').toString().trim()),
+      );
+      setMastery(cleanMastery);
 
       // chapter pool for new-user defaults — DB tags use JEE_MAINS / NEET
       const isNeet = goal.toUpperCase().includes('NEET');
