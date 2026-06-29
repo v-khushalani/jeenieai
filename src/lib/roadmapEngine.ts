@@ -107,12 +107,17 @@ export async function buildSubjectRoadmap(
   subject: string,
 ): Promise<SubjectRoadmap> {
   // 1. Chapters in this subject for this exam
+  // DB stores tags like 'JEE_MAINS' / 'JEE_ADVANCED' / 'NEET' — accept all variants.
+  const examVariants =
+    exam === 'JEE'
+      ? ['JEE', 'JEE_MAIN', 'JEE_MAINS', 'JEE_ADVANCED', 'JEE Main', 'JEE Mains']
+      : ['NEET', 'NEET_UG'];
   const { data: chapterRows, error: chapErr } = await supabase
     .from('chapters')
     .select('id, subject, chapter_name, name, chapter_number, class_level')
     .eq('is_active', true)
     .eq('subject', subject)
-    .contains('exam_relevance', [exam])
+    .overlaps('exam_relevance', examVariants)
     .order('class_level', { ascending: true, nullsFirst: false })
     .order('chapter_number', { ascending: true, nullsFirst: false })
     .limit(60);
