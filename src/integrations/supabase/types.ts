@@ -664,75 +664,6 @@ export type Database = {
         }
         Relationships: []
       }
-      daily_missions: {
-        Row: {
-          chapter: string | null
-          created_at: string
-          cta_route: string | null
-          est_minutes: number
-          id: string
-          mission_date: string
-          mode: string
-          progress_count: number
-          reset_count: number
-          reward_granted: boolean
-          reward_points: number
-          rule_id: string
-          status: string
-          subject: string | null
-          subtitle: string | null
-          target_count: number
-          title: string
-          topic: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          chapter?: string | null
-          created_at?: string
-          cta_route?: string | null
-          est_minutes?: number
-          id?: string
-          mission_date?: string
-          mode?: string
-          progress_count?: number
-          reset_count?: number
-          reward_granted?: boolean
-          reward_points?: number
-          rule_id: string
-          status?: string
-          subject?: string | null
-          subtitle?: string | null
-          target_count?: number
-          title: string
-          topic?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          chapter?: string | null
-          created_at?: string
-          cta_route?: string | null
-          est_minutes?: number
-          id?: string
-          mission_date?: string
-          mode?: string
-          progress_count?: number
-          reset_count?: number
-          reward_granted?: boolean
-          reward_points?: number
-          rule_id?: string
-          status?: string
-          subject?: string | null
-          subtitle?: string | null
-          target_count?: number
-          title?: string
-          topic?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       daily_progress: {
         Row: {
           accuracy_7day: number | null
@@ -2874,37 +2805,6 @@ export type Database = {
           total_questions: number
         }[]
       }
-      get_or_create_today_mission: {
-        Args: { p_payload: Json }
-        Returns: {
-          chapter: string | null
-          created_at: string
-          cta_route: string | null
-          est_minutes: number
-          id: string
-          mission_date: string
-          mode: string
-          progress_count: number
-          reset_count: number
-          reward_granted: boolean
-          reward_points: number
-          rule_id: string
-          status: string
-          subject: string | null
-          subtitle: string | null
-          target_count: number
-          title: string
-          topic: string | null
-          updated_at: string
-          user_id: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "daily_missions"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       get_questions_for_remap: {
         Args: { batch_size?: number }
         Returns: {
@@ -2973,7 +2873,6 @@ export type Database = {
             }
             Returns: string
           }
-      reset_today_mission: { Args: never; Returns: Json }
       reset_user_progress: { Args: { p_user_id: string }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
