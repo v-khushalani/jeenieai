@@ -391,58 +391,137 @@ export default function AIStudyPlanner() {
           <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
         </TabsList>
 
-        {/* TODAY */}
+        {/* TODAY — hero daily plan */}
         <TabsContent value="today" className="space-y-3 mt-3">
+          {(() => {
+            const todayTasks = plan.today;
+            const doneCount = todayTasks.filter(t => completedHashes.has(hashTask(t, todayISO()))).length;
+            const totalMin = todayTasks.reduce((s, t) => s + t.duration, 0);
+            const doneMin = todayTasks.filter(t => completedHashes.has(hashTask(t, todayISO()))).reduce((s, t) => s + t.duration, 0);
+            const nextUp = todayTasks.find(t => !completedHashes.has(hashTask(t, todayISO())));
+            const pct = todayTasks.length ? Math.round((doneCount / todayTasks.length) * 100) : 0;
+            const hour = new Date().getHours();
+            const timeGreet = hour < 12 ? 'Aaj ka plan' : hour < 17 ? 'Dopahar ka plan' : 'Shaam ka plan';
 
+            if (todayTasks.length === 0) {
+              return (
+                <Card className="border-dashed">
+                  <CardContent className="p-6 text-center space-y-2">
+                    <Sparkles className="w-8 h-8 text-primary mx-auto opacity-60" />
+                    <p className="text-sm font-semibold">Pehle thoda practice karo</p>
+                    <p className="text-xs text-muted-foreground">Jab data milega, JEEnie tera personalised plan banayega.</p>
+                    <Button size="sm" onClick={() => navigate('/study-now')} className="mt-2">
+                      <Play className="w-3 h-3 mr-1" /> Start Practice
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            }
 
-          {plan.today.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground px-1">
-                Supporting tasks (optional)
-              </p>
-              {plan.today.map((task) => {
-                const hash = hashTask(task, todayISO());
-                const done = completedHashes.has(hash);
-                const Icon = SLOT_ICON[task.timeSlot];
-                return (
-                  <Card key={task.id} className={`${PRIO_BORDER[task.priority]} ${done ? 'opacity-60' : ''} transition-all`}>
-                    <CardContent className="p-3 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Icon className={`w-4 h-4 ${SLOT_COLOR[task.timeSlot]}`} />
-                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-                          {task.timeSlot} • {task.duration} min
-                        </span>
-                        <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'} className="text-[9px] ml-auto">
-                          {task.priority.toUpperCase()}
-                        </Badge>
+            return (
+              <>
+                {/* Hero progress card */}
+                <Card className="border-primary/40 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent overflow-hidden relative">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wider font-bold text-primary/80">{timeGreet}</p>
+                        <p className="text-lg font-bold leading-tight mt-0.5">
+                          {doneCount === todayTasks.length
+                            ? '✅ Aaj ka plan complete!'
+                            : nextUp
+                              ? <>Next: <span className="text-primary">{nextUp.topic}</span></>
+                              : 'Sab done!'}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {doneCount}/{todayTasks.length} blocks · {doneMin}/{totalMin} min · {daysToExam} din baad exam
+                        </p>
                       </div>
-                      <div>
-                        <p className={`text-sm font-semibold ${done ? 'line-through' : ''}`}>{task.topic}</p>
-                        <p className="text-[10px] text-muted-foreground">{task.subject}{task.chapter && task.chapter !== task.topic ? ` • ${task.chapter}` : ''}</p>
-                      </div>
-                      {task.accuracy !== undefined && (
-                        <div className="flex items-center gap-2">
-                          <Progress value={task.accuracy} className="h-1 flex-1" />
-                          <span className={`text-[10px] font-medium ${task.accuracy >= 80 ? 'text-emerald-600' : task.accuracy >= 60 ? 'text-amber-600' : 'text-red-600'}`}>
-                            {Math.round(task.accuracy)}%
-                          </span>
-                        </div>
+                      {nextUp && (
+                        <Button size="sm" className="shrink-0 h-9" onClick={() => startPractice(nextUp)}>
+                          <Play className="w-3 h-3 mr-1" /> Start
+                        </Button>
                       )}
-                      <div className="flex gap-2 pt-1">
-                        <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => startPractice(task)} disabled={done}>
-                          <Play className="w-3 h-3 mr-1" /> {task.type === 'mock_test' ? 'Start Mock' : 'Start'}
-                        </Button>
-                        <Button size="sm" variant={done ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => toggleDone(task)}>
-                          <CheckCircle2 className="w-3 h-3 mr-1" /> {done ? 'Done' : 'Mark done'}
-                        </Button>
+                    </div>
+                    <Progress value={pct} className="h-2" />
+                    {aiInsights?.motivationalMessage && (
+                      <div className="flex gap-2 items-start pt-1 border-t border-primary/10">
+                        <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                        <p className="text-[11px] leading-snug text-foreground/80 italic">
+                          {aiInsights.motivationalMessage}
+                        </p>
                       </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Blocks */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">
+                      Aaj ke blocks
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">~{totalMin} min total</p>
+                  </div>
+                  {todayTasks.map((task, idx) => {
+                    const hash = hashTask(task, todayISO());
+                    const done = completedHashes.has(hash);
+                    const Icon = SLOT_ICON[task.timeSlot];
+                    const labels = ['Warmup', 'Focus', 'Cooldown'];
+                    const blockLabel = labels[idx] || `Block ${idx + 1}`;
+                    return (
+                      <Card key={task.id} className={`${PRIO_BORDER[task.priority]} ${done ? 'opacity-60' : ''} transition-all`}>
+                        <CardContent className="p-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center ${done ? 'bg-emerald-500 text-white' : 'bg-background border-2 border-primary/30'}`}>
+                              {done ? <CheckCircle2 className="w-4 h-4" /> : <Icon className={`w-3.5 h-3.5 ${SLOT_COLOR[task.timeSlot]}`} />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold">
+                                {blockLabel} · {task.duration} min
+                              </p>
+                              <p className={`text-sm font-semibold leading-tight ${done ? 'line-through' : ''}`}>{task.topic}</p>
+                              <p className="text-[10px] text-muted-foreground">{task.subject}{task.chapter && task.chapter !== task.topic ? ` · ${task.chapter}` : ''}</p>
+                            </div>
+                          </div>
+                          {task.accuracy !== undefined && (
+                            <div className="flex items-center gap-2">
+                              <Progress value={task.accuracy} className="h-1 flex-1" />
+                              <span className={`text-[10px] font-medium ${task.accuracy >= 80 ? 'text-emerald-600' : task.accuracy >= 60 ? 'text-amber-600' : 'text-red-600'}`}>
+                                {Math.round(task.accuracy)}%
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex gap-2 pt-0.5">
+                            <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => startPractice(task)} disabled={done}>
+                              <Play className="w-3 h-3 mr-1" /> {task.type === 'mock_test' ? 'Start Mock' : done ? 'Done' : 'Start'}
+                            </Button>
+                            <Button size="sm" variant={done ? 'default' : 'outline'} className="h-8 text-xs px-3" onClick={() => toggleDone(task)}>
+                              <CheckCircle2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                {plan.suggestion && (
+                  <Card className="border-amber-300/50 bg-amber-50/40 dark:bg-amber-950/20">
+                    <CardContent className="p-3 flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-600 shrink-0" />
+                      <p className="text-[11px] flex-1">{plan.suggestion.label}</p>
+                      <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => navigate(plan.suggestion!.navTo)}>
+                        {plan.suggestion.cta}
+                      </Button>
                     </CardContent>
                   </Card>
-                );
-              })}
-            </div>
-          )}
+                )}
+              </>
+            );
+          })()}
         </TabsContent>
+
 
         {/* WEEK */}
         <TabsContent value="week" className="space-y-3 mt-3">
