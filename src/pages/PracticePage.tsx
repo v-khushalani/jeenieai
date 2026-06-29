@@ -150,21 +150,8 @@ const PracticePage: React.FC = () => {
   const topicId = searchParams.get('topic_id') || '';
   const topicName = searchParams.get('topic') || '';
   const topicFilterName = topicName.trim();
-  const missionMode = searchParams.get('mission') === '1';
-  const bonusMode = searchParams.get('bonus') === '1';
   const studyNotesEnabled = useFeatureFlag('study_notes');
-  const { mission: todayMission, justCompleted: missionJustCompleted, acknowledgeCompletion } = useTodaysMission();
-  const [missionBannerDismissed, setMissionBannerDismissed] = useState(false);
 
-  // Fire celebration when this session completes the daily mission
-  useEffect(() => {
-    if (!missionJustCompleted || !todayMission) return;
-    try { confetti({ particleCount: 140, spread: 80, origin: { y: 0.5 }, zIndex: 9999 }); } catch {/* noop */}
-    toast.success(`Mission Complete! +${todayMission.reward_points} pts 🎉`, {
-      description: 'Bonus rounds chalu rakho — no points cap, but streak & accuracy count hoti hai.',
-    });
-    acknowledgeCompletion();
-  }, [missionJustCompleted, todayMission, acknowledgeCompletion]);
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
