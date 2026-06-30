@@ -1,190 +1,469 @@
-/**
- * AI Study Planner — v2
- * 3-tab actionable shell: Today / This Week / Insights
- * - Real task completion (study_plan_progress table)
- * - Plan adherence + streak
- * - Gemini-powered Hinglish insights (cached daily)
- * - Chapter-name fallback when topic is missing
- * - DB-driven defaults for new users (no hardcoded list)
- */
-
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Calendar, BookOpen, Target, Sparkles, Flame, RefreshCw, Loader2,
-  Sun, Sunset, Moon, AlertTriangle, CheckCircle2, Play, Trophy, TrendingUp,
-  Lightbulb, Zap,
+  AlertTriangle,
+  ArrowRight,
+  BookOpen,
+  Calendar,
+  CheckCircle2,
+  Flame,
+  Loader2,
+  RefreshCw,
+  RotateCcw,
+  Sparkles,
+  Target,
+  Trophy,
+  Zap,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-
 import { useAuth } from '@/contexts/AuthContext';
 import { useExamDates } from '@/hooks/useExamDates';
-import { useNavigate } from 'react-router-dom';
-import { getDaysUntilDate, getExamDateForGrade } from '@/utils/examTimeline';
-import { toast } from 'sonner';
-import { logger } from '@/utils/logger';
 import { normalizeTargetExam } from '@/config/goalConfig';
+import { getDaysUntilDate, getExamDateForGrade } from '@/utils/examTimeline';
+import { logger } from '@/utils/logger';
 import { formatSubjectDisplay } from '@/utils/subjectDisplay';
-import { predictRank, generateSWOTAnalysis, categorizeTopics } from '@/lib/studyPlannerCore';
-import safeLocalStorage from '@/utils/safeStorage';
+import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
 import RoadmapView from '@/components/planner/RoadmapView';
-import { normalizeExam } from '@/lib/roadmapEngine';
+import {
+  buildAllSubjectRoadmaps,
+  examRelevanceValues,
+  normalizeExam,
+  subjectsForExam,
+  type RoadmapChapter,
+  type SubjectRoadmap,
+} from '@/lib/roadmapEngine';
+import safeLocalStorage from '@/utils/safeStorage';
 
-type SlotType = 'morning' | 'afternoon' | 'evening';
-type TaskType = 'study' | 'revision' | 'mock_test';
-type Priority = 'high' | 'medium' | 'low';
+type ExamKey = 'JEE' | 'NEET';
+type ChapterStatus = 'pending' | 'weak' | 'medium' | 'strong' | 'done';
+type TaskType = 'learn' | 'drill' | 'review' | 'test';
 
-interface PlanTask {
+interface ChapterMetric {
   id: string;
-  topic: string;
+  subject: string;
+  title: string;
+  chapterNumber: number | null;
+  classLevel: number | null;
+  totalQuestions: number;
+  attempts: number;
+  correct: number;
+  wrong: number;
+  pendingMistakes: number;
+  accuracy: number;
+  status: ChapterStatus;
+  priorityScore: number;
+  lastAttemptAt: string | null;
+}
+
+interface PlannerTask {
+  id: string;
+  date: string;
+  dayName: string;
+  title: string;
+  subtitle: string;
   subject: string;
   chapter: string;
+  chapterId?: string;
   duration: number;
   type: TaskType;
-  timeSlot: SlotType;
-  priority: Priority;
-  accuracy?: number;
+  priority: 'high' | 'medium' | 'low';
+  actionLabel: string;
+  href: string;
 }
-interface DayPlan { dayName: string; date: string; isToday: boolean; isRestDay: boolean; tasks: PlanTask[]; totalMinutes: number; }
+
+interface DayPlan {
+  date: string;
+  dayName: string;
+  totalMinutes: number;
+  tasks: PlannerTask[];
+}
+
+interface PlannerData {
+  roadmaps: SubjectRoadmap[];
+  chapters: ChapterMetric[];
+  bySubject: Record<string, ChapterMetric[]>;
+  weak: ChapterMetric[];
+  medium: ChapterMetric[];
+  strong: ChapterMetric[];
+  pending: ChapterMetric[];
+  active: ChapterMetric | null;
+  next: ChapterMetric | null;
+  weekly: DayPlan[];
+  coveragePct: number;
+  totalQuestions: number;
+  totalAttempts: number;
+  overallAccuracy: number;
+  pendingMistakes: number;
+}
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const SLOT_ICON = { morning: Sun, afternoon: Sunset, evening: Moon } as const;
-const SLOT_COLOR = { morning: 'text-amber-500', afternoon: 'text-orange-500', evening: 'text-indigo-500' } as const;
-const PRIO_BORDER = {
-  high: 'border-red-200 bg-red-50/40 dark:bg-red-950/20',
-  medium: 'border-amber-200 bg-amber-50/40 dark:bg-amber-950/20',
-  low: 'border-emerald-200 bg-emerald-50/40 dark:bg-emerald-950/20',
-} as const;
 
 const todayISO = () => new Date().toISOString().split('T')[0];
-const hashTask = (t: PlanTask, date: string) =>
-  `${date}::${t.timeSlot}::${t.subject}::${t.chapter}::${t.topic}::${t.type}`.toLowerCase().replace(/\s+/g, '_');
 
-const getLabel = (t: any): { topic: string; chapter: string } => {
-  const chapter = (t?.chapter || '').toString().trim();
-  const topic = (t?.topic || '').toString().trim();
+const taskHash = (task: PlannerTask) =>
+  `${task.date}::${task.type}::${task.chapterId || task.subject}::${task.title}`.toLowerCase().replace(/\s+/g, '_');
+
+const daysSince = (iso: string | null) => {
+  if (!iso) return 99;
+  const parsed = new Date(iso).getTime();
+  if (Number.isNaN(parsed)) return 99;
+  return Math.max(0, Math.floor((Date.now() - parsed) / (1000 * 60 * 60 * 24)));
+};
+
+const buildPracticeHref = (chapter: ChapterMetric, type: TaskType) => {
+  const params = new URLSearchParams();
+  params.set('chapter_id', chapter.id);
+  params.set('subject', chapter.subject);
+  params.set('chapter', chapter.title);
+  params.set('mode', type);
+  return `/study-now?${params.toString()}`;
+};
+
+const buildTestHref = (chapter: ChapterMetric) => {
+  const params = new URLSearchParams();
+  params.set('chapter_id', chapter.id);
+  params.set('subject', chapter.subject);
+  params.set('chapter', chapter.title);
+  params.set('mode', 'chapter');
+  return `/test?${params.toString()}`;
+};
+
+const makeTask = (chapter: ChapterMetric, date: string, type: TaskType, index: number): PlannerTask => {
+  const dayName = DAY_NAMES[new Date(date).getDay()];
+  const base = {
+    id: `${date}-${type}-${chapter.id}-${index}`,
+    date,
+    dayName,
+    subject: chapter.subject,
+    chapter: chapter.title,
+    chapterId: chapter.id,
+  };
+
+  if (type === 'review') {
+    return {
+      ...base,
+      title: 'Mistake repair',
+      subtitle: `${chapter.pendingMistakes || chapter.wrong} galat questions dobara kar`,
+      duration: 30,
+      type,
+      priority: 'high',
+      actionLabel: 'Review',
+      href: buildPracticeHref(chapter, 'review'),
+    };
+  }
+
+  if (type === 'drill') {
+    return {
+      ...base,
+      title: 'Weakness drill',
+      subtitle: `${Math.round(chapter.accuracy)}% accuracy ko 70%+ push kar`,
+      duration: 40,
+      type,
+      priority: 'high',
+      actionLabel: 'Drill',
+      href: buildPracticeHref(chapter, 'drill'),
+    };
+  }
+
+  if (type === 'test') {
+    return {
+      ...base,
+      title: 'Chapter test',
+      subtitle: `${chapter.title} ka timed checkpoint`,
+      duration: 60,
+      type,
+      priority: 'medium',
+      actionLabel: 'Test',
+      href: buildTestHref(chapter),
+    };
+  }
+
   return {
-    topic: topic || chapter || 'General Practice',
-    chapter: chapter || topic || 'Mixed',
+    ...base,
+    title: 'Start / continue chapter',
+    subtitle: `${chapter.attempts}/15 foundation questions done`,
+    duration: 45,
+    type,
+    priority: chapter.attempts === 0 ? 'high' : 'medium',
+    actionLabel: 'Practice',
+    href: buildPracticeHref(chapter, 'learn'),
   };
 };
 
-interface AIInsightsCache {
-  date: string;
-  insights: {
-    personalizedGreeting?: string;
-    strengthAnalysis?: string;
-    weaknessStrategy?: string;
-    motivationalMessage?: string;
-    keyRecommendations?: string[];
+function chooseChapterForTask(data: {
+  active: ChapterMetric | null;
+  weak: ChapterMetric[];
+  medium: ChapterMetric[];
+  strong: ChapterMetric[];
+  pending: ChapterMetric[];
+}, dayIndex: number, type: TaskType) {
+  if (type === 'review') {
+    return data.weak.find((c) => c.pendingMistakes > 0) || data.medium.find((c) => c.pendingMistakes > 0) || data.active || data.pending[0] || null;
+  }
+  if (type === 'drill') return data.weak[dayIndex % Math.max(1, data.weak.length)] || data.active || data.pending[0] || null;
+  if (type === 'test') return data.medium[dayIndex % Math.max(1, data.medium.length)] || data.active || data.strong[0] || data.pending[0] || null;
+  return data.active || data.pending[dayIndex % Math.max(1, data.pending.length)] || data.weak[0] || null;
+}
+
+function buildWeeklyPlan(seed: Omit<PlannerData, 'weekly'>): DayPlan[] {
+  const days: DayPlan[] = [];
+  const now = new Date();
+  const pattern: TaskType[][] = [
+    ['learn', 'drill', 'review'],
+    ['learn', 'drill'],
+    ['review', 'learn'],
+    ['drill', 'learn'],
+    ['learn', 'test'],
+    ['test', 'review'],
+    ['review'],
+  ];
+
+  for (let i = 0; i < 7; i += 1) {
+    const dateObj = new Date(now);
+    dateObj.setDate(now.getDate() + i);
+    const date = dateObj.toISOString().split('T')[0];
+    const types = pattern[i] || ['learn'];
+    const tasks = types
+      .map((type, idx) => {
+        const chapter = chooseChapterForTask(seed, i + idx, type);
+        return chapter ? makeTask(chapter, date, type, idx) : null;
+      })
+      .filter(Boolean) as PlannerTask[];
+
+    days.push({
+      date,
+      dayName: DAY_NAMES[dateObj.getDay()],
+      totalMinutes: tasks.reduce((sum, task) => sum + task.duration, 0),
+      tasks,
+    });
+  }
+
+  return days;
+}
+
+const emptyPlanner = (): PlannerData => ({
+  roadmaps: [],
+  chapters: [],
+  bySubject: {},
+  weak: [],
+  medium: [],
+  strong: [],
+  pending: [],
+  active: null,
+  next: null,
+  weekly: [],
+  coveragePct: 0,
+  totalQuestions: 0,
+  totalAttempts: 0,
+  overallAccuracy: 0,
+  pendingMistakes: 0,
+});
+
+function metricFromRoadmapChapter(chapter: RoadmapChapter): ChapterMetric {
+  const learn = chapter.milestones.find((m) => m.key === 'learn');
+  const review = chapter.milestones.find((m) => m.key === 'review');
+  const pendingMistakes = review && review.state !== 'done' ? Math.max(0, review.current) : 0;
+  const accuracy = Math.round((chapter.accuracy || 0) * 100);
+  const wrong = Math.max(0, chapter.attempts - chapter.correct);
+  let status: ChapterStatus = 'pending';
+
+  if (chapter.status === 'done') status = 'done';
+  else if (chapter.attempts > 0 && accuracy < 60) status = 'weak';
+  else if (chapter.attempts > 0 && accuracy < 80) status = 'medium';
+  else if (chapter.attempts > 0) status = 'strong';
+
+  const priorityScore =
+    (status === 'weak' ? 120 : status === 'medium' ? 70 : status === 'pending' ? 45 : 20) +
+    pendingMistakes * 8 +
+    Math.max(0, (learn?.target || 15) - chapter.attempts);
+
+  return {
+    id: chapter.id,
+    subject: normalizeSubject(chapter.subject),
+    title: chapter.title,
+    chapterNumber: chapter.chapterNumber,
+    classLevel: chapter.classLevel,
+    totalQuestions: 0,
+    attempts: chapter.attempts,
+    correct: chapter.correct,
+    wrong,
+    pendingMistakes,
+    accuracy,
+    status,
+    priorityScore,
+    lastAttemptAt: null,
   };
 }
 
-function buildPlanFromMastery(mastery: any[], chapterPool: any[]) {
-  const { weak, medium, strong } = categorizeTopics(mastery);
+async function loadPlannerData(userId: string, exam: ExamKey): Promise<PlannerData> {
+  const canonicalSubjects = subjectsForExam(exam);
+  const subjectAliases = Array.from(new Set(canonicalSubjects.flatMap((subject) => getSubjectAliases(subject))));
 
-  const pickFromPool = (idx: number, slot: SlotType, prio: Priority, type: TaskType, dur: number): PlanTask | null => {
-    if (chapterPool.length === 0) return null;
-    const c = chapterPool[idx % chapterPool.length];
-    return {
-      id: `${slot}-pool-${idx}`,
-      topic: c.chapter_name || c.name || 'General',
-      subject: formatSubjectDisplay(c.subject, c.chapter_name || c.name),
-      chapter: c.chapter_name || c.name || 'Mixed',
-      duration: dur, type, timeSlot: slot, priority: prio,
-    };
-  };
+  const { data: chapterRows, error: chapterError } = await supabase
+    .from('chapters')
+    .select('id, subject, chapter_name, name, chapter_number, class_level')
+    .eq('is_active', true)
+    .in('subject', subjectAliases)
+    .overlaps('exam_relevance', examRelevanceValues(exam))
+    .order('subject', { ascending: true })
+    .order('class_level', { ascending: true, nullsFirst: false })
+    .order('chapter_number', { ascending: true, nullsFirst: false })
+    .limit(260);
 
-  const fromMastery = (t: any, slot: SlotType, prio: Priority, type: TaskType, dur: number): PlanTask => {
-    const { topic, chapter } = getLabel(t);
-    return {
-      id: `${slot}-${t.subject}-${chapter}-${topic}`,
-      topic, chapter,
-      subject: formatSubjectDisplay(t.subject, chapter),
-      duration: dur, type, timeSlot: slot, priority: prio, accuracy: t.accuracy,
-    };
-  };
+  if (chapterError) throw chapterError;
 
-  // TODAY
-  const today: PlanTask[] = [];
-  const w0 = weak[0]; const w1 = weak[1];
-  if (w0) today.push(fromMastery(w0, 'morning', 'high', 'study', 45));
-  else { const p = pickFromPool(0, 'morning', 'high', 'study', 45); if (p) today.push(p); }
-  if (w1 || medium[0]) {
-    today.push(fromMastery(w1 || medium[0], 'afternoon', w1 ? 'high' : 'medium', 'study', 35));
-  } else { const p = pickFromPool(1, 'afternoon', 'medium', 'study', 35); if (p) today.push(p); }
-  if (strong[0]) today.push(fromMastery(strong[0], 'evening', 'low', 'revision', 25));
-  else if (medium[1]) today.push(fromMastery(medium[1], 'evening', 'medium', 'revision', 25));
-  else { const p = pickFromPool(2, 'evening', 'low', 'revision', 25); if (p) today.push(p); }
+  const chapterMap = new Map<string, ChapterMetric>();
+  (chapterRows || []).forEach((row: any) => {
+    const subject = normalizeSubject(row.subject || '');
+    if (!canonicalSubjects.includes(subject)) return;
+    const title = (row.chapter_name || row.name || 'Chapter').toString().trim();
+    chapterMap.set(row.id, {
+      id: row.id,
+      subject,
+      title,
+      chapterNumber: row.chapter_number ?? null,
+      classLevel: row.class_level ?? null,
+      totalQuestions: 0,
+      attempts: 0,
+      correct: 0,
+      wrong: 0,
+      pendingMistakes: 0,
+      accuracy: 0,
+      status: 'pending',
+      priorityScore: 0,
+      lastAttemptAt: null,
+    });
+  });
 
-  // WEEKLY (7 days)
-  const weekly: DayPlan[] = [];
-  const now = new Date();
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(now); d.setDate(now.getDate() + i);
-    const dow = d.getDay();
-    const iso = d.toISOString().split('T')[0];
-    const isRest = dow === 0;
-    const isToday = i === 0;
-    const tasks: PlanTask[] = [];
-    let mins = 0;
+  const roadmaps = await buildAllSubjectRoadmaps(userId, exam);
 
-    if (isToday) {
-      tasks.push(...today);
-      mins = today.reduce((s, t) => s + t.duration, 0);
-    } else if (isRest) {
-      const r = strong[i % Math.max(1, strong.length)] || medium[i % Math.max(1, medium.length)];
-      if (r) { const tk = fromMastery(r, 'afternoon', 'low', 'revision', 30); tk.id = `${iso}-rest`; tasks.push(tk); mins = 30; }
-      else { const p = pickFromPool(i, 'afternoon', 'low', 'revision', 30); if (p) { p.id = `${iso}-rest`; tasks.push(p); mins = 30; } }
-    } else if (dow === 6) {
-      tasks.push({ id: `${iso}-mock`, topic: 'Full Mock Test', subject: 'Mixed', chapter: 'All Chapters', duration: 90, type: 'mock_test', timeSlot: 'morning', priority: 'high' });
-      mins = 90;
-      const wk = weak[i % Math.max(1, weak.length)];
-      if (wk) { const tk = fromMastery(wk, 'afternoon', 'high', 'study', 45); tk.id = `${iso}-wk`; tasks.push(tk); mins += 45; }
+  if (chapterMap.size === 0) return { ...emptyPlanner(), roadmaps };
+  const chapterIds = Array.from(chapterMap.keys());
+
+  const [questionRows, attemptRows] = await Promise.all([
+    fetchAllPaginated<any>(() =>
+      supabase
+        .from('questions')
+        .select('id, chapter_id')
+        .in('chapter_id', chapterIds)
+        .or('is_active.is.null,is_active.eq.true'),
+    ),
+    fetchAllPaginated<any>(() =>
+      supabase
+        .from('question_attempts')
+        .select('question_id, is_correct, attempted_at, question:questions!inner(chapter_id)')
+        .eq('user_id', userId)
+        .in('question.chapter_id', chapterIds),
+    ),
+  ]);
+
+  questionRows.forEach((q) => {
+    const chapterId = q.chapter_id;
+    const metric = chapterId ? chapterMap.get(chapterId) : null;
+    if (metric) metric.totalQuestions += 1;
+  });
+
+  const wrongByChapter = new Map<string, Set<string>>();
+  const correctedByChapter = new Map<string, Set<string>>();
+
+  attemptRows.forEach((attempt) => {
+    const chapterId = attempt.question?.chapter_id;
+    const metric = chapterId ? chapterMap.get(chapterId) : null;
+    if (!metric) return;
+    metric.attempts += 1;
+    if (attempt.is_correct) {
+      metric.correct += 1;
+      if (!correctedByChapter.has(chapterId)) correctedByChapter.set(chapterId, new Set());
+      if (attempt.question_id) correctedByChapter.get(chapterId)!.add(attempt.question_id);
     } else {
-      const wk = weak[i % Math.max(1, weak.length)];
-      const md = medium[i % Math.max(1, medium.length)];
-      const st = strong[i % Math.max(1, strong.length)];
-      if (wk) { const tk = fromMastery(wk, 'morning', 'high', 'study', 45); tk.id = `${iso}-wk`; tasks.push(tk); mins += 45; }
-      else { const p = pickFromPool(i, 'morning', 'high', 'study', 45); if (p) { p.id = `${iso}-pm`; tasks.push(p); mins += 45; } }
-      if (md) { const tk = fromMastery(md, 'afternoon', 'medium', 'study', 35); tk.id = `${iso}-md`; tasks.push(tk); mins += 35; }
-      if (st) { const tk = fromMastery(st, 'evening', 'low', 'revision', 25); tk.id = `${iso}-st`; tasks.push(tk); mins += 25; }
+      metric.wrong += 1;
+      if (!wrongByChapter.has(chapterId)) wrongByChapter.set(chapterId, new Set());
+      if (attempt.question_id) wrongByChapter.get(chapterId)!.add(attempt.question_id);
     }
+    if (!metric.lastAttemptAt || new Date(attempt.attempted_at || 0).getTime() > new Date(metric.lastAttemptAt || 0).getTime()) {
+      metric.lastAttemptAt = attempt.attempted_at || null;
+    }
+  });
 
-    weekly.push({ dayName: DAY_NAMES[dow], date: iso, isToday, isRestDay: isRest, tasks, totalMinutes: mins });
-  }
+  const roadmapMetricById = new Map<string, ChapterMetric>();
+  roadmaps.forEach((roadmap) => {
+    roadmap.chapters.forEach((chapter) => roadmapMetricById.set(chapter.id, metricFromRoadmapChapter(chapter)));
+  });
 
-  // SMART SUGGESTION
-  let suggestion: { label: string; cta: string; navTo: string } | null = null;
-  const staleStrong = strong.find(t => (t.daysSincePractice || 0) >= 7);
-  const closeToMastery = medium.find(t => (t.accuracy || 0) >= 75);
-  const isSaturday = now.getDay() === 6;
-  if (isSaturday) suggestion = { label: 'Saturday hai — full mock test maaro!', cta: 'Start mock', navTo: '/test' };
-  else if (staleStrong) suggestion = { label: `${getLabel(staleStrong).topic} ko ${staleStrong.daysSincePractice} din se touch nahi kiya`, cta: 'Revise now', navTo: `/study-now?subject=${encodeURIComponent(staleStrong.subject)}&chapter=${encodeURIComponent(staleStrong.chapter || '')}` };
-  else if (closeToMastery) suggestion = { label: `${getLabel(closeToMastery).topic} ${Math.round(closeToMastery.accuracy)}% pe hai — 80% cross kar!`, cta: 'Push to mastery', navTo: `/study-now?subject=${encodeURIComponent(closeToMastery.subject)}&chapter=${encodeURIComponent(closeToMastery.chapter || '')}` };
+  const chapters = Array.from(chapterMap.values())
+    .map((metric) => {
+      const roadmapMetric = roadmapMetricById.get(metric.id);
+      const wrongSet = wrongByChapter.get(metric.id) || new Set<string>();
+      const correctedSet = correctedByChapter.get(metric.id) || new Set<string>();
+      const pendingMistakes = roadmapMetric?.pendingMistakes ?? [...wrongSet].filter((questionId) => !correctedSet.has(questionId)).length;
+      const accuracy = roadmapMetric?.accuracy ?? (metric.attempts > 0 ? Math.round((metric.correct / metric.attempts) * 100) : 0);
+      let status: ChapterStatus = 'pending';
+      if (roadmapMetric?.status === 'done' || (metric.attempts >= 20 && accuracy >= 80 && pendingMistakes === 0)) status = 'done';
+      else if (metric.attempts > 0 && accuracy < 60) status = 'weak';
+      else if (metric.attempts > 0 && accuracy < 80) status = 'medium';
+      else if (metric.attempts > 0) status = 'strong';
+      const priorityScore =
+        (status === 'weak' ? 120 : status === 'medium' ? 70 : status === 'pending' ? 45 : 20) +
+        pendingMistakes * 8 +
+        Math.max(0, 15 - metric.attempts) +
+        Math.min(30, daysSince(metric.lastAttemptAt));
+      return { ...metric, pendingMistakes, accuracy, status, priorityScore };
+    })
+    .sort((a, b) => {
+      const subjectDiff = canonicalSubjects.indexOf(a.subject) - canonicalSubjects.indexOf(b.subject);
+      if (subjectDiff !== 0) return subjectDiff;
+      return (a.chapterNumber || 999) - (b.chapterNumber || 999);
+    });
 
-  return { today, weekly, suggestion, weak, medium, strong };
+  const bySubject = canonicalSubjects.reduce<Record<string, ChapterMetric[]>>((acc, subject) => {
+    acc[subject] = chapters.filter((chapter) => chapter.subject === subject);
+    return acc;
+  }, {});
+
+  const weak = chapters.filter((chapter) => chapter.status === 'weak').sort((a, b) => b.priorityScore - a.priorityScore);
+  const medium = chapters.filter((chapter) => chapter.status === 'medium').sort((a, b) => b.priorityScore - a.priorityScore);
+  const strong = chapters.filter((chapter) => chapter.status === 'strong' || chapter.status === 'done').sort((a, b) => b.priorityScore - a.priorityScore);
+  const pending = chapters.filter((chapter) => chapter.status === 'pending');
+  const active = chapters.find((chapter) => chapter.status !== 'done') || null;
+  const next = chapters.find((chapter) => chapter.status === 'pending' && chapter.id !== active?.id) || null;
+  const totalAttempts = chapters.reduce((sum, chapter) => sum + chapter.attempts, 0);
+  const totalCorrect = chapters.reduce((sum, chapter) => sum + chapter.correct, 0);
+  const seed = {
+    roadmaps,
+    chapters,
+    bySubject,
+    weak,
+    medium,
+    strong,
+    pending,
+    active,
+    next,
+    coveragePct: chapters.length ? Math.round(((chapters.length - pending.length) / chapters.length) * 100) : 0,
+    totalQuestions: chapters.reduce((sum, chapter) => sum + chapter.totalQuestions, 0),
+    totalAttempts,
+    overallAccuracy: totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0,
+    pendingMistakes: chapters.reduce((sum, chapter) => sum + chapter.pendingMistakes, 0),
+  };
+
+  return { ...seed, weekly: buildWeeklyPlan(seed) };
 }
 
 export default function AIStudyPlanner() {
   const { user } = useAuth();
-  const { getExamDate } = useExamDates();
   const navigate = useNavigate();
+  const { getExamDate } = useExamDates();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
-  const [mastery, setMastery] = useState<any[]>([]);
-  const [chapterPool, setChapterPool] = useState<any[]>([]);
-  const [totalQuestions, setTotalQuestions] = useState(0);
-  const [targetExam, setTargetExam] = useState('JEE');
+  const [targetExam, setTargetExam] = useState<ExamKey>('JEE');
+  const [planner, setPlanner] = useState<PlannerData>(emptyPlanner());
   const [completedHashes, setCompletedHashes] = useState<Set<string>>(new Set());
-  const [adherence7d, setAdherence7d] = useState(0);
-  const [planStreak, setPlanStreak] = useState(0);
-  const [aiInsights, setAiInsights] = useState<AIInsightsCache['insights'] | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(0);
 
   const loadAll = useCallback(async () => {
     if (!user?.id) return;
@@ -192,356 +471,330 @@ export default function AIStudyPlanner() {
     try {
       const cachedGoal = (() => {
         try {
-          const g = safeLocalStorage.getItem('userGoals');
-          if (!g) return null;
-          const p = JSON.parse(g);
-          return normalizeTargetExam(p?.goal || p?.target_exam);
-        } catch { return null; }
+          const raw = safeLocalStorage.getItem('userGoals');
+          return raw ? normalizeTargetExam(JSON.parse(raw)?.goal) : null;
+        } catch {
+          return null;
+        }
       })();
 
-      const [profRes, qCountRes, masteryRes] = await Promise.all([
-        supabase.from('my_profile' as any).select('*').maybeSingle(),
-        supabase.from('question_attempts').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('mode', 'practice'),
-        supabase.from('topic_mastery').select('*').eq('user_id', user.id),
-      ]);
+      const { data: profData, error: profError } = await supabase
+        .from('my_profile' as any)
+        .select('*')
+        .maybeSingle();
+      if (profError) logger.warn('Planner profile load warning', profError);
 
-      const prof = (profRes.data as any) || { target_exam: cachedGoal || 'JEE' };
-      const goal = normalizeTargetExam((prof as any)?.target_exam || cachedGoal || 'JEE');
-      setProfile(prof);
-      setTargetExam(goal);
-      setTotalQuestions(qCountRes.count || 0);
-      // drop ghost mastery rows missing subject/topic (would render as "undefined: undefined")
-      const cleanMastery = (masteryRes.data || []).filter(
-        (m: any) => (m?.subject || '').toString().trim() && ((m?.topic || m?.chapter || '').toString().trim()),
-      );
-      setMastery(cleanMastery);
+      const prof = (profData as any) || { target_exam: cachedGoal || 'JEE' };
+      const exam = normalizeExam(normalizeTargetExam(prof?.target_exam || cachedGoal || 'JEE'));
+      const data = await loadPlannerData(user.id, exam);
 
-      // chapter pool for new-user defaults — DB tags use JEE_MAINS / NEET
-      const isNeet = goal.toUpperCase().includes('NEET');
-      const examVariants = isNeet
-        ? ['NEET', 'NEET_UG']
-        : ['JEE', 'JEE_MAIN', 'JEE_MAINS', 'JEE_ADVANCED', 'JEE Main', 'JEE Mains'];
-      const { data: chapData } = await supabase
-        .from('chapters')
-        .select('chapter_name, name, subject')
-        .eq('is_active', true)
-        .overlaps('exam_relevance', examVariants)
-        .limit(60);
-      const pool = (chapData || []).filter((c: any) => c.subject && (c.chapter_name || c.name));
-      // shuffle deterministically by today's date
-      const seed = new Date().getDate();
-      pool.sort((a: any, b: any) => ((a.chapter_name || a.name).length + seed) - ((b.chapter_name || b.name).length + seed));
-      setChapterPool(pool);
-
-      // progress (last 7 days)
-      const sevenAgo = new Date(); sevenAgo.setDate(sevenAgo.getDate() - 7);
-      const { data: progRows } = await supabase.from('study_plan_progress')
+      const sevenAgo = new Date();
+      sevenAgo.setDate(sevenAgo.getDate() - 6);
+      const { data: progressRows } = await supabase
+        .from('study_plan_progress')
         .select('plan_date, task_hash')
         .eq('user_id', user.id)
         .gte('plan_date', sevenAgo.toISOString().split('T')[0]);
 
-      const today = todayISO();
-      const todayDone = new Set<string>();
-      const byDate = new Map<string, number>();
-      (progRows || []).forEach((r: any) => {
-        if (r.plan_date === today) todayDone.add(r.task_hash);
-        byDate.set(r.plan_date, (byDate.get(r.plan_date) || 0) + 1);
+      const done = new Set<string>();
+      (progressRows || []).forEach((row: any) => {
+        if (row?.task_hash) done.add(row.task_hash);
       });
-      setCompletedHashes(todayDone);
-    } catch (e) {
-      logger.error('Planner load error', e);
-      toast.error('Could not load planner data');
+
+      setProfile(prof);
+      setTargetExam(exam);
+      setPlanner(data);
+      setCompletedHashes(done);
+    } catch (error) {
+      logger.error('Planner load error', error);
     } finally {
       setLoading(false);
     }
   }, [user?.id]);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
 
-  const plan = useMemo(() => buildPlanFromMastery(mastery, chapterPool), [mastery, chapterPool]);
   const examDate = profile?.target_exam_date || getExamDateForGrade(getExamDate(targetExam as any), profile?.grade);
   const daysToExam = getDaysUntilDate(examDate) ?? 365;
+  const todayTasks = planner.weekly[0]?.tasks || [];
+  const todayDone = todayTasks.filter((task) => completedHashes.has(taskHash(task))).length;
+  const adherence = todayTasks.length > 0 ? Math.round((todayDone / todayTasks.length) * 100) : 0;
+  const currentDay = planner.weekly[selectedDay] || planner.weekly[0];
 
-  // adherence calc (uses plan.weekly to compute denominator)
-  useEffect(() => {
+  const subjectCoverage = useMemo(() => {
+    return subjectsForExam(targetExam).map((subject) => {
+      const list = planner.bySubject[subject] || [];
+      const touched = list.filter((chapter) => chapter.attempts > 0).length;
+      return { subject, total: list.length, touched, pct: list.length ? Math.round((touched / list.length) * 100) : 0 };
+    });
+  }, [planner.bySubject, targetExam]);
+
+  const toggleDone = async (task: PlannerTask) => {
     if (!user?.id) return;
-    (async () => {
-      const sevenAgo = new Date(); sevenAgo.setDate(sevenAgo.getDate() - 6);
-      const { data } = await supabase.from('study_plan_progress')
-        .select('plan_date')
-        .eq('user_id', user.id)
-        .gte('plan_date', sevenAgo.toISOString().split('T')[0]);
-      const days = new Set((data || []).map((r: any) => r.plan_date));
-      setAdherence7d(Math.round((days.size / 7) * 100));
-      // streak: consecutive days back from today with at least 1 completion
-      let s = 0;
-      for (let i = 0; i < 30; i++) {
-        const d = new Date(); d.setDate(d.getDate() - i);
-        if (days.has(d.toISOString().split('T')[0])) s++;
-        else if (i > 0) break;
-      }
-      setPlanStreak(s);
-    })();
-  }, [user?.id, completedHashes]);
-
-  // Load AI insights once per day per user
-  useEffect(() => {
-    if (!user?.id || loading) return;
-    const key = `jeenie_plan_insights_${user.id}_${todayISO()}`;
-    const cached = safeLocalStorage.getItem(key);
-    if (cached) {
-      try { setAiInsights(JSON.parse(cached)); return; } catch { /* noop */ }
-    }
-    setAiLoading(true);
-    const weakLabels = plan.weak.slice(0, 5).map(t => `${t.subject} - ${getLabel(t).topic}: ${Math.round(t.accuracy || 0)}%`);
-    const strongLabels = plan.strong.slice(0, 5).map(t => `${t.subject} - ${getLabel(t).topic}: ${Math.round(t.accuracy || 0)}%`);
-    supabase.functions.invoke('generate-study-plan', {
-      body: {
-        userId: user.id,
-        targetExam,
-        studyHours: 4,
-        daysRemaining: daysToExam,
-        avgAccuracy: Math.round(profile?.overall_accuracy || 0),
-        strengths: strongLabels,
-        weaknesses: weakLabels,
-      },
-    }).then(({ data, error }) => {
-      if (error || !data?.insights) return;
-      setAiInsights(data.insights);
-      try { safeLocalStorage.setItem(key, JSON.stringify(data.insights)); } catch { /* noop */ }
-    }).finally(() => setAiLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, loading, targetExam]);
-
-  const toggleDone = async (task: PlanTask) => {
-    if (!user?.id) return;
-    const date = todayISO();
-    const hash = hashTask(task, date);
-    const isDone = completedHashes.has(hash);
+    const hash = taskHash(task);
     const next = new Set(completedHashes);
-    if (isDone) {
+    if (next.has(hash)) {
       next.delete(hash);
       setCompletedHashes(next);
-      await supabase.from('study_plan_progress').delete()
-        .eq('user_id', user.id).eq('plan_date', date).eq('task_hash', hash);
+      await supabase
+        .from('study_plan_progress')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('plan_date', task.date)
+        .eq('task_hash', hash);
     } else {
       next.add(hash);
       setCompletedHashes(next);
-      await supabase.from('study_plan_progress').upsert({
-        user_id: user.id, plan_date: date, task_hash: hash,
-        task_label: `${task.subject} - ${task.topic}`,
-      } as any, { onConflict: 'user_id,plan_date,task_hash' });
-      toast.success('Task complete! 🎯');
+      await supabase.from('study_plan_progress').upsert(
+        {
+          user_id: user.id,
+          plan_date: task.date,
+          task_hash: hash,
+          task_label: `${task.title} · ${task.chapter}`,
+          chapter_id: task.chapterId || null,
+          milestone: task.type,
+          status: 'done',
+          last_synced_at: new Date().toISOString(),
+        } as any,
+        { onConflict: 'user_id,plan_date,task_hash' },
+      );
     }
-  };
-
-  const startPractice = (task: PlanTask) => {
-    if (task.type === 'mock_test') { navigate('/test'); return; }
-    const params = new URLSearchParams();
-    params.set('subject', task.subject);
-    if (task.chapter) params.set('chapter', task.chapter);
-    if (task.topic && task.topic !== task.chapter) params.set('topic', task.topic);
-    navigate(`/study-now?${params.toString()}`);
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[300px]">
+      <div className="flex min-h-[300px] items-center justify-center">
         <div className="text-center space-y-3">
-          <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground text-sm">Building your study plan...</p>
+          <Loader2 className="mx-auto h-9 w-9 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Live DB se mentor plan bana raha hu...</p>
         </div>
       </div>
     );
   }
 
-  const todayDoneCount = plan.today.filter(t => completedHashes.has(hashTask(t, todayISO()))).length;
-  const rank = predictRank(profile?.overall_accuracy || 0, totalQuestions, targetExam);
-  const swot = generateSWOTAnalysis({ weak: plan.weak, medium: plan.medium, strong: plan.strong });
-  const greeting = aiInsights?.personalizedGreeting || `Chal ${targetExam} champion, aaj ka plan ready hai!`;
-
   return (
-    <div className="space-y-3 py-3">
-      {/* Header */}
+    <div className="space-y-3 py-3 pb-24">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" /> AI Study Planner
+          <h1 className="flex items-center gap-2 text-lg font-bold sm:text-xl">
+            <Sparkles className="h-5 w-5 text-primary" /> AI Study Planner
           </h1>
-          <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 line-clamp-2">
-            {aiLoading ? 'JEEnie analyzing your data…' : greeting}
+          <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground sm:text-xs">
+            Scratch se syllabus cover karwaunga — weakness bhi strength banegi.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={loadAll} className="shrink-0">
-          <RefreshCw className="w-3.5 h-3.5" />
+        <Button variant="outline" size="sm" onClick={() => void loadAll()} className="shrink-0">
+          <RefreshCw className="h-3.5 w-3.5" />
         </Button>
       </div>
 
-      {/* KPI strip */}
-      <div className="grid grid-cols-4 gap-1.5">
-        {[
-          { label: 'Days', value: daysToExam, icon: Calendar, color: 'text-blue-600' },
-          { label: 'Accuracy', value: `${Math.round(profile?.overall_accuracy || 0)}%`, icon: Target, color: 'text-emerald-600' },
-          { label: 'Streak', value: `${planStreak}🔥`, icon: Flame, color: 'text-orange-600' },
-          { label: 'Adherence', value: `${adherence7d}%`, icon: Trophy, color: 'text-purple-600' },
-        ].map(s => (
-          <Card key={s.label} className="border-border/50">
-            <CardContent className="p-2 text-center">
-              <s.icon className={`w-4 h-4 mx-auto mb-0.5 ${s.color}`} />
-              <p className="text-sm font-bold leading-tight">{s.value}</p>
-              <p className="text-[9px] text-muted-foreground">{s.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card className="border-primary/30 bg-primary/5">
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-primary">Mentor Next Step</p>
+              <h2 className="truncate text-base font-extrabold leading-tight">
+                {planner.active ? planner.active.title : 'Syllabus roadmap ready'}
+              </h2>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {planner.active
+                  ? `${formatSubjectDisplay(planner.active.subject)} · ${planner.active.attempts} attempts · ${planner.active.accuracy}% accuracy`
+                  : 'All active chapters are clear. Revision mode on.'}
+              </p>
+            </div>
+            {planner.active && (
+              <Button size="sm" onClick={() => navigate(buildPracticeHref(planner.active!, planner.active!.status === 'weak' ? 'drill' : 'learn'))}>
+                Start <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+          <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+            <div>
+              <Calendar className="mx-auto mb-0.5 h-4 w-4 text-primary" />
+              <p className="text-sm font-bold">{daysToExam}</p>
+              <p className="text-[9px] text-muted-foreground">Days</p>
+            </div>
+            <div>
+              <Target className="mx-auto mb-0.5 h-4 w-4 text-primary" />
+              <p className="text-sm font-bold">{planner.overallAccuracy}%</p>
+              <p className="text-[9px] text-muted-foreground">Accuracy</p>
+            </div>
+            <div>
+              <Flame className="mx-auto mb-0.5 h-4 w-4 text-primary" />
+              <p className="text-sm font-bold">{planner.coveragePct}%</p>
+              <p className="text-[9px] text-muted-foreground">Coverage</p>
+            </div>
+            <div>
+              <Trophy className="mx-auto mb-0.5 h-4 w-4 text-primary" />
+              <p className="text-sm font-bold">{adherence}%</p>
+              <p className="text-[9px] text-muted-foreground">Today</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Tabs */}
       <Tabs defaultValue="roadmap" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full h-9">
+        <TabsList className="grid h-9 w-full grid-cols-3">
           <TabsTrigger value="roadmap" className="text-xs">Roadmap</TabsTrigger>
           <TabsTrigger value="week" className="text-xs">This Week</TabsTrigger>
           <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
         </TabsList>
 
-        {/* ROADMAP — mentor-driven chapter ladder */}
-        <TabsContent value="roadmap" className="space-y-3 mt-3">
-          {user?.id && (
-            <RoadmapView
-              userId={user.id}
-              exam={normalizeExam(targetExam)}
-            />
-          )}
+        <TabsContent value="roadmap" className="mt-3 space-y-3">
+          {user?.id && <RoadmapView userId={user.id} exam={targetExam} initialRoadmaps={planner.roadmaps} onRefresh={loadAll} />}
         </TabsContent>
 
+        <TabsContent value="week" className="mt-3 space-y-3">
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            {planner.weekly.map((day, index) => (
+              <button
+                key={day.date}
+                type="button"
+                onClick={() => setSelectedDay(index)}
+                className={`min-w-[64px] rounded-xl border p-2 text-center transition-all ${selectedDay === index ? 'border-primary bg-primary/10 ring-1 ring-primary/30' : 'border-border bg-card'}`}
+              >
+                <p className="text-[10px] font-bold text-muted-foreground">{day.dayName}</p>
+                <p className="text-base font-extrabold">{day.tasks.length}</p>
+                <p className="text-[9px] text-muted-foreground">{day.totalMinutes}m</p>
+              </button>
+            ))}
+          </div>
 
-
-        {/* WEEK */}
-        <TabsContent value="week" className="space-y-3 mt-3">
-          <Card>
-            <CardContent className="p-3">
-              <div className="grid grid-cols-7 gap-1">
-                {plan.weekly.map((day) => (
-                  <div key={day.date} className={`text-center p-1.5 rounded-lg border transition-all ${day.isToday ? 'border-primary bg-primary/10 ring-1 ring-primary/30' : day.isRestDay ? 'border-border/50 bg-muted/30' : 'border-border/50'}`}>
-                    <p className={`text-[9px] font-bold ${day.isToday ? 'text-primary' : 'text-muted-foreground'}`}>{day.dayName}</p>
-                    <p className="text-sm font-bold mt-0.5">{day.isRestDay ? '😴' : day.tasks.length}</p>
-                    <p className="text-[8px] text-muted-foreground">{day.isRestDay ? 'Rest' : `${day.totalMinutes}m`}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {plan.weekly.filter(d => !d.isToday).map(day => (
-            <Card key={day.date} className="border-border/50">
-              <CardHeader className="p-3 pb-1.5">
-                <CardTitle className="text-xs flex items-center justify-between">
-                  <span>{day.dayName} {day.isRestDay && '(Rest)'} {day.date.split('-').slice(1).join('/')}</span>
-                  <Badge variant="outline" className="text-[9px]">{day.totalMinutes} min</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 pt-0 space-y-1.5">
-                {day.tasks.length === 0 ? (
-                  <p className="text-[10px] text-muted-foreground">Light day</p>
-                ) : day.tasks.map((t, i) => {
-                  const Icon = SLOT_ICON[t.timeSlot];
-                  return (
-                    <div key={i} className="flex items-center gap-2 text-[11px]">
-                      <Icon className={`w-3 h-3 ${SLOT_COLOR[t.timeSlot]}`} />
-                      <span className="flex-1 truncate"><span className="font-medium">{t.topic}</span> <span className="text-muted-foreground">• {t.subject}</span></span>
-                      <span className="text-muted-foreground text-[10px]">{t.duration}m</span>
+          <div className="space-y-2">
+            {(currentDay?.tasks || []).map((task) => {
+              const done = completedHashes.has(taskHash(task));
+              return (
+                <Card key={task.id} className="border-border/70">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => void toggleDone(task)}
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${done ? 'border-emerald-500 bg-emerald-500/10' : 'border-border'}`}
+                      >
+                        {done ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <BookOpen className="h-4 w-4 text-primary" />}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-bold">{task.title}</p>
+                          <Badge variant="outline" className="h-5 text-[9px]">{task.duration}m</Badge>
+                        </div>
+                        <p className="truncate text-[11px] text-muted-foreground">{task.chapter} · {formatSubjectDisplay(task.subject)}</p>
+                        <p className="line-clamp-1 text-[10px] text-muted-foreground">{task.subtitle}</p>
+                      </div>
+                      <Button size="sm" variant={done ? 'outline' : 'default'} className="h-8 shrink-0" onClick={() => navigate(task.href)}>
+                        {task.actionLabel}
+                      </Button>
                     </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
+            {(!currentDay || currentDay.tasks.length === 0) && (
+              <Card className="border-dashed">
+                <CardContent className="p-5 text-center text-sm text-muted-foreground">DB data nahi mila. Refresh karke dobara try kar.</CardContent>
+              </Card>
+            )}
+          </div>
         </TabsContent>
 
-        {/* INSIGHTS */}
-        <TabsContent value="insights" className="space-y-3 mt-3">
-          <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-purple-500/5">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUp className="w-4 h-4 text-primary" />
-                <p className="text-xs font-semibold">Rank Projection</p>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-xl font-bold text-primary">{rank.percentileRange}</span>
-                <span className="text-[10px] text-muted-foreground">~Rank {rank.currentRank.toLocaleString()}</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Target {rank.targetRank.toLocaleString()} • ~{rank.improvementWeeks} weeks at +2%/week
-              </p>
-            </CardContent>
-          </Card>
-
+        <TabsContent value="insights" className="mt-3 space-y-3">
           <div className="grid grid-cols-2 gap-2">
-            <Card className="border-emerald-200 bg-emerald-50/40 dark:bg-emerald-950/20">
-              <CardContent className="p-2.5">
-                <p className="text-[10px] font-bold text-emerald-700 mb-1">💪 STRENGTHS</p>
-                {swot.strengths.slice(0, 3).map((s, i) => (
-                  <p key={i} className="text-[10px] text-foreground/80 truncate">• {s}</p>
-                ))}
-              </CardContent>
-            </Card>
             <Card className="border-red-200 bg-red-50/40 dark:bg-red-950/20">
-              <CardContent className="p-2.5">
-                <p className="text-[10px] font-bold text-red-700 mb-1">⚠️ WEAKNESSES</p>
-                {swot.weaknesses.slice(0, 3).map((s, i) => (
-                  <p key={i} className="text-[10px] text-foreground/80 truncate">• {s}</p>
-                ))}
-              </CardContent>
-            </Card>
-            <Card className="border-blue-200 bg-blue-50/40 dark:bg-blue-950/20">
-              <CardContent className="p-2.5">
-                <p className="text-[10px] font-bold text-blue-700 mb-1">🚀 OPPORTUNITIES</p>
-                {swot.opportunities.slice(0, 3).map((s, i) => (
-                  <p key={i} className="text-[10px] text-foreground/80 truncate">• {s}</p>
-                ))}
+              <CardContent className="p-3">
+                <div className="mb-1 flex items-center gap-1.5 text-red-700">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  <p className="text-[10px] font-bold uppercase">Weak now</p>
+                </div>
+                <p className="text-xl font-extrabold text-red-700">{planner.weak.length}</p>
+                <p className="truncate text-[10px] text-muted-foreground">{planner.weak[0]?.title || 'No critical weakness'}</p>
               </CardContent>
             </Card>
             <Card className="border-amber-200 bg-amber-50/40 dark:bg-amber-950/20">
-              <CardContent className="p-2.5">
-                <p className="text-[10px] font-bold text-amber-700 mb-1">⏰ THREATS</p>
-                {swot.threats.slice(0, 3).map((s, i) => (
-                  <p key={i} className="text-[10px] text-foreground/80 truncate">• {s}</p>
-                ))}
+              <CardContent className="p-3">
+                <div className="mb-1 flex items-center gap-1.5 text-amber-700">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <p className="text-[10px] font-bold uppercase">Mistakes</p>
+                </div>
+                <p className="text-xl font-extrabold text-amber-700">{planner.pendingMistakes}</p>
+                <p className="truncate text-[10px] text-muted-foreground">Pending wrong-question repair</p>
+              </CardContent>
+            </Card>
+            <Card className="border-blue-200 bg-blue-50/40 dark:bg-blue-950/20">
+              <CardContent className="p-3">
+                <div className="mb-1 flex items-center gap-1.5 text-blue-700">
+                  <Zap className="h-3.5 w-3.5" />
+                  <p className="text-[10px] font-bold uppercase">Pending</p>
+                </div>
+                <p className="text-xl font-extrabold text-blue-700">{planner.pending.length}</p>
+                <p className="truncate text-[10px] text-muted-foreground">Untouched chapters</p>
+              </CardContent>
+            </Card>
+            <Card className="border-emerald-200 bg-emerald-50/40 dark:bg-emerald-950/20">
+              <CardContent className="p-3">
+                <div className="mb-1 flex items-center gap-1.5 text-emerald-700">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <p className="text-[10px] font-bold uppercase">Strong</p>
+                </div>
+                <p className="text-xl font-extrabold text-emerald-700">{planner.strong.length}</p>
+                <p className="truncate text-[10px] text-muted-foreground">80%+ accuracy chapters</p>
               </CardContent>
             </Card>
           </div>
 
-          {aiInsights?.weaknessStrategy && (
+          <Card>
+            <CardContent className="space-y-3 p-3">
+              <div>
+                <p className="text-xs font-bold">Next chapter to finish</p>
+                <p className="mt-0.5 text-sm font-semibold">{planner.active?.title || 'Revision mode'}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {planner.active ? `${formatSubjectDisplay(planner.active.subject)} · ${planner.active.accuracy}% accuracy · ${planner.active.totalQuestions} questions available` : 'All roadmap chapters touched.'}
+                </p>
+              </div>
+              {planner.next && (
+                <div>
+                  <p className="text-xs font-bold">After that</p>
+                  <p className="mt-0.5 text-sm font-semibold">{planner.next.title}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="space-y-2 p-3">
+              <p className="text-xs font-bold">Coverage by subject</p>
+              {subjectCoverage.map((item) => (
+                <div key={item.subject} className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-semibold">{formatSubjectDisplay(item.subject)}</span>
+                    <span className="text-muted-foreground">{item.touched}/{item.total} chapters</span>
+                  </div>
+                  <Progress value={item.pct} className="h-1.5" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {planner.weak.length > 0 && (
             <Card className="border-primary/20">
               <CardContent className="p-3">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Lightbulb className="w-4 h-4 text-primary" />
-                  <p className="text-xs font-semibold">JEEnie's Strategy</p>
+                <p className="mb-2 text-xs font-bold">Top weak chapters</p>
+                <div className="space-y-1.5">
+                  {planner.weak.slice(0, 4).map((chapter) => (
+                    <button key={chapter.id} type="button" onClick={() => navigate(buildPracticeHref(chapter, 'drill'))} className="flex w-full items-center justify-between gap-2 rounded-lg border border-border p-2 text-left hover:border-primary/50">
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-semibold">{chapter.title}</span>
+                        <span className="text-[10px] text-muted-foreground">{formatSubjectDisplay(chapter.subject)} · {chapter.attempts} attempts</span>
+                      </span>
+                      <Badge variant="outline" className="shrink-0 text-[10px]">{chapter.accuracy}%</Badge>
+                    </button>
+                  ))}
                 </div>
-                <p className="text-[11px] leading-relaxed text-foreground/85">{aiInsights.weaknessStrategy}</p>
-                {aiInsights.motivationalMessage && (
-                  <p className="text-[11px] leading-relaxed text-primary mt-2 font-medium">{aiInsights.motivationalMessage}</p>
-                )}
               </CardContent>
             </Card>
           )}
-
-          <div className="grid grid-cols-3 gap-2">
-            <Card><CardContent className="p-2 text-center">
-              <AlertTriangle className="w-4 h-4 text-red-500 mx-auto mb-0.5" />
-              <p className="text-base font-bold text-red-600">{plan.weak.length}</p>
-              <p className="text-[9px] text-muted-foreground">Weak</p>
-            </CardContent></Card>
-            <Card><CardContent className="p-2 text-center">
-              <Target className="w-4 h-4 text-amber-500 mx-auto mb-0.5" />
-              <p className="text-base font-bold text-amber-600">{plan.medium.length}</p>
-              <p className="text-[9px] text-muted-foreground">Medium</p>
-            </CardContent></Card>
-            <Card><CardContent className="p-2 text-center">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto mb-0.5" />
-              <p className="text-base font-bold text-emerald-600">{plan.strong.length}</p>
-              <p className="text-[9px] text-muted-foreground">Strong</p>
-            </CardContent></Card>
-          </div>
         </TabsContent>
       </Tabs>
     </div>

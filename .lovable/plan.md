@@ -1,151 +1,113 @@
-## Reimagine AI Planner — "JEEnie Mentor Roadmap"
+## Audit findings from the current build
 
-Goal: replace the current generic 3-tab planner with a **personal mentor roadmap** that walks the student syllabus-wise, chapter by chapter, telling exactly what to do next — practice → weak-spot drill → revision → chapter test → move on.
+### What is actually broken
+1. **Roadmap is not connected correctly to DB right now**
+   - Console/network shows the exact failure: `invalid input value for enum exam_code: "JEE"`.
+   - `chapters.exam_relevance` is an enum array with only: `JEE_MAINS`, `JEE_ADVANCED`, `NEET`.
+   - Current code sends invalid values like `JEE`, `JEE_MAIN`, `JEE Main`, `JEE Mains`, so Supabase rejects the query and the UI falls back to `0/0 chapters`.
 
-Everything is deep-linked, so tapping any step opens the right Practice/Test page with the right filters.
+2. **This Week is also affected by the same invalid enum filter**
+   - The chapter pool query also sends invalid enum values.
+   - That is why it shows `Light day`, `Mixed`, or generic tasks instead of real chapter tasks.
 
----
+3. **Weakness/Medium/Strong is not reliable**
+   - The UI reads `topic_mastery`, but the live attempt data clearly has weak chapters.
+   - Example from DB: Electrostatics, Current Electricity, Chemical Kinetics, Limits etc. have low accuracy, but Insights still shows `Weak 0 / Medium 0 / Strong 0` because `topic_mastery` shape/data is not aligned with what the planner expects.
+   - Best source should be `question_attempts` joined with `questions` and `chapters`, not stale/incomplete `topic_mastery` rows.
 
-### Core idea
+4. **Current planner mixes two systems**
+   - New Roadmap tab uses chapter ladder.
+   - This Week + Insights still use older generic topic planner.
+   - Result: Roadmap says no chapters, Week says light days, Insights says no weaknesses — all disconnected from each other.
 
-```text
-JEEnie: "Puttar, abhi tu yahaan hai —"
+### What is good
+- DB actually has strong syllabus data: Physics 63 chapters, Chemistry 67, Mathematics 35, Biology 40.
+- Questions are linked to real `chapter_id`, so chapter-wise roadmap can be made accurate.
+- `question_attempts` has enough data to compute real weak chapters and accuracy.
+- The vertical mentor roadmap concept is still the right direction.
 
-┌─ Your Roadmap (Physics · Class 11) ────────┐
-│ ✅ 1. Units & Measurements   100%  ⭐⭐⭐    │
-│ ✅ 2. Kinematics              92%  ⭐⭐⭐    │
-│ 🔵 3. Laws of Motion          ── ACTIVE ──  │
-│      ├─ ◉ Learn 15 Qs (8/15) → [Practice] │
-│      ├─ ◯ Fix weak: Friction  → [Drill 10]│
-│      ├─ ◯ Revise mistakes (6) → [Review]  │
-│      └─ ◯ Chapter test 20 Qs  → [Test]    │
-│ 🔒 4. Work, Energy & Power                  │
-│ 🔒 5. Rotational Motion                     │
-│ 🔒 6. Gravitation                           │
-│ …                                            │
-└─────────────────────────────────────────────┘
+### What is bad / should be removed from planner
+- Generic `Light day`, `Mixed`, placeholder-like copy.
+- `0/0 chapters cleared` when data exists.
+- Weakness cards that depend on stale `topic_mastery`.
+- Rank projection in planner: it feels random and not actionable here. Analytics can keep rank-type stuff; planner should guide action.
+- The current Week tab needs scroll and feels like a list, not a mentor schedule.
 
-Today's focus (auto): finish Step 1 of "Laws of Motion"
-Weekly checkpoint (Sun): Mock test on chapters 1-3
-```
+## Implementation plan
 
-The user does not "browse" — JEEnie always tells them the next single action.
+### 1. Fix the real DB connection bug
+- Replace all planner enum filters with only valid DB enum values:
+  - JEE: `JEE_MAINS`, `JEE_ADVANCED`
+  - NEET: `NEET`
+- Apply this in:
+  - `roadmapEngine.ts`
+  - `AIStudyPlanner.tsx` chapter pool query
+- Stop using invalid values like `JEE`, `JEE_MAIN`, `JEE Main` in `exam_relevance` queries.
 
----
+### 2. Make one single planner data engine
+- Build planner metrics from live DB:
+  - `chapters`
+  - `questions`
+  - `question_attempts`
+  - `study_plan_progress`
+- For each chapter compute:
+  - total questions available
+  - user attempts
+  - correct/wrong
+  - accuracy
+  - pending mistakes
+  - milestone completion
+  - status: locked / active / done
+- `topic_mastery` will no longer be the primary source for planner weakness cards.
 
-### Tabs (3, focused)
+### 3. Rebuild Roadmap into a true mentor ladder
+- Show real chapters immediately.
+- First active chapter should be the earliest unfinished chapter in syllabus order.
+- Each chapter should show clear next action:
+  - Learn basics: solve 15 questions
+  - Fix weak spots: improve to 70%+
+  - Revise mistakes: redo wrong questions
+  - Chapter test: timed chapter test
+- If a chapter has no topics, use chapter-level practice directly.
+- No placeholder copy like “jaldi aa rahe hai” unless there is truly no DB data.
 
-**Tab 1 — Roadmap** (the hero)
-- Subject switcher: Physics / Chemistry / Math (or NEET equivalents)
-- Vertical ladder of chapters in `chapter_number` order
-- Each chapter card = 4 milestones with auto-progress + tap-to-act:
-  1. **Learn** — 15 fresh Qs from that chapter (`/practice?chapter=…&mode=learn`)
-  2. **Fix weak spots** — auto-detect sub-topic with <60% accuracy; 10-Q drill
-  3. **Revise mistakes** — re-do wrong attempts (`/practice?chapter=…&mode=review`)
-  4. **Chapter test** — 20-Q timed test → unlocks next chapter
-- States: ✅ done · 🔵 active · 🔒 locked (greys out, "Finish Ch.3 first")
-- Mastery stars: ⭐ ≥70%, ⭐⭐ ≥85%, ⭐⭐⭐ ≥92%
+### 4. Rebuild This Week from the roadmap, not generic mastery
+- Week tab should be generated from active roadmap chapters:
+  - Day 1-2: active chapter learn/practice
+  - Day 3: weak chapter drill
+  - Day 4: mistakes review
+  - Day 5: next chapter start
+  - Day 6: chapter/subject test
+  - Day 7: light revision/checkpoint
+- Every task should deep-link to the exact chapter/mode.
+- Mobile UI should use horizontal day chips/swipe-first layout, not a long boring scroll.
 
-**Tab 2 — This Week**
-- 7-day mentor schedule built from current roadmap position:
-  - Mon-Fri: daily target = next 1-2 milestones (15-30 mins)
-  - Sat: weak-spot consolidation
-  - Sun: **weekly checkpoint test** across completed chapters
-- Tick-off auto-syncs from `question_attempts`
-- "Behind / on-track / ahead" badge
+### 5. Rebuild Insights into actionable mentor insights
+- Replace current SWOT/rank block with:
+  - “Next chapter to finish”
+  - “Weakest chapters right now”
+  - “Mistakes pending”
+  - “Ready for chapter test?”
+  - “Coverage by subject”
+- Weak/Medium/Strong counts should be computed from real chapter attempts:
+  - Weak: accuracy below 60% with attempts
+  - Medium: 60-79%
+  - Strong: 80%+
+  - Untouched chapters separate as `Pending`, not incorrectly hidden.
 
-**Tab 3 — Mentor Notes**
-- 1 short Hinglish nudge from JEEnie daily (Gemini, cached) tied to roadmap position
-- Exam readiness % = weighted (chapters cleared × subject weightage), with delta vs last week
-- "Aaj ka focus" + "Kal kya karna hai" — 2 lines, no fluff
+### 6. Wire deep links properly
+- `/study-now?chapter_id=...&mode=learn|drill|review` should open the respective chapter practice directly or at least preselect that chapter.
+- `/test?chapter_id=...&mode=chapter` should preselect chapter test setup or start with that chapter context.
+- This makes the planner actually guide the student point-to-point.
 
----
+### 7. Mobile polish for current planner page
+- Remove cramped KPI cards or compress them into a cleaner single row.
+- Keep Roadmap as primary first screen.
+- Make tabs and subject selector horizontally swipe-friendly.
+- Ensure no bottom nav/floating AI overlap hides planner content.
 
-### How chapter order is decided
-
-Deterministic, per subject, per user goal:
-1. Pull `chapters` where `is_active = true` and `exam_relevance` includes user's exam
-2. Sort by `(class_level asc, chapter_number asc)`
-3. Active chapter = first chapter whose all 4 milestones are not complete
-4. Locked = every chapter after the active one (sequential unlock)
-5. User can override (long-press → "Start from here") — counted as skip, JEEnie nudges to come back
-
-### How each milestone is tracked (no new heavy tables)
-
-Reuse existing `question_attempts` + extend `study_plan_progress`:
-- Learn done = ≥15 attempts in that chapter with ≥60% accuracy
-- Weak-spot done = drill set marked complete OR sub-topic accuracy crossed 70%
-- Revise done = all prior wrong attempts re-answered (or count = 0)
-- Chapter test done = a `test_sessions` row with `chapter_id = X` and score ≥60%
-
-Cache the computed milestone state per (user, chapter) in `study_plan_progress` so the roadmap loads instantly; recompute on tab focus + after each attempt.
-
-### Deep-link contract (Practice/Test already exist)
-
-- Practice learn: `/practice?chapterId=…&mode=learn&target=15`
-- Weak drill: `/practice?chapterId=…&topicId=…&mode=drill&target=10`
-- Review: `/practice?chapterId=…&mode=review`
-- Chapter test: `/test?chapterId=…&questions=20&timed=1`
-- Weekly checkpoint: `/test?chapters=ch1,ch2,ch3&questions=30&timed=1`
-
-`PracticePage` / `TestPage` already accept chapter filters — only the mode/target/review params need to be honored (small additions, no rewrite).
-
-### AI usage (cheap)
-
-One Gemini call per user per day, cached:
-- Input: current chapter, last 7 days accuracy, weak topic name
-- Output: ~40-word Hinglish mentor note for Tab 3 + 1-line "aaj ka focus"
-- Reuses existing `generate-study-plan` edge function (extended, not new)
-
-### What's removed
-
-- Current generic "Warmup/Focus/Stretch/Cooldown" Today tab — gone
-- Current "Week heatmap + subject load" view — replaced by mentor weekly schedule
-- Current free-form SWOT/insights — replaced by roadmap-aware Mentor Notes
-- `studyPlannerCore.ts` topic-priority math — replaced by the deterministic roadmap engine
-
-Nothing else in the app changes (Practice page, Tests, Badges, Analytics, Doubt Solver, Roast all untouched).
-
----
-
-### Technical sketch (for review)
-
-New file: `src/lib/roadmapEngine.ts`
-- `buildRoadmap(userId, subject)` → returns `Chapter[]` with milestone states
-- Pure functions, deterministic; reads `chapters`, `question_attempts`, `test_sessions`, `study_plan_progress`
-
-Refactor: `src/components/AIStudyPlanner.tsx`
-- Replace Today tab with `<RoadmapView />` (subject switcher + chapter ladder + milestone chips)
-- Replace Week tab with `<MentorWeekView />` (7-day plan derived from roadmap)
-- Replace Insights tab with `<MentorNotesView />` (cached Gemini note + readiness %)
-
-Small extension: `src/pages/PracticePage.tsx` + `src/pages/TestPage.tsx`
-- Honor `mode=learn|drill|review` and `target` query params
-- `mode=review` filters to questions previously answered incorrectly by this user
-- `mode=drill` accepts a `topicId` filter
-
-Migration:
-- Extend `study_plan_progress` with `chapter_id`, `milestone` (enum: learn/drill/review/test), `status`, `last_synced_at`
-- Add unique index on `(user_id, chapter_id, milestone)`
-- Add `GRANT`s and RLS scoped to `auth.uid()`
-
-Edge function:
-- Extend `generate-study-plan` with a new `mode=mentor_note` path returning the short Hinglish note; cache by `(user_id, date)`
-
-Dashboard card (already wired) becomes:
-> "Roadmap · Laws of Motion · Step 2 of 4 · 12 min" → opens Tab 1
-
----
-
-### Build order (incremental, each shippable)
-
-1. **Migration** — extend `study_plan_progress`
-2. **Roadmap engine** — pure logic + tests
-3. **Roadmap tab UI** — replaces Today tab; deep-links into existing Practice/Test
-4. **Practice/Test query-param honoring** — `mode=learn|drill|review`, `target`
-5. **Mentor Week tab** — derived 7-day plan
-6. **Mentor Notes tab + edge fn extension** — cached daily note + readiness %
-7. **Dashboard card copy update** to roadmap-aware text
-8. **Cleanup** — delete `studyPlannerCore.ts` + old Today/Week/Insights code paths
-
-Approve karein toh slice 1 (migration) se start karunga — safe, reversible. Ya koi slice skip / order change karna ho toh batao.
+## Expected result
+- Roadmap will show real Physics/Chemistry/Mathematics chapters instead of `0/0`.
+- Weakness will show actual weak chapters from attempts.
+- This Week will no longer show generic `Light day` unless it is an intentional rest day.
+- Planner becomes a mentor: “start this chapter, do this milestone, then this test”, with every action connected to practice/test pages.

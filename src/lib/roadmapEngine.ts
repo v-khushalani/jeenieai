@@ -10,6 +10,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
+import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization';
 
 export type Milestone = 'learn' | 'drill' | 'review' | 'test';
 export type MilestoneState = 'pending' | 'in_progress' | 'done';
@@ -51,8 +52,8 @@ export interface SubjectRoadmap {
 }
 
 export const SUBJECTS_BY_EXAM: Record<string, string[]> = {
-  JEE: ['PHYSICS', 'CHEMISTRY', 'MATHEMATICS'],
-  NEET: ['PHYSICS', 'CHEMISTRY', 'BIOLOGY'],
+  JEE: ['Physics', 'Chemistry', 'Mathematics'],
+  NEET: ['Physics', 'Chemistry', 'Biology'],
 };
 
 const LEARN_TARGET = 15;
@@ -98,6 +99,10 @@ export function subjectsForExam(exam: 'JEE' | 'NEET'): string[] {
   return SUBJECTS_BY_EXAM[exam] || SUBJECTS_BY_EXAM.JEE;
 }
 
+export function examRelevanceValues(exam: 'JEE' | 'NEET'): ('JEE_MAINS' | 'JEE_ADVANCED' | 'NEET')[] {
+  return exam === 'JEE' ? ['JEE_MAINS', 'JEE_ADVANCED'] : ['NEET'];
+}
+
 /**
  * Build the roadmap for one subject, for one user.
  */
@@ -106,18 +111,17 @@ export async function buildSubjectRoadmap(
   exam: 'JEE' | 'NEET',
   subject: string,
 ): Promise<SubjectRoadmap> {
-  // 1. Chapters in this subject for this exam
-  // DB stores tags like 'JEE_MAINS' / 'JEE_ADVANCED' / 'NEET' — accept all variants.
-  const examVariants =
-    exam === 'JEE'
-      ? ['JEE', 'JEE_MAIN', 'JEE_MAINS', 'JEE_ADVANCED', 'JEE Main', 'JEE Mains']
-      : ['NEET', 'NEET_UG'];
+  const canonicalSubject = normalizeSubject(subject);
+
+  // 1. Chapters in this subject for this exam.
+  // IMPORTANT: exam_relevance is exam_code[] and accepts ONLY enum labels.
+  // Passing text variants like "JEE" makes PostgREST reject the whole query.
   const { data: chapterRows, error: chapErr } = await supabase
     .from('chapters')
     .select('id, subject, chapter_name, name, chapter_number, class_level')
     .eq('is_active', true)
-    .eq('subject', subject)
-    .overlaps('exam_relevance', examVariants)
+    .in('subject', getSubjectAliases(canonicalSubject))
+    .overlaps('exam_relevance', examRelevanceValues(exam))
     .order('class_level', { ascending: true, nullsFirst: false })
     .order('chapter_number', { ascending: true, nullsFirst: false })
     .limit(60);
@@ -125,7 +129,7 @@ export async function buildSubjectRoadmap(
   if (chapErr) logger.error('roadmap: chapters load', chapErr);
   const chapters: ChapterRow[] = (chapterRows || []) as ChapterRow[];
   if (chapters.length === 0) {
-    return { subject, chapters: [], activeChapterId: null, doneCount: 0, totalCount: 0 };
+    return { subject: canonicalSubject, chapters: [], activeChapterId: null, doneCount: 0, totalCount: 0 };
   }
   const chapterIds = chapters.map((c) => c.id);
 
@@ -248,7 +252,7 @@ export async function buildSubjectRoadmap(
 
     return {
       id: c.id,
-      subject: c.subject || subject,
+      subject: normalizeSubject(c.subject || canonicalSubject),
       title: c.chapter_name || c.name || 'Untitled chapter',
       classLevel: c.class_level,
       chapterNumber: c.chapter_number,
@@ -277,12 +281,19 @@ export async function buildSubjectRoadmap(
 
   const doneCount = built.filter((c) => c.status === 'done').length;
   return {
-    subject,
+    subject: canonicalSubject,
     chapters: built,
     activeChapterId,
     doneCount,
     totalCount: built.length,
   };
+}
+
+export async function buildAllSubjectRoadmaps(
+  userId: string,
+  exam: 'JEE' | 'NEET',
+): Promise<SubjectRoadmap[]> {
+  return Promise.all(subjectsForExam(exam).map((subject) => buildSubjectRoadmap(userId, exam, subject)));
 }
 
 /**
