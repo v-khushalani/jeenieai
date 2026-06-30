@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +62,7 @@ type DrillLevel = 'subjects' | 'chapters' | 'topics';
 
 const StudyNowPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [level, setLevel] = useState<DrillLevel>('subjects');
   const [selectedSubject, setSelectedSubject] = useState('');
@@ -445,6 +446,39 @@ const StudyNowPage: React.FC = () => {
     event.stopPropagation();
     setTheoryChapter(chapter);
   };
+
+  useEffect(() => {
+    if (profileLoading) return;
+    const chapterId = searchParams.get('chapter_id');
+    const subject = searchParams.get('subject') || '';
+    const chapterTitle = searchParams.get('chapter') || '';
+    const mode = searchParams.get('mode') || 'learn';
+    if (!chapterId || !subject || !chapterTitle) return;
+
+    const chapter: Chapter = {
+      id: chapterId,
+      subject,
+      chapter_name: chapterTitle,
+    };
+
+    setSelectedSubject(subject);
+    setSelectedChapter(chapter);
+    setLevel('topics');
+
+    if (mode === 'learn' || mode === 'drill' || mode === 'review') {
+      navigate(
+        `/practice?subject=${encodeURIComponent(subject)}&chapter=${encodeURIComponent(chapterTitle)}&chapter_id=${chapterId}&source=planner&mode=${mode}`,
+        { replace: true },
+      );
+      return;
+    }
+
+    void fetchTopics(chapter);
+    // Run only for the current deep link; fetchTopics is intentionally excluded
+    // to avoid re-triggering after its internal state updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileLoading, searchParams, navigate]);
+
   const goBack = () => {
     if (level === 'topics') { setLevel('chapters'); setSelectedChapter(null); setTopics([]); }
     else if (level === 'chapters') { setLevel('subjects'); setSelectedSubject(''); setChapters([]); }
