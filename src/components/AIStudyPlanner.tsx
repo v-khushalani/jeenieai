@@ -30,7 +30,14 @@ import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import RoadmapView from '@/components/planner/RoadmapView';
-import { examRelevanceValues, normalizeExam, subjectsForExam } from '@/lib/roadmapEngine';
+import {
+  buildAllSubjectRoadmaps,
+  examRelevanceValues,
+  normalizeExam,
+  subjectsForExam,
+  type RoadmapChapter,
+  type SubjectRoadmap,
+} from '@/lib/roadmapEngine';
 import safeLocalStorage from '@/utils/safeStorage';
 
 type ExamKey = 'JEE' | 'NEET';
@@ -78,6 +85,7 @@ interface DayPlan {
 }
 
 interface PlannerData {
+  roadmaps: SubjectRoadmap[];
   chapters: ChapterMetric[];
   bySubject: Record<string, ChapterMetric[]>;
   weak: ChapterMetric[];
@@ -240,6 +248,7 @@ function buildWeeklyPlan(seed: Omit<PlannerData, 'weekly'>): DayPlan[] {
 }
 
 const emptyPlanner = (): PlannerData => ({
+  roadmaps: [],
   chapters: [],
   bySubject: {},
   weak: [],
@@ -255,6 +264,42 @@ const emptyPlanner = (): PlannerData => ({
   overallAccuracy: 0,
   pendingMistakes: 0,
 });
+
+function metricFromRoadmapChapter(chapter: RoadmapChapter): ChapterMetric {
+  const learn = chapter.milestones.find((m) => m.key === 'learn');
+  const review = chapter.milestones.find((m) => m.key === 'review');
+  const pendingMistakes = review && review.state !== 'done' ? Math.max(0, review.current) : 0;
+  const accuracy = Math.round((chapter.accuracy || 0) * 100);
+  const wrong = Math.max(0, chapter.attempts - chapter.correct);
+  let status: ChapterStatus = 'pending';
+
+  if (chapter.status === 'done') status = 'done';
+  else if (chapter.attempts > 0 && accuracy < 60) status = 'weak';
+  else if (chapter.attempts > 0 && accuracy < 80) status = 'medium';
+  else if (chapter.attempts > 0) status = 'strong';
+
+  const priorityScore =
+    (status === 'weak' ? 120 : status === 'medium' ? 70 : status === 'pending' ? 45 : 20) +
+    pendingMistakes * 8 +
+    Math.max(0, (learn?.target || 15) - chapter.attempts);
+
+  return {
+    id: chapter.id,
+    subject: normalizeSubject(chapter.subject),
+    title: chapter.title,
+    chapterNumber: chapter.chapterNumber,
+    classLevel: chapter.classLevel,
+    totalQuestions: 0,
+    attempts: chapter.attempts,
+    correct: chapter.correct,
+    wrong,
+    pendingMistakes,
+    accuracy,
+    status,
+    priorityScore,
+    lastAttemptAt: null,
+  };
+}
 
 async function loadPlannerData(userId: string, exam: ExamKey): Promise<PlannerData> {
   const canonicalSubjects = subjectsForExam(exam);
@@ -296,7 +341,9 @@ async function loadPlannerData(userId: string, exam: ExamKey): Promise<PlannerDa
     });
   });
 
-  if (chapterMap.size === 0) return emptyPlanner();
+  const roadmaps = await buildAllSubjectRoadmaps(userId, exam);
+
+  if (chapterMap.size === 0) return { ...emptyPlanner(), roadmaps };
   const chapterIds = Array.from(chapterMap.keys());
 
   const [questionRows, attemptRows] = await Promise.all([
@@ -344,14 +391,20 @@ async function loadPlannerData(userId: string, exam: ExamKey): Promise<PlannerDa
     }
   });
 
+  const roadmapMetricById = new Map<string, ChapterMetric>();
+  roadmaps.forEach((roadmap) => {
+    roadmap.chapters.forEach((chapter) => roadmapMetricById.set(chapter.id, metricFromRoadmapChapter(chapter)));
+  });
+
   const chapters = Array.from(chapterMap.values())
     .map((metric) => {
+      const roadmapMetric = roadmapMetricById.get(metric.id);
       const wrongSet = wrongByChapter.get(metric.id) || new Set<string>();
       const correctedSet = correctedByChapter.get(metric.id) || new Set<string>();
-      const pendingMistakes = [...wrongSet].filter((questionId) => !correctedSet.has(questionId)).length;
-      const accuracy = metric.attempts > 0 ? Math.round((metric.correct / metric.attempts) * 100) : 0;
+      const pendingMistakes = roadmapMetric?.pendingMistakes ?? [...wrongSet].filter((questionId) => !correctedSet.has(questionId)).length;
+      const accuracy = roadmapMetric?.accuracy ?? (metric.attempts > 0 ? Math.round((metric.correct / metric.attempts) * 100) : 0);
       let status: ChapterStatus = 'pending';
-      if (metric.attempts >= 20 && accuracy >= 80 && pendingMistakes === 0) status = 'done';
+      if (roadmapMetric?.status === 'done' || (metric.attempts >= 20 && accuracy >= 80 && pendingMistakes === 0)) status = 'done';
       else if (metric.attempts > 0 && accuracy < 60) status = 'weak';
       else if (metric.attempts > 0 && accuracy < 80) status = 'medium';
       else if (metric.attempts > 0) status = 'strong';
@@ -382,6 +435,7 @@ async function loadPlannerData(userId: string, exam: ExamKey): Promise<PlannerDa
   const totalAttempts = chapters.reduce((sum, chapter) => sum + chapter.attempts, 0);
   const totalCorrect = chapters.reduce((sum, chapter) => sum + chapter.correct, 0);
   const seed = {
+    roadmaps,
     chapters,
     bySubject,
     weak,
