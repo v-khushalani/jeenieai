@@ -341,6 +341,8 @@ async function loadPlannerData(userId: string, exam: ExamKey): Promise<PlannerDa
     });
   });
 
+  const roadmaps = await buildAllSubjectRoadmaps(userId, exam);
+
   if (chapterMap.size === 0) return { ...emptyPlanner(), roadmaps };
   const chapterIds = Array.from(chapterMap.keys());
 
