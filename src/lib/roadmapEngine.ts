@@ -10,6 +10,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
+import { getSubjectAliases } from '@/lib/subjectNormalization';
 
 export type Milestone = 'learn' | 'drill' | 'review' | 'test';
 export type MilestoneState = 'pending' | 'in_progress' | 'done';
@@ -98,6 +99,10 @@ export function subjectsForExam(exam: 'JEE' | 'NEET'): string[] {
   return SUBJECTS_BY_EXAM[exam] || SUBJECTS_BY_EXAM.JEE;
 }
 
+export function examRelevanceValues(exam: 'JEE' | 'NEET'): ('JEE_MAINS' | 'JEE_ADVANCED' | 'NEET')[] {
+  return exam === 'JEE' ? ['JEE_MAINS', 'JEE_ADVANCED'] : ['NEET'];
+}
+
 /**
  * Build the roadmap for one subject, for one user.
  */
@@ -106,18 +111,15 @@ export async function buildSubjectRoadmap(
   exam: 'JEE' | 'NEET',
   subject: string,
 ): Promise<SubjectRoadmap> {
-  // 1. Chapters in this subject for this exam
-  // DB stores tags like 'JEE_MAINS' / 'JEE_ADVANCED' / 'NEET' — accept all variants.
-  const examVariants =
-    exam === 'JEE'
-      ? ['JEE', 'JEE_MAIN', 'JEE_MAINS', 'JEE_ADVANCED', 'JEE Main', 'JEE Mains']
-      : ['NEET', 'NEET_UG'];
+  // 1. Chapters in this subject for this exam.
+  // IMPORTANT: exam_relevance is exam_code[] and accepts ONLY enum labels.
+  // Passing text variants like "JEE" makes PostgREST reject the whole query.
   const { data: chapterRows, error: chapErr } = await supabase
     .from('chapters')
     .select('id, subject, chapter_name, name, chapter_number, class_level')
     .eq('is_active', true)
-    .eq('subject', subject)
-    .overlaps('exam_relevance', examVariants)
+    .in('subject', getSubjectAliases(subject))
+    .overlaps('exam_relevance', examRelevanceValues(exam))
     .order('class_level', { ascending: true, nullsFirst: false })
     .order('chapter_number', { ascending: true, nullsFirst: false })
     .limit(60);
