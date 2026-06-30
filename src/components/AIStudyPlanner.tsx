@@ -643,7 +643,7 @@ export default function AIStudyPlanner() {
         </TabsList>
 
         <TabsContent value="roadmap" className="mt-3 space-y-3">
-          {user?.id && <RoadmapView userId={user.id} exam={targetExam} onRefresh={loadAll} />}
+          {user?.id && <RoadmapView userId={user.id} exam={targetExam} initialRoadmaps={planner.roadmaps} onRefresh={loadAll} />}
         </TabsContent>
 
         <TabsContent value="week" className="mt-3 space-y-3">
