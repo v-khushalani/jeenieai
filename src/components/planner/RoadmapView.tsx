@@ -234,6 +234,10 @@ export default function RoadmapView({ userId, exam, initialSubject, initialRoadm
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!subjects.includes(subject)) setSubject(subjects[0]);
+  }, [subjects, subject]);
+
   const handleMilestone = (chapter: RoadmapChapter, m: MilestoneInfo) => {
     if (m.state === 'done') return;
     navigate(milestoneHref(chapter, m.key));
