@@ -40,6 +40,7 @@ interface Props {
   exam: 'JEE' | 'NEET';
   /** when set, prefill the subject switcher */
   initialSubject?: string;
+  initialRoadmaps?: SubjectRoadmap[];
   onRefresh?: () => void;
 }
 
@@ -193,9 +194,14 @@ function ChapterCard({
   );
 }
 
-export default function RoadmapView({ userId, exam, initialSubject, onRefresh }: Props) {
+export default function RoadmapView({ userId, exam, initialSubject, initialRoadmaps, onRefresh }: Props) {
   const navigate = useNavigate();
   const subjects = useMemo(() => subjectsForExam(exam), [exam]);
+  const roadmapBySubject = useMemo(() => {
+    const map = new Map<string, SubjectRoadmap>();
+    (initialRoadmaps || []).forEach((roadmap) => map.set(roadmap.subject, roadmap));
+    return map;
+  }, [initialRoadmaps]);
   const [subject, setSubject] = useState<string>(initialSubject || subjects[0]);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<SubjectRoadmap | null>(null);
@@ -203,6 +209,13 @@ export default function RoadmapView({ userId, exam, initialSubject, onRefresh }:
 
   const load = useCallback(async () => {
     if (!userId) return;
+    const preloaded = roadmapBySubject.get(subject);
+    if (preloaded) {
+      setData(preloaded);
+      setExpandedId(preloaded.activeChapterId);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const r = await buildSubjectRoadmap(userId, exam, subject);
@@ -215,7 +228,7 @@ export default function RoadmapView({ userId, exam, initialSubject, onRefresh }:
     } finally {
       setLoading(false);
     }
-  }, [userId, exam, subject]);
+  }, [userId, exam, subject, roadmapBySubject]);
 
   useEffect(() => {
     load();
