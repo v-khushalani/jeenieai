@@ -568,7 +568,7 @@ export default function AIStudyPlanner() {
       <div className="flex min-h-[300px] items-center justify-center">
         <div className="text-center space-y-3">
           <Loader2 className="mx-auto h-9 w-9 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Live DB se mentor plan bana raha hu...</p>
+          <p className="text-sm text-muted-foreground">Tera mentor plan ready kar raha hu…</p>
         </div>
       </div>
     );
