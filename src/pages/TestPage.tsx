@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from "sonner";
@@ -47,6 +47,7 @@ type ChapterOption = { id: string; subject: string; chapter: string };
 
 const TestPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth() as any;
   const testHistoryEnabled = useFeatureFlag('test_history');
   const [loading, setLoading] = useState(false);
@@ -69,6 +70,7 @@ const TestPage: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [hasProAccess, setHasProAccess] = useState<boolean>(false);
   const [loadingChapters, setLoadingChapters] = useState<boolean>(false);
+  const [plannerLinkHandled, setPlannerLinkHandled] = useState(false);
   const profile = studentProfile;
   const testGridClass = hasProAccess
     ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5 py-2 sm:py-4'
@@ -387,6 +389,22 @@ const TestPage: React.FC = () => {
         cancelled = true;
       };
     }, [profile?.id, profile?.grade, profile?.target_exam, selectedSubject, testMode, availableSubjects]);
+
+    useEffect(() => {
+      if (plannerLinkHandled || !profile?.id) return;
+      const mode = searchParams.get('mode');
+      const chapterId = searchParams.get('chapter_id');
+      const subject = searchParams.get('subject') || '';
+      const chapter = searchParams.get('chapter') || '';
+      if (mode !== 'chapter' || !chapterId || !subject || !chapter) return;
+
+      const option = { id: chapterId, subject, chapter };
+      setTestMode('chapter');
+      setSelectedSubject(subject);
+      setSelectedChapters([option]);
+      setAvailableChapters((prev) => prev.some((item) => item.id === chapterId) ? prev : [option, ...prev]);
+      setPlannerLinkHandled(true);
+    }, [plannerLinkHandled, profile?.id, searchParams]);
 
     const loadHistory = useCallback(async () => {
     try {
@@ -778,7 +796,8 @@ const TestPage: React.FC = () => {
             subject: chapter.subject,
             chapter: chapter.chapter,
             chapterIds: [chapter.id],
-            limit: perChapterLimit,
+              limit: perChapterLimit * 4,
+              excludeIds: Array.from(attemptedIds),
           });
         }));
 
