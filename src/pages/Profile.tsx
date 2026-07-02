@@ -329,7 +329,7 @@ const Profile = () => {
                 
                 <div className="flex items-center gap-3">
                   <Target className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">Target: {profile?.target_exam || 'Not Set'}</span>
+                  <span className="text-sm">Target: {profile?.target_exam ? formatExamDisplay(profile.target_exam) : 'Not Set'}</span>
                 </div>
                 
                 {displaySubjects.length > 0 && (
