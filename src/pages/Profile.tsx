@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { getSubjects, normalizeTargetExam } from '@/config/goalConfig';
+import { formatExamDisplay } from '@/utils/examDisplay';
 import { 
   User, 
   Mail, 
