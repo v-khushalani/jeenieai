@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { getSubjects, normalizeTargetExam } from '@/config/goalConfig';
+import { formatExamDisplay } from '@/utils/examDisplay';
 import { 
   User, 
   Mail, 
@@ -36,7 +37,7 @@ import PointsService from '@/services/pointsService';
 import { logger } from '@/utils/logger';
 
 const Profile = () => {
-  const { user, isAuthenticated, isPremium } = useAuth();
+  const { user, isAuthenticated, isPremium, isProPlus } = useAuth();
   const referralEnabled = useFeatureFlag('referral_system');
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
@@ -226,7 +227,7 @@ const Profile = () => {
                     </h1>
                     {isPremium && (
                       <Badge className="bg-linear-to-r from-yellow-400 to-orange-500 text-white border-0 text-[10px] md:text-xs">
-                        PRO
+                        {isProPlus ? 'Pro+' : 'Pro'}
                       </Badge>
                     )}
                   </div>
@@ -239,7 +240,7 @@ const Profile = () => {
                     </Badge>
                     <Badge variant="secondary" className="flex items-center gap-1 text-[10px] md:text-xs bg-secondary text-secondary-foreground">
                       <Target className="w-2.5 h-2.5 md:w-3 md:h-3" />
-                      {profile?.target_exam || 'Not Set'}
+                      {profile?.target_exam ? formatExamDisplay(profile.target_exam) : 'Not Set'}
                     </Badge>
                     {profile?.city && (
                       <Badge variant="outline" className="flex items-center gap-1 text-[10px] md:text-xs">
@@ -328,7 +329,7 @@ const Profile = () => {
                 
                 <div className="flex items-center gap-3">
                   <Target className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">Target: {profile?.target_exam || 'Not Set'}</span>
+                  <span className="text-sm">Target: {profile?.target_exam ? formatExamDisplay(profile.target_exam) : 'Not Set'}</span>
                 </div>
                 
                 {displaySubjects.length > 0 && (
