@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import SEOHead from '@/components/SEOHead';
 import JsonLd, { breadcrumbSchema } from '@/components/JsonLd';
+import { generateQRCodeSVG } from '@/utils/qrCode';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
