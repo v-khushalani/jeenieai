@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import SEOHead from '@/components/SEOHead';
 import JsonLd, { breadcrumbSchema } from '@/components/JsonLd';
+import { generateQRCodeSVG } from '@/utils/qrCode';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -141,6 +142,31 @@ const InstallApp = () => {
               {installing ? 'Installing…' : 'Install App'}
             </Button>
           )}
+
+          {/* QR for desktop → phone handoff */}
+          <Card className="border-border/60">
+            <CardContent className="p-5 flex items-center gap-4 text-left">
+              <div
+                className="w-[112px] h-[112px] shrink-0 bg-white rounded-lg p-1.5 [&>svg]:w-full [&>svg]:h-full"
+                dangerouslySetInnerHTML={{
+                  __html: generateQRCodeSVG('https://jeenieai.lovable.app/install', 160),
+                }}
+                aria-label="QR code to install JEEnie AI"
+              />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">On desktop?</p>
+                <p className="text-xs text-muted-foreground">
+                  Scan with your phone camera to open the install page instantly.
+                </p>
+                <button
+                  onClick={() => navigate('/share')}
+                  className="text-xs text-primary font-medium hover:underline"
+                >
+                  Get shareable poster →
+                </button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

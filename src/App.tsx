@@ -58,6 +58,7 @@ const InstallApp = lazyWithRetry(() => import('@/pages/InstallApp'), "InstallApp
 const FAQPage = lazyWithRetry(() => import('@/pages/FAQPage'), "FAQPage");
 const WrappedPage = lazyWithRetry(() => import('@/pages/WrappedPage'), "WrappedPage");
 const BattlePage = lazyWithRetry(() => import('@/pages/BattlePage'), "BattlePage");
+const SharePage = lazyWithRetry(() => import('@/pages/SharePage'), "SharePage");
 
 // Components
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -210,6 +211,7 @@ function App() {
                   <Route path="/terms-of-service" element={<TermsOfService />} />
                   <Route path="/refund-policy" element={<RefundPolicy />} />
                   <Route path="/install" element={<FeatureGate flagKey="install_app_prompt"><InstallApp /></FeatureGate>} />
+                  <Route path="/share" element={<SharePage />} />
                   
                   {/* Authentication Routes */}
                   <Route path="/login" element={<Login />} />
