@@ -97,15 +97,14 @@ const Header = () => {
     Admin: <Shield className="w-4 h-4" />,
   };
 
+  // Exclude items already exposed by the fixed bottom MobileNavigation
+  // (Dashboard, Study, Tests, Profile) so the hamburger only shows
+  // secondary destinations not reachable from the bottom bar.
   const mobilePrimaryNavItems = isAuthenticated && !isAdmin && !isEducator
     ? [
-        { name: 'Dashboard', path: '/dashboard' },
-        ...(studyNowEnabled ? [{ name: 'Study', path: '/study-now' }] : []),
         ...(isPremium && aiPlannerEnabled ? [{ name: 'AI Planner', path: '/ai-planner' }] : []),
         ...(isPremium && analyticsEnabled ? [{ name: 'Analytics', path: '/analytics' }] : []),
         ...(isProPlus && proPlusEnabled ? [{ name: 'Pro+ Library', path: '/pro-plus-library' }] : []),
-        ...(testsEnabled ? [{ name: 'Tests', path: '/tests' }] : []),
-        { name: 'Profile', path: '/profile' },
       ]
     : navItems;
 
