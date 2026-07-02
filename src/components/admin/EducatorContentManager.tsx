@@ -197,14 +197,14 @@ export const EducatorContentManager: React.FC = () => {
             Upload PPTs / Interactive Animations / games and review every submission before it goes live.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => openUpload('presentation')} variant="outline" className="gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button onClick={() => openUpload('presentation')} variant="outline" className="gap-2 flex-1 sm:flex-none min-w-[140px]">
             <Upload className="h-4 w-4" /> Upload PPT
           </Button>
-          <Button onClick={() => openUpload('simulation')} className="gap-2">
-            <Plus className="h-4 w-4" /> Add Interactive Animation
+          <Button onClick={() => openUpload('simulation')} className="gap-2 flex-1 sm:flex-none min-w-[140px]">
+            <Plus className="h-4 w-4" /> Add Animation
           </Button>
-          <Button onClick={() => openUpload('game')} variant="secondary" className="gap-2">
+          <Button onClick={() => openUpload('game')} variant="secondary" className="gap-2 flex-1 sm:flex-none min-w-[140px]">
             <Plus className="h-4 w-4" /> Add Game
           </Button>
         </div>
