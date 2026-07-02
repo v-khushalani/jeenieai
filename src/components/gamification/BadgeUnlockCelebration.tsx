@@ -183,19 +183,25 @@ export const BadgeUnlockCelebration = () => {
       setShareOpts(opts);
       setShareOpen(true);
 
-      // Award XP once per badge share
-      const reason = `badge_share:${current.name}`;
+      // Award XP once per badge share (tracked via action_type + reference_id)
+      const actionType = 'badge_share';
+      const refId = current.name;
       const { data: existing } = await supabase
         .from('points_log')
         .select('id')
         .eq('user_id', user.id)
-        .eq('reason', reason)
+        .eq('action_type', actionType)
+        .eq('reference_id', refId)
         .limit(1)
         .maybeSingle();
 
       if (!existing) {
         const { error: logErr } = await supabase.from('points_log').insert({
-          user_id: user.id, points: SHARE_REWARD_XP, reason,
+          user_id: user.id,
+          points: SHARE_REWARD_XP,
+          action_type: actionType,
+          reference_id: refId,
+          description: `Shared badge: ${current.name}`,
         });
         if (logErr) throw logErr;
 
