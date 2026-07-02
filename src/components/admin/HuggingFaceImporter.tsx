@@ -266,15 +266,15 @@ export default function HuggingFaceImporter() {
                     </div>
                     <Badge variant="secondary">{p.expectedRows.toLocaleString()}</Badge>
                   </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" disabled={previewing} onClick={() => peek(p.datasetPath, p.split)}>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" disabled={previewing} onClick={() => peek(p.datasetPath, p.split)} className="flex-1 min-w-[140px]">
                       {previewing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
-                      Preview Cleaned Sample
+                      Preview Sample
                     </Button>
-                    <Button size="sm" onClick={() => startImport(p)}>
-                      <Database className="h-3.5 w-3.5 mr-1.5" /> Import Now
+                    <Button size="sm" onClick={() => startImport(p)} className="flex-1 min-w-[110px]">
+                      <Database className="h-3.5 w-3.5 mr-1.5" /> Import
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => startDemoImport(p)}>
+                    <Button size="sm" variant="outline" onClick={() => startDemoImport(p)} className="flex-1 min-w-[100px]">
                       Demo (2k)
                     </Button>
                   </div>

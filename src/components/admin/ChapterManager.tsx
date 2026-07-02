@@ -940,7 +940,7 @@ const ChapterManager = () => {
                     : 'border-[#013062]/15 bg-white text-[#013062] hover:border-[#013062]/35 hover:bg-[#013062]/5',
                 ].join(' ')}
               >
-                {g <= 10 ? `Class ${g}` : `Grade ${g}`}
+                {`Class ${g}`}
               </button>
             ))}
           </div>
@@ -997,103 +997,94 @@ const ChapterManager = () => {
       </div>
 
       <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0">
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
-                Chapter Management
-              </CardTitle>
-                <CardDescription>
-                  Drag rows to reorder · numbers auto-update · use → arrows to move between grades
-                </CardDescription>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/20 px-2 py-1">
-
-                <Checkbox
-                  checked={chapters.length > 0 && selectedChapterIds.length === chapters.length ? true : (selectedChapterIds.length > 0 ? 'indeterminate' : false)}
-                  onCheckedChange={(checked) => toggleSelectAllChapters(checked === true)}
-                  aria-label="Select all chapters"
-                />
-                <span className="text-xs text-muted-foreground">{selectedChapterIds.length} selected</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toggleSelectAllChapters(true)}
-                  disabled={chapters.length === 0 || selectedChapterIds.length === chapters.length}
-                  className="h-7 px-2 text-xs"
-                >
-                  Select all
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toggleSelectAllChapters(false)}
-                  disabled={selectedChapterIds.length === 0}
-                  className="h-7 px-2 text-xs"
-                >
-                  Clear
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleOpenBulkDeleteDialog}
-                  disabled={selectedChapterIds.length === 0}
-                  className="h-7 px-2 text-xs"
-                >
-                  Delete Selected
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => setIsBulkMoveDialogOpen(true)}
-                  disabled={selectedChapterIds.length === 0}
-                  className="h-7 px-2 text-xs gap-1"
-                  title="Move selected chapters to another course/grade/subject"
-                >
-                  <ArrowRightLeft className="w-3.5 h-3.5" />
-                  Move Selected
-                </Button>
-              </div>
+        <CardHeader className="space-y-3">
+          <div className="min-w-0">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <BookOpen className="h-5 w-5 shrink-0" />
+              <span className="truncate">Chapter Management</span>
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
+              Drag rows to reorder · numbers auto-update · use → to move between grades
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/20 px-2 py-2">
+            <Checkbox
+              checked={chapters.length > 0 && selectedChapterIds.length === chapters.length ? true : (selectedChapterIds.length > 0 ? 'indeterminate' : false)}
+              onCheckedChange={(checked) => toggleSelectAllChapters(checked === true)}
+              aria-label="Select all chapters"
+            />
+            <span className="text-xs text-muted-foreground mr-auto">
+              {selectedChapterIds.length} selected
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toggleSelectAllChapters(true)}
+              disabled={chapters.length === 0 || selectedChapterIds.length === chapters.length}
+              className="h-7 px-2 text-xs"
+            >
+              Select all
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toggleSelectAllChapters(false)}
+              disabled={selectedChapterIds.length === 0}
+              className="h-7 px-2 text-xs"
+            >
+              Clear
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setIsBulkMoveDialogOpen(true)}
+              disabled={selectedChapterIds.length === 0}
+              className="h-7 px-2 text-xs gap-1"
+              title="Move selected chapters to another course/grade/subject"
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              Move
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleOpenBulkDeleteDialog}
+              disabled={selectedChapterIds.length === 0}
+              className="h-7 px-2 text-xs gap-1"
+              title="Delete selected chapters"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {gradeFilter >= 11 && (
               <Button
-                variant="default"
+                variant="outline"
                 size="sm"
-                onClick={handleOpenBulkDeleteDialog}
-                disabled={selectedChapterIds.length === 0}
+                onClick={async () => {
+                  if (!confirm('This will auto-redistribute ALL 11th/12th chapters based on NCERT syllabus mapping. Continue?')) return;
+                  toast.loading('Running NCERT auto-fix...');
+                  const { data, error } = await supabase.rpc('fix_chapter_batch_distribution');
+                  toast.dismiss();
+                  if (error) { toast.error('Auto-fix failed: ' + error.message); return; }
+                  const result = data as any;
+                  toast.success(`Moved ${result?.total_questions_moved || 0} questions across ${result?.chapters_processed || 0} chapters`);
+                  fetchChapters();
+                }}
                 className="gap-1"
-                title="Delete selected chapters"
               >
-                <Trash2 className="w-4 h-4" />
-                Delete Selected
+                <ArrowRightLeft className="w-4 h-4" />
+                Auto-Fix 11↔12
               </Button>
-              {gradeFilter >= 11 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    if (!confirm('This will auto-redistribute ALL 11th/12th chapters based on NCERT syllabus mapping. Continue?')) return;
-                    toast.loading('Running NCERT auto-fix...');
-                    const { data, error } = await supabase.rpc('fix_chapter_batch_distribution');
-                    toast.dismiss();
-                    if (error) { toast.error('Auto-fix failed: ' + error.message); return; }
-                    const result = data as any;
-                    toast.success(`Moved ${result?.total_questions_moved || 0} questions across ${result?.chapters_processed || 0} chapters`);
-                    fetchChapters();
-                  }}
-                  className="gap-1"
-                >
-                  <ArrowRightLeft className="w-4 h-4" />
-                  Auto-Fix 11↔12
+            )}
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={resetForm}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Chapter
                 </Button>
-              )}
-              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" onClick={resetForm}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Chapter
-                  </Button>
-                </DialogTrigger>
+              </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Add New Chapter</DialogTitle>
@@ -1156,7 +1147,6 @@ const ChapterManager = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-            </div>
           </div>
         </CardHeader>
         <CardContent>
