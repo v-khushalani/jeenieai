@@ -149,7 +149,7 @@ const InstallApp = () => {
               <div
                 className="w-[112px] h-[112px] shrink-0 bg-white rounded-lg p-1.5 [&>svg]:w-full [&>svg]:h-full"
                 dangerouslySetInnerHTML={{
-                  __html: generateQRCodeSVG('https://jeenieai.lovable.app/install', 160),
+                  __html: generateQRCodeSVG('https://jeenie.website/install', 160),
                 }}
                 aria-label="QR code to install JEEnie AI"
               />
