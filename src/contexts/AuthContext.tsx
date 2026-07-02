@@ -97,6 +97,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logger.log('✅ Premium status:', resolvedTier !== 'free' ? 'PREMIUM' : 'FREE');
       logger.log('✅ Subscription tier:', resolvedTier);
       logger.log('✅ User role:', resolvedRole);
+
+      // Fire-and-forget: warm the planner cache in the background so
+      // /ai-planner opens instantly on first visit. Skips on 2G / saveData.
+      try {
+        const { prefetch } = await import('@/lib/prefetchManager');
+        const { readPlannerCache, writePlannerCache, isFresh } = await import('@/lib/plannerCache');
+        prefetch(`planner:${userId}`, async () => {
+          const cached = readPlannerCache(userId);
+          if (cached && isFresh(cached.ageMs)) return;
+          const [{ loadPlannerData }, { normalizeExam }] = await Promise.all([
+            import('@/components/AIStudyPlanner'),
+            import('@/lib/roadmapEngine'),
+          ]);
+          const { data: prof } = await supabase
+            .from('my_profile' as any).select('*').maybeSingle();
+          const exam = normalizeExam((prof as any)?.target_exam || 'JEE');
+          const data = await loadPlannerData(userId, exam as any);
+          writePlannerCache(userId, { profile: prof, targetExam: exam, planner: data, completedHashes: [] });
+        }, { delayMs: 1500 });
+      } catch (e) {
+        logger.warn('planner prefetch skipped', e);
+      }
     } catch (error) {
       if (!isMountedRef.current || requestSeq !== authStateSeqRef.current) return;
       logger.error('❌ Premium check error:', error);
