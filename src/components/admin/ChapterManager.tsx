@@ -998,8 +998,8 @@ const ChapterManager = () => {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
               <CardTitle className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5" />
                 Chapter Management
@@ -1008,8 +1008,9 @@ const ChapterManager = () => {
                   Drag rows to reorder · numbers auto-update · use → arrows to move between grades
                 </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-2 py-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/20 px-2 py-1">
+
                 <Checkbox
                   checked={chapters.length > 0 && selectedChapterIds.length === chapters.length ? true : (selectedChapterIds.length > 0 ? 'indeterminate' : false)}
                   onCheckedChange={(checked) => toggleSelectAllChapters(checked === true)}
