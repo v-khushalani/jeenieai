@@ -114,9 +114,10 @@ export const AdminAnalytics: React.FC = () => {
     try {
       const start = new Date(Date.now() - days * 86400000).toISOString();
       const [profilesRes, attemptsRes] = await Promise.all([
-        supabase.from('profiles').select('created_at').gte('created_at', start),
-        supabase.from('question_attempts').select('attempted_at, user_id, is_correct').gte('attempted_at', start),
+        supabase.from('profiles').select('created_at').gte('created_at', start).limit(5000),
+        supabase.from('question_attempts').select('attempted_at, user_id, is_correct').gte('attempted_at', start).limit(10000),
       ]);
+
 
       const dateRange = Array.from({ length: days }, (_, i) => {
         const d = new Date(Date.now() - (days - 1 - i) * 86400000);
