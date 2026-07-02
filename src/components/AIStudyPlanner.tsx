@@ -39,6 +39,7 @@ import {
   type SubjectRoadmap,
 } from '@/lib/roadmapEngine';
 import safeLocalStorage from '@/utils/safeStorage';
+import { readPlannerCache, writePlannerCache, isFresh } from '@/lib/plannerCache';
 
 type ExamKey = 'JEE' | 'NEET';
 type ChapterStatus = 'pending' | 'weak' | 'medium' | 'strong' | 'done';
@@ -301,7 +302,7 @@ function metricFromRoadmapChapter(chapter: RoadmapChapter): ChapterMetric {
   };
 }
 
-async function loadPlannerData(userId: string, exam: ExamKey): Promise<PlannerData> {
+export async function loadPlannerData(userId: string, exam: ExamKey): Promise<PlannerData> {
   const canonicalSubjects = subjectsForExam(exam);
   const subjectAliases = Array.from(new Set(canonicalSubjects.flatMap((subject) => getSubjectAliases(subject))));
 
