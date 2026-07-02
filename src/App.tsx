@@ -68,6 +68,7 @@ import RouteTracker from "@/components/RouteTracker";
 import FeatureGate from "@/components/FeatureGate";
 import PremiumGate from "@/components/PremiumGate";
 import ProPlusGate from "@/components/ProPlusGate";
+import BadgeUnlockCelebration from "@/components/gamification/BadgeUnlockCelebration";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -253,7 +254,7 @@ function App() {
                   <ProtectedRoute><FeatureGate flagKey="analytics"><PremiumGate featureName="Analytics"><AnalyticsPage /></PremiumGate></FeatureGate></ProtectedRoute>
                 } />
                 <Route path="/snapshot" element={
-                  <ProtectedRoute><FeatureGate flagKey="snapshot"><WrappedPage /></FeatureGate></ProtectedRoute>
+                  <ProtectedRoute><FeatureGate flagKey="snapshot"><FeatureGate flagKey="wrapped_yearbook"><WrappedPage /></FeatureGate></FeatureGate></ProtectedRoute>
                 } />
                 <Route path="/wrapped" element={<Navigate to="/snapshot" replace />} />
                 <Route path="/subscription-plans" element={<FeatureGate flagKey="pricing_plans"><SubscriptionPlans /></FeatureGate>} />
@@ -404,6 +405,7 @@ function App() {
               {/* Hide AI entry point on educator portal */}
               <FloatingAIEntry />
               <MobileBottomNav />
+              <BadgeUnlockCelebration />
             </GlobalErrorBoundary>
           </TooltipProvider>
           </FeatureFlagProvider>
