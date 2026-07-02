@@ -196,7 +196,7 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
         <div className="grid grid-cols-2 gap-2">
           <Button
             size="sm"
-            onClick={generateRoast}
+            onClick={() => generateRoast()}
             disabled={loading}
             className="bg-[#013062] text-white hover:bg-[#013062]/90 text-xs"
           >
