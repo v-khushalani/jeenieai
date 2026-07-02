@@ -604,9 +604,16 @@ export default function AIStudyPlanner() {
             Scratch se syllabus cover karwaunga — weakness bhi strength banegi.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => void loadAll()} className="shrink-0">
-          <RefreshCw className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {refreshing && (
+            <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+              <Loader2 className="h-3 w-3 animate-spin" /> Refreshing
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={() => void loadAll()}>
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
 
       <Card className="border-primary/30 bg-primary/5">
