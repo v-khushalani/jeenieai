@@ -322,13 +322,15 @@ export function buildRoastPrompt(opts: {
   accuracy: number;
   persona: RoastPersona;
   excludeRoasts?: string[];
+  seed?: string;
 }): string {
   const acc = Math.max(0, Math.min(100, Math.round(opts.accuracy)));
   const bucket = bucketFor(acc);
   const hooks = hooksFor(opts.topic);
   const fewshot = FEWSHOT[bucket].map((e, i) => `  ${i + 1}. ${e}`).join("\n");
-  const avoid = (opts.excludeRoasts || []).slice(0, 3)
+  const avoid = (opts.excludeRoasts || []).slice(0, 10)
     .map((r, i) => `  ${i + 1}. "${r}"`).join("\n");
+  const seed = opts.seed || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   return [
     `You are JEEnie — roasting a JEE/NEET student on their WEAKEST topic.`,
@@ -339,10 +341,13 @@ export function buildRoastPrompt(opts: {
     `- Accuracy: ${acc}%`,
     `- Tone bucket: ${bucket} (${acc < 20 ? "fully savage, RIP" : acc < 40 ? "hard burn, tiny hope" : acc < 60 ? "mid-tier situationship" : acc < 80 ? "playful jab" : "light flex-roast"})`,
     `- Concept hooks to weave in (pick ONE naturally): ${hooks.join(", ")}`,
+    `- Freshness seed (do NOT include in output, just use to vary phrasing): ${seed}`,
     ``,
     `EXAMPLES of bucket-${bucket} energy (DO NOT copy — match the vibe, write fresh):`,
     fewshot,
     avoid ? `\nDO NOT repeat or paraphrase these recent roasts:\n${avoid}` : ``,
+    ``,
+    `BANNED / OVERUSED — never use these phrases: "gormint", "binod", "rasode mein kaun tha", "silent cry for help", "silent cry", "Pushpa jhukega nahi", "Sharma ji ka beta" (if used by another persona), "situationship" (used too much), "left-swipe" (used too much).`,
     ``,
     `HARD RULES:`,
     `1. ONE single line of plain Hinglish prose. Max 180 characters. Punchline at the end.`,
@@ -352,6 +357,7 @@ export function buildRoastPrompt(opts: {
     `5. NO line breaks. NO leading emoji. Max 2 emojis total, at the end only.`,
     `6. Twist the punchline — setup builds expectation, payoff subverts it.`,
     `7. Stay roast-funny, never cruel about appearance/family/identity.`,
+    `8. Every call MUST produce a NEW roast — do not reuse structure or punchline from any recent roast above.`,
     ``,
     `Return ONLY the roast sentence. Nothing else.`,
   ].filter(Boolean).join("\n");
