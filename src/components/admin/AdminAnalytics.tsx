@@ -75,24 +75,25 @@ export const AdminAnalytics: React.FC = () => {
       const todayStart = new Date(now);
       todayStart.setHours(0, 0, 0, 0);
 
-      const [usersRes, attemptsRes, testsRes, accuracyRes, studyRes, todayRes, prevUsersRes, prevAttemptsRes] =
+      const [usersRes, attemptsRes, testsRes, correctRes, studyRes, todayRes, prevUsersRes, prevAttemptsRes] =
         await Promise.all([
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
           supabase.from('question_attempts').select('id', { count: 'exact', head: true }),
           supabase.from('test_sessions').select('id', { count: 'exact', head: true }),
-          supabase.from('question_attempts').select('is_correct'),
-          supabase.from('profiles').select('total_study_time'),
-          supabase.from('question_attempts').select('user_id').gte('attempted_at', todayStart.toISOString()),
+          supabase.from('question_attempts').select('id', { count: 'exact', head: true }).eq('is_correct', true),
+          supabase.from('profiles').select('total_study_time').limit(1000),
+          supabase.from('question_attempts').select('user_id').gte('attempted_at', todayStart.toISOString()).limit(5000),
           supabase.from('profiles').select('id', { count: 'exact', head: true })
             .gte('created_at', prevStart.toISOString()).lt('created_at', periodStart.toISOString()),
           supabase.from('question_attempts').select('id', { count: 'exact', head: true })
             .gte('attempted_at', prevStart.toISOString()).lt('attempted_at', periodStart.toISOString()),
         ]);
 
-      const correct = accuracyRes.data?.filter(a => a.is_correct).length || 0;
-      const total = accuracyRes.data?.length || 0;
+      const totalAttempts = attemptsRes.count || 0;
+      const correct = correctRes.count || 0;
       const studyTime = studyRes.data?.reduce((s, p) => s + (p.total_study_time || 0), 0) || 0;
       const activeToday = new Set(todayRes.data?.map(a => a.user_id) || []).size;
+
 
       setStats({
         total_users: usersRes.count || 0,
