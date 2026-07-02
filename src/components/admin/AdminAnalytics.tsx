@@ -149,9 +149,10 @@ export const AdminAnalytics: React.FC = () => {
 
   const fetchSubjects = async () => {
     try {
-      const data = await fetchAllPaginated(() => supabase.from('questions').select('subject'));
+      // Aggregate on client from a capped sample; we only need distribution ratios.
+      const { data } = await supabase.from('questions').select('subject').limit(5000);
       const counts: Record<string, number> = {};
-      data?.forEach(q => {
+      data?.forEach((q: any) => {
         const s = q.subject || 'Other';
         counts[s] = (counts[s] || 0) + 1;
       });
@@ -160,6 +161,7 @@ export const AdminAnalytics: React.FC = () => {
       logger.error('Subject data error:', e);
     }
   };
+
 
   const fetchExamSplit = async () => {
     try {
