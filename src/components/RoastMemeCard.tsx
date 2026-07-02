@@ -90,7 +90,15 @@ const PERSONA_LABEL: Record<string, string> = {
   desi_aunty: '👵 desi aunty mode',
   sarcastic_prof: '🤓 sarcastic prof mode',
   meme_lord: '🎭 meme lord mode',
+  cricket_commentator: '🏏 commentator mode',
+  bollywood_villain: '🎬 villain mode',
+  chai_tapri: '☕ chai-tapri mode',
 };
+
+const PERSONAS = [
+  'bada_bhai', 'brainrot', 'desi_aunty', 'sarcastic_prof', 'meme_lord',
+  'cricket_commentator', 'bollywood_villain', 'chai_tapri',
+];
 
 export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
   const { user } = useAuth();
