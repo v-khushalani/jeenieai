@@ -312,17 +312,12 @@ const StudyNowPage: React.FC = () => {
           setSubjectChapterCounts((prev) => ({ ...prev, [key]: chapterCount }));
         }));
 
-        const filtered = Object.fromEntries(Object.entries(map).filter(([, count]) => count > 0));
-        setSubjectQuestionCounts(filtered);
-
-        const filteredSubjects = availableSubjects.filter((subject) => (filtered[String(subject || '').trim().toUpperCase()] ?? 0) > 0);
-        if (filteredSubjects.length > 0 && filteredSubjects.length !== availableSubjects.length) {
-          setAvailableSubjects(filteredSubjects);
-        }
+        // Always publish counts for every subject (including 0) so the UI shows
+        // a stable value instead of falling back to "0 Questions" for unresolved keys.
+        setSubjectQuestionCounts((prev) => ({ ...prev, ...map }));
       } catch (err) {
         logger.error('Error fetching subject totals:', err);
-        setSubjectQuestionCounts({});
-        setSubjectChapterCounts({});
+        // Do NOT wipe existing counts on transient errors — keep last-good values.
       }
     };
 
