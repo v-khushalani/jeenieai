@@ -8,20 +8,22 @@ interface AdminRouteProps {
 }
 
 const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const { isAdmin, loading } = useAdminAuth();
 
-  // Fail closed: never allow unauthenticated users to remain on /admin routes.
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (loading) {
+  // Show spinner FIRST while auth/role are still resolving.
+  // Otherwise a hard reload at /admin/<subpath> briefly sees
+  // isAuthenticated=false and bounces to /login, losing the subpath.
+  if (isLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
   }
 
   if (!isAdmin) {
@@ -30,5 +32,6 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
 
   return <>{children}</>;
 };
+
 
 export default AdminRoute;
