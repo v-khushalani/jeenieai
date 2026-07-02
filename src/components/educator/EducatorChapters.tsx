@@ -67,13 +67,13 @@ const EducatorChapters: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Grade Selection */}
+      {/* Class Selection */}
       <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
-        <p className="text-sm font-semibold text-primary mb-3">Which grade are you teaching today?</p>
+        <p className="text-sm font-semibold text-primary mb-3">Which class are you teaching today?</p>
         <div className="flex flex-wrap gap-2">
           {GRADES.map((g) => (
             <Button key={g} size="default" variant={gradeFilter === g ? 'default' : 'outline'} onClick={() => setGradeFilter(g)} className="h-10 px-5 text-base font-semibold">
-              Grade {g}
+              Class {g}
             </Button>
           ))}
         </div>
@@ -98,7 +98,7 @@ const EducatorChapters: React.FC = () => {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
             <FileText className="h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">No presentations yet for Grade {gradeFilter}.</p>
+            <p className="text-muted-foreground">No presentations yet for Class {gradeFilter}.</p>
             <p className="text-xs text-muted-foreground">Ask your admin to upload content.</p>
           </CardContent>
         </Card>

@@ -1,0 +1,1 @@
+UPDATE public.profiles SET educator_approved = true WHERE id IN (SELECT id FROM auth.users WHERE email='qa.educator@jeenieapp.test');
