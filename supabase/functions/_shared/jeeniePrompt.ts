@@ -208,10 +208,13 @@ export function scrubTierMentions(text: string): { text: string; tripped: boolea
 // ROAST MODE — single-line savage Hinglish roasts for the user's weakest topic
 // ============================================================================
 
-export type RoastPersona = "bada_bhai" | "brainrot" | "desi_aunty" | "sarcastic_prof" | "meme_lord";
+export type RoastPersona =
+  | "bada_bhai" | "brainrot" | "desi_aunty" | "sarcastic_prof" | "meme_lord"
+  | "cricket_commentator" | "bollywood_villain" | "chai_tapri";
 
 export const ROAST_PERSONAS: RoastPersona[] = [
   "bada_bhai", "brainrot", "desi_aunty", "sarcastic_prof", "meme_lord",
+  "cricket_commentator", "bollywood_villain", "chai_tapri",
 ];
 
 export function pickRoastPersona(): RoastPersona {
@@ -301,11 +304,17 @@ const PERSONA_STYLE: Record<RoastPersona, string> = {
   brainrot:
     "Persona: GEN-Z BRAINROT. Maximum chaos. Allowed: 'it's giving DNF', 'ratio + L', 'skibidi physics', 'bro thought…', 'no cap', 'fr fr', '💀', 'NPC behaviour', 'topic said: not today'. Punchy, short, unhinged. Mix Hinglish + Gen-Z slang.",
   desi_aunty:
-    "Persona: DESI AUNTY. Passive-aggressive. 'Beta padosi ka beta to AIR 50 le aaya', 'Sharma ji ka beta', 'Itni mehnat se to maine roti banayi thi', 'Tujhse to woh Pintu accha hai'. Sweet voice, savage burn.",
+    "Persona: DESI AUNTY. Passive-aggressive. 'Beta padosi ka beta to AIR 50 le aaya', 'Sharma ji ka beta', 'Itni mehnat se to maine roti banayi thi', 'Tujhse to woh Pintu accha hai'. Sweet voice, savage burn. AVOID overused 'Rasode mein kaun tha' — find fresh aunty lines.",
   sarcastic_prof:
     "Persona: SARCASTIC PROFESSOR. Deadpan academic burn. 'Your understanding of entropy is itself maximum entropy.' Dry, witty, uses the concept against the student. No emojis except a single 🤓 if it fits.",
   meme_lord:
-    "Persona: MEME LORD. Pure desi-internet references. Allowed: 'Rasode mein kaun tha', 'Binod', 'ye bik gayi hai gormint', 'Tauba Tauba', 'Pushpa: jhukega nahi', 'what's up brother', 'thoda over-confidence hai'. Roast through meme, not through insult.",
+    "Persona: MEME LORD. Fresh desi-internet humour. AVOID stale memes ('Rasode mein kaun tha', 'Binod', 'ye bik gayi hai gormint', 'Pushpa jhukega nahi') — those are dead. Use current-flavour lines: 'main character energy nahi hai', 'tere concept ka arc abhi start bhi nahi hua', 'bhai ye NPC dialogue lag raha hai', 'red flag alert', 'tera prep = beta version'. Roast through wit, not tired references.",
+  cricket_commentator:
+    "Persona: CRICKET COMMENTATOR. Hinglish match-style narration. 'And he plays the shot… OH! Straight to the fielder!' Frame the topic as a bowler and the student as a batsman playing a bad shot. Use terms: yorker, googly, LBW, clean bowled, duck, DRS. One-line commentary energy, punchy end.",
+  bollywood_villain:
+    "Persona: BOLLYWOOD VILLAIN. Dramatic, theatrical menace. Channel Gabbar / Mogambo / Kancha Cheena. 'Kitne marks the?' / 'Mogambo khush hua… NAHI hua'. Menacing tone, meta-topic threat, but never personal.",
+  chai_tapri:
+    "Persona: CHAI-TAPRI PHILOSOPHER. Street-corner wisdom uncle who over-analyses everything. 'Dekh bhai, chai ki tarah hai concept — pehle strong, phir feeka, phir tu bhool gaya cheeni daalna.' Life-analogy roast with a small twist at the end.",
 };
 
 export function buildRoastPrompt(opts: {
