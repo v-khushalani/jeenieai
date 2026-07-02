@@ -1,64 +1,67 @@
-## 1. AI Planner — background load + instant open
 
-**Problem:** `/ai-planner` blocks on roadmap engine (reads attempts + chapters + progress across all subjects) before showing anything. On mobile that's 2-4s of spinner.
+# Plan: Yearbook rebuild, badge sharing, feature-flag sync
 
-**Fix:**
-- Add a lightweight `plannerCache` (in-memory + `localStorage` key `jeenie:planner:v1`) that stores the last computed `{ roadmaps, weakness, insights, computedAt }`.
-- On app boot (inside `AuthContext` after user resolves), fire a **background prefetch** via `requestIdleCallback` that runs `roadmapEngine` and writes to cache. No UI shown.
-- `AIStudyPlanner` reads from cache first → renders **instantly** with a subtle "Refreshing…" pill in the corner, then swaps in fresh data when the background recompute finishes.
-- Cache TTL: 10 min. Invalidate on new `question_attempts` insert (already tracked) or manual pull-to-refresh.
+## 1. Rebuild WrappedPage (Yearbook) from scratch — mobile-first
 
-## 2. Phone memory / prefetch strategy
+Current `src/pages/WrappedPage.tsx` is a cramped desktop-first collage. Replace with a **story-mode** experience modeled on Spotify Wrapped / BeReal recap:
 
-Yes — worth doing, but **selectively** (mobile RAM/data is limited). Plan:
+**Structure**
+- Full-viewport vertical "stories" (`h-[100dvh]`, swipe/tap through). Each slide = one stat with hero typography.
+- Progress bar on top (like Instagram stories), tap-left / tap-right to move, swipe up to share, `Esc`/back button exits.
+- Slides (in order):
+  1. Cover — "Your JEE 2026 Yearbook" with name + avatar, animated gradient.
+  2. Streak — biggest streak, flame animation.
+  3. Questions solved — big number counter.
+  4. Strongest chapter — mastery %, subject color.
+  5. Weakest chapter — with "let's fix this" CTA to practice.
+  6. Rank climb — rank delta over time.
+  7. Badges earned — grid.
+  8. Personality card ("The Night Owl", "The Sprinter" — derived from behavior).
+  9. Final share card — one tap to generate + share via existing `ShareCardDialog`.
 
-- **Prefetch on idle** (not on load) using `requestIdleCallback` after dashboard mounts:
-  - Planner roadmap (point 1)
-  - Analytics aggregates (weakness/strength buckets)
-  - Next 20 practice questions for user's weakest chapter
-- Store in a single `sessionPrefetch` module (memory) + selective `localStorage` for roadmap/analytics (survives reload).
-- **Route-level code-split already exists** via `lazyWithRetry` — add `router.prefetch`-style dynamic imports on hover/tap-start of bottom nav items so the JS chunk is ready before navigation.
-- Skip prefetch on `navigator.connection.saveData === true` or `effectiveType === '2g'`.
+**Mobile-first specifics**
+- `100dvh` (not `vh`), `env(safe-area-inset-*)`, tap targets ≥44px.
+- Auto-advance after 6s per slide with pause-on-hold.
+- Uses framer-motion for slide transitions + counter animations.
+- Palette: deep midnight → magenta gradient per slide, not the current pastel.
 
-Net effect: Planner, Analytics, Practice open in <200ms after first dashboard visit.
+**Desktop**: same story frame, centered `max-w-md`, arrow keys for nav.
 
-## 3. JEEnie Roast — repetition problem
+## 2. Share option after every badge earned
 
-**Root causes:**
-- Server prompt has a small persona pool and the fallback bank (in `RoastMemeCard.tsx`) has fixed lines like "silent cry for help" — when Gemini rate-limits or truncates, we fall through to the same 3 lines.
-- `excludeRoasts` sent to the edge function only holds last 3 → recycles fast.
-- Persona roulette in `supabase/functions/jeenie/index.ts` may be seeded weakly.
+**Where**: `src/components/gamification/BadgesShowcase.tsx` + wherever a badge unlock toast fires (find via `rg "badge.*earn|newBadge"`).
 
-**Fix:**
-- Expand server-side persona bank to 8 (add: cricket commentator, Bollywood villain, chai-tapri philosopher) and inject a **random seed + timestamp** into the prompt so Gemini can't return cached completions.
-- Force `temperature: 1.1` and `top_p: 0.95` for roast mode only.
-- Increase `excludeRoasts` window to last **10** roasts (persist in `localStorage`).
-- Rewrite fallback bank in `RoastMemeCard.tsx`: 40 fresh lines, none repeating "gormint / binod / silent cry / rasode mein kaun tha" (stale memes).
-- Add topic-specific hooks: pull `chapter → subject` and inject 2-3 chapter-specific facts (e.g. Thermodynamics → "entropy") so the roast feels custom, not templated.
-- Add a "🎲 Change vibe" button that forces a new persona on next generation.
+**Mechanism** — most rewarding = frictionless + social proof:
+- On unlock: full-screen celebration modal (confetti + badge art scaling in) with primary CTA **"Share & earn 50 XP"** and secondary "Later".
+- Share generates a square card via existing `generateShareCard` (extend `ShareCardOpts` with a `badge` variant showing badge art + tagline "I just earned {badge} on JEEnie 🧞‍♂️" + user's referral QR).
+- Uses `navigator.share` on mobile (native sheet → WhatsApp/IG story/Snap), falls back to download + copy-to-clipboard on desktop.
+- Reward: award +50 XP on first share of each badge (tracked in a new `badge_shares` table or as a boolean column on `user_badges.shared_at`), so the reward is real but non-exploitable.
+- Also add a persistent **Share** icon on every earned badge in the showcase grid, so users can re-share later.
 
-## 4. Overall mobile optimization pass
+## 3. Feature flag registry sync
 
-Focused sweep (no redesign):
+Audit shows every `useFeatureFlag(...)` key in the codebase is already in `FEATURE_FLAG_REGISTRY`. Nothing missing among *user-facing* flags.
 
-- **Perceived speed:** point 1 + 2 above cover the biggest wins.
-- **Skeletons everywhere:** replace remaining spinners in Planner, Analytics, Leaderboard, Badges with content-shaped skeletons.
-- **Image weight:** audit `src/assets/` — convert PNG hero/badge art to WebP via `vite-imagetools` (already available).
-- **Tap targets:** audit bottom-nav + action chips — enforce min 44×44px hit area.
-- **Safe-area padding:** verify `env(safe-area-inset-bottom)` on `MobileNavigation` (iPhone notch users).
-- **Font loading:** add `font-display: swap` if not present, preload primary weight.
-- **Bundle:** check if `AIStudyPlanner`, `Analytics`, `Roast`, and admin bundles are lazy-loaded. If any admin/educator code is in the student bundle, split it.
-- **Realtime:** audit for un-cleaned `supabase.channel` subscriptions (leaked channels on route change are a known mobile battery/data drain).
+**Additions proposed** for features that currently ship un-gated but deserve a kill-switch:
+- `virtual_lab` — Pro+ virtual lab simulations (`VirtualLab.tsx`).
+- `ai_study_planner_v2` — planner already gated by `study_planner`, skip.
+- `group_tests` already present.
+- `wrapped_yearbook` — new flag for the rebuilt yearbook page (so we can dark-launch it).
+- `badge_share_reward` — flag for the XP-on-share mechanic in #2.
+- `pdf_extractor` (admin) — skip, admin surfaces don't need flags.
+- `jeenie_voice` (text-to-speech / voice-to-text) — new flag if the mic button is user-visible.
 
-### Technical notes
+Add these to `src/config/featureFlags.ts` and wire the gates at their entry points.
 
-- New files: `src/lib/plannerCache.ts`, `src/lib/prefetchManager.ts`.
-- Modified: `src/components/AIStudyPlanner.tsx` (cache-first render), `src/contexts/AuthContext.tsx` (idle prefetch trigger), `src/components/RoastMemeCard.tsx` (new fallback bank, exclude window ×10), `supabase/functions/jeenie/index.ts` + `supabase/functions/_shared/jeeniePrompt.ts` (expanded personas, seed injection, temp bump), `src/components/mobile/MobileNavigation.tsx` (route prefetch on tap-start).
-- No DB migrations required.
-- No new secrets.
+## Technical section
 
-### Out of scope (ask separately if wanted)
+- New file: none for yearbook (rewrite `WrappedPage.tsx`). Extract per-slide components into `src/components/wrapped/slides/*.tsx` for readability.
+- Extend `src/lib/shareCard.ts` with a `badge` variant (badge icon + name + QR).
+- New migration: add `shared_at timestamptz` to `user_badges` (or create `badge_shares` if the table doesn't exist — verify first). Include GRANTs.
+- Extend `pointsService` with `awardBadgeShareBonus(userId, badgeId)` idempotent by `shared_at IS NULL`.
+- Update `FEATURE_FLAG_REGISTRY` with the 3 new flags above and gate: `WrappedPage` behind `wrapped_yearbook`, `VirtualLab` route behind `virtual_lab`, badge share modal behind `badge_share_reward`.
+- Verify with Playwright at 390×674: story nav, badge unlock modal, share sheet, feature-flag toggle in admin.
 
-- Full offline mode / service worker (per PWA rule — not adding unless you explicitly want offline).
-- Redesigning Planner UI.
-- Native Capacitor push — already exists.
+## Open question
+
+For badge sharing: OK with **+50 XP per first-time share of a badge** as the incentive, or prefer something bigger (streak-freeze token / entry into a monthly draw)?
