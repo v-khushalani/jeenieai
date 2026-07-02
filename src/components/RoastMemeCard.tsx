@@ -109,7 +109,7 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
   const [shareOpen, setShareOpen] = useState(false);
   const [shareOpts, setShareOpts] = useState<RoastOpts | null>(null);
 
-  const generateRoast = async () => {
+  const generateRoast = async (forcePersona?: string) => {
     if (!weakestTopic || weakestTopic === 'Not enough data') {
       toast.info('Solve a few more questions first — JEEnie needs ammo to roast!');
       return;
@@ -117,12 +117,15 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
     setLoading(true);
     const exclude = user ? loadRecent(user.id) : [];
     try {
+      const nextPersona = forcePersona
+        || PERSONAS.filter(p => p !== persona)[Math.floor(Math.random() * (PERSONAS.length - 1))];
       const { data, error } = await supabase.functions.invoke('jeenie', {
         body: {
           mode: 'roast',
           topic: weakestTopic,
           accuracy: Math.round(weakestAccuracy),
           excludeRoasts: exclude,
+          persona: nextPersona,
         },
       });
       let text = (data?.response || data?.content || '').toString();
