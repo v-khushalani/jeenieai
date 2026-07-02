@@ -1,113 +1,64 @@
-## Audit findings from the current build
+## 1. AI Planner — background load + instant open
 
-### What is actually broken
-1. **Roadmap is not connected correctly to DB right now**
-   - Console/network shows the exact failure: `invalid input value for enum exam_code: "JEE"`.
-   - `chapters.exam_relevance` is an enum array with only: `JEE_MAINS`, `JEE_ADVANCED`, `NEET`.
-   - Current code sends invalid values like `JEE`, `JEE_MAIN`, `JEE Main`, `JEE Mains`, so Supabase rejects the query and the UI falls back to `0/0 chapters`.
+**Problem:** `/ai-planner` blocks on roadmap engine (reads attempts + chapters + progress across all subjects) before showing anything. On mobile that's 2-4s of spinner.
 
-2. **This Week is also affected by the same invalid enum filter**
-   - The chapter pool query also sends invalid enum values.
-   - That is why it shows `Light day`, `Mixed`, or generic tasks instead of real chapter tasks.
+**Fix:**
+- Add a lightweight `plannerCache` (in-memory + `localStorage` key `jeenie:planner:v1`) that stores the last computed `{ roadmaps, weakness, insights, computedAt }`.
+- On app boot (inside `AuthContext` after user resolves), fire a **background prefetch** via `requestIdleCallback` that runs `roadmapEngine` and writes to cache. No UI shown.
+- `AIStudyPlanner` reads from cache first → renders **instantly** with a subtle "Refreshing…" pill in the corner, then swaps in fresh data when the background recompute finishes.
+- Cache TTL: 10 min. Invalidate on new `question_attempts` insert (already tracked) or manual pull-to-refresh.
 
-3. **Weakness/Medium/Strong is not reliable**
-   - The UI reads `topic_mastery`, but the live attempt data clearly has weak chapters.
-   - Example from DB: Electrostatics, Current Electricity, Chemical Kinetics, Limits etc. have low accuracy, but Insights still shows `Weak 0 / Medium 0 / Strong 0` because `topic_mastery` shape/data is not aligned with what the planner expects.
-   - Best source should be `question_attempts` joined with `questions` and `chapters`, not stale/incomplete `topic_mastery` rows.
+## 2. Phone memory / prefetch strategy
 
-4. **Current planner mixes two systems**
-   - New Roadmap tab uses chapter ladder.
-   - This Week + Insights still use older generic topic planner.
-   - Result: Roadmap says no chapters, Week says light days, Insights says no weaknesses — all disconnected from each other.
+Yes — worth doing, but **selectively** (mobile RAM/data is limited). Plan:
 
-### What is good
-- DB actually has strong syllabus data: Physics 63 chapters, Chemistry 67, Mathematics 35, Biology 40.
-- Questions are linked to real `chapter_id`, so chapter-wise roadmap can be made accurate.
-- `question_attempts` has enough data to compute real weak chapters and accuracy.
-- The vertical mentor roadmap concept is still the right direction.
+- **Prefetch on idle** (not on load) using `requestIdleCallback` after dashboard mounts:
+  - Planner roadmap (point 1)
+  - Analytics aggregates (weakness/strength buckets)
+  - Next 20 practice questions for user's weakest chapter
+- Store in a single `sessionPrefetch` module (memory) + selective `localStorage` for roadmap/analytics (survives reload).
+- **Route-level code-split already exists** via `lazyWithRetry` — add `router.prefetch`-style dynamic imports on hover/tap-start of bottom nav items so the JS chunk is ready before navigation.
+- Skip prefetch on `navigator.connection.saveData === true` or `effectiveType === '2g'`.
 
-### What is bad / should be removed from planner
-- Generic `Light day`, `Mixed`, placeholder-like copy.
-- `0/0 chapters cleared` when data exists.
-- Weakness cards that depend on stale `topic_mastery`.
-- Rank projection in planner: it feels random and not actionable here. Analytics can keep rank-type stuff; planner should guide action.
-- The current Week tab needs scroll and feels like a list, not a mentor schedule.
+Net effect: Planner, Analytics, Practice open in <200ms after first dashboard visit.
 
-## Implementation plan
+## 3. JEEnie Roast — repetition problem
 
-### 1. Fix the real DB connection bug
-- Replace all planner enum filters with only valid DB enum values:
-  - JEE: `JEE_MAINS`, `JEE_ADVANCED`
-  - NEET: `NEET`
-- Apply this in:
-  - `roadmapEngine.ts`
-  - `AIStudyPlanner.tsx` chapter pool query
-- Stop using invalid values like `JEE`, `JEE_MAIN`, `JEE Main` in `exam_relevance` queries.
+**Root causes:**
+- Server prompt has a small persona pool and the fallback bank (in `RoastMemeCard.tsx`) has fixed lines like "silent cry for help" — when Gemini rate-limits or truncates, we fall through to the same 3 lines.
+- `excludeRoasts` sent to the edge function only holds last 3 → recycles fast.
+- Persona roulette in `supabase/functions/jeenie/index.ts` may be seeded weakly.
 
-### 2. Make one single planner data engine
-- Build planner metrics from live DB:
-  - `chapters`
-  - `questions`
-  - `question_attempts`
-  - `study_plan_progress`
-- For each chapter compute:
-  - total questions available
-  - user attempts
-  - correct/wrong
-  - accuracy
-  - pending mistakes
-  - milestone completion
-  - status: locked / active / done
-- `topic_mastery` will no longer be the primary source for planner weakness cards.
+**Fix:**
+- Expand server-side persona bank to 8 (add: cricket commentator, Bollywood villain, chai-tapri philosopher) and inject a **random seed + timestamp** into the prompt so Gemini can't return cached completions.
+- Force `temperature: 1.1` and `top_p: 0.95` for roast mode only.
+- Increase `excludeRoasts` window to last **10** roasts (persist in `localStorage`).
+- Rewrite fallback bank in `RoastMemeCard.tsx`: 40 fresh lines, none repeating "gormint / binod / silent cry / rasode mein kaun tha" (stale memes).
+- Add topic-specific hooks: pull `chapter → subject` and inject 2-3 chapter-specific facts (e.g. Thermodynamics → "entropy") so the roast feels custom, not templated.
+- Add a "🎲 Change vibe" button that forces a new persona on next generation.
 
-### 3. Rebuild Roadmap into a true mentor ladder
-- Show real chapters immediately.
-- First active chapter should be the earliest unfinished chapter in syllabus order.
-- Each chapter should show clear next action:
-  - Learn basics: solve 15 questions
-  - Fix weak spots: improve to 70%+
-  - Revise mistakes: redo wrong questions
-  - Chapter test: timed chapter test
-- If a chapter has no topics, use chapter-level practice directly.
-- No placeholder copy like “jaldi aa rahe hai” unless there is truly no DB data.
+## 4. Overall mobile optimization pass
 
-### 4. Rebuild This Week from the roadmap, not generic mastery
-- Week tab should be generated from active roadmap chapters:
-  - Day 1-2: active chapter learn/practice
-  - Day 3: weak chapter drill
-  - Day 4: mistakes review
-  - Day 5: next chapter start
-  - Day 6: chapter/subject test
-  - Day 7: light revision/checkpoint
-- Every task should deep-link to the exact chapter/mode.
-- Mobile UI should use horizontal day chips/swipe-first layout, not a long boring scroll.
+Focused sweep (no redesign):
 
-### 5. Rebuild Insights into actionable mentor insights
-- Replace current SWOT/rank block with:
-  - “Next chapter to finish”
-  - “Weakest chapters right now”
-  - “Mistakes pending”
-  - “Ready for chapter test?”
-  - “Coverage by subject”
-- Weak/Medium/Strong counts should be computed from real chapter attempts:
-  - Weak: accuracy below 60% with attempts
-  - Medium: 60-79%
-  - Strong: 80%+
-  - Untouched chapters separate as `Pending`, not incorrectly hidden.
+- **Perceived speed:** point 1 + 2 above cover the biggest wins.
+- **Skeletons everywhere:** replace remaining spinners in Planner, Analytics, Leaderboard, Badges with content-shaped skeletons.
+- **Image weight:** audit `src/assets/` — convert PNG hero/badge art to WebP via `vite-imagetools` (already available).
+- **Tap targets:** audit bottom-nav + action chips — enforce min 44×44px hit area.
+- **Safe-area padding:** verify `env(safe-area-inset-bottom)` on `MobileNavigation` (iPhone notch users).
+- **Font loading:** add `font-display: swap` if not present, preload primary weight.
+- **Bundle:** check if `AIStudyPlanner`, `Analytics`, `Roast`, and admin bundles are lazy-loaded. If any admin/educator code is in the student bundle, split it.
+- **Realtime:** audit for un-cleaned `supabase.channel` subscriptions (leaked channels on route change are a known mobile battery/data drain).
 
-### 6. Wire deep links properly
-- `/study-now?chapter_id=...&mode=learn|drill|review` should open the respective chapter practice directly or at least preselect that chapter.
-- `/test?chapter_id=...&mode=chapter` should preselect chapter test setup or start with that chapter context.
-- This makes the planner actually guide the student point-to-point.
+### Technical notes
 
-### 7. Mobile polish for current planner page
-- Remove cramped KPI cards or compress them into a cleaner single row.
-- Keep Roadmap as primary first screen.
-- Make tabs and subject selector horizontally swipe-friendly.
-- Ensure no bottom nav/floating AI overlap hides planner content.
+- New files: `src/lib/plannerCache.ts`, `src/lib/prefetchManager.ts`.
+- Modified: `src/components/AIStudyPlanner.tsx` (cache-first render), `src/contexts/AuthContext.tsx` (idle prefetch trigger), `src/components/RoastMemeCard.tsx` (new fallback bank, exclude window ×10), `supabase/functions/jeenie/index.ts` + `supabase/functions/_shared/jeeniePrompt.ts` (expanded personas, seed injection, temp bump), `src/components/mobile/MobileNavigation.tsx` (route prefetch on tap-start).
+- No DB migrations required.
+- No new secrets.
 
-## Expected result
-- Roadmap will show real Physics/Chemistry/Mathematics chapters instead of `0/0`.
-- Weakness will show actual weak chapters from attempts.
-- This Week will no longer show generic `Light day` unless it is an intentional rest day.
-- Planner becomes a mentor: “start this chapter, do this milestone, then this test”, with every action connected to practice/test pages.
+### Out of scope (ask separately if wanted)
+
+- Full offline mode / service worker (per PWA rule — not adding unless you explicitly want offline).
+- Redesigning Planner UI.
+- Native Capacitor push — already exists.

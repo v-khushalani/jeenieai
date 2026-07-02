@@ -19,31 +19,38 @@ interface Props {
   weakestAccuracy: number;
 }
 
-// Wide fallback bank — 5 personas × buckets. Used when the AI call fails
-// or the user is offline. {topic}/{acc} get interpolated.
+// Fresh fallback bank — NO stale memes (gormint/binod/silent cry/rasode).
+// Used only when the AI call fails or is offline. {topic}/{acc} interpolated.
 const FALLBACK_BANK: { bucket: 'BRUTAL' | 'HEAVY' | 'MEDIUM' | 'LIGHT' | 'CHEEKY'; line: string }[] = [
   // BRUTAL (<20)
-  { bucket: 'BRUTAL', line: "{topic} ne tujhe block kar diya — {acc}% pe seen bhi nahi kar raha 💀" },
-  { bucket: 'BRUTAL', line: "Tera {topic} ka score itna kam hai ki periodic table ne bhi tujhe noble gas declare kar diya — reactive zero." },
-  { bucket: 'BRUTAL', line: "{topic} aur tu — Newton ne dekha toh bola 'mere laws is par apply nahi karte'." },
-  { bucket: 'BRUTAL', line: "{acc}% in {topic}? Bhai ye marks nahi, ek silent cry for help hai 🥲" },
+  { bucket: 'BRUTAL', line: "{topic} mein {acc}% — Google bhi 'did you mean: quit?' pooch raha hai 💀" },
+  { bucket: 'BRUTAL', line: "Tera {topic} ka score itna kam hai, formula sheet ne khud unfollow kar diya." },
+  { bucket: 'BRUTAL', line: "{topic} tere paas se aise nikla jaise WiFi metro tunnel mein — connection zero." },
+  { bucket: 'BRUTAL', line: "{acc}% in {topic}? Bhai calculator ne bhi hisab se mana kar diya." },
+  { bucket: 'BRUTAL', line: "{topic} tera dekh ke NCERT ne bola: 'is se better main pdf hi na banta.'" },
+  { bucket: 'BRUTAL', line: "Tera {topic} ka arc abhi start bhi nahi hua and finale drop ho gaya 🎬" },
   // HEAVY (20-39)
-  { bucket: 'HEAVY', line: "{topic} mein {acc}% — Pushpa hota toh ab tak jhuk gaya hota." },
-  { bucket: 'HEAVY', line: "{topic} samjhne ki koshish kar raha tu, par concept ne already left-swipe kar diya." },
-  { bucket: 'HEAVY', line: "Rasode mein kaun tha? {topic} ka concept — kyunki tere notes mein toh nahi hai." },
-  { bucket: 'HEAVY', line: "Tera {topic} ka prep aur Mumbai local — dono late, dono crowded, dono confusing." },
+  { bucket: 'HEAVY', line: "{topic} mein {acc}% — tere prep ka main character energy zero, sidekick bhi resign 🥲" },
+  { bucket: 'HEAVY', line: "{topic} ka concept aya, ek selfie li, aur chala gaya — tu bas dekhta reh gaya." },
+  { bucket: 'HEAVY', line: "Tera {topic} vs sample paper — heavyweight vs kid, referee ne round 1 mein hi rok diya." },
+  { bucket: 'HEAVY', line: "{topic} padha, notes bana, aur exam mein dono se dhoka mila. Betrayal arc." },
+  { bucket: 'HEAVY', line: "{acc}% in {topic} — even auto-correct thinks tu galti se yahan aa gaya hai." },
   // MEDIUM (40-59)
-  { bucket: 'MEDIUM', line: "{topic} ke saath teri ekdum situationship — solve karta hai, commit nahi karta. {acc}% ka rishta." },
-  { bucket: 'MEDIUM', line: "{acc}% in {topic} — mid-tier hero energy. Sequel mein lead role chahiye toh aur mehnat kar." },
-  { bucket: 'MEDIUM', line: "{topic} half-clear hai, jaise YouTube tutorial 2x speed pe — chal raha hai par samajh nahi aaya." },
+  { bucket: 'MEDIUM', line: "{topic} mein {acc}% — kaam chalau energy. Boss level nahi, tutorial level pass." },
+  { bucket: 'MEDIUM', line: "{topic} half samjha hai — jaise trailer dekh ke movie ki review likh raha ho." },
+  { bucket: 'MEDIUM', line: "{acc}% in {topic}: mid-tier player. Ranked mein climb karna hai toh grind maang raha hai." },
+  { bucket: 'MEDIUM', line: "{topic} ke saath tu chal raha hai, par saath mein chal raha hai — aage nahi." },
+  { bucket: 'MEDIUM', line: "Tera {topic} 50/50 hai — coin toss se paper de le, same accuracy aayegi 🪙" },
   // LIGHT (60-79)
-  { bucket: 'LIGHT', line: "{acc}% in {topic} — bas ek concept aur mil jaye, tu Sharma ji ke bete ko ratio de dega." },
-  { bucket: 'LIGHT', line: "{topic} mein lagbhag-set hai, bas ek careless mistake aur tu padosi ka beta ban jayega 😎" },
-  { bucket: 'LIGHT', line: "Optics tu nahi, sirf glasses lagana baaki hai — {topic} ka picture clear ho raha hai." },
+  { bucket: 'LIGHT', line: "{acc}% in {topic} — bas ek concept aur, aur tu topper group mein forward ho jayega." },
+  { bucket: 'LIGHT', line: "{topic} lagbhag lock ho gaya — ek final polish, aur examiner tere fan club mein aa jayega." },
+  { bucket: 'LIGHT', line: "{topic} mein {acc}% — 'almost promoted' badge unlock. Next level bas ek push door hai." },
+  { bucket: 'LIGHT', line: "Tera {topic} game abhi B+ hai, S-tier tak thodi si mehnat baaki hai 🎮" },
   // CHEEKY (80+)
-  { bucket: 'CHEEKY', line: "{topic} mein {acc}%? Examiner ko shak hai paper leak hua hai — ek galti karke human prove kar 👀" },
-  { bucket: 'CHEEKY', line: "{topic} pe tu itna confident hai ki Newton bhi ab tujhse doubt clear karta hai." },
-  { bucket: 'CHEEKY', line: "{acc}% in {topic} — flex band kar, baaki students ko bhi saans lene de bro." },
+  { bucket: 'CHEEKY', line: "{topic} mein {acc}%? Sample paper tujhse doubt clear karta hai ab." },
+  { bucket: 'CHEEKY', line: "{acc}% in {topic} — itna flex mat kar bhai, baaki candidates ka morale gir raha hai." },
+  { bucket: 'CHEEKY', line: "{topic} tere aage aise bhaagta hai jaise CGL ke aspirants form fill karte hai — smooth aur fast." },
+  { bucket: 'CHEEKY', line: "Examiner ne {topic} ka question dekh ke bola: 'isko ye toh 5 second mein solve kar dega.'" },
 ];
 
 function bucketFor(acc: number): 'BRUTAL' | 'HEAVY' | 'MEDIUM' | 'LIGHT' | 'CHEEKY' {
@@ -72,7 +79,7 @@ function loadRecent(uid: string): string[] {
 function pushRecent(uid: string, line: string) {
   try {
     const cur = loadRecent(uid);
-    const next = [line, ...cur.filter(l => l !== line)].slice(0, 3);
+    const next = [line, ...cur.filter(l => l !== line)].slice(0, 10);
     localStorage.setItem(RECENT_KEY(uid), JSON.stringify(next));
   } catch { /* ignore */ }
 }
@@ -83,7 +90,15 @@ const PERSONA_LABEL: Record<string, string> = {
   desi_aunty: '👵 desi aunty mode',
   sarcastic_prof: '🤓 sarcastic prof mode',
   meme_lord: '🎭 meme lord mode',
+  cricket_commentator: '🏏 commentator mode',
+  bollywood_villain: '🎬 villain mode',
+  chai_tapri: '☕ chai-tapri mode',
 };
+
+const PERSONAS = [
+  'bada_bhai', 'brainrot', 'desi_aunty', 'sarcastic_prof', 'meme_lord',
+  'cricket_commentator', 'bollywood_villain', 'chai_tapri',
+];
 
 export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
   const { user } = useAuth();
@@ -94,7 +109,7 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
   const [shareOpen, setShareOpen] = useState(false);
   const [shareOpts, setShareOpts] = useState<RoastOpts | null>(null);
 
-  const generateRoast = async () => {
+  const generateRoast = async (forcePersona?: string) => {
     if (!weakestTopic || weakestTopic === 'Not enough data') {
       toast.info('Solve a few more questions first — JEEnie needs ammo to roast!');
       return;
@@ -102,12 +117,15 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
     setLoading(true);
     const exclude = user ? loadRecent(user.id) : [];
     try {
+      const nextPersona = forcePersona
+        || PERSONAS.filter(p => p !== persona)[Math.floor(Math.random() * (PERSONAS.length - 1))];
       const { data, error } = await supabase.functions.invoke('jeenie', {
         body: {
           mode: 'roast',
           topic: weakestTopic,
           accuracy: Math.round(weakestAccuracy),
           excludeRoasts: exclude,
+          persona: nextPersona,
         },
       });
       let text = (data?.response || data?.content || '').toString();
@@ -178,7 +196,7 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
         <div className="grid grid-cols-2 gap-2">
           <Button
             size="sm"
-            onClick={generateRoast}
+            onClick={() => generateRoast()}
             disabled={loading}
             className="bg-[#013062] text-white hover:bg-[#013062]/90 text-xs"
           >

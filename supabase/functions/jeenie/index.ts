@@ -192,11 +192,12 @@ serve(async (req) => {
       const topic = String(body?.topic || "").slice(0, 120) || "this chapter";
       const accuracy = Number(body?.accuracy ?? 0);
       const excludeRoasts: string[] = Array.isArray(body?.excludeRoasts)
-        ? body.excludeRoasts.slice(0, 3).map((s: unknown) => String(s).slice(0, 250))
+        ? body.excludeRoasts.slice(0, 10).map((s: unknown) => String(s).slice(0, 250))
         : [];
       const persona: RoastPersona = (body?.persona as RoastPersona) || pickRoastPersona();
+      const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${user.id.slice(0, 6)}`;
 
-      const roastPrompt = buildRoastPrompt({ topic, accuracy, persona, excludeRoasts });
+      const roastPrompt = buildRoastPrompt({ topic, accuracy, persona, excludeRoasts, seed });
       const messages = [
         { role: "system", content: roastPrompt },
         { role: "user", content: `Roast me on "${topic}" (${Math.round(accuracy)}%). One line. Go.` },

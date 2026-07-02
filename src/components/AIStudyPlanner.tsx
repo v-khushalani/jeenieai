@@ -39,6 +39,7 @@ import {
   type SubjectRoadmap,
 } from '@/lib/roadmapEngine';
 import safeLocalStorage from '@/utils/safeStorage';
+import { readPlannerCache, writePlannerCache, isFresh } from '@/lib/plannerCache';
 
 type ExamKey = 'JEE' | 'NEET';
 type ChapterStatus = 'pending' | 'weak' | 'medium' | 'strong' | 'done';
@@ -301,7 +302,7 @@ function metricFromRoadmapChapter(chapter: RoadmapChapter): ChapterMetric {
   };
 }
 
-async function loadPlannerData(userId: string, exam: ExamKey): Promise<PlannerData> {
+export async function loadPlannerData(userId: string, exam: ExamKey): Promise<PlannerData> {
   const canonicalSubjects = subjectsForExam(exam);
   const subjectAliases = Array.from(new Set(canonicalSubjects.flatMap((subject) => getSubjectAliases(subject))));
 
@@ -459,15 +460,18 @@ export default function AIStudyPlanner() {
   const navigate = useNavigate();
   const { getExamDate } = useExamDates();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [targetExam, setTargetExam] = useState<ExamKey>('JEE');
   const [planner, setPlanner] = useState<PlannerData>(emptyPlanner());
   const [completedHashes, setCompletedHashes] = useState<Set<string>>(new Set());
   const [selectedDay, setSelectedDay] = useState(0);
 
-  const loadAll = useCallback(async () => {
+  const loadAll = useCallback(async (opts?: { silent?: boolean }) => {
     if (!user?.id) return;
-    setLoading(true);
+    const silent = !!opts?.silent;
+    if (silent) setRefreshing(true);
+    else setLoading(true);
     try {
       const cachedGoal = (() => {
         try {
@@ -505,16 +509,31 @@ export default function AIStudyPlanner() {
       setTargetExam(exam);
       setPlanner(data);
       setCompletedHashes(done);
+      writePlannerCache(user.id, { profile: prof, targetExam: exam, planner: data, completedHashes: Array.from(done) });
     } catch (error) {
       logger.error('Planner load error', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [user?.id]);
 
+  // Cache-first render: hydrate from cache instantly, then refresh in background.
   useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
+    if (!user?.id) return;
+    const cached = readPlannerCache<any>(user.id);
+    if (cached?.data?.planner) {
+      setProfile(cached.data.profile);
+      setTargetExam(cached.data.targetExam || 'JEE');
+      setPlanner(cached.data.planner);
+      setCompletedHashes(new Set(cached.data.completedHashes || []));
+      setLoading(false);
+      // Refresh in background if stale
+      if (!isFresh(cached.ageMs)) void loadAll({ silent: true });
+    } else {
+      void loadAll();
+    }
+  }, [user?.id, loadAll]);
 
   const examDate = profile?.target_exam_date || getExamDateForGrade(getExamDate(targetExam as any), profile?.grade);
   const daysToExam = getDaysUntilDate(examDate) ?? 365;
@@ -585,9 +604,16 @@ export default function AIStudyPlanner() {
             Scratch se syllabus cover karwaunga — weakness bhi strength banegi.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => void loadAll()} className="shrink-0">
-          <RefreshCw className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {refreshing && (
+            <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+              <Loader2 className="h-3 w-3 animate-spin" /> Refreshing
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={() => void loadAll()}>
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
 
       <Card className="border-primary/30 bg-primary/5">
