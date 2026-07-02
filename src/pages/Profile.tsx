@@ -240,7 +240,7 @@ const Profile = () => {
                     </Badge>
                     <Badge variant="secondary" className="flex items-center gap-1 text-[10px] md:text-xs bg-secondary text-secondary-foreground">
                       <Target className="w-2.5 h-2.5 md:w-3 md:h-3" />
-                      {profile?.target_exam || 'Not Set'}
+                      {profile?.target_exam ? formatExamDisplay(profile.target_exam) : 'Not Set'}
                     </Badge>
                     {profile?.city && (
                       <Badge variant="outline" className="flex items-center gap-1 text-[10px] md:text-xs">
