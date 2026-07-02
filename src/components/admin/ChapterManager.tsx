@@ -1057,36 +1057,34 @@ const ChapterManager = () => {
               Delete
             </Button>
           </div>
-          {gradeFilter >= 11 && (
-            <div className="flex flex-wrap gap-2">
-            {(() => null)()}
-            {(
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    if (!confirm('This will auto-redistribute ALL 11th/12th chapters based on NCERT syllabus mapping. Continue?')) return;
-                    toast.loading('Running NCERT auto-fix...');
-                    const { data, error } = await supabase.rpc('fix_chapter_batch_distribution');
-                    toast.dismiss();
-                    if (error) { toast.error('Auto-fix failed: ' + error.message); return; }
-                    const result = data as any;
-                    toast.success(`Moved ${result?.total_questions_moved || 0} questions across ${result?.chapters_processed || 0} chapters`);
-                    fetchChapters();
-                  }}
-                  className="gap-1"
-                >
-                  <ArrowRightLeft className="w-4 h-4" />
-                  Auto-Fix 11↔12
+          <div className="flex flex-wrap gap-2">
+            {gradeFilter >= 11 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (!confirm('This will auto-redistribute ALL 11th/12th chapters based on NCERT syllabus mapping. Continue?')) return;
+                  toast.loading('Running NCERT auto-fix...');
+                  const { data, error } = await supabase.rpc('fix_chapter_batch_distribution');
+                  toast.dismiss();
+                  if (error) { toast.error('Auto-fix failed: ' + error.message); return; }
+                  const result = data as any;
+                  toast.success(`Moved ${result?.total_questions_moved || 0} questions across ${result?.chapters_processed || 0} chapters`);
+                  fetchChapters();
+                }}
+                className="gap-1"
+              >
+                <ArrowRightLeft className="w-4 h-4" />
+                Auto-Fix 11↔12
+              </Button>
+            )}
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={resetForm}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Chapter
                 </Button>
-              )}
-              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" onClick={resetForm}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Chapter
-                  </Button>
-                </DialogTrigger>
+              </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Add New Chapter</DialogTitle>
@@ -1149,7 +1147,6 @@ const ChapterManager = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-            </div>
           </div>
         </CardHeader>
         <CardContent>
