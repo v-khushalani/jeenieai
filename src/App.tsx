@@ -405,6 +405,7 @@ function App() {
               {/* Hide AI entry point on educator portal */}
               <FloatingAIEntry />
               <MobileBottomNav />
+              <BadgeUnlockCelebration />
             </GlobalErrorBoundary>
           </TooltipProvider>
           </FeatureFlagProvider>
