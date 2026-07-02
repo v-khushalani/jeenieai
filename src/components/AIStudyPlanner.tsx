@@ -347,14 +347,10 @@ export async function loadPlannerData(userId: string, exam: ExamKey): Promise<Pl
   if (chapterMap.size === 0) return { ...emptyPlanner(), roadmaps };
   const chapterIds = Array.from(chapterMap.keys());
 
-  const [questionRows, attemptRows] = await Promise.all([
-    fetchAllPaginated<any>(() =>
-      supabase
-        .from('questions')
-        .select('id, chapter_id')
-        .in('chapter_id', chapterIds)
-        .or('is_active.is.null,is_active.eq.true'),
-    ),
+  const [countRows, attemptRows] = await Promise.all([
+    supabase
+      .rpc('get_chapter_question_counts', { p_chapter_ids: chapterIds })
+      .then(({ data }) => (data as any[]) || []),
     fetchAllPaginated<any>(() =>
       supabase
         .from('question_attempts')
@@ -364,10 +360,9 @@ export async function loadPlannerData(userId: string, exam: ExamKey): Promise<Pl
     ),
   ]);
 
-  questionRows.forEach((q) => {
-    const chapterId = q.chapter_id;
-    const metric = chapterId ? chapterMap.get(chapterId) : null;
-    if (metric) metric.totalQuestions += 1;
+  countRows.forEach((row: any) => {
+    const metric = row?.chapter_id ? chapterMap.get(row.chapter_id) : null;
+    if (metric) metric.totalQuestions = Number(row.count) || 0;
   });
 
   const wrongByChapter = new Map<string, Set<string>>();
