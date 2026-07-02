@@ -98,7 +98,7 @@ const EducatorChapters: React.FC = () => {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
             <FileText className="h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">No presentations yet for Grade {gradeFilter}.</p>
+            <p className="text-muted-foreground">No presentations yet for Class {gradeFilter}.</p>
             <p className="text-xs text-muted-foreground">Ask your admin to upload content.</p>
           </CardContent>
         </Card>
