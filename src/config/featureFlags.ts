@@ -168,6 +168,30 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
     rollout_percentage: 100,
     category: 'content',
   },
+  {
+    flag_key: 'badge_celebration',
+    label: 'Badge Unlock Celebration',
+    description: 'Full-screen celebration modal + share CTA whenever a new badge is earned.',
+    is_enabled: true,
+    rollout_percentage: 100,
+    category: 'engagement',
+  },
+  {
+    flag_key: 'wrapped_yearbook',
+    label: 'Wrapped Yearbook',
+    description: 'Story-mode learning recap (JEEnie Wrapped). Dark-launch switch for the /snapshot page.',
+    is_enabled: true,
+    rollout_percentage: 100,
+    category: 'engagement',
+  },
+  {
+    flag_key: 'virtual_lab',
+    label: 'Virtual Lab',
+    description: 'Pro+ virtual lab simulations and lab entry points.',
+    is_enabled: true,
+    rollout_percentage: 100,
+    category: 'content',
+  },
 ];
 
 const byKey = (key: string) => FEATURE_FLAG_REGISTRY.find((flag) => flag.flag_key === key);
