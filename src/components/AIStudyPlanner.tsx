@@ -460,15 +460,18 @@ export default function AIStudyPlanner() {
   const navigate = useNavigate();
   const { getExamDate } = useExamDates();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [targetExam, setTargetExam] = useState<ExamKey>('JEE');
   const [planner, setPlanner] = useState<PlannerData>(emptyPlanner());
   const [completedHashes, setCompletedHashes] = useState<Set<string>>(new Set());
   const [selectedDay, setSelectedDay] = useState(0);
 
-  const loadAll = useCallback(async () => {
+  const loadAll = useCallback(async (opts?: { silent?: boolean }) => {
     if (!user?.id) return;
-    setLoading(true);
+    const silent = !!opts?.silent;
+    if (silent) setRefreshing(true);
+    else setLoading(true);
     try {
       const cachedGoal = (() => {
         try {
@@ -506,16 +509,31 @@ export default function AIStudyPlanner() {
       setTargetExam(exam);
       setPlanner(data);
       setCompletedHashes(done);
+      writePlannerCache(user.id, { profile: prof, targetExam: exam, planner: data, completedHashes: Array.from(done) });
     } catch (error) {
       logger.error('Planner load error', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [user?.id]);
 
+  // Cache-first render: hydrate from cache instantly, then refresh in background.
   useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
+    if (!user?.id) return;
+    const cached = readPlannerCache<any>(user.id);
+    if (cached?.data?.planner) {
+      setProfile(cached.data.profile);
+      setTargetExam(cached.data.targetExam || 'JEE');
+      setPlanner(cached.data.planner);
+      setCompletedHashes(new Set(cached.data.completedHashes || []));
+      setLoading(false);
+      // Refresh in background if stale
+      if (!isFresh(cached.ageMs)) void loadAll({ silent: true });
+    } else {
+      void loadAll();
+    }
+  }, [user?.id, loadAll]);
 
   const examDate = profile?.target_exam_date || getExamDateForGrade(getExamDate(targetExam as any), profile?.grade);
   const daysToExam = getDaysUntilDate(examDate) ?? 365;
