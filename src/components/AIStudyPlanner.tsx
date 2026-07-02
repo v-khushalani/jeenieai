@@ -532,6 +532,11 @@ export default function AIStudyPlanner() {
       if (!isFresh(cached.ageMs)) void loadAll({ silent: true });
     } else {
       void loadAll();
+      // Watchdog: never block the full page more than 6s on a cold load.
+      // Drop out of the blocking loader and let the empty/partial state render;
+      // the background fetch will hydrate real data as soon as it lands.
+      const watchdog = window.setTimeout(() => setLoading(false), 6000);
+      return () => window.clearTimeout(watchdog);
     }
   }, [user?.id, loadAll]);
 
