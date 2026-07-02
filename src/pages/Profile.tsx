@@ -36,7 +36,7 @@ import PointsService from '@/services/pointsService';
 import { logger } from '@/utils/logger';
 
 const Profile = () => {
-  const { user, isAuthenticated, isPremium } = useAuth();
+  const { user, isAuthenticated, isPremium, isProPlus } = useAuth();
   const referralEnabled = useFeatureFlag('referral_system');
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
