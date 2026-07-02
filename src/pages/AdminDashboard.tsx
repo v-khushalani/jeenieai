@@ -185,7 +185,7 @@ const AdminDashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="admin-panel-hide-subtitles min-h-dvh flex w-full flex-col md:flex-row md:h-dvh md:overflow-hidden bg-muted/30">
+      <div className="admin-panel-hide-subtitles h-dvh flex w-full flex-col md:flex-row overflow-hidden bg-muted/30">
         {/* ─── Sidebar ─────────────────────────────────── */}
         <Sidebar collapsible="icon" className="border-r border-border z-50 md:h-dvh">
           <SidebarContent>
