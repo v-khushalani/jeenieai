@@ -1,67 +1,61 @@
+## Goal
 
-# Plan: Yearbook rebuild, badge sharing, feature-flag sync
+Ek shareable QR code system taaki Instagram/WhatsApp pe post karke log scan karke JEEnie AI install kar sake (Play Store pe abhi tak nahi hain).
 
-## 1. Rebuild WrappedPage (Yearbook) from scratch — mobile-first
+## What gets built
 
-Current `src/pages/WrappedPage.tsx` is a cramped desktop-first collage. Replace with a **story-mode** experience modeled on Spotify Wrapped / BeReal recap:
+### 1. New public page: `/share`
+Full-screen poster-style page — Instagram story / WhatsApp status ke liye perfect screenshot.
 
-**Structure**
-- Full-viewport vertical "stories" (`h-[100dvh]`, swipe/tap through). Each slide = one stat with hero typography.
-- Progress bar on top (like Instagram stories), tap-left / tap-right to move, swipe up to share, `Esc`/back button exits.
-- Slides (in order):
-  1. Cover — "Your JEE 2026 Yearbook" with name + avatar, animated gradient.
-  2. Streak — biggest streak, flame animation.
-  3. Questions solved — big number counter.
-  4. Strongest chapter — mastery %, subject color.
-  5. Weakest chapter — with "let's fix this" CTA to practice.
-  6. Rank climb — rank delta over time.
-  7. Badges earned — grid.
-  8. Personality card ("The Night Owl", "The Sprinter" — derived from behavior).
-  9. Final share card — one tap to generate + share via existing `ShareCardDialog`.
+**Layout (mobile-first, 390px optimized):**
+- Brand gradient background (uses existing `--primary` #013062 theme tokens)
+- JEEnie AI logo + wordmark on top
+- Big headline: "Scan to install JEEnie AI"
+- Sub: "India's smartest JEE/NEET prep — free to start"
+- Large white QR card (280×280) pointing to `https://jeenieai.lovable.app/install`
+- Below QR: "Point your camera → tap the link → Add to Home Screen"
+- 3 trust chips: "AI Doubt Solver • PYQs • Free"
+- Two buttons at bottom:
+  - **Download poster** (renders the whole card to PNG via `html-to-image`, saves as `jeenie-install-qr.png`)
+  - **Copy link** (copies `/install` URL)
+- Small footer: `jeenieai.lovable.app/install`
 
-**Mobile-first specifics**
-- `100dvh` (not `vh`), `env(safe-area-inset-*)`, tap targets ≥44px.
-- Auto-advance after 6s per slide with pause-on-hold.
-- Uses framer-motion for slide transitions + counter animations.
-- Palette: deep midnight → magenta gradient per slide, not the current pastel.
+**Route:** public (no auth) — added to `src/App.tsx` above the `*` catch-all. Not behind any feature flag so it always works for marketing.
 
-**Desktop**: same story frame, centered `max-w-md`, arrow keys for nav.
+**SEO:** proper `<title>`, meta description, og tags so WhatsApp/Instagram link previews look good if someone shares the URL directly.
 
-## 2. Share option after every badge earned
+### 2. QR block on existing `/install` page
+Add a compact QR card in `src/pages/InstallApp.tsx` (below the install button):
+- Small QR (160×160) of the same install URL
+- Text: "On desktop? Scan with your phone to install."
+- Useful when someone opens the page on laptop.
 
-**Where**: `src/components/gamification/BadgesShowcase.tsx` + wherever a badge unlock toast fires (find via `rg "badge.*earn|newBadge"`).
+### 3. QR generation
+Use existing `src/utils/qrCode.ts` (`qrcode-generator` already installed) — `generateQRCodeSVG(url, size)`. No new dependency for QR.
 
-**Mechanism** — most rewarding = frictionless + social proof:
-- On unlock: full-screen celebration modal (confetti + badge art scaling in) with primary CTA **"Share & earn 50 XP"** and secondary "Later".
-- Share generates a square card via existing `generateShareCard` (extend `ShareCardOpts` with a `badge` variant showing badge art + tagline "I just earned {badge} on JEEnie 🧞‍♂️" + user's referral QR).
-- Uses `navigator.share` on mobile (native sheet → WhatsApp/IG story/Snap), falls back to download + copy-to-clipboard on desktop.
-- Reward: award +50 XP on first share of each badge (tracked in a new `badge_shares` table or as a boolean column on `user_badges.shared_at`), so the reward is real but non-exploitable.
-- Also add a persistent **Share** icon on every earned badge in the showcase grid, so users can re-share later.
+For poster download: add `html-to-image` (small, ~15KB) to convert the QR card DOM to PNG. Fallback: if download fails, offer share via Web Share API on mobile.
 
-## 3. Feature flag registry sync
+### 4. Discoverability (optional, small)
+- Add a subtle "Share app 📲" link in the mobile Settings page pointing to `/share` so users can share with friends (viral growth).
 
-Audit shows every `useFeatureFlag(...)` key in the codebase is already in `FEATURE_FLAG_REGISTRY`. Nothing missing among *user-facing* flags.
+## Technical details
 
-**Additions proposed** for features that currently ship un-gated but deserve a kill-switch:
-- `virtual_lab` — Pro+ virtual lab simulations (`VirtualLab.tsx`).
-- `ai_study_planner_v2` — planner already gated by `study_planner`, skip.
-- `group_tests` already present.
-- `wrapped_yearbook` — new flag for the rebuilt yearbook page (so we can dark-launch it).
-- `badge_share_reward` — flag for the XP-on-share mechanic in #2.
-- `pdf_extractor` (admin) — skip, admin surfaces don't need flags.
-- `jeenie_voice` (text-to-speech / voice-to-text) — new flag if the mic button is user-visible.
+**Files:**
+- **Create** `src/pages/SharePage.tsx` — the poster page
+- **Edit** `src/App.tsx` — add `<Route path="/share" element={<SharePage />} />` (public, lazy-loaded)
+- **Edit** `src/pages/InstallApp.tsx` — add compact QR card section
+- **Edit** `src/pages/Settings.tsx` — add "Share app" row linking to `/share` (small addition)
+- **Install** `html-to-image` via bun
 
-Add these to `src/config/featureFlags.ts` and wire the gates at their entry points.
+**QR target URL:** `https://jeenieai.lovable.app/install` (hardcoded to published URL so QR works even when scanned from a printed/shared image outside the app context).
 
-## Technical section
+**Design tokens:** all colors from `index.css` semantic tokens (`--primary`, `--background`, `--foreground`) — no hardcoded hex in components. Matches existing dark-blue brand.
 
-- New file: none for yearbook (rewrite `WrappedPage.tsx`). Extract per-slide components into `src/components/wrapped/slides/*.tsx` for readability.
-- Extend `src/lib/shareCard.ts` with a `badge` variant (badge icon + name + QR).
-- New migration: add `shared_at timestamptz` to `user_badges` (or create `badge_shares` if the table doesn't exist — verify first). Include GRANTs.
-- Extend `pointsService` with `awardBadgeShareBonus(userId, badgeId)` idempotent by `shared_at IS NULL`.
-- Update `FEATURE_FLAG_REGISTRY` with the 3 new flags above and gate: `WrappedPage` behind `wrapped_yearbook`, `VirtualLab` route behind `virtual_lab`, badge share modal behind `badge_share_reward`.
-- Verify with Playwright at 390×674: story nav, badge unlock modal, share sheet, feature-flag toggle in admin.
+**No backend / DB changes.** Pure frontend.
 
-## Open question
+## Out of scope
+- Play Store / TWA setup
+- Dynamic QR (per-user referral QR) — can be added later if you want referral tracking baked into the QR
+- Print-ready A4 poster PDF
 
-For badge sharing: OK with **+50 XP per first-time share of a badge** as the incentive, or prefer something bigger (streak-freeze token / entry into a monthly draw)?
+Ready to build?
