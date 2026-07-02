@@ -75,31 +75,32 @@ export const AdminAnalytics: React.FC = () => {
       const todayStart = new Date(now);
       todayStart.setHours(0, 0, 0, 0);
 
-      const [usersRes, attemptsRes, testsRes, accuracyRes, studyRes, todayRes, prevUsersRes, prevAttemptsRes] =
+      const [usersRes, attemptsRes, testsRes, correctRes, studyRes, todayRes, prevUsersRes, prevAttemptsRes] =
         await Promise.all([
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
           supabase.from('question_attempts').select('id', { count: 'exact', head: true }),
           supabase.from('test_sessions').select('id', { count: 'exact', head: true }),
-          supabase.from('question_attempts').select('is_correct'),
-          supabase.from('profiles').select('total_study_time'),
-          supabase.from('question_attempts').select('user_id').gte('attempted_at', todayStart.toISOString()),
+          supabase.from('question_attempts').select('id', { count: 'exact', head: true }).eq('is_correct', true),
+          supabase.from('profiles').select('total_study_time').limit(1000),
+          supabase.from('question_attempts').select('user_id').gte('attempted_at', todayStart.toISOString()).limit(5000),
           supabase.from('profiles').select('id', { count: 'exact', head: true })
             .gte('created_at', prevStart.toISOString()).lt('created_at', periodStart.toISOString()),
           supabase.from('question_attempts').select('id', { count: 'exact', head: true })
             .gte('attempted_at', prevStart.toISOString()).lt('attempted_at', periodStart.toISOString()),
         ]);
 
-      const correct = accuracyRes.data?.filter(a => a.is_correct).length || 0;
-      const total = accuracyRes.data?.length || 0;
+      const totalAttempts = attemptsRes.count || 0;
+      const correct = correctRes.count || 0;
       const studyTime = studyRes.data?.reduce((s, p) => s + (p.total_study_time || 0), 0) || 0;
       const activeToday = new Set(todayRes.data?.map(a => a.user_id) || []).size;
+
 
       setStats({
         total_users: usersRes.count || 0,
         active_users_today: activeToday,
         total_questions_attempted: attemptsRes.count || 0,
         total_assessments: testsRes.count || 0,
-        avg_accuracy: total > 0 ? (correct / total) * 100 : 0,
+        avg_accuracy: totalAttempts > 0 ? (correct / totalAttempts) * 100 : 0,
         total_study_time: studyTime,
         prev_period_users: prevUsersRes.count || 0,
         prev_period_attempts: prevAttemptsRes.count || 0,
@@ -113,9 +114,10 @@ export const AdminAnalytics: React.FC = () => {
     try {
       const start = new Date(Date.now() - days * 86400000).toISOString();
       const [profilesRes, attemptsRes] = await Promise.all([
-        supabase.from('profiles').select('created_at').gte('created_at', start),
-        supabase.from('question_attempts').select('attempted_at, user_id, is_correct').gte('attempted_at', start),
+        supabase.from('profiles').select('created_at').gte('created_at', start).limit(5000),
+        supabase.from('question_attempts').select('attempted_at, user_id, is_correct').gte('attempted_at', start).limit(10000),
       ]);
+
 
       const dateRange = Array.from({ length: days }, (_, i) => {
         const d = new Date(Date.now() - (days - 1 - i) * 86400000);
@@ -147,9 +149,10 @@ export const AdminAnalytics: React.FC = () => {
 
   const fetchSubjects = async () => {
     try {
-      const data = await fetchAllPaginated(() => supabase.from('questions').select('subject'));
+      // Aggregate on client from a capped sample; we only need distribution ratios.
+      const { data } = await supabase.from('questions').select('subject').limit(5000);
       const counts: Record<string, number> = {};
-      data?.forEach(q => {
+      data?.forEach((q: any) => {
         const s = q.subject || 'Other';
         counts[s] = (counts[s] || 0) + 1;
       });
@@ -158,6 +161,7 @@ export const AdminAnalytics: React.FC = () => {
       logger.error('Subject data error:', e);
     }
   };
+
 
   const fetchExamSplit = async () => {
     try {
