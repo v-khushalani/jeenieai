@@ -68,6 +68,7 @@ import RouteTracker from "@/components/RouteTracker";
 import FeatureGate from "@/components/FeatureGate";
 import PremiumGate from "@/components/PremiumGate";
 import ProPlusGate from "@/components/ProPlusGate";
+import BadgeUnlockCelebration from "@/components/gamification/BadgeUnlockCelebration";
 
 const queryClient = new QueryClient({
   defaultOptions: {
