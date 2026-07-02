@@ -227,7 +227,7 @@ const Profile = () => {
                     </h1>
                     {isPremium && (
                       <Badge className="bg-linear-to-r from-yellow-400 to-orange-500 text-white border-0 text-[10px] md:text-xs">
-                        PRO
+                        {isProPlus ? 'Pro+' : 'Pro'}
                       </Badge>
                     )}
                   </div>
