@@ -100,7 +100,7 @@ export const AdminAnalytics: React.FC = () => {
         active_users_today: activeToday,
         total_questions_attempted: attemptsRes.count || 0,
         total_assessments: testsRes.count || 0,
-        avg_accuracy: total > 0 ? (correct / total) * 100 : 0,
+        avg_accuracy: totalAttempts > 0 ? (correct / totalAttempts) * 100 : 0,
         total_study_time: studyTime,
         prev_period_users: prevUsersRes.count || 0,
         prev_period_attempts: prevAttemptsRes.count || 0,
