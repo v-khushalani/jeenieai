@@ -125,15 +125,16 @@ export function examRelevanceValues(
  */
 export async function buildSubjectRoadmap(
   userId: string,
-  exam: 'JEE' | 'NEET',
+  exam: ExamKind,
   subject: string,
+  classLevel?: number | null,
 ): Promise<SubjectRoadmap> {
   const canonicalSubject = normalizeSubject(subject);
 
   // 1. Chapters in this subject for this exam.
   // IMPORTANT: exam_relevance is exam_code[] and accepts ONLY enum labels.
   // Passing text variants like "JEE" makes PostgREST reject the whole query.
-  const { data: chapterRows, error: chapErr } = await supabase
+  let chapterQuery = supabase
     .from('chapters')
     .select('id, subject, chapter_name, name, chapter_number, class_level')
     .eq('is_active', true)
@@ -142,6 +143,12 @@ export async function buildSubjectRoadmap(
     .order('class_level', { ascending: true, nullsFirst: false })
     .order('chapter_number', { ascending: true, nullsFirst: false })
     .limit(60);
+  // Foundation students see ONLY their own grade — no cross-grade bleed.
+  if (exam === 'Foundation' && typeof classLevel === 'number') {
+    chapterQuery = chapterQuery.eq('class_level', classLevel);
+  }
+  const { data: chapterRows, error: chapErr } = await chapterQuery;
+
 
   if (chapErr) logger.error('roadmap: chapters load', chapErr);
   const chapters: ChapterRow[] = (chapterRows || []) as ChapterRow[];
