@@ -30,6 +30,7 @@ import {
   buildSubjectRoadmap,
   milestoneHref,
   subjectsForExam,
+  type ExamKind,
   type SubjectRoadmap,
   type RoadmapChapter,
   type MilestoneInfo,
@@ -37,12 +38,15 @@ import {
 
 interface Props {
   userId: string;
-  exam: 'JEE' | 'NEET';
+  exam: ExamKind;
+  /** Foundation students: restrict to this class only. */
+  classLevel?: number | null;
   /** when set, prefill the subject switcher */
   initialSubject?: string;
   initialRoadmaps?: SubjectRoadmap[];
   onRefresh?: () => void;
 }
+
 
 function StarRow({ count }: { count: 0 | 1 | 2 | 3 }) {
   return (
