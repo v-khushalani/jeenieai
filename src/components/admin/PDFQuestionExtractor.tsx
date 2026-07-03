@@ -53,6 +53,7 @@ export function PDFQuestionExtractor() {
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
   const [selectedChapterName, setSelectedChapterName] = useState<string>("");
   const [selectedExam, setSelectedExam] = useState<string>("");
+  const [selectedDifficulty, setSelectedDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
   const [startPage, setStartPage] = useState<number>(1);
   const [endPage, setEndPage] = useState<number | null>(null);
   
