@@ -44,21 +44,18 @@ const SharePage: React.FC = () => {
   }, []);
 
   const downloadPoster = async () => {
-    if (!posterRef.current) return;
     setDownloading('poster');
     try {
-      const dataUrl = await toPng(posterRef.current, {
-        pixelRatio: 3,
-        cacheBust: true,
-        backgroundColor: BRAND.bgTo,
-      });
+      // Use the same canvas renderer as the story poster so the download
+      // matches the preview exactly — no HTML clipping / cut-off issues.
+      const dataUrl = await renderCanvasPoster('story');
       const link = document.createElement('a');
       link.download = 'jeenie-install-qr.png';
       link.href = dataUrl;
       link.click();
       toast({ title: 'Poster saved!', description: 'Post it on your story or status.' });
     } catch {
-      toast({ title: 'Download failed', description: 'Try screenshotting the poster.', variant: 'destructive' });
+      toast({ title: 'Download failed', description: 'Try again in a moment.', variant: 'destructive' });
     } finally {
       setDownloading(null);
     }
