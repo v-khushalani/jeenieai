@@ -1594,6 +1594,7 @@ export type Database = {
           batch_id: string | null
           chapter: string | null
           chapter_id: string | null
+          class_level: number | null
           concept_id: string | null
           content_hash: string | null
           correct_answer: string | null
@@ -1642,6 +1643,7 @@ export type Database = {
           batch_id?: string | null
           chapter?: string | null
           chapter_id?: string | null
+          class_level?: number | null
           concept_id?: string | null
           content_hash?: string | null
           correct_answer?: string | null
@@ -1690,6 +1692,7 @@ export type Database = {
           batch_id?: string | null
           chapter?: string | null
           chapter_id?: string | null
+          class_level?: number | null
           concept_id?: string | null
           content_hash?: string | null
           correct_answer?: string | null
