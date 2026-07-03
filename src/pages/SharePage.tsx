@@ -120,24 +120,25 @@ const SharePage: React.FC = () => {
     ctx.fillStyle = BRAND.primary70;
     ctx.fillText('AI for JEE • NEET • Foundation', headX + logoSize + 20, headY + 60);
 
-    const cx = W / 2;
     const isStory = variant === 'story';
 
     // --- Eyebrow ---
-    ctx.textAlign = 'left';
+    ctx.textAlign = isStory ? 'center' : 'left';
     ctx.fillStyle = BRAND.primary70;
     ctx.font = '600 28px Saira, system-ui, sans-serif';
-    ctx.fillText('INSTALL THE APP', 60, isStory ? 260 : 220);
+    ctx.fillText('INSTALL THE APP', isStory ? W / 2 : 60, isStory ? 240 : 220);
 
     // --- Big headline ---
     ctx.fillStyle = BRAND.primary;
     if (isStory) {
-      ctx.font = '900 140px Saira, system-ui, sans-serif';
-      let y = 320;
-      ctx.fillText('Scan.', 60, y); y += 150;
-      ctx.fillText('Install.', 60, y); y += 150;
-      ctx.fillText('Crack it.', 60, y);
+      ctx.textAlign = 'center';
+      ctx.font = '900 120px Saira, system-ui, sans-serif';
+      let y = 300;
+      ctx.fillText('Scan.', W / 2, y); y += 130;
+      ctx.fillText('Install.', W / 2, y); y += 130;
+      ctx.fillText('Crack it.', W / 2, y);
     } else {
+      ctx.textAlign = 'left';
       ctx.font = '900 96px Saira, system-ui, sans-serif';
       ctx.fillText('Scan to install', 60, 280);
       ctx.font = '500 34px Saira, system-ui, sans-serif';
@@ -145,12 +146,14 @@ const SharePage: React.FC = () => {
       ctx.fillText("India's smartest JEE / NEET / Foundation prep", 60, 400);
     }
 
-    // --- QR white rounded card (bottom-right, mirrors paintFooter) ---
-    const qrSize = isStory ? 520 : 360;
-    const qrPad = isStory ? 40 : 28;
+    // --- QR white rounded card ---
+    // Story: centered horizontally, sitting in lower-middle with plenty of breathing room.
+    // Square: bottom-right (unchanged).
+    const qrSize = isStory ? 560 : 360;
+    const qrPad = isStory ? 44 : 28;
     const cardSize = qrSize + qrPad * 2;
-    const cardX = W - cardSize - 60;
-    const cardY = H - cardSize - (isStory ? 180 : 140);
+    const cardX = isStory ? (W - cardSize) / 2 : W - cardSize - 60;
+    const cardY = isStory ? 900 : H - cardSize - 140;
     const r = 32;
 
     ctx.save();
@@ -180,15 +183,27 @@ const SharePage: React.FC = () => {
     });
     ctx.drawImage(qrImg, cardX + qrPad, cardY + qrPad, qrSize, qrSize);
 
-    // --- CTA text (bottom-left, mirrors paintFooter) ---
-    ctx.textBaseline = 'bottom';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = BRAND.primary;
-    ctx.font = `800 ${isStory ? 44 : 34}px Saira, system-ui, sans-serif`;
-    ctx.fillText('Scan • Tap link • Install', 60, H - (isStory ? 220 : 160));
-    ctx.font = `500 ${isStory ? 26 : 22}px Saira, system-ui, sans-serif`;
-    ctx.fillStyle = BRAND.primary70;
-    ctx.fillText('Visit jeenie.website/install', 60, H - (isStory ? 175 : 125));
+    // --- CTA text ---
+    ctx.textBaseline = 'alphabetic';
+    if (isStory) {
+      // Centered under the QR card
+      ctx.textAlign = 'center';
+      ctx.fillStyle = BRAND.primary;
+      ctx.font = '800 48px Saira, system-ui, sans-serif';
+      ctx.fillText('Scan • Tap link • Install', W / 2, cardY + cardSize + 90);
+      ctx.font = '500 30px Saira, system-ui, sans-serif';
+      ctx.fillStyle = BRAND.primary70;
+      ctx.fillText('jeenie.website/install', W / 2, cardY + cardSize + 140);
+    } else {
+      ctx.textBaseline = 'bottom';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = BRAND.primary;
+      ctx.font = '800 34px Saira, system-ui, sans-serif';
+      ctx.fillText('Scan • Tap link • Install', 60, H - 160);
+      ctx.font = '500 22px Saira, system-ui, sans-serif';
+      ctx.fillStyle = BRAND.primary70;
+      ctx.fillText('Visit jeenie.website/install', 60, H - 125);
+    }
 
     // Bottom accent bar
     ctx.fillStyle = BRAND.primary;
