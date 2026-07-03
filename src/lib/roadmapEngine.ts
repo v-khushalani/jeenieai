@@ -51,9 +51,12 @@ export interface SubjectRoadmap {
   totalCount: number;
 }
 
-export const SUBJECTS_BY_EXAM: Record<string, string[]> = {
+export type ExamKind = 'JEE' | 'NEET' | 'Foundation';
+
+export const SUBJECTS_BY_EXAM: Record<ExamKind, string[]> = {
   JEE: ['Physics', 'Chemistry', 'Mathematics'],
   NEET: ['Physics', 'Chemistry', 'Biology'],
+  Foundation: ['Physics', 'Chemistry', 'Biology', 'Mathematics'],
 };
 
 const LEARN_TARGET = 15;
@@ -89,19 +92,33 @@ interface PersistedMilestone {
   status: MilestoneState;
 }
 
-export function normalizeExam(target: string | null | undefined): 'JEE' | 'NEET' {
+/**
+ * Normalize a stored target_exam value into a canonical exam kind.
+ * Grade 7-10 (or a "Foundation-*" target) always resolves to Foundation.
+ */
+export function normalizeExam(
+  target: string | null | undefined,
+  grade?: number | null,
+): ExamKind {
+  if (typeof grade === 'number' && grade >= 6 && grade <= 10) return 'Foundation';
   const v = (target || 'JEE').toUpperCase();
+  if (v.includes('FOUNDATION')) return 'Foundation';
   if (v.includes('NEET')) return 'NEET';
   return 'JEE';
 }
 
-export function subjectsForExam(exam: 'JEE' | 'NEET'): string[] {
+export function subjectsForExam(exam: ExamKind): string[] {
   return SUBJECTS_BY_EXAM[exam] || SUBJECTS_BY_EXAM.JEE;
 }
 
-export function examRelevanceValues(exam: 'JEE' | 'NEET'): ('JEE_MAINS' | 'JEE_ADVANCED' | 'NEET')[] {
-  return exam === 'JEE' ? ['JEE_MAINS', 'JEE_ADVANCED'] : ['NEET'];
+export function examRelevanceValues(
+  exam: ExamKind,
+): ('JEE_MAINS' | 'JEE_ADVANCED' | 'NEET' | 'FOUNDATION')[] {
+  if (exam === 'NEET') return ['NEET'];
+  if (exam === 'Foundation') return ['FOUNDATION'];
+  return ['JEE_MAINS', 'JEE_ADVANCED'];
 }
+
 
 /**
  * Build the roadmap for one subject, for one user.
