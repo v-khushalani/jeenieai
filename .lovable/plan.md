@@ -1,61 +1,75 @@
-## Goal
+# Grade 7-10 Question Bank (Foundation) + Strict Grade Isolation
 
-Ek shareable QR code system taaki Instagram/WhatsApp pe post karke log scan karke JEEnie AI install kar sake (Play Store pe abhi tak nahi hain).
+Goal: Class 7/8/9/10 users get their own chapters + questions from real NCERT-aligned Foundation books that YOU upload. No cross-grade bleed. Same UX quality as 11/12.
 
-## What gets built
+## Sources (based on your choice)
 
-### 1. New public page: `/share`
-Full-screen poster-style page — Instagram story / WhatsApp status ke liye perfect screenshot.
+- **Primary (you'll upload)**: Foundation books ke chapter-wise MCQ / exercise PDFs. Aap unhi ko upload karoge — Pearson IIT Foundation, MTG Foundation, Arihant Foundation, Disha Foundation, DC Pandey Foundation, HC Verma Concepts (Class 9-10), Lakhmir Singh Science, RD Sharma / RS Aggarwal Maths, etc.
+- **Fallback (only if you say so later)**: LearnCBSE / Selfstudys chapter-wise MCQ scrape via Firecrawl. Not in scope for v1 — sirf tab jab tumhari books mein gap ho.
 
-**Layout (mobile-first, 390px optimized):**
-- Brand gradient background (uses existing `--primary` #013062 theme tokens)
-- JEEnie AI logo + wordmark on top
-- Big headline: "Scan to install JEEnie AI"
-- Sub: "India's smartest JEE/NEET prep — free to start"
-- Large white QR card (280×280) pointing to `https://jeenieai.lovable.app/install`
-- Below QR: "Point your camera → tap the link → Add to Home Screen"
-- 3 trust chips: "AI Doubt Solver • PYQs • Free"
-- Two buttons at bottom:
-  - **Download poster** (renders the whole card to PNG via `html-to-image`, saves as `jeenie-install-qr.png`)
-  - **Copy link** (copies `/install` URL)
-- Small footer: `jeenieai.lovable.app/install`
+No Hugging Face imports (you said waste questions aa jaate hain). No NCERT Exemplar auto-pipeline unless you upload those PDFs.
 
-**Route:** public (no auth) — added to `src/App.tsx` above the `*` catch-all. Not behind any feature flag so it always works for marketing.
+## Curriculum structure (as chosen: P/C/B split early)
 
-**SEO:** proper `<title>`, meta description, og tags so WhatsApp/Instagram link previews look good if someone shares the URL directly.
+| Grade | Subjects |
+|---|---|
+| 7 | Physics, Chemistry, Biology, Mathematics |
+| 8 | Physics, Chemistry, Biology, Mathematics |
+| 9 | Physics, Chemistry, Biology, Mathematics |
+| 10 | Physics, Chemistry, Biology, Mathematics |
 
-### 2. QR block on existing `/install` page
-Add a compact QR card in `src/pages/InstallApp.tsx` (below the install button):
-- Small QR (160×160) of the same install URL
-- Text: "On desktop? Scan with your phone to install."
-- Useful when someone opens the page on laptop.
+Chapter list = Foundation book TOC (Pearson/MTG-style — closely mirrors NCERT with P/C/B split even in 7-8). We'll seed a canonical Foundation chapter list per (grade, subject); admins can rename/reorder later.
 
-### 3. QR generation
-Use existing `src/utils/qrCode.ts` (`qrcode-generator` already installed) — `generateQRCodeSVG(url, size)`. No new dependency for QR.
+## Plan
 
-For poster download: add `html-to-image` (small, ~15KB) to convert the QR card DOM to PNG. Fallback: if download fails, offer share via Web Share API on mobile.
+### 1. Schema — add grade to questions
+- Migration: `ALTER TABLE questions ADD COLUMN class_level smallint;`
+- Backfill from `chapters.class_level` (existing 11/12 rows).
+- Trigger `BEFORE INSERT/UPDATE OF chapter_id ON questions` → set `NEW.class_level = (SELECT class_level FROM chapters WHERE id = NEW.chapter_id)`.
+- Index `(class_level, subject, chapter_id)`.
+- Rationale: single-column filter = fast planner/practice/test queries and admin listing.
 
-### 4. Discoverability (optional, small)
-- Add a subtle "Share app 📲" link in the mobile Settings page pointing to `/share` so users can share with friends (viral growth).
+### 2. Seed Foundation chapters (grade 7, 8, 9, 10 × P/C/B/Math)
+- New edge function `seed-foundation-chapters` (or extend existing `seed-chapters`) with the canonical Foundation TOC per (grade, subject).
+- Idempotent: skip if `(class_level, subject, chapter_number)` already exists.
+- `exam = 'Foundation'`, `class_level = 7/8/9/10`.
+- One-click "Seed Foundation chapters" button in admin.
 
-## Technical details
+### 3. Question upload flow for Foundation books (your primary path)
+- Reuse `extract-pdf-questions` edge function + `extracted_questions_queue` review UI.
+- Admin upload wizard for Foundation:
+  1. Pick Grade (7/8/9/10) → Subject (P/C/B/Math) → Chapter.
+  2. Upload PDF (chapter-wise, or whole book with chapter markers).
+  3. Extract → queue with `class_level`, `subject`, `chapter_id` pre-filled.
+  4. Admin reviews, bulk-approves → inserts into `questions`; trigger sets `class_level`.
+- Per-upload source tag (e.g. `source = 'Pearson Foundation Class 9 Physics'`) for provenance and future de-dupe.
 
-**Files:**
-- **Create** `src/pages/SharePage.tsx` — the poster page
-- **Edit** `src/App.tsx` — add `<Route path="/share" element={<SharePage />} />` (public, lazy-loaded)
-- **Edit** `src/pages/InstallApp.tsx` — add compact QR card section
-- **Edit** `src/pages/Settings.tsx` — add "Share app" row linking to `/share` (small addition)
-- **Install** `html-to-image` via bun
+### 4. Strict grade isolation (Roadmap + Planner + Practice + Test + Admin)
 
-**QR target URL:** `https://jeenieai.lovable.app/install` (hardcoded to published URL so QR works even when scanned from a printed/shared image outside the app context).
+a) `src/lib/roadmapEngine.ts`
+- `subjectsForExam(exam, userGrade?)` — for Foundation return `['Physics','Chemistry','Biology','Mathematics']` for that grade only.
+- `buildSubjectRoadmap(userId, exam, subject, userGrade?)` — add `.eq('class_level', userGrade)` on the chapters query when `exam === 'Foundation'` (or grade is 7-10).
 
-**Design tokens:** all colors from `index.css` semantic tokens (`--primary`, `--background`, `--foreground`) — no hardcoded hex in components. Matches existing dark-blue brand.
+b) `src/lib/studyPlannerCore.ts` and any planner query — filter chapters by `class_level = userGrade` for Foundation users. 11/12 (JEE/NEET) keeps today's combined behaviour.
 
-**No backend / DB changes.** Pure frontend.
+c) Practice + Test generation — `src/services/api/modules/questions.ts` random/filter queries add `.eq('class_level', userGrade)` for Foundation users. Cleanest with the new column from step 1.
 
-## Out of scope
-- Play Store / TWA setup
-- Dynamic QR (per-user referral QR) — can be added later if you want referral tracking baked into the QR
-- Print-ready A4 poster PDF
+d) Admin — Questions and Chapters lists get a "Grade" filter pill (6/7/8/9/10/11/12). Default = All; when set, filters both list and coverage counts.
 
-Ready to build?
+### 5. Admin coverage widget
+- Small dashboard card: for each (grade 7-10, subject) show chapters seeded + questions live + questions in review queue. Highlights gaps so you know which book to upload next.
+
+## Technical section
+
+- `class_level` denormalized on `questions` avoids joins on every read; trigger keeps it in sync with `chapters` on insert/update of `chapter_id`.
+- Foundation user detection: `parseGrade(profiles.grade)` returns 7-10 → treat as Foundation regardless of `target_exam` string. Prefer `exam === 'Foundation'` when set, else derive from grade.
+- No new exam strings needed — `Foundation-7`, `Foundation-8`, ..., `Foundation-10` already exist in `getTargetExamFromGrade`.
+- PDF ingestion reuses the existing pipeline; only the admin wizard UI is new.
+- LearnCBSE/Selfstudys scrape can be added later as a supplemental importer using Firecrawl, feeding the same review queue — out of scope for v1.
+
+## Deliverables order
+1. Migration: `class_level` on questions + trigger + index + backfill.
+2. Seed Foundation chapters for grades 7-10 (P/C/B/Math).
+3. Roadmap + planner + practice + test filter by `class_level = userGrade` for Foundation.
+4. Admin: grade filter on lists + Foundation upload wizard + coverage widget.
+5. You upload Foundation book PDFs → review queue → approve.
