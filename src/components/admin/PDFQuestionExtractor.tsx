@@ -295,7 +295,8 @@ export function PDFQuestionExtractor() {
               subject: selectedSubject,
               chapter: selectedChapterName,
               chapterId: selectedChapterId,
-              exam: selectedExam
+              exam: selectedExam,
+              forcedDifficulty: selectedDifficulty,
             }
           });
 
