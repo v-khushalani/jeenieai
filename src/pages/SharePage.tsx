@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toPng } from 'html-to-image';
 import { ArrowLeft, Download, Copy, Check, Share2, Sparkles } from 'lucide-react';
@@ -9,15 +9,39 @@ import SEOHead from '@/components/SEOHead';
 
 const INSTALL_URL = 'https://jeenie.website/install';
 const SITE_URL = 'https://jeenie.website';
+const LOGO_URL = '/logo.png';
+
+// Brand tokens — mirror src/lib/shareCard.ts exactly
+const BRAND = {
+  primary: '#013062',
+  primary70: 'rgba(1,48,98,0.72)',
+  accent: '#e6eeff',
+  bgFrom: '#e6eeff',
+  bgTo: '#ffffff',
+};
+
+const loadImage = (src: string): Promise<HTMLImageElement> =>
+  new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = src;
+  });
 
 const SharePage: React.FC = () => {
   const navigate = useNavigate();
   const posterRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState<null | 'poster' | 'story' | 'square'>(null);
+  const [logoReady, setLogoReady] = useState(false);
 
-  const qrSvg = useMemo(() => generateQRCodeSVG(INSTALL_URL, 320), []);
   const qrSvgSmall = useMemo(() => generateQRCodeSVG(INSTALL_URL, 220), []);
+
+  // Warm the logo so the preview + html-to-image capture it
+  useEffect(() => {
+    loadImage(LOGO_URL).then(() => setLogoReady(true)).catch(() => setLogoReady(true));
+  }, []);
 
   const downloadPoster = async () => {
     if (!posterRef.current) return;
@@ -26,7 +50,7 @@ const SharePage: React.FC = () => {
       const dataUrl = await toPng(posterRef.current, {
         pixelRatio: 3,
         cacheBust: true,
-        backgroundColor: '#013062',
+        backgroundColor: BRAND.bgTo,
       });
       const link = document.createElement('a');
       link.download = 'jeenie-install-qr.png';
@@ -40,7 +64,8 @@ const SharePage: React.FC = () => {
     }
   };
 
-  // Canvas-based generator for Instagram Story (1080x1920) & WhatsApp Status (1080x1080)
+  // Canvas generator — Instagram Story (1080x1920) & WhatsApp Status (1080x1080)
+  // Matches roast/badge share card aesthetic exactly.
   const renderCanvasPoster = async (variant: 'story' | 'square'): Promise<string> => {
     const W = 1080;
     const H = variant === 'story' ? 1920 : 1080;
@@ -48,85 +73,105 @@ const SharePage: React.FC = () => {
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d')!;
 
-    // Gradient bg
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, '#013062');
-    g.addColorStop(1, '#0a4a8f');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // --- Background: light gradient (matches shareCard.ts paintBackground) ---
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, BRAND.bgFrom);
+    bg.addColorStop(1, BRAND.bgTo);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
 
-    // Cyan glow
-    const glow = ctx.createRadialGradient(W * 0.85, H * 0.1, 20, W * 0.85, H * 0.1, 700);
-    glow.addColorStop(0, 'rgba(34,211,238,0.35)');
-    glow.addColorStop(1, 'rgba(34,211,238,0)');
-    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+    // Top navy band tint
+    const topBand = ctx.createLinearGradient(0, 0, W, 0);
+    topBand.addColorStop(0, 'rgba(1,48,98,0.14)');
+    topBand.addColorStop(1, 'rgba(1,48,98,0)');
+    ctx.fillStyle = topBand;
+    ctx.fillRect(0, 0, W, 180);
 
-    const glow2 = ctx.createRadialGradient(W * 0.1, H * 0.9, 20, W * 0.1, H * 0.9, 600);
-    glow2.addColorStop(0, 'rgba(34,211,238,0.25)');
-    glow2.addColorStop(1, 'rgba(34,211,238,0)');
-    ctx.fillStyle = glow2; ctx.fillRect(0, 0, W, H);
+    // Radial glows
+    const g1 = ctx.createRadialGradient(W * 0.84, H * 0.16, 10, W * 0.84, H * 0.16, 460);
+    g1.addColorStop(0, 'rgba(1,48,98,0.18)');
+    g1.addColorStop(1, 'rgba(1,48,98,0)');
+    ctx.fillStyle = g1; ctx.fillRect(0, 0, W, H);
 
-    const isStory = variant === 'story';
-    const cx = W / 2;
+    const g2 = ctx.createRadialGradient(W * 0.12, H * 0.92, 5, W * 0.12, H * 0.92, 500);
+    g2.addColorStop(0, 'rgba(230,238,255,0.95)');
+    g2.addColorStop(1, 'rgba(230,238,255,0)');
+    ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
 
-    // Logo bubble
-    const top = isStory ? 130 : 90;
-    const lr = isStory ? 60 : 48;
-    ctx.fillStyle = '#22d3ee';
-    ctx.beginPath(); ctx.arc(cx, top + lr, lr, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#013062';
-    ctx.font = `900 ${Math.round(lr * 1.2)}px Inter, system-ui, sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('J', cx, top + lr + 4);
+    // --- Header: real logo + wordmark (top-left) ---
+    let logoImg: HTMLImageElement | null = null;
+    try { logoImg = await loadImage(LOGO_URL); } catch { /* fallback below */ }
 
-    // Brand
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `800 ${isStory ? 76 : 60}px Inter, system-ui, sans-serif`;
-    ctx.textBaseline = 'top';
-    let y = top + lr * 2 + 28;
-    ctx.fillText('JEEnie AI', cx, y);
-    y += isStory ? 90 : 72;
-    ctx.font = `500 ${isStory ? 34 : 26}px Inter, system-ui, sans-serif`;
-    ctx.fillStyle = 'rgba(200,220,255,0.9)';
-    ctx.fillText('JEE  •  NEET  •  MHT-CET', cx, y);
-
-    // Headline
-    y += isStory ? 110 : 60;
-    if (isStory) {
-      ctx.font = '900 120px Inter, system-ui, sans-serif';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText('Scan.', cx, y); y += 118;
-      ctx.fillText('Install.', cx, y); y += 118;
-      ctx.fillStyle = '#22d3ee';
-      ctx.fillText('Crack it.', cx, y); y += 145;
+    const logoSize = 88;
+    const headX = 60;
+    const headY = 60;
+    if (logoImg) {
+      ctx.drawImage(logoImg, headX, headY, logoSize, logoSize);
     } else {
-      ctx.font = '900 88px Inter, system-ui, sans-serif';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText('Scan to install', cx, y); y += 120;
+      // Fallback bubble
+      ctx.fillStyle = BRAND.primary;
+      ctx.beginPath();
+      ctx.arc(headX + logoSize / 2, headY + logoSize / 2, logoSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = BRAND.primary;
+    ctx.font = '800 52px Saira, system-ui, sans-serif';
+    ctx.fillText('JEEnie', headX + logoSize + 20, headY + 6);
+    ctx.font = '500 22px Saira, system-ui, sans-serif';
+    ctx.fillStyle = BRAND.primary70;
+    ctx.fillText('AI for JEE • NEET • Foundation', headX + logoSize + 20, headY + 60);
+
+    const cx = W / 2;
+    const isStory = variant === 'story';
+
+    // --- Eyebrow ---
+    ctx.textAlign = 'left';
+    ctx.fillStyle = BRAND.primary70;
+    ctx.font = '600 28px Saira, system-ui, sans-serif';
+    ctx.fillText('INSTALL THE APP', 60, isStory ? 260 : 220);
+
+    // --- Big headline ---
+    ctx.fillStyle = BRAND.primary;
+    if (isStory) {
+      ctx.font = '900 140px Saira, system-ui, sans-serif';
+      let y = 320;
+      ctx.fillText('Scan.', 60, y); y += 150;
+      ctx.fillText('Install.', 60, y); y += 150;
+      ctx.fillText('Crack it.', 60, y);
+    } else {
+      ctx.font = '900 96px Saira, system-ui, sans-serif';
+      ctx.fillText('Scan to install', 60, 280);
+      ctx.font = '500 34px Saira, system-ui, sans-serif';
+      ctx.fillStyle = BRAND.primary70;
+      ctx.fillText("India's smartest JEE / NEET / Foundation prep", 60, 400);
     }
 
-    // QR card
-    const qrSize = isStory ? 640 : 420;
-    const pad = isStory ? 44 : 32;
-    const card = qrSize + pad * 2;
-    const cxs = cx - card / 2;
-    const cys = y;
-    // shadow
+    // --- QR white rounded card (bottom-right, mirrors paintFooter) ---
+    const qrSize = isStory ? 520 : 360;
+    const qrPad = isStory ? 40 : 28;
+    const cardSize = qrSize + qrPad * 2;
+    const cardX = W - cardSize - 60;
+    const cardY = H - cardSize - (isStory ? 180 : 140);
+    const r = 32;
+
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.35)';
-    ctx.shadowBlur = 40; ctx.shadowOffsetY = 20;
+    ctx.shadowColor = 'rgba(1,48,98,0.25)';
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetY = 16;
     ctx.fillStyle = '#ffffff';
-    const r = 40;
     ctx.beginPath();
-    ctx.moveTo(cxs + r, cys);
-    ctx.arcTo(cxs + card, cys, cxs + card, cys + card, r);
-    ctx.arcTo(cxs + card, cys + card, cxs, cys + card, r);
-    ctx.arcTo(cxs, cys + card, cxs, cys, r);
-    ctx.arcTo(cxs, cys, cxs + card, cys, r);
+    ctx.moveTo(cardX + r, cardY);
+    ctx.arcTo(cardX + cardSize, cardY, cardX + cardSize, cardY + cardSize, r);
+    ctx.arcTo(cardX + cardSize, cardY + cardSize, cardX, cardY + cardSize, r);
+    ctx.arcTo(cardX, cardY + cardSize, cardX, cardY, r);
+    ctx.arcTo(cardX, cardY, cardX + cardSize, cardY, r);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
 
-    // Load QR as image
+    // Draw QR
     const qrSvgStr = generateQRCodeSVG(INSTALL_URL, qrSize);
     const qrImg = await new Promise<HTMLImageElement>((res, rej) => {
       const im = new Image();
@@ -136,22 +181,21 @@ const SharePage: React.FC = () => {
       im.onerror = rej;
       im.src = url;
     });
-    ctx.drawImage(qrImg, cxs + pad, cys + pad, qrSize, qrSize);
+    ctx.drawImage(qrImg, cardX + qrPad, cardY + qrPad, qrSize, qrSize);
 
-    y = cys + card + (isStory ? 60 : 35);
-
-    // CTA
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `800 ${isStory ? 42 : 30}px Inter, system-ui, sans-serif`;
-    ctx.fillText('Point camera. Tap link. Install.', cx, y);
-    y += isStory ? 65 : 45;
-    ctx.fillStyle = '#22d3ee';
-    ctx.font = `800 ${isStory ? 40 : 30}px Inter, system-ui, sans-serif`;
-    ctx.fillText('jeenie.website/install', cx, y);
+    // --- CTA text (bottom-left, mirrors paintFooter) ---
+    ctx.textBaseline = 'bottom';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = BRAND.primary;
+    ctx.font = `800 ${isStory ? 44 : 34}px Saira, system-ui, sans-serif`;
+    ctx.fillText('Scan • Tap link • Install', 60, H - (isStory ? 220 : 160));
+    ctx.font = `500 ${isStory ? 26 : 22}px Saira, system-ui, sans-serif`;
+    ctx.fillStyle = BRAND.primary70;
+    ctx.fillText('Visit jeenie.website/install', 60, H - (isStory ? 175 : 125));
 
     // Bottom accent bar
-    ctx.fillStyle = '#22d3ee';
-    ctx.fillRect(0, H - 12, W, 12);
+    ctx.fillStyle = BRAND.primary;
+    ctx.fillRect(0, H - 10, W, 10);
 
     return canvas.toDataURL('image/png');
   };
@@ -204,7 +248,7 @@ const SharePage: React.FC = () => {
     <div className="min-h-[100dvh] bg-background flex flex-col">
       <SEOHead
         title="Share JEEnie AI — Scan QR to Install"
-        description="Scan the QR to install JEEnie AI — India's smartest JEE, NEET & MHT-CET prep app. Free to start."
+        description="Scan the QR to install JEEnie AI — India's smartest JEE, NEET & Foundation prep app. Free to start."
         canonical={`${SITE_URL}/share`}
       />
 
@@ -222,7 +266,7 @@ const SharePage: React.FC = () => {
         </div>
       </header>
 
-      {/* Scrollable content — leave room for sticky bottom bar */}
+      {/* Scrollable content */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-lg mx-auto px-4 pt-5 pb-40 space-y-5">
           <p className="text-center text-[13px] text-muted-foreground leading-relaxed">
@@ -230,51 +274,58 @@ const SharePage: React.FC = () => {
             Friends scan → install directly. No Play Store needed.
           </p>
 
-          {/* Poster preview */}
+          {/* Poster preview — mirrors canvas exactly */}
           <div
             ref={posterRef}
             className="relative rounded-[28px] overflow-hidden mx-auto"
             style={{
-              background: 'linear-gradient(160deg, #013062 0%, #0a4a8f 100%)',
+              background: `linear-gradient(135deg, ${BRAND.bgFrom} 0%, ${BRAND.bgTo} 100%)`,
               aspectRatio: '9 / 16',
               maxWidth: '320px',
               width: '100%',
-              boxShadow: '0 20px 50px -20px rgba(1,48,98,0.6)',
+              boxShadow: '0 20px 50px -20px rgba(1,48,98,0.35)',
+              fontFamily: 'Saira, system-ui, sans-serif',
             }}
           >
-            <div aria-hidden className="absolute -top-20 -right-20 w-56 h-56 rounded-full opacity-40 blur-3xl" style={{ background: '#22d3ee' }} />
-            <div aria-hidden className="absolute -bottom-20 -left-20 w-56 h-56 rounded-full opacity-30 blur-3xl" style={{ background: '#22d3ee' }} />
+            {/* Decorative glows */}
+            <div aria-hidden className="absolute -top-16 -right-16 w-56 h-56 rounded-full opacity-30 blur-3xl" style={{ background: BRAND.primary }} />
+            <div aria-hidden className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full opacity-40 blur-3xl" style={{ background: BRAND.accent }} />
 
-            <div className="relative h-full flex flex-col items-center justify-between px-5 py-6 text-white text-center">
-              {/* Brand */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-11 h-11 rounded-full bg-[#22d3ee] flex items-center justify-center text-[#013062] font-black text-xl">J</div>
-                <div className="text-lg font-extrabold tracking-tight">JEEnie AI</div>
-                <div className="text-[10px] font-medium text-white/70 tracking-widest">JEE · NEET · MHT-CET</div>
+            <div className="relative h-full flex flex-col justify-between px-5 py-6" style={{ color: BRAND.primary }}>
+              {/* Header: real logo + wordmark */}
+              <div className="flex items-center gap-2.5">
+                {logoReady && (
+                  <img src={LOGO_URL} alt="JEEnie" className="w-11 h-11 object-contain" />
+                )}
+                <div className="flex flex-col leading-tight">
+                  <span className="text-lg font-extrabold tracking-tight">JEEnie</span>
+                  <span className="text-[9px] font-medium opacity-70">AI for JEE • NEET • Foundation</span>
+                </div>
               </div>
 
-              {/* Headline */}
-              <div className="leading-none space-y-1">
-                <div className="text-[34px] font-black">Scan.</div>
-                <div className="text-[34px] font-black">Install.</div>
-                <div className="text-[34px] font-black text-[#22d3ee]">Crack it.</div>
+              {/* Big headline */}
+              <div className="leading-none space-y-1 -mt-6">
+                <div className="text-[11px] font-semibold opacity-70 tracking-wider mb-2">INSTALL THE APP</div>
+                <div className="text-[38px] font-black">Scan.</div>
+                <div className="text-[38px] font-black">Install.</div>
+                <div className="text-[38px] font-black">Crack it.</div>
               </div>
 
-              {/* QR */}
-              <div className="bg-white rounded-2xl p-3 shadow-2xl">
+              {/* QR white card */}
+              <div className="self-end bg-white rounded-2xl p-3" style={{ boxShadow: '0 12px 24px -8px rgba(1,48,98,0.35)' }}>
                 <div
-                  className="w-[170px] h-[170px] [&>svg]:w-full [&>svg]:h-full"
+                  className="w-[150px] h-[150px] [&>svg]:w-full [&>svg]:h-full"
                   dangerouslySetInnerHTML={{ __html: qrSvgSmall }}
                 />
               </div>
 
-              {/* Footer */}
-              <div className="space-y-1.5">
-                <div className="text-[11px] font-bold">Point camera. Tap link. Install.</div>
-                <div className="text-[11px] font-bold text-[#22d3ee]">jeenie.website/install</div>
+              {/* Footer CTA */}
+              <div className="space-y-1">
+                <div className="text-[13px] font-extrabold">Scan • Tap link • Install</div>
+                <div className="text-[11px] font-medium opacity-70">Visit jeenie.website/install</div>
               </div>
 
-              <div className="absolute inset-x-0 bottom-0 h-1 bg-[#22d3ee]" />
+              <div className="absolute inset-x-0 bottom-0 h-1" style={{ background: BRAND.primary }} />
             </div>
           </div>
 
@@ -290,9 +341,9 @@ const SharePage: React.FC = () => {
                 disabled={downloading !== null}
                 className="group text-left rounded-2xl border border-border bg-card p-3 hover:border-primary/40 transition disabled:opacity-60"
               >
-                <div className="aspect-[9/16] rounded-lg mb-2 flex items-center justify-center text-white text-[10px] font-bold" style={{ background: 'linear-gradient(160deg,#013062,#0a4a8f)' }}>
+                <div className="aspect-[9/16] rounded-lg mb-2 flex items-center justify-center text-[10px] font-bold p-2" style={{ background: `linear-gradient(135deg, ${BRAND.bgFrom}, ${BRAND.bgTo})`, color: BRAND.primary }}>
                   <div className="text-center leading-tight">
-                    <div>Scan.</div><div>Install.</div><div className="text-[#22d3ee]">Crack it.</div>
+                    <div>Scan.</div><div>Install.</div><div>Crack it.</div>
                   </div>
                 </div>
                 <div className="text-xs font-semibold text-foreground">Instagram Story</div>
@@ -303,7 +354,7 @@ const SharePage: React.FC = () => {
                 disabled={downloading !== null}
                 className="group text-left rounded-2xl border border-border bg-card p-3 hover:border-primary/40 transition disabled:opacity-60"
               >
-                <div className="aspect-square rounded-lg mb-2 flex items-center justify-center text-white text-[10px] font-bold" style={{ background: 'linear-gradient(160deg,#013062,#0a4a8f)' }}>
+                <div className="aspect-square rounded-lg mb-2 flex items-center justify-center text-[10px] font-bold p-2" style={{ background: `linear-gradient(135deg, ${BRAND.bgFrom}, ${BRAND.bgTo})`, color: BRAND.primary }}>
                   <div className="text-center leading-tight">Scan to install</div>
                 </div>
                 <div className="text-xs font-semibold text-foreground">WhatsApp Status</div>
@@ -316,13 +367,13 @@ const SharePage: React.FC = () => {
           </div>
 
           <p className="text-center text-[11px] text-muted-foreground pt-2">
-            Pro tip: post on Instagram Story with a “Link” sticker to{' '}
+            Pro tip: post on Instagram Story with a "Link" sticker to{' '}
             <span className="text-foreground font-medium">jeenie.website/install</span> for one-tap install.
           </p>
         </div>
       </main>
 
-      {/* Sticky bottom action bar — always visible */}
+      {/* Sticky bottom action bar */}
       <div className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur border-t border-border" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="max-w-lg mx-auto px-4 py-3 space-y-2">
           <Button
