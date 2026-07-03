@@ -285,20 +285,11 @@ serve(async (req) => {
       const lastTs = lastRes.data?.[0]?.created_at ? new Date(lastRes.data[0].created_at).getTime() : 0;
       const sinceLast = (Date.now() - lastTs) / 1000;
 
-      if (sinceLast < minIntervalSec) {
-        const wait = Math.ceil(minIntervalSec - sinceLast);
-        return new Response(
-          JSON.stringify({
-            response: `**Hello Puttar!** 🧞‍♂️\n\nThoda saans le yaar — JEEnie type kar raha hai abhi! ⏳\n\n**${wait} second ruk** aur dobara bhej.`,
-            suggestions: [], content: "",
-            quota_exhausted: true,
-            limit_type: "interval",
-            tier: userTier,
-            upgrade_to: null,
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      // NOTE: Per-request min-interval throttle removed intentionally.
+      // Students hated the "ruk X second" gate — daily/monthly caps + in-memory
+      // duplicate-prompt de-dupe (RECENT_PROMPTS below) are enough to prevent abuse.
+      void sinceLast;
+      void minIntervalSec;
 
       if (queriesUsed >= dailyLimit) {
         const msg = userTier === "pro_plus"
@@ -403,8 +394,9 @@ serve(async (req) => {
       MAX_OUTPUT_TOKENS_CEILING,
     );
 
-    // History window: trim by tier. Free = single-shot.
-    const historyWindow = userTier === "free" ? 0 : userTier === "pro" ? 4 : 6;
+    // History window: give every tier real conversation memory so follow-ups work.
+    // Free = last 6 turns, Pro = 10, Pro+ = 16.
+    const historyWindow = userTier === "pro_plus" ? 16 : userTier === "pro" ? 10 : 6;
     const messages: Array<{ role: string; content: any }> = [
       { role: "system", content: systemPrompt },
     ];
