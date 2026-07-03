@@ -198,7 +198,7 @@ function ChapterCard({
   );
 }
 
-export default function RoadmapView({ userId, exam, initialSubject, initialRoadmaps, onRefresh }: Props) {
+export default function RoadmapView({ userId, exam, classLevel, initialSubject, initialRoadmaps, onRefresh }: Props) {
   const navigate = useNavigate();
   const subjects = useMemo(() => subjectsForExam(exam), [exam]);
   const roadmapBySubject = useMemo(() => {
@@ -222,7 +222,7 @@ export default function RoadmapView({ userId, exam, initialSubject, initialRoadm
     }
     setLoading(true);
     try {
-      const r = await buildSubjectRoadmap(userId, exam, subject);
+      const r = await buildSubjectRoadmap(userId, exam, subject, classLevel);
       setData(r);
       // auto-expand the active chapter
       setExpandedId(r.activeChapterId);
@@ -232,7 +232,8 @@ export default function RoadmapView({ userId, exam, initialSubject, initialRoadm
     } finally {
       setLoading(false);
     }
-  }, [userId, exam, subject, roadmapBySubject]);
+  }, [userId, exam, subject, roadmapBySubject, classLevel]);
+
 
   useEffect(() => {
     load();
