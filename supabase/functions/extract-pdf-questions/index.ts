@@ -214,7 +214,9 @@ serve(async (req) => {
       );
     }
 
-    const { imageBase64, sourceFile, pageNumber, subject, chapter, chapterId, exam } = await req.json();
+    const { imageBase64, sourceFile, pageNumber, subject, chapter, chapterId, exam, forcedDifficulty } = await req.json();
+    const allowedDiff = ["Easy", "Medium", "Hard"];
+    const overrideDifficulty = allowedDiff.includes(forcedDifficulty) ? forcedDifficulty : null;
     if (!imageBase64) {
       return new Response(
         JSON.stringify({ success: false, message: "Image nahi mili! 📸 PDF page upload karo." }),
@@ -326,8 +328,9 @@ If no questions: {"questions": [], "page_type": "non-question", "total_questions
 
       const matchedTopic = findBestTopicMatch(q.topic || "", matchedChapter.id, dbTopics);
       const isFoundation = (exam || 'JEE').startsWith('Foundation-') || exam === 'Scholarship' || exam === 'Olympiad';
-      const finalDifficulty = q.difficulty && ["Easy","Medium","Hard"].includes(q.difficulty)
-        ? q.difficulty : determineDifficulty(q.question, [q.option_a, q.option_b, q.option_c||'', q.option_d||'']);
+      const finalDifficulty = overrideDifficulty
+        ?? (q.difficulty && ["Easy","Medium","Hard"].includes(q.difficulty)
+          ? q.difficulty : determineDifficulty(q.question, [q.option_a, q.option_b, q.option_c||'', q.option_d||'']));
 
       return {
         ...q,

@@ -53,6 +53,7 @@ export function PDFQuestionExtractor() {
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
   const [selectedChapterName, setSelectedChapterName] = useState<string>("");
   const [selectedExam, setSelectedExam] = useState<string>("");
+  const [selectedDifficulty, setSelectedDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
   const [startPage, setStartPage] = useState<number>(1);
   const [endPage, setEndPage] = useState<number | null>(null);
   
@@ -294,7 +295,8 @@ export function PDFQuestionExtractor() {
               subject: selectedSubject,
               chapter: selectedChapterName,
               chapterId: selectedChapterId,
-              exam: selectedExam
+              exam: selectedExam,
+              forcedDifficulty: selectedDifficulty,
             }
           });
 
@@ -571,6 +573,26 @@ export function PDFQuestionExtractor() {
                 placeholder="All pages"
               />
             </div>
+          </div>
+
+          {/* Difficulty Override */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1">
+              Difficulty for this upload <span className="text-red-500">*</span>
+            </Label>
+            <Select value={selectedDifficulty} onValueChange={(v) => setSelectedDifficulty(v as any)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Easy">Easy — full PDF marked Easy</SelectItem>
+                <SelectItem value="Medium">Moderate — full PDF marked Medium</SelectItem>
+                <SelectItem value="Hard">Hard — full PDF marked Hard</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Har question isi difficulty pe save hoga. AI ka auto-guess overwrite ho jayega.
+            </p>
           </div>
 
           {/* Extract Button */}
