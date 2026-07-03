@@ -575,6 +575,26 @@ export function PDFQuestionExtractor() {
             </div>
           </div>
 
+          {/* Difficulty Override */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1">
+              Difficulty for this upload <span className="text-red-500">*</span>
+            </Label>
+            <Select value={selectedDifficulty} onValueChange={(v) => setSelectedDifficulty(v as any)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Easy">Easy — full PDF marked Easy</SelectItem>
+                <SelectItem value="Medium">Moderate — full PDF marked Medium</SelectItem>
+                <SelectItem value="Hard">Hard — full PDF marked Hard</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Har question isi difficulty pe save hoga. AI ka auto-guess overwrite ho jayega.
+            </p>
+          </div>
+
           {/* Extract Button */}
           <Button 
             onClick={extractQuestions} 
