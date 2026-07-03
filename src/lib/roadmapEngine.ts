@@ -51,9 +51,12 @@ export interface SubjectRoadmap {
   totalCount: number;
 }
 
-export const SUBJECTS_BY_EXAM: Record<string, string[]> = {
+export type ExamKind = 'JEE' | 'NEET' | 'Foundation';
+
+export const SUBJECTS_BY_EXAM: Record<ExamKind, string[]> = {
   JEE: ['Physics', 'Chemistry', 'Mathematics'],
   NEET: ['Physics', 'Chemistry', 'Biology'],
+  Foundation: ['Physics', 'Chemistry', 'Biology', 'Mathematics'],
 };
 
 const LEARN_TARGET = 15;
@@ -89,34 +92,49 @@ interface PersistedMilestone {
   status: MilestoneState;
 }
 
-export function normalizeExam(target: string | null | undefined): 'JEE' | 'NEET' {
+/**
+ * Normalize a stored target_exam value into a canonical exam kind.
+ * Grade 7-10 (or a "Foundation-*" target) always resolves to Foundation.
+ */
+export function normalizeExam(
+  target: string | null | undefined,
+  grade?: number | null,
+): ExamKind {
+  if (typeof grade === 'number' && grade >= 6 && grade <= 10) return 'Foundation';
   const v = (target || 'JEE').toUpperCase();
+  if (v.includes('FOUNDATION')) return 'Foundation';
   if (v.includes('NEET')) return 'NEET';
   return 'JEE';
 }
 
-export function subjectsForExam(exam: 'JEE' | 'NEET'): string[] {
+export function subjectsForExam(exam: ExamKind): string[] {
   return SUBJECTS_BY_EXAM[exam] || SUBJECTS_BY_EXAM.JEE;
 }
 
-export function examRelevanceValues(exam: 'JEE' | 'NEET'): ('JEE_MAINS' | 'JEE_ADVANCED' | 'NEET')[] {
-  return exam === 'JEE' ? ['JEE_MAINS', 'JEE_ADVANCED'] : ['NEET'];
+export function examRelevanceValues(
+  exam: ExamKind,
+): ('JEE_MAINS' | 'JEE_ADVANCED' | 'NEET' | 'FOUNDATION')[] {
+  if (exam === 'NEET') return ['NEET'];
+  if (exam === 'Foundation') return ['FOUNDATION'];
+  return ['JEE_MAINS', 'JEE_ADVANCED'];
 }
+
 
 /**
  * Build the roadmap for one subject, for one user.
  */
 export async function buildSubjectRoadmap(
   userId: string,
-  exam: 'JEE' | 'NEET',
+  exam: ExamKind,
   subject: string,
+  classLevel?: number | null,
 ): Promise<SubjectRoadmap> {
   const canonicalSubject = normalizeSubject(subject);
 
   // 1. Chapters in this subject for this exam.
   // IMPORTANT: exam_relevance is exam_code[] and accepts ONLY enum labels.
   // Passing text variants like "JEE" makes PostgREST reject the whole query.
-  const { data: chapterRows, error: chapErr } = await supabase
+  let chapterQuery = supabase
     .from('chapters')
     .select('id, subject, chapter_name, name, chapter_number, class_level')
     .eq('is_active', true)
@@ -125,6 +143,12 @@ export async function buildSubjectRoadmap(
     .order('class_level', { ascending: true, nullsFirst: false })
     .order('chapter_number', { ascending: true, nullsFirst: false })
     .limit(60);
+  // Foundation students see ONLY their own grade — no cross-grade bleed.
+  if (exam === 'Foundation' && typeof classLevel === 'number') {
+    chapterQuery = chapterQuery.eq('class_level', classLevel);
+  }
+  const { data: chapterRows, error: chapErr } = await chapterQuery;
+
 
   if (chapErr) logger.error('roadmap: chapters load', chapErr);
   const chapters: ChapterRow[] = (chapterRows || []) as ChapterRow[];
@@ -291,10 +315,14 @@ export async function buildSubjectRoadmap(
 
 export async function buildAllSubjectRoadmaps(
   userId: string,
-  exam: 'JEE' | 'NEET',
+  exam: ExamKind,
+  classLevel?: number | null,
 ): Promise<SubjectRoadmap[]> {
-  return Promise.all(subjectsForExam(exam).map((subject) => buildSubjectRoadmap(userId, exam, subject)));
+  return Promise.all(
+    subjectsForExam(exam).map((subject) => buildSubjectRoadmap(userId, exam, subject, classLevel)),
+  );
 }
+
 
 /**
  * Mark a milestone as done (used for chapter test).

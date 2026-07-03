@@ -41,7 +41,7 @@ import {
 import safeLocalStorage from '@/utils/safeStorage';
 import { readPlannerCache, writePlannerCache, isFresh } from '@/lib/plannerCache';
 
-type ExamKey = 'JEE' | 'NEET';
+type ExamKey = 'JEE' | 'NEET' | 'Foundation';
 type ChapterStatus = 'pending' | 'weak' | 'medium' | 'strong' | 'done';
 type TaskType = 'learn' | 'drill' | 'review' | 'test';
 
@@ -302,11 +302,15 @@ function metricFromRoadmapChapter(chapter: RoadmapChapter): ChapterMetric {
   };
 }
 
-export async function loadPlannerData(userId: string, exam: ExamKey): Promise<PlannerData> {
+export async function loadPlannerData(
+  userId: string,
+  exam: ExamKey,
+  classLevel?: number | null,
+): Promise<PlannerData> {
   const canonicalSubjects = subjectsForExam(exam);
   const subjectAliases = Array.from(new Set(canonicalSubjects.flatMap((subject) => getSubjectAliases(subject))));
 
-  const { data: chapterRows, error: chapterError } = await supabase
+  let chapterQuery = supabase
     .from('chapters')
     .select('id, subject, chapter_name, name, chapter_number, class_level')
     .eq('is_active', true)
@@ -316,6 +320,12 @@ export async function loadPlannerData(userId: string, exam: ExamKey): Promise<Pl
     .order('class_level', { ascending: true, nullsFirst: false })
     .order('chapter_number', { ascending: true, nullsFirst: false })
     .limit(260);
+  // Foundation: strict per-grade isolation (Class 7 sees only Class 7 chapters, etc.)
+  if (exam === 'Foundation' && typeof classLevel === 'number') {
+    chapterQuery = chapterQuery.eq('class_level', classLevel);
+  }
+  const { data: chapterRows, error: chapterError } = await chapterQuery;
+
 
   if (chapterError) throw chapterError;
 
@@ -342,7 +352,7 @@ export async function loadPlannerData(userId: string, exam: ExamKey): Promise<Pl
     });
   });
 
-  const roadmaps = await buildAllSubjectRoadmaps(userId, exam);
+  const roadmaps = await buildAllSubjectRoadmaps(userId, exam, classLevel);
 
   if (chapterMap.size === 0) return { ...emptyPlanner(), roadmaps };
   const chapterIds = Array.from(chapterMap.keys());
@@ -484,8 +494,11 @@ export default function AIStudyPlanner() {
       if (profError) logger.warn('Planner profile load warning', profError);
 
       const prof = (profData as any) || { target_exam: cachedGoal || 'JEE' };
-      const exam = normalizeExam(normalizeTargetExam(prof?.target_exam || cachedGoal || 'JEE'));
-      const data = await loadPlannerData(user.id, exam);
+      const gradeNum = Number(prof?.grade);
+      const classLevel = Number.isFinite(gradeNum) && gradeNum >= 6 && gradeNum <= 12 ? gradeNum : null;
+      const exam = normalizeExam(normalizeTargetExam(prof?.target_exam || cachedGoal || 'JEE'), classLevel);
+      const data = await loadPlannerData(user.id, exam, classLevel);
+
 
       const sevenAgo = new Date();
       sevenAgo.setDate(sevenAgo.getDate() - 6);
@@ -669,7 +682,19 @@ export default function AIStudyPlanner() {
         </TabsList>
 
         <TabsContent value="roadmap" className="mt-3 space-y-3">
-          {user?.id && <RoadmapView userId={user.id} exam={targetExam} initialRoadmaps={planner.roadmaps} onRefresh={loadAll} />}
+          {user?.id && (
+            <RoadmapView
+              userId={user.id}
+              exam={targetExam}
+              classLevel={(() => {
+                const g = Number((profile as any)?.grade);
+                return Number.isFinite(g) && g >= 6 && g <= 12 ? g : null;
+              })()}
+              initialRoadmaps={planner.roadmaps}
+              onRefresh={loadAll}
+            />
+          )}
+
         </TabsContent>
 
         <TabsContent value="week" className="mt-3 space-y-3">

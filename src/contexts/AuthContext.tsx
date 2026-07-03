@@ -112,9 +112,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ]);
           const { data: prof } = await supabase
             .from('my_profile' as any).select('*').maybeSingle();
-          const exam = normalizeExam((prof as any)?.target_exam || 'JEE');
-          const data = await loadPlannerData(userId, exam as any);
+          const gradeNum = Number((prof as any)?.grade);
+          const classLevel = Number.isFinite(gradeNum) && gradeNum >= 6 && gradeNum <= 12 ? gradeNum : null;
+          const exam = normalizeExam((prof as any)?.target_exam || 'JEE', classLevel);
+          const data = await loadPlannerData(userId, exam as any, classLevel);
           writePlannerCache(userId, { profile: prof, targetExam: exam, planner: data, completedHashes: [] });
+
         }, { delayMs: 1500 });
       } catch (e) {
         logger.warn('planner prefetch skipped', e);
