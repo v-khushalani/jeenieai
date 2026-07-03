@@ -315,10 +315,14 @@ export async function buildSubjectRoadmap(
 
 export async function buildAllSubjectRoadmaps(
   userId: string,
-  exam: 'JEE' | 'NEET',
+  exam: ExamKind,
+  classLevel?: number | null,
 ): Promise<SubjectRoadmap[]> {
-  return Promise.all(subjectsForExam(exam).map((subject) => buildSubjectRoadmap(userId, exam, subject)));
+  return Promise.all(
+    subjectsForExam(exam).map((subject) => buildSubjectRoadmap(userId, exam, subject, classLevel)),
+  );
 }
+
 
 /**
  * Mark a milestone as done (used for chapter test).
