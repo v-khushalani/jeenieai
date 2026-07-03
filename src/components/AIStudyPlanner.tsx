@@ -41,7 +41,7 @@ import {
 import safeLocalStorage from '@/utils/safeStorage';
 import { readPlannerCache, writePlannerCache, isFresh } from '@/lib/plannerCache';
 
-type ExamKey = 'JEE' | 'NEET';
+type ExamKey = 'JEE' | 'NEET' | 'Foundation';
 type ChapterStatus = 'pending' | 'weak' | 'medium' | 'strong' | 'done';
 type TaskType = 'learn' | 'drill' | 'review' | 'test';
 
