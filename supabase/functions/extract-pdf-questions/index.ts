@@ -214,7 +214,9 @@ serve(async (req) => {
       );
     }
 
-    const { imageBase64, sourceFile, pageNumber, subject, chapter, chapterId, exam } = await req.json();
+    const { imageBase64, sourceFile, pageNumber, subject, chapter, chapterId, exam, forcedDifficulty } = await req.json();
+    const allowedDiff = ["Easy", "Medium", "Hard"];
+    const overrideDifficulty = allowedDiff.includes(forcedDifficulty) ? forcedDifficulty : null;
     if (!imageBase64) {
       return new Response(
         JSON.stringify({ success: false, message: "Image nahi mili! 📸 PDF page upload karo." }),
