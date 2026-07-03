@@ -302,11 +302,15 @@ function metricFromRoadmapChapter(chapter: RoadmapChapter): ChapterMetric {
   };
 }
 
-export async function loadPlannerData(userId: string, exam: ExamKey): Promise<PlannerData> {
+export async function loadPlannerData(
+  userId: string,
+  exam: ExamKey,
+  classLevel?: number | null,
+): Promise<PlannerData> {
   const canonicalSubjects = subjectsForExam(exam);
   const subjectAliases = Array.from(new Set(canonicalSubjects.flatMap((subject) => getSubjectAliases(subject))));
 
-  const { data: chapterRows, error: chapterError } = await supabase
+  let chapterQuery = supabase
     .from('chapters')
     .select('id, subject, chapter_name, name, chapter_number, class_level')
     .eq('is_active', true)
@@ -316,6 +320,12 @@ export async function loadPlannerData(userId: string, exam: ExamKey): Promise<Pl
     .order('class_level', { ascending: true, nullsFirst: false })
     .order('chapter_number', { ascending: true, nullsFirst: false })
     .limit(260);
+  // Foundation: strict per-grade isolation (Class 7 sees only Class 7 chapters, etc.)
+  if (exam === 'Foundation' && typeof classLevel === 'number') {
+    chapterQuery = chapterQuery.eq('class_level', classLevel);
+  }
+  const { data: chapterRows, error: chapterError } = await chapterQuery;
+
 
   if (chapterError) throw chapterError;
 
