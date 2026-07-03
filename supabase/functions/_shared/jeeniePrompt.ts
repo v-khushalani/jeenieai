@@ -20,12 +20,11 @@ maange, full do. NEVER pad with extra theory, NEVER add unrelated tips, NEVER
 repeat the question back. No throat-clearing intros like "Great question!".
 Default: be tight and dense. Expand ONLY when explicitly asked.
 
-STRICT — Tu sirf padhai ka mentor hai. NEVER mention or discuss: "free", "pro",
-"pro plus", "premium", "subscription", "plan", "upgrade", "paid", "trial",
-"quota", "limit", "credits", pricing, billing, ya kya feature kis ko milta hai.
-Agar student plan/pricing/upgrade ke baare mein puche, sirf yeh bol aur turant
-doubt pe wapas aa: "Bhai, woh sab app ke andar mil jayega — main toh sirf
-padhai mein help karne ke liye hoon. Ab bata kya doubt hai? 💪"`;
+SCOPE — Tu padhai ka mentor hai, billing/pricing/plans ka sales rep nahi. Agar
+student seedha plan/pricing/upgrade/subscription puche, ek chhoti natural line
+mein bol ki woh app ke pricing section mein dekh le aur turant padhai pe wapas
+aa ja — har baar wording alag rakh, robotic mat lag. Baaki har padhai-related
+sawal ka pura jawab de, bina kisi restriction ke.`;
 
 const FORMATTING = `Formatting rules (use the minimum that fits the answer):
 - For a 1-line answer, write 1 line. No greeting, no heading, no bullets.
@@ -182,26 +181,22 @@ export function resolveTier(profile: {
   return "free";
 }
 
-// Server-side safety net: if JEEnie ever leaks a tier/plan/upgrade word, scrub the
-// offending sentence and replace with a neutral redirect. Returns the cleaned text
-// plus a `tripped` flag so the caller can log it to ai_request_log.
-// Server-side safety net: if JEEnie clearly leaks a tier/billing line, scrub it.
-// Use MULTI-WORD phrases only — single benign words like "trial" (trial-and-error),
-// "credit" (extra credit), "subscribe" can occur in legit study content and must
-// NOT trip. We only catch clear app/billing context.
-const FORBIDDEN_RX = /\b(pro\s*\+?\s*plan|pro\s*plus|pro\+\s*tier|premium\s*plan|paid\s*plan|free\s*(tier|plan)|your\s*subscription|upgrade\s*(to|now|your|kar)|pricing\s*page|paywall|locked\s*behind|subscribe\s*to|trial\s*period)\b/i;
-
-const REDIRECT_LINE = "Bhai, woh sab app ke andar mil jayega — main toh sirf padhai mein help karne ke liye hoon. Ab bata kya doubt hai? 💪";
+// Server-side safety net: if JEEnie clearly leaks a hard billing/upgrade line,
+// just drop that ONE sentence. Do NOT append a canned redirect — the model
+// already stays on-topic, and injecting the same line repeatedly was making
+// every deflection look identical ("app ke andar mil jayega" spam).
+// Use narrow multi-word phrases only so legit study content ("free electron",
+// "free body diagram", "trial and error", "limit x→0") never trips.
+const FORBIDDEN_RX = /\b(pro\s*\+?\s*plan|pro\s*plus\s*(plan|tier|subscription)|premium\s*(plan|subscription)|paid\s*plan|your\s*subscription|upgrade\s*(to\s+pro|to\s+premium|your\s+plan|kar\s+le)|pricing\s*page|paywall|locked\s*behind\s*(pro|premium|paid))\b/i;
 
 export function scrubTierMentions(text: string): { text: string; tripped: boolean } {
   if (!text) return { text, tripped: false };
   if (!FORBIDDEN_RX.test(text)) return { text, tripped: false };
 
-  // Split into sentences and drop any sentence that trips the regex.
   const sentences = text.split(/(?<=[.!?\n])\s+/);
   const kept = sentences.filter((s) => !FORBIDDEN_RX.test(s));
-  const cleaned = (kept.join(" ").trim() || "") + (kept.length < sentences.length ? `\n\n${REDIRECT_LINE}` : "");
-  return { text: cleaned.trim(), tripped: true };
+  const cleaned = kept.join(" ").trim();
+  return { text: cleaned || text, tripped: cleaned !== text };
 }
 
 // ============================================================================
@@ -345,19 +340,17 @@ export function buildRoastPrompt(opts: {
     ``,
     `EXAMPLES of bucket-${bucket} energy (DO NOT copy — match the vibe, write fresh):`,
     fewshot,
-    avoid ? `\nDO NOT repeat or paraphrase these recent roasts:\n${avoid}` : ``,
-    ``,
-    `BANNED / OVERUSED — never use these phrases: "gormint", "binod", "rasode mein kaun tha", "silent cry for help", "silent cry", "Pushpa jhukega nahi", "Sharma ji ka beta" (if used by another persona), "situationship" (used too much), "left-swipe" (used too much).`,
+    avoid ? `\nAvoid repeating or paraphrasing these recent roasts (write something clearly different):\n${avoid}` : ``,
     ``,
     `HARD RULES:`,
-    `1. ONE single line of plain Hinglish prose. Max 180 characters. Punchline at the end.`,
-    `2. MUST feel specific to "${opts.topic}" — use at least one concept hook or topic-adjacent wordplay.`,
-    `3. Weave ${acc}% naturally — mock the number or its implication, never say "accuracy is".`,
+    `1. ONE single line of savage Hinglish prose. Max ~220 characters. Punchline at the end.`,
+    `2. MUST feel specific to "${opts.topic}" — weave in a concept hook or topic wordplay.`,
+    `3. Weave ${acc}% naturally — mock the number or what it implies, don't say "accuracy is".`,
     `4. NO greeting (Hello/Puttar/Bhai/Yo/Are), NO labels ("Topic:", "Roast:"), NO markdown/bullets/quotes/asterisks.`,
-    `5. NO line breaks. NO leading emoji. Max 2 emojis total, at the end only.`,
+    `5. NO line breaks. NO leading emoji. Up to 2 emojis at the end only.`,
     `6. Twist the punchline — setup builds expectation, payoff subverts it.`,
-    `7. Stay roast-funny, never cruel about appearance/family/identity.`,
-    `8. Every call MUST produce a NEW roast — do not reuse structure or punchline from any recent roast above.`,
+    `7. Go hard on the topic, memes, references, wordplay — anything funny is fair game. Only off-limits: attacks on the student's family, appearance, caste, religion, gender, or identity.`,
+    `8. Every call MUST produce a fresh roast — new angle, new structure, new punchline. No recycled templates.`,
     ``,
     `Return ONLY the roast sentence. Nothing else.`,
   ].filter(Boolean).join("\n");
