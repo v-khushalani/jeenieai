@@ -64,7 +64,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const RATE_LIMIT_MS = 2000;
+  const RATE_LIMIT_MS = 0;
   const isAIAvailable = useMemo(() => aiAPI.isAvailable(), []);
 
   const escapeHtml = (value: string) => value
@@ -163,20 +163,26 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const buildConversationHistory = (currentMessages: Message[]): string => {
-    const recentMessages = currentMessages.slice(-6);
-    if (recentMessages.length === 0) return "";
-    
-    return recentMessages.map(msg => {
-      const role = msg.role === "user" ? "Student" : "JEEnie";
-      const cleanContent = msg.content.replace(/<[^>]*>/g, '').substring(0, 300);
-      return `${role}: ${cleanContent}`;
-    }).join("\n");
+  // Structured history — send actual user/assistant turns so the model
+  // remembers what was asked before and can answer follow-ups naturally.
+  const buildConversationHistory = (
+    currentMessages: Message[],
+  ): Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }> => {
+    // Keep last 16 turns; server trims further by tier.
+    const recent = currentMessages.slice(-16);
+    return recent
+      .map((msg) => ({
+        role: msg.role,
+        // Strip HTML from the seeded initial assistant bubble but keep the text.
+        content: msg.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 1200),
+        timestamp: new Date().toISOString(),
+      }))
+      .filter((m) => m.content.length > 0);
   };
 
   const callEdgeFunction = async (
     prompt: string,
-    conversationHistory: string,
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>,
     base64Image: string | undefined,
     mode: JeenieMode,
     modeSource: JeenieModeSource,
@@ -188,9 +194,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
         contextPrompt: prompt,
         mode,
         modeSource,
-        conversationHistory: conversationHistory ? [
-          { role: 'user', content: conversationHistory, timestamp: new Date().toISOString() }
-        ] : undefined,
+        conversationHistory: conversationHistory.length > 0 ? conversationHistory : undefined,
       };
 
       if (base64Image) {
@@ -249,11 +253,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     }
 
     const now = Date.now();
-    if (now - lastRequestTime < RATE_LIMIT_MS) {
-      const waitTime = Math.ceil((RATE_LIMIT_MS - (now - lastRequestTime)) / 1000);
-      setError(`☕ JEEnie ${waitTime} second mein ready hoga! Thoda patience...`);
-      return;
-    }
+    // No client-side throttle — send whenever the user is ready.
 
     setLastRequestTime(now);
     setLoading(true);
