@@ -2998,7 +2998,7 @@ export type Database = {
         | "EVALUATE"
         | "CREATE"
       difficulty_level: "EASY" | "MEDIUM" | "HARD"
-      exam_code: "JEE_MAINS" | "JEE_ADVANCED" | "NEET"
+      exam_code: "JEE_MAINS" | "JEE_ADVANCED" | "NEET" | "FOUNDATION"
       question_style_enum:
         | "numerical"
         | "conceptual"
@@ -3160,7 +3160,7 @@ export const Constants = {
         "CREATE",
       ],
       difficulty_level: ["EASY", "MEDIUM", "HARD"],
-      exam_code: ["JEE_MAINS", "JEE_ADVANCED", "NEET"],
+      exam_code: ["JEE_MAINS", "JEE_ADVANCED", "NEET", "FOUNDATION"],
       question_style_enum: [
         "numerical",
         "conceptual",
