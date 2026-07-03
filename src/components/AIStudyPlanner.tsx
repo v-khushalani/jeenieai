@@ -352,7 +352,7 @@ export async function loadPlannerData(
     });
   });
 
-  const roadmaps = await buildAllSubjectRoadmaps(userId, exam);
+  const roadmaps = await buildAllSubjectRoadmaps(userId, exam, classLevel);
 
   if (chapterMap.size === 0) return { ...emptyPlanner(), roadmaps };
   const chapterIds = Array.from(chapterMap.keys());
