@@ -181,26 +181,22 @@ export function resolveTier(profile: {
   return "free";
 }
 
-// Server-side safety net: if JEEnie ever leaks a tier/plan/upgrade word, scrub the
-// offending sentence and replace with a neutral redirect. Returns the cleaned text
-// plus a `tripped` flag so the caller can log it to ai_request_log.
-// Server-side safety net: if JEEnie clearly leaks a tier/billing line, scrub it.
-// Use MULTI-WORD phrases only — single benign words like "trial" (trial-and-error),
-// "credit" (extra credit), "subscribe" can occur in legit study content and must
-// NOT trip. We only catch clear app/billing context.
-const FORBIDDEN_RX = /\b(pro\s*\+?\s*plan|pro\s*plus|pro\+\s*tier|premium\s*plan|paid\s*plan|free\s*(tier|plan)|your\s*subscription|upgrade\s*(to|now|your|kar)|pricing\s*page|paywall|locked\s*behind|subscribe\s*to|trial\s*period)\b/i;
-
-const REDIRECT_LINE = "Bhai, woh sab app ke andar mil jayega — main toh sirf padhai mein help karne ke liye hoon. Ab bata kya doubt hai? 💪";
+// Server-side safety net: if JEEnie clearly leaks a hard billing/upgrade line,
+// just drop that ONE sentence. Do NOT append a canned redirect — the model
+// already stays on-topic, and injecting the same line repeatedly was making
+// every deflection look identical ("app ke andar mil jayega" spam).
+// Use narrow multi-word phrases only so legit study content ("free electron",
+// "free body diagram", "trial and error", "limit x→0") never trips.
+const FORBIDDEN_RX = /\b(pro\s*\+?\s*plan|pro\s*plus\s*(plan|tier|subscription)|premium\s*(plan|subscription)|paid\s*plan|your\s*subscription|upgrade\s*(to\s+pro|to\s+premium|your\s+plan|kar\s+le)|pricing\s*page|paywall|locked\s*behind\s*(pro|premium|paid))\b/i;
 
 export function scrubTierMentions(text: string): { text: string; tripped: boolean } {
   if (!text) return { text, tripped: false };
   if (!FORBIDDEN_RX.test(text)) return { text, tripped: false };
 
-  // Split into sentences and drop any sentence that trips the regex.
   const sentences = text.split(/(?<=[.!?\n])\s+/);
   const kept = sentences.filter((s) => !FORBIDDEN_RX.test(s));
-  const cleaned = (kept.join(" ").trim() || "") + (kept.length < sentences.length ? `\n\n${REDIRECT_LINE}` : "");
-  return { text: cleaned.trim(), tripped: true };
+  const cleaned = kept.join(" ").trim();
+  return { text: cleaned || text, tripped: cleaned !== text };
 }
 
 // ============================================================================
