@@ -494,8 +494,11 @@ export default function AIStudyPlanner() {
       if (profError) logger.warn('Planner profile load warning', profError);
 
       const prof = (profData as any) || { target_exam: cachedGoal || 'JEE' };
-      const exam = normalizeExam(normalizeTargetExam(prof?.target_exam || cachedGoal || 'JEE'));
-      const data = await loadPlannerData(user.id, exam);
+      const gradeNum = Number(prof?.grade);
+      const classLevel = Number.isFinite(gradeNum) && gradeNum >= 6 && gradeNum <= 12 ? gradeNum : null;
+      const exam = normalizeExam(normalizeTargetExam(prof?.target_exam || cachedGoal || 'JEE'), classLevel);
+      const data = await loadPlannerData(user.id, exam, classLevel);
+
 
       const sevenAgo = new Date();
       sevenAgo.setDate(sevenAgo.getDate() - 6);
