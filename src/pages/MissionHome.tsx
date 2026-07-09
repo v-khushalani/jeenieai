@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Play, CheckCircle2, RefreshCw, Sparkles, ChevronRight, Clock, Loader2, Info, Compass, BookOpen, PlusCircle, TrendingUp, TrendingDown, Minus, Zap } from 'lucide-react';
+import { Play, CheckCircle2, RefreshCw, Sparkles, ChevronRight, Clock, Loader2, Info, Compass, BookOpen, PlusCircle, TrendingUp, TrendingDown, Minus, Zap, Flame, Trophy } from 'lucide-react';
 import LogClassSheet from '@/components/LogClassSheet';
 
 interface CoachSignal {
@@ -24,6 +24,17 @@ interface CoachSignal {
     trend: 'up' | 'flat' | 'down';
     confidence: 'low' | 'medium' | 'high';
   };
+  streak?: { current: number; best: number; today_done: boolean };
+  weekly_report?: {
+    week_start: string;
+    active_days: number;
+    total_questions: number;
+    accuracy: number;
+    accuracy_change: number;
+    top_subject: string | null;
+    weakest_subject: string | null;
+    focus_next_week: string;
+  } | null;
   nudge: { emoji: string; message: string; tone: 'push' | 'praise' | 'warn' } | null;
 }
 
@@ -212,15 +223,58 @@ export default function MissionHome() {
       <Header />
       <main className="flex-1 min-h-0 overflow-y-auto">
         <div className="container mx-auto px-4 py-5 max-w-2xl space-y-5">
-          {/* Greeting */}
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">
-              {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
-            <h1 className="text-2xl font-bold leading-tight">
-              {greeting}{greetingName ? `, ${greetingName}` : ''} 👋
-            </h1>
+          {/* Greeting + streak */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">
+                {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </p>
+              <h1 className="text-2xl font-bold leading-tight truncate">
+                {greeting}{greetingName ? `, ${greetingName}` : ''} 👋
+              </h1>
+            </div>
+            {signal?.streak && signal.streak.current > 0 && (
+              <div className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-bold
+                ${signal.streak.today_done ? 'border-orange-500/40 bg-orange-500/10 text-orange-600' : 'border-border bg-muted/50 text-muted-foreground'}`}>
+                <Flame className={`w-3.5 h-3.5 ${signal.streak.today_done ? 'text-orange-500' : ''}`} />
+                <span className="tabular-nums">{signal.streak.current}</span>
+                <span className="text-[10px] font-medium opacity-80">day{signal.streak.current === 1 ? '' : 's'}</span>
+              </div>
+            )}
           </div>
+
+          {/* Sunday weekly report */}
+          {!loading && signal?.weekly_report && (
+            <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-primary" />
+                <p className="text-[10px] uppercase tracking-widest font-bold text-primary/80">Your Week in Review</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 rounded-lg bg-background/60">
+                  <p className="text-lg font-bold tabular-nums">{signal.weekly_report.active_days}<span className="text-[10px] text-muted-foreground">/7</span></p>
+                  <p className="text-[10px] text-muted-foreground">active days</p>
+                </div>
+                <div className="p-2 rounded-lg bg-background/60">
+                  <p className="text-lg font-bold tabular-nums">{signal.weekly_report.total_questions}</p>
+                  <p className="text-[10px] text-muted-foreground">questions</p>
+                </div>
+                <div className="p-2 rounded-lg bg-background/60">
+                  <p className="text-lg font-bold tabular-nums flex items-center justify-center gap-0.5">
+                    {signal.weekly_report.accuracy}%
+                    {signal.weekly_report.accuracy_change > 2 && <TrendingUp className="w-3 h-3 text-emerald-600" />}
+                    {signal.weekly_report.accuracy_change < -2 && <TrendingDown className="w-3 h-3 text-rose-600" />}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">accuracy</p>
+                </div>
+              </div>
+              <p className="text-xs leading-snug">
+                <span className="font-semibold">Next week: </span>
+                <span className="text-muted-foreground">{signal.weekly_report.focus_next_week}</span>
+              </p>
+            </div>
+          )}
+
 
           {/* Live prediction card */}
           {!loading && !needsSetup && signal?.prediction && (
@@ -387,10 +441,19 @@ export default function MissionHome() {
                 </div>
 
                 {allDone ? (
-                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-center">
-                    <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Aaj ki mission complete! 🔥</p>
-                    <p className="text-[11px] text-muted-foreground">Kal fresh mission ready milegi.</p>
+                  <div className="relative p-4 rounded-xl bg-gradient-to-br from-emerald-500/15 via-emerald-500/8 to-transparent border border-emerald-500/40 text-center overflow-hidden">
+                    <div className="absolute inset-0 pointer-events-none">
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-24 h-24 bg-emerald-500/20 rounded-full blur-2xl animate-pulse" />
+                    </div>
+                    <div className="relative flex items-center justify-center gap-2 mb-1">
+                      <Trophy className="w-5 h-5 text-emerald-600" />
+                      <p className="text-base font-bold text-emerald-700 dark:text-emerald-400">Mission complete! 🔥</p>
+                    </div>
+                    <p className="relative text-[11px] text-muted-foreground">
+                      {signal?.streak?.today_done ? `${signal.streak.current}-day streak alive · ` : ''}Kal fresh mission ready milegi.
+                    </p>
                   </div>
+
                 ) : (
                   <Button
                     size="lg"
