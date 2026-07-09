@@ -180,6 +180,23 @@ export default function MissionHome() {
 
   useEffect(() => { void loadOrSetup(); }, [loadOrSetup]);
 
+  // Auto-redeem ?ref= from URL once (first landing after signup)
+  useEffect(() => {
+    if (!user?.id) return;
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get('ref');
+    if (!code) return;
+    const KEY = 'jn_ref_redeemed';
+    if (localStorage.getItem(KEY)) return;
+    localStorage.setItem(KEY, code);
+    supabase.rpc('redeem_referral' as any, { _code: code }).then(({ data }: any) => {
+      if (data?.ok) toast.success(`Referral applied 🎁 — 30 din ka bonus unlocked`);
+    }).catch(() => {});
+    url.searchParams.delete('ref');
+    window.history.replaceState({}, '', url.toString());
+  }, [user?.id]);
+
+
   const saveSetup = async () => {
     if (!user?.id) return;
     const { error } = await supabase
