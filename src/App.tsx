@@ -101,7 +101,7 @@ const RouteAwareLoadingScreen = () => {
   return <LoadingScreen pageName={pageName} />;
 };
 
-// Dashboard Router Component — students land on MissionHome; admin/educator redirect
+// Dashboard Router Component — students see the elegant EnhancedDashboard; admin/educator redirect
 const DashboardRouter = () => {
   const { userRole, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -120,11 +120,8 @@ const DashboardRouter = () => {
     return <LoadingScreen pageName="Dashboard" />;
   }
 
-  return <MissionHome />;
+  return <EnhancedDashboard />;
 };
-
-// Legacy dashboard preserved under /explore
-const ExploreRouter = () => <EnhancedDashboard />;
 
 // Auto push subscription component
 const AutoPushSubscriber = () => {
