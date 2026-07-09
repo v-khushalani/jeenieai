@@ -169,10 +169,24 @@ export default function CoachMissionPanel() {
         .eq('mission_date', today)
         .maybeSingle();
 
-      if (existing) {
+      // If user solved questions after mission was generated, auto-refresh so
+      // the plan reflects new data instead of a stale snapshot.
+      let staleMission = false;
+      if (existing?.generated_at) {
+        const { data: newerAttempt } = await supabase
+          .from('question_attempts')
+          .select('id')
+          .eq('user_id', user.id)
+          .gt('attempted_at', existing.generated_at)
+          .limit(1)
+          .maybeSingle();
+        staleMission = !!newerAttempt;
+      }
+
+      if (existing && !staleMission) {
         setMission(existing as unknown as DailyMission);
       } else {
-        await generate(false);
+        await generate(true);
       }
 
       supabase.functions.invoke('compute-coach-signal').then(({ data }) => {

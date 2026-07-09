@@ -147,9 +147,11 @@ const PracticePage: React.FC = () => {
   const subject = searchParams.get('subject') || '';
   const chapter = searchParams.get('chapter') || '';
   const chapterId = searchParams.get('chapter_id') || '';
-  const topicId = searchParams.get('topic_id') || '';
+  const topicId = searchParams.get('topic_id') || searchParams.get('topic') || '';
   const topicName = searchParams.get('topic') || '';
-  const topicFilterName = topicName.trim();
+  const topicFilterName = /^[0-9a-f-]{20,}$/i.test(topicName) ? '' : topicName.trim();
+  const mode = (searchParams.get('mode') || '').toLowerCase();
+  const isRevisit = mode === 'revision' || mode === 'weak';
   const studyNotesEnabled = useFeatureFlag('study_notes');
 
 
@@ -346,7 +348,7 @@ const PracticePage: React.FC = () => {
       const { data, error } = await query.limit(500);
       if (error) throw error;
 
-      let pool = (data || []).filter(q => !attemptedIds.has(q.id));
+      let pool = (data || []).filter(q => isRevisit ? true : !attemptedIds.has(q.id));
 
       if (pool.length === 0 && (chapterId || topicFilterName)) {
         let fallbackQuery = supabase
@@ -360,7 +362,7 @@ const PracticePage: React.FC = () => {
         if (!topicId && topicFilterName) fallbackQuery = fallbackQuery.ilike('topic', `%${topicFilterName}%`);
 
         const { data: fallbackData } = await fallbackQuery.limit(1000);
-        pool = (fallbackData || []).filter(q => !attemptedIds.has(q.id));
+        pool = (fallbackData || []).filter(q => isRevisit ? true : !attemptedIds.has(q.id));
       }
 
       if (pool.length === 0 && userBatchIds.length > 0 && !topicId && !chapterId) {
@@ -375,7 +377,7 @@ const PracticePage: React.FC = () => {
 
 
         const { data: fallbackData } = await fallbackQuery.limit(1000);
-        pool = (fallbackData || []).filter(q => !attemptedIds.has(q.id));
+        pool = (fallbackData || []).filter(q => isRevisit ? true : !attemptedIds.has(q.id));
       }
 
 
@@ -394,7 +396,7 @@ const PracticePage: React.FC = () => {
         }
 
         const { data: fallbackData } = await fallbackQuery.limit(1000);
-        pool = (fallbackData || []).filter(q => !attemptedIds.has(q.id));
+        pool = (fallbackData || []).filter(q => isRevisit ? true : !attemptedIds.has(q.id));
       }
 
       if (pool.length === 0) {
@@ -415,7 +417,7 @@ const PracticePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [subject, chapterId, topicId, user, chapter, topicFilterName]);
+  }, [subject, chapterId, topicId, user, chapter, topicFilterName, isRevisit]);
   // NOTE: currentDifficulty intentionally NOT in deps — changing difficulty
   // tier mid-session would refetch the pool and corrupt index-keyed
   // `answeredQuestions`. Order is recomputed in-place via orderPoolByLevel
