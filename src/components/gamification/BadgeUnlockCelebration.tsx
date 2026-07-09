@@ -122,9 +122,6 @@ export const BadgeUnlockCelebration = () => {
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'user_badges', filter: `user_id=eq.${user.id}` },
         () => { void check(); })
-      .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
-        () => { void check(); })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
