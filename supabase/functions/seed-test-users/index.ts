@@ -17,12 +17,12 @@ interface Spec {
   tier?: "pro" | "pro_plus";
 }
 
+// Uniform pattern: <role>@jeenie.test / Test@1234 — easy to remember for QA.
 const SPECS: Spec[] = [
-  { key: "student",          email: "qa.student@jeenieapp.test",       password: "Student!Pass2026",   fullName: "QA Student",          role: "student" },
-  { key: "student_pro",      email: "qa.pro@jeenieapp.test",           password: "Pro!Pass2026",       fullName: "QA Pro Student",      role: "student", premium: true, tier: "pro" },
-  { key: "student_pro_plus", email: "qa.proplus@jeenieapp.test",       password: "ProPlus!Pass2026",   fullName: "QA Pro+ Student",     role: "student", premium: true, tier: "pro_plus" },
-  { key: "admin",            email: "qa.admin@jeenieapp.test",         password: "Admin!Pass2026",     fullName: "QA Admin",            role: "super_admin" },
-  { key: "educator",         email: "qa.educator@jeenieapp.test",      password: "Educator!Pass2026",  fullName: "QA Educator",         role: "educator" },
+  { key: "free",     email: "free@jeenie.test",    password: "Test@1234", fullName: "Free User",     role: "student" },
+  { key: "pro",      email: "pro@jeenie.test",     password: "Test@1234", fullName: "Pro User",      role: "student", premium: true, tier: "pro" },
+  { key: "proplus",  email: "proplus@jeenie.test", password: "Test@1234", fullName: "Pro+ User",     role: "student", premium: true, tier: "pro_plus" },
+  { key: "admin",    email: "admin@jeenie.test",   password: "Test@1234", fullName: "Admin User",    role: "super_admin" },
 ];
 
 Deno.serve(async (req) => {
