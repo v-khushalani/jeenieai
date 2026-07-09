@@ -169,9 +169,16 @@ serve(async (req) => {
   } catch (e) {
     console.error('compute-coach-signal error', e);
     return json({ error: (e as Error).message }, 500);
+  }
+});
+
+function json(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
 }
 
-// Consecutive-day streak (IST) — a day counts if any mission block was completed OR any question attempted.
+// Consecutive-day streak (IST) — a day counts if any mission block was completed.
 function computeStreak(missions: Array<{ mission_date: string; completed_blocks: number | null }>) {
   const today = istDate();
   const doneDates = new Set(missions.filter(m => (m.completed_blocks ?? 0) > 0).map(m => m.mission_date));
