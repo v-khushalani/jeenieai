@@ -189,9 +189,12 @@ export default function MissionHome() {
     const KEY = 'jn_ref_redeemed';
     if (localStorage.getItem(KEY)) return;
     localStorage.setItem(KEY, code);
-    supabase.rpc('redeem_referral' as any, { _code: code }).then(({ data }: any) => {
-      if (data?.ok) toast.success(`Referral applied 🎁 — 30 din ka bonus unlocked`);
-    }).catch(() => {});
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('redeem_referral' as any, { _code: code });
+        if ((data as any)?.ok) toast.success(`Referral applied 🎁 — 30 din ka bonus unlocked`);
+      } catch { /* ignore */ }
+    })();
     url.searchParams.delete('ref');
     window.history.replaceState({}, '', url.toString());
   }, [user?.id]);
