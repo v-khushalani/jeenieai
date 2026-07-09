@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Play, CheckCircle2, RefreshCw, Sparkles, ChevronRight, Clock, Loader2, Info, Compass, BookOpen, PlusCircle, TrendingUp, TrendingDown, Minus, Zap } from 'lucide-react';
+import { Play, CheckCircle2, RefreshCw, Sparkles, ChevronRight, Clock, Loader2, Info, Compass, BookOpen, PlusCircle, TrendingUp, TrendingDown, Minus, Zap, Flame, Trophy } from 'lucide-react';
 import LogClassSheet from '@/components/LogClassSheet';
 
 interface CoachSignal {
@@ -24,6 +24,17 @@ interface CoachSignal {
     trend: 'up' | 'flat' | 'down';
     confidence: 'low' | 'medium' | 'high';
   };
+  streak?: { current: number; best: number; today_done: boolean };
+  weekly_report?: {
+    week_start: string;
+    active_days: number;
+    total_questions: number;
+    accuracy: number;
+    accuracy_change: number;
+    top_subject: string | null;
+    weakest_subject: string | null;
+    focus_next_week: string;
+  } | null;
   nudge: { emoji: string; message: string; tone: 'push' | 'praise' | 'warn' } | null;
 }
 
