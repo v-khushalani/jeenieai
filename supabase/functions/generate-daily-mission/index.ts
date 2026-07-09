@@ -239,7 +239,7 @@ serve(async (req) => {
     }
 
     const totalMinutes = blocks.reduce((s, b) => s + b.minutes, 0);
-    const reasoning = buildReasoning({ prepMode, dailyMinutes, accuracy, totalQs, hasClass: !!freshClass });
+    const reasoning = buildReasoning({ prepMode, dailyMinutes, accuracy, totalQs, hasClass: !!freshClass, dueCount: dueRevisions.length, adaptiveDifficulty });
 
     // Upsert
     const { data: mission, error: upsertErr } = await admin
