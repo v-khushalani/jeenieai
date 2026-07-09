@@ -321,6 +321,15 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/recap/:classLogId"
+                  element={
+                    <ProtectedRoute>
+                      <ClassRecapTest />
+                    </ProtectedRoute>
+                  }
+                />
+                
                 
                 {/* Test Management */}
                 <Route
