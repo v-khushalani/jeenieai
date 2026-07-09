@@ -204,6 +204,42 @@ export default function MissionHome() {
             </h1>
           </div>
 
+          {/* Companion / Hybrid: log today's class chip */}
+          {!loading && !needsSetup && (prepMode === 'companion' || prepMode === 'hybrid') && (
+            loggedToday ? (
+              <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold truncate">Aaj ki class logged</p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {loggedToday.chapter_name ?? loggedToday.subject} · {loggedToday.subject}
+                    </p>
+                  </div>
+                </div>
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => setLogOpen(true)}>
+                  <PlusCircle className="w-3.5 h-3.5 mr-1" /> Add another
+                </Button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLogOpen(true)}
+                className="w-full flex items-center justify-between p-3 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 transition"
+              >
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className="w-4 h-4 text-primary" />
+                  <div className="text-left">
+                    <p className="text-sm font-semibold leading-tight">Aaj coaching mein kya padha?</p>
+                    <p className="text-[11px] text-muted-foreground">Log karo — JEEnie 10-Q recap test bana degi</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-primary" />
+              </button>
+            )
+          )}
+
+
           {loading && (
             <Card className="border-dashed">
               <CardContent className="py-10 flex flex-col items-center gap-2 text-muted-foreground">
