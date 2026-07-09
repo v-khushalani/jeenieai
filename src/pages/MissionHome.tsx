@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { toast } from 'sonner';
 import { Play, CheckCircle2, RefreshCw, Sparkles, ChevronRight, Clock, Loader2, Info, Compass, BookOpen, PlusCircle, TrendingUp, TrendingDown, Minus, Zap, Flame, Trophy } from 'lucide-react';
 import LogClassSheet from '@/components/LogClassSheet';
+import ReferralCard from '@/components/ReferralCard';
 
 interface CoachSignal {
   prediction: {
@@ -178,6 +179,26 @@ export default function MissionHome() {
   }, [user?.id, generate]);
 
   useEffect(() => { void loadOrSetup(); }, [loadOrSetup]);
+
+  // Auto-redeem ?ref= from URL once (first landing after signup)
+  useEffect(() => {
+    if (!user?.id) return;
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get('ref');
+    if (!code) return;
+    const KEY = 'jn_ref_redeemed';
+    if (localStorage.getItem(KEY)) return;
+    localStorage.setItem(KEY, code);
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('redeem_referral' as any, { _code: code });
+        if ((data as any)?.ok) toast.success(`Referral applied 🎁 — 30 din ka bonus unlocked`);
+      } catch { /* ignore */ }
+    })();
+    url.searchParams.delete('ref');
+    window.history.replaceState({}, '', url.toString());
+  }, [user?.id]);
+
 
   const saveSetup = async () => {
     if (!user?.id) return;
@@ -485,6 +506,15 @@ export default function MissionHome() {
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
+
+          {/* Growth: share JEEnie */}
+          {!loading && !needsSetup && (
+            <ReferralCard
+              onTrackPercentile={signal?.prediction?.on_track_percentile}
+              streakDays={signal?.streak?.current}
+            />
+          )}
+
         </div>
       </main>
 
