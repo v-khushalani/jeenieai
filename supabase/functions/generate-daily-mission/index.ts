@@ -295,12 +295,13 @@ function deriveSubjects(exam: string, provided: unknown): string[] {
   return ['Physics', 'Chemistry', 'Mathematics'];
 }
 
-function buildReasoning({ prepMode, dailyMinutes, accuracy, totalQs, hasClass }: {
-  prepMode: string; dailyMinutes: number; accuracy: number; totalQs: number; hasClass: boolean;
+function buildReasoning({ prepMode, dailyMinutes, accuracy, totalQs, hasClass, dueCount, adaptiveDifficulty }: {
+  prepMode: string; dailyMinutes: number; accuracy: number; totalQs: number; hasClass: boolean; dueCount: number; adaptiveDifficulty: string;
 }) {
   const bits: string[] = [];
   bits.push(`Mode: ${prepMode}. Aaj ke ${dailyMinutes} min plan kiye.`);
-  if (totalQs > 0) bits.push(`Pichhle 14 din mein ${totalQs} Q — accuracy ${accuracy}%.`);
-  if (hasClass && (prepMode === 'companion' || prepMode === 'hybrid')) bits.push('Class log dekh ke practice priorities set kiye.');
+  if (totalQs > 0) bits.push(`Pichhle 14 din: ${totalQs} Q · ${accuracy}% accuracy → difficulty ${adaptiveDifficulty}.`);
+  if (dueCount > 0) bits.push(`${dueCount} topic revision ke liye due hain.`);
+  if (hasClass && (prepMode === 'companion' || prepMode === 'hybrid')) bits.push('Class log ke basis par priorities set kiye.');
   return bits.join(' ');
 }
