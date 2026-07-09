@@ -30,6 +30,7 @@ import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import RoadmapView from '@/components/planner/RoadmapView';
+import CoachMissionPanel from '@/components/planner/CoachMissionPanel';
 import {
   buildAllSubjectRoadmaps,
   examRelevanceValues,
@@ -629,50 +630,42 @@ export default function AIStudyPlanner() {
         </div>
       </div>
 
-      <Card className="border-primary/30 bg-primary/5">
-        <CardContent className="p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-primary">Mentor Next Step</p>
-              <h2 className="truncate text-base font-extrabold leading-tight">
-                {planner.active ? planner.active.title : 'Syllabus roadmap ready'}
-              </h2>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {planner.active
-                  ? `${formatSubjectDisplay(planner.active.subject)} · ${planner.active.attempts} attempts · ${planner.active.accuracy}% accuracy`
-                  : 'All active chapters are clear. Revision mode on.'}
-              </p>
-            </div>
-            {planner.active && (
-              <Button size="sm" onClick={() => navigate(buildPracticeHref(planner.active!, planner.active!.status === 'weak' ? 'drill' : 'learn'))}>
-                Start <ArrowRight className="ml-1 h-3.5 w-3.5" />
-              </Button>
-            )}
-          </div>
-          <div className="mt-3 grid grid-cols-4 gap-2 text-center">
-            <div>
-              <Calendar className="mx-auto mb-0.5 h-4 w-4 text-primary" />
-              <p className="text-sm font-bold">{daysToExam}</p>
-              <p className="text-[9px] text-muted-foreground">Days</p>
-            </div>
-            <div>
-              <Target className="mx-auto mb-0.5 h-4 w-4 text-primary" />
-              <p className="text-sm font-bold">{planner.overallAccuracy}%</p>
-              <p className="text-[9px] text-muted-foreground">Accuracy</p>
-            </div>
-            <div>
-              <Flame className="mx-auto mb-0.5 h-4 w-4 text-primary" />
-              <p className="text-sm font-bold">{planner.coveragePct}%</p>
-              <p className="text-[9px] text-muted-foreground">Coverage</p>
-            </div>
-            <div>
-              <Trophy className="mx-auto mb-0.5 h-4 w-4 text-primary" />
-              <p className="text-sm font-bold">{adherence}%</p>
-              <p className="text-[9px] text-muted-foreground">Today</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <CoachMissionPanel />
+
+      <div className="grid grid-cols-4 gap-2 text-center rounded-xl border border-border/60 bg-card p-3">
+        <div>
+          <Calendar className="mx-auto mb-0.5 h-4 w-4 text-primary" />
+          <p className="text-sm font-bold">{daysToExam}</p>
+          <p className="text-[9px] text-muted-foreground">Days</p>
+        </div>
+        <div>
+          <Target className="mx-auto mb-0.5 h-4 w-4 text-primary" />
+          <p className="text-sm font-bold">{planner.overallAccuracy}%</p>
+          <p className="text-[9px] text-muted-foreground">Accuracy</p>
+        </div>
+        <div>
+          <Flame className="mx-auto mb-0.5 h-4 w-4 text-primary" />
+          <p className="text-sm font-bold">{planner.coveragePct}%</p>
+          <p className="text-[9px] text-muted-foreground">Coverage</p>
+        </div>
+        <div>
+          <Trophy className="mx-auto mb-0.5 h-4 w-4 text-primary" />
+          <p className="text-sm font-bold">{adherence}%</p>
+          <p className="text-[9px] text-muted-foreground">Today</p>
+        </div>
+      </div>
+
+      <details className="group rounded-xl border border-border/60 bg-card/50 open:bg-card">
+        <summary className="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between gap-2 select-none">
+          <span className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-primary" />
+            <span className="text-sm font-bold">Full Roadmap</span>
+            <span className="text-[10px] text-muted-foreground">Chapter ladder · This Week · Insights</span>
+          </span>
+          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-2 pb-3 pt-1">
+
 
       <Tabs defaultValue="roadmap" className="w-full">
         <TabsList className="grid h-9 w-full grid-cols-3">
@@ -848,6 +841,8 @@ export default function AIStudyPlanner() {
           )}
         </TabsContent>
       </Tabs>
+        </div>
+      </details>
     </div>
   );
 }

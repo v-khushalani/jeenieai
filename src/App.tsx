@@ -41,7 +41,7 @@ const GoalSelectionPage = lazyWithRetry(() => import('@/pages/GoalSelectionPage'
 
 const AIStudyPlannerPage = lazyWithRetry(() => import('./pages/AIStudyPlannerPage'), "AIStudyPlannerPage");
 const EnhancedDashboard = lazyWithRetry(() => import("./pages/EnhancedDashboard"), "EnhancedDashboard");
-const MissionHome = lazyWithRetry(() => import("./pages/MissionHome"), "MissionHome");
+
 const ClassRecapTest = lazyWithRetry(() => import("./pages/ClassRecapTest"), "ClassRecapTest");
 const AnalyticsPage = lazyWithRetry(() => import("@/pages/AnalyticsPage"), "AnalyticsPage");
 const AdminDashboard = lazyWithRetry(() => import("@/pages/AdminDashboard"), "AdminDashboard");
@@ -238,16 +238,8 @@ function App() {
                   }
                 />
                 <Route path="/explore" element={<Navigate to="/dashboard" replace />} />
-                <Route
-                  path="/planner"
-                  element={
-                    <ProtectedRoute>
-                      <PremiumGate featureName="The AI Planner">
-                        <MissionHome />
-                      </PremiumGate>
-                    </ProtectedRoute>
-                  }
-                />
+                <Route path="/planner" element={<Navigate to="/ai-planner" replace />} />
+
                 
                 {/* Test Routes */}
                 <Route path="/test-attempt/:testId" element={
