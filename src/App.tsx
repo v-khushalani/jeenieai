@@ -42,6 +42,7 @@ const GoalSelectionPage = lazyWithRetry(() => import('@/pages/GoalSelectionPage'
 const AIStudyPlannerPage = lazyWithRetry(() => import('./pages/AIStudyPlannerPage'), "AIStudyPlannerPage");
 const EnhancedDashboard = lazyWithRetry(() => import("./pages/EnhancedDashboard"), "EnhancedDashboard");
 const MissionHome = lazyWithRetry(() => import("./pages/MissionHome"), "MissionHome");
+const ClassRecapTest = lazyWithRetry(() => import("./pages/ClassRecapTest"), "ClassRecapTest");
 const AnalyticsPage = lazyWithRetry(() => import("@/pages/AnalyticsPage"), "AnalyticsPage");
 const AdminDashboard = lazyWithRetry(() => import("@/pages/AdminDashboard"), "AdminDashboard");
 const EducatorDashboard = lazyWithRetry(() => import("@/pages/EducatorDashboard"), "EducatorDashboard");
