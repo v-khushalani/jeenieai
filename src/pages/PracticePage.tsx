@@ -417,7 +417,7 @@ const PracticePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [subject, chapterId, topicId, user, chapter, topicFilterName]);
+  }, [subject, chapterId, topicId, user, chapter, topicFilterName, isRevisit]);
   // NOTE: currentDifficulty intentionally NOT in deps — changing difficulty
   // tier mid-session would refetch the pool and corrupt index-keyed
   // `answeredQuestions`. Order is recomputed in-place via orderPoolByLevel
