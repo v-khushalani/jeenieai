@@ -117,22 +117,25 @@ serve(async (req) => {
     // Companion / hybrid mode: today's class first
     const freshClass = classLogs.find(c => c.logged_date === today) || classLogs[0];
     if ((prepMode === 'companion' || prepMode === 'hybrid') && freshClass) {
-      const mins = takeMinutes(Math.min(75, Math.round(dailyMinutes * 0.5)));
-      if (mins >= 20) blocks.push({
+      const isToday = freshClass.logged_date === today;
+      const mins = takeMinutes(Math.min(isToday ? 30 : 60, Math.round(dailyMinutes * (isToday ? 0.3 : 0.5))));
+      if (mins >= 15) blocks.push({
         id: crypto.randomUUID(),
-        type: freshClass.logged_date === today ? 'class_recap' : 'learn_practice',
-        title: freshClass.logged_date === today ? `Class recap: ${freshClass.chapter_name ?? freshClass.subject}` : `Practice: ${freshClass.chapter_name ?? freshClass.subject}`,
-        subtitle: `${Math.floor(mins / 3)} questions from ${freshClass.chapter_name ?? freshClass.subject}`,
+        type: isToday ? 'class_recap' : 'learn_practice',
+        title: isToday ? `Class recap: ${freshClass.chapter_name ?? freshClass.subject}` : `Practice: ${freshClass.chapter_name ?? freshClass.subject}`,
+        subtitle: isToday ? `10 questions from aaj ki class` : `${Math.floor(mins / 3)} questions from ${freshClass.chapter_name ?? freshClass.subject}`,
         subject: freshClass.subject,
         chapter_id: freshClass.chapter_id ?? undefined,
         chapter_name: freshClass.chapter_name ?? undefined,
         topic_id: freshClass.topic_id ?? undefined,
         minutes: mins,
-        question_count: Math.floor(mins / 3),
-        why: freshClass.logged_date === today
-          ? `Aaj coaching mein ${freshClass.chapter_name ?? freshClass.subject} padha — abhi practice = 70% retention.`
+        question_count: isToday ? 10 : Math.floor(mins / 3),
+        why: isToday
+          ? `Aaj coaching mein ${freshClass.chapter_name ?? freshClass.subject} padha — abhi 10-Q recap = 70% retention.`
           : `${daysBetween(freshClass.logged_date, today)} din pehle class hui — spaced practice ka best time.`,
-        action_href: `/practice?mode=chapter&subject=${encodeURIComponent(freshClass.subject)}${freshClass.chapter_id ? `&chapter=${freshClass.chapter_id}` : ''}`,
+        action_href: isToday
+          ? `/recap/${freshClass.id}`
+          : `/practice?mode=chapter&subject=${encodeURIComponent(freshClass.subject)}${freshClass.chapter_id ? `&chapter=${freshClass.chapter_id}` : ''}`,
       });
     }
 

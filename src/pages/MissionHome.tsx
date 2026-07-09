@@ -12,7 +12,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Play, CheckCircle2, RefreshCw, Sparkles, ChevronRight, Clock, Loader2, Info, Compass } from 'lucide-react';
+import { Play, CheckCircle2, RefreshCw, Sparkles, ChevronRight, Clock, Loader2, Info, Compass, BookOpen, PlusCircle } from 'lucide-react';
+import LogClassSheet from '@/components/LogClassSheet';
 
 type BlockType = 'learn_practice' | 'revision' | 'weak_fix' | 'class_recap' | 'pyq' | 'mock';
 interface MissionBlock {
@@ -76,6 +77,9 @@ export default function MissionHome() {
   const [setupMinutes, setSetupMinutes] = useState<number>(120);
   const [expandedBlock, setExpandedBlock] = useState<string | null>(null);
   const [greetingName, setGreetingName] = useState<string>('');
+  const [prepMode, setPrepMode] = useState<DailyMission['prep_mode'] | null>(null);
+  const [loggedToday, setLoggedToday] = useState<{ id: string; chapter_name: string | null; subject: string } | null>(null);
+  const [logOpen, setLogOpen] = useState(false);
 
   const generate = useCallback(async (force = false) => {
     setGenerating(true);
@@ -103,9 +107,11 @@ export default function MissionHome() {
         .maybeSingle();
 
       setGreetingName(profile?.full_name?.split(' ')[0] ?? '');
+      const mode = (profile?.prep_mode as DailyMission['prep_mode']) ?? 'guided';
+      setPrepMode(mode);
 
       if (!profile?.prep_mode_set_at) {
-        setSetupMode((profile?.prep_mode as DailyMission['prep_mode']) ?? 'guided');
+        setSetupMode(mode);
         setSetupMinutes(profile?.daily_study_minutes ?? 120);
         setNeedsSetup(true);
         setLoading(false);
@@ -113,6 +119,18 @@ export default function MissionHome() {
       }
 
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
+      // Check if a class is already logged today
+      const { data: todayLog } = await supabase
+        .from('class_logs')
+        .select('id, chapter_name, subject')
+        .eq('user_id', user.id)
+        .eq('logged_date', today)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setLoggedToday(todayLog ?? null);
+
       const { data: existing } = await supabase
         .from('daily_missions')
         .select('*')
@@ -185,6 +203,42 @@ export default function MissionHome() {
               {greeting}{greetingName ? `, ${greetingName}` : ''} 👋
             </h1>
           </div>
+
+          {/* Companion / Hybrid: log today's class chip */}
+          {!loading && !needsSetup && (prepMode === 'companion' || prepMode === 'hybrid') && (
+            loggedToday ? (
+              <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold truncate">Aaj ki class logged</p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {loggedToday.chapter_name ?? loggedToday.subject} · {loggedToday.subject}
+                    </p>
+                  </div>
+                </div>
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => setLogOpen(true)}>
+                  <PlusCircle className="w-3.5 h-3.5 mr-1" /> Add another
+                </Button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLogOpen(true)}
+                className="w-full flex items-center justify-between p-3 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 transition"
+              >
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className="w-4 h-4 text-primary" />
+                  <div className="text-left">
+                    <p className="text-sm font-semibold leading-tight">Aaj coaching mein kya padha?</p>
+                    <p className="text-[11px] text-muted-foreground">Log karo — JEEnie 10-Q recap test bana degi</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-primary" />
+              </button>
+            )
+          )}
+
 
           {loading && (
             <Card className="border-dashed">
@@ -368,6 +422,12 @@ export default function MissionHome() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <LogClassSheet
+        open={logOpen}
+        onOpenChange={setLogOpen}
+        onLogged={async () => { await loadOrSetup(); await generate(true); }}
+      />
     </div>
   );
 }
