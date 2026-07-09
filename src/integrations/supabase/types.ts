@@ -545,6 +545,66 @@ export type Database = {
           },
         ]
       }
+      class_logs: {
+        Row: {
+          chapter_id: string | null
+          chapter_name: string | null
+          created_at: string
+          id: string
+          logged_date: string
+          notes: string | null
+          recap_test_session_id: string | null
+          source: string
+          subject: string
+          topic_id: string | null
+          topic_name: string | null
+          user_id: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          chapter_name?: string | null
+          created_at?: string
+          id?: string
+          logged_date?: string
+          notes?: string | null
+          recap_test_session_id?: string | null
+          source?: string
+          subject: string
+          topic_id?: string | null
+          topic_name?: string | null
+          user_id: string
+        }
+        Update: {
+          chapter_id?: string | null
+          chapter_name?: string | null
+          created_at?: string
+          id?: string
+          logged_date?: string
+          notes?: string | null
+          recap_test_session_id?: string | null
+          source?: string
+          subject?: string
+          topic_id?: string | null
+          topic_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_logs_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_logs_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       concept_maps: {
         Row: {
           chapter_id: string | null
@@ -660,6 +720,57 @@ export type Database = {
           id?: string
           prompt_type?: string
           shown_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      daily_missions: {
+        Row: {
+          blocks: Json
+          completed_at: string | null
+          completed_blocks: number
+          created_at: string
+          generated_at: string
+          id: string
+          mission_date: string
+          prep_mode: string
+          reasoning: string | null
+          started_at: string | null
+          status: string
+          total_minutes: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          blocks?: Json
+          completed_at?: string | null
+          completed_blocks?: number
+          created_at?: string
+          generated_at?: string
+          id?: string
+          mission_date?: string
+          prep_mode: string
+          reasoning?: string | null
+          started_at?: string | null
+          status?: string
+          total_minutes: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          blocks?: Json
+          completed_at?: string | null
+          completed_blocks?: number
+          created_at?: string
+          generated_at?: string
+          id?: string
+          mission_date?: string
+          prep_mode?: string
+          reasoning?: string | null
+          started_at?: string | null
+          status?: string
+          total_minutes?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1185,6 +1296,7 @@ export type Database = {
           current_streak: number | null
           daily_goal: number | null
           daily_question_limit: number | null
+          daily_study_minutes: number
           educator_approved: boolean
           email: string | null
           full_name: string | null
@@ -1203,6 +1315,8 @@ export type Database = {
           onboarding_completed: boolean | null
           overall_accuracy: number | null
           phone: string | null
+          prep_mode: string
+          prep_mode_set_at: string | null
           questions_today: number | null
           referral_code: string | null
           smart_goal_enabled: boolean | null
@@ -1229,6 +1343,7 @@ export type Database = {
           current_streak?: number | null
           daily_goal?: number | null
           daily_question_limit?: number | null
+          daily_study_minutes?: number
           educator_approved?: boolean
           email?: string | null
           full_name?: string | null
@@ -1247,6 +1362,8 @@ export type Database = {
           onboarding_completed?: boolean | null
           overall_accuracy?: number | null
           phone?: string | null
+          prep_mode?: string
+          prep_mode_set_at?: string | null
           questions_today?: number | null
           referral_code?: string | null
           smart_goal_enabled?: boolean | null
@@ -1273,6 +1390,7 @@ export type Database = {
           current_streak?: number | null
           daily_goal?: number | null
           daily_question_limit?: number | null
+          daily_study_minutes?: number
           educator_approved?: boolean
           email?: string | null
           full_name?: string | null
@@ -1291,6 +1409,8 @@ export type Database = {
           onboarding_completed?: boolean | null
           overall_accuracy?: number | null
           phone?: string | null
+          prep_mode?: string
+          prep_mode_set_at?: string | null
           questions_today?: number | null
           referral_code?: string | null
           smart_goal_enabled?: boolean | null
