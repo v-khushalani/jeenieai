@@ -147,9 +147,11 @@ const PracticePage: React.FC = () => {
   const subject = searchParams.get('subject') || '';
   const chapter = searchParams.get('chapter') || '';
   const chapterId = searchParams.get('chapter_id') || '';
-  const topicId = searchParams.get('topic_id') || '';
+  const topicId = searchParams.get('topic_id') || searchParams.get('topic') || '';
   const topicName = searchParams.get('topic') || '';
-  const topicFilterName = topicName.trim();
+  const topicFilterName = /^[0-9a-f-]{20,}$/i.test(topicName) ? '' : topicName.trim();
+  const mode = (searchParams.get('mode') || '').toLowerCase();
+  const isRevisit = mode === 'revision' || mode === 'weak';
   const studyNotesEnabled = useFeatureFlag('study_notes');
 
 
