@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+// src/components/gamification/BadgesShowcase.tsx
+// Trophy Cabinet — single source of truth is the `badges` DB table.
+// No hardcoded badge list. All progress/rarity/thresholds come from DB.
+
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,60 +16,19 @@ import ShareCardDialog from '@/components/ShareCardDialog';
 import type { ShareCardOpts } from '@/lib/shareCard';
 import { logger } from '@/utils/logger';
 
-// ---------- Badge meta ----------
-interface DynamicBadge {
-  name: string;
-  icon: string;
-  category: string;
-  description: string;
-  threshold: number; // for progress + rarity
-  metric: 'answer_streak' | 'day_streak' | 'milestone';
-}
+type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic';
 
-const DYNAMIC_BADGE_META: Record<string, DynamicBadge> = {
-  // Answer streaks (in-a-row correct)
-  'Hot Streak':         { name: 'Hot Streak',         icon: '🔥', category: 'Answer Streaks', description: '5 correct answers in a row',  threshold: 5,   metric: 'answer_streak' },
-  'On Fire':            { name: 'On Fire',            icon: '🚀', category: 'Answer Streaks', description: '10 correct answers in a row', threshold: 10,  metric: 'answer_streak' },
-  'Unstoppable':        { name: 'Unstoppable',        icon: '⚡', category: 'Answer Streaks', description: '20 correct answers in a row', threshold: 20,  metric: 'answer_streak' },
-  'Galat Hi Nahi':      { name: 'Galat Hi Nahi',      icon: '🧠', category: 'Answer Streaks', description: '30 correct in a row — machine mode', threshold: 30, metric: 'answer_streak' },
-  'BEAST MODE':         { name: 'BEAST MODE',         icon: '👑', category: 'Answer Streaks', description: '50 correct answers in a row', threshold: 50,  metric: 'answer_streak' },
-  // Day streaks (consecutive days practiced)
-  '3-Day Spark':        { name: '3-Day Spark',        icon: '✨', category: 'Day Streaks',    description: '3 din lagataar — momentum on',     threshold: 3,   metric: 'day_streak' },
-  '7-Day Warrior':      { name: '7-Day Warrior',      icon: '⚔️', category: 'Day Streaks',    description: '7 consecutive days of practice',   threshold: 7,   metric: 'day_streak' },
-  '15-Day Champion':    { name: '15-Day Champion',    icon: '🏆', category: 'Day Streaks',    description: '15 consecutive days of practice',  threshold: 15,  metric: 'day_streak' },
-  'Monthly Master':     { name: 'Monthly Master',     icon: '📅', category: 'Day Streaks',    description: '30 consecutive days of practice',  threshold: 30,  metric: 'day_streak' },
-  'Quarter Master':     { name: 'Quarter Master',     icon: '🎯', category: 'Day Streaks',    description: '90 consecutive days of practice',  threshold: 90,  metric: 'day_streak' },
-  'Centurion':          { name: 'Centurion',          icon: '🛡️', category: 'Day Streaks',    description: '100-day streak — elite club',      threshold: 100, metric: 'day_streak' },
-  'Half Year Legend':   { name: 'Half Year Legend',   icon: '⭐', category: 'Day Streaks',    description: '180 consecutive days of practice', threshold: 180, metric: 'day_streak' },
-  'YEARLY CHAMPION':    { name: 'YEARLY CHAMPION',    icon: '💎', category: 'Day Streaks',    description: '365 consecutive days of practice', threshold: 365, metric: 'day_streak' },
-
-  // Skill milestones
-  'Comeback Kid':       { name: 'Comeback Kid',       icon: '🦅', category: 'Skill',          description: '80%+ test after a sub-40% one — phoenix mode', threshold: 1,   metric: 'milestone' },
-  'Speed Demon':        { name: 'Speed Demon',        icon: '⚡', category: 'Skill',          description: '10 correct answers in under 60s total',         threshold: 10,  metric: 'milestone' },
-  'Marathoner':         { name: 'Marathoner',         icon: '🏃', category: 'Skill',          description: '100 questions solved in a single day',          threshold: 100, metric: 'milestone' },
-  'Iron Brain':         { name: 'Iron Brain',         icon: '🧱', category: 'Skill',          description: '5 consecutive Hard questions correct',          threshold: 5,   metric: 'milestone' },
-  'Bug-Free Day':       { name: 'Bug-Free Day',       icon: '💯', category: 'Skill',          description: '100% score on any chapter test',                threshold: 1,   metric: 'milestone' },
-  'Perfectionist':      { name: 'Perfectionist',      icon: '🏵️', category: 'Skill',          description: '1000 questions solved at ≥ 90% accuracy',       threshold: 1000, metric: 'milestone' },
-
-  // Consistency
-  'Morning Person':     { name: 'Morning Person',     icon: '🌅', category: 'Consistency',    description: '7 sessions started before 8 AM',                threshold: 7,   metric: 'milestone' },
-  'Night Owl':          { name: 'Night Owl',          icon: '🦉', category: 'Consistency',    description: '7 sessions after 11 PM',                        threshold: 7,   metric: 'milestone' },
-  'Weekend Warrior':    { name: 'Weekend Warrior',    icon: '🗓️', category: 'Consistency',    description: 'Practice both Sat + Sun for 4 weeks',           threshold: 4,   metric: 'milestone' },
-
-  // Subject mastery
-  'Newton ka Beta':     { name: 'Newton ka Beta',     icon: '🍎', category: 'Subject Mastery',description: '95% accuracy on 50 Mechanics questions',        threshold: 50,  metric: 'milestone' },
-  'Mole Master':        { name: 'Mole Master',        icon: '⚗️', category: 'Subject Mastery',description: '95% accuracy on 50 Mole Concept questions',     threshold: 50,  metric: 'milestone' },
-  'Integration Ninja':  { name: 'Integration Ninja',  icon: '🥷', category: 'Subject Mastery',description: 'Solve 30 Hard Calculus questions',              threshold: 30,  metric: 'milestone' },
-
-  // Social / engagement
-  'Influencer':         { name: 'Influencer',         icon: '📣', category: 'Engagement',     description: 'Share 5 result or badge cards',                  threshold: 5,   metric: 'milestone' },
-  'Doubt Slayer':       { name: 'Doubt Slayer',       icon: '🗡️', category: 'Engagement',     description: 'Use JEEnie AI 20 times in a week',               threshold: 20,  metric: 'milestone' },
-  'Roast Survivor':     { name: 'Roast Survivor',     icon: '🔥', category: 'Engagement',     description: 'Get roasted 5 times — aur wapas aaya',           threshold: 5,   metric: 'milestone' },
-
-  // Mythic / rare
-  'Topper Mode':        { name: 'Topper Mode',        icon: '🥇', category: 'Mythic',         description: 'Rank #1 on weekly leaderboard',                  threshold: 1,   metric: 'milestone' },
+const RARITY_RINGS: Record<Rarity, { ring: string; chip: string; glow: string }> = {
+  Common:    { ring: 'from-slate-300 to-slate-500',           chip: 'bg-slate-200 text-slate-700',     glow: 'shadow-slate-400/40' },
+  Rare:      { ring: 'from-sky-400 to-blue-600',              chip: 'bg-sky-100 text-sky-700',         glow: 'shadow-sky-400/50' },
+  Epic:      { ring: 'from-fuchsia-400 to-purple-700',        chip: 'bg-fuchsia-100 text-fuchsia-700', glow: 'shadow-fuchsia-500/50' },
+  Legendary: { ring: 'from-amber-300 to-orange-600',          chip: 'bg-amber-100 text-amber-800',     glow: 'shadow-amber-500/60' },
+  Mythic:    { ring: 'from-rose-400 via-red-500 to-rose-700', chip: 'bg-rose-100 text-rose-700',       glow: 'shadow-rose-500/60' },
 };
 
+const RARITY_HEX: Record<Rarity, string> = {
+  Common: '#94a3b8', Rare: '#3b82f6', Epic: '#a855f7', Legendary: '#f59e0b', Mythic: '#ef4444',
+};
 
 const CATEGORY_FLAVOR: Record<string, string> = {
   'Answer Streaks':  'Ek galat answer aur sab gaya 💀',
@@ -75,54 +38,41 @@ const CATEGORY_FLAVOR: Record<string, string> = {
   'Subject Mastery': 'Topic ka boss tu hi hai',
   'Engagement':      'JEEnie family ka active member',
   'Mythic':          'Sirf chosen ones — legend tier',
-  achievement:       'Milestones jo dikhate hain — tu serious hai',
-  skill:             'Skill flex — yahan se respect milti hai',
-  subject:           'Subject ka boss ban gaya tu',
-  streak:            'Consistency = compounding',
 };
 
-
-const RARITY_RINGS: Record<string, { ring: string; chip: string; glow: string }> = {
-  Common:    { ring: 'from-slate-300 to-slate-500',     chip: 'bg-slate-200 text-slate-700',         glow: 'shadow-slate-400/40' },
-  Rare:      { ring: 'from-sky-400 to-blue-600',        chip: 'bg-sky-100 text-sky-700',             glow: 'shadow-sky-400/50' },
-  Epic:      { ring: 'from-fuchsia-400 to-purple-700',  chip: 'bg-fuchsia-100 text-fuchsia-700',     glow: 'shadow-fuchsia-500/50' },
-  Legendary: { ring: 'from-amber-300 to-orange-600',    chip: 'bg-amber-100 text-amber-800',         glow: 'shadow-amber-500/60' },
-  Mythic:    { ring: 'from-rose-400 via-red-500 to-rose-700', chip: 'bg-rose-100 text-rose-700',     glow: 'shadow-rose-500/60' },
-};
-
-const RARITY_HEX: Record<string, string> = {
-  Common: '#94a3b8', Rare: '#3b82f6', Epic: '#a855f7', Legendary: '#f59e0b', Mythic: '#ef4444',
-};
-
-function rarityFromThreshold(t: number): keyof typeof RARITY_RINGS {
-  if (t >= 180) return 'Mythic';
-  if (t >= 60)  return 'Legendary';
-  if (t >= 20)  return 'Epic';
-  if (t >= 10)  return 'Rare';
-  return 'Common';
+interface BadgeRow {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  category: string | null;
+  rarity: string;
+  requirement_type: string;
+  requirement_value: number;
+  sort_order: number;
 }
 
-function rarityFromPoints(p: number): keyof typeof RARITY_RINGS {
-  if (p >= 5000) return 'Mythic';
-  if (p >= 2000) return 'Legendary';
-  if (p >= 800)  return 'Epic';
-  if (p >= 200)  return 'Rare';
-  return 'Common';
-}
-
-// ---------- Unified item shape ----------
 interface UnifiedBadge {
   key: string;
+  id: string;
   name: string;
   icon: string;
   description: string;
   category: string;
   earned: boolean;
   earnedAt?: string;
-  rarity: keyof typeof RARITY_RINGS;
-  progressPct: number;     // 0-100
-  progressLabel?: string;  // e.g. "12 / 20 in a row"
+  rarity: Rarity;
+  progressPct: number;
+  progressLabel: string;
+  requirementType: string;
+  requirementValue: number;
 }
+
+const normalizeRarity = (r: string): Rarity => {
+  const key = (r || 'Common') as Rarity;
+  return RARITY_RINGS[key] ? key : 'Common';
+};
 
 // ---------- Medallion tile ----------
 const Medallion = ({ b, onClick }: { b: UnifiedBadge; onClick: () => void }) => {
@@ -141,13 +91,11 @@ const Medallion = ({ b, onClick }: { b: UnifiedBadge; onClick: () => void }) => 
       transition={{ type: 'spring', stiffness: 320, damping: 20 }}
       className="relative flex flex-col items-center gap-2 group focus:outline-none"
     >
-      {/* Halo glow for earned */}
       {b.earned && (
         <span className={`absolute -inset-2 rounded-full blur-xl opacity-60 bg-linear-to-br ${skin.ring} animate-pulse pointer-events-none`} />
       )}
 
       <div className="relative" style={{ width: size, height: size }}>
-        {/* Outer rotating ring (earned) */}
         {b.earned ? (
           <motion.div
             className={`absolute inset-0 rounded-full bg-linear-to-br ${skin.ring} shadow-lg ${skin.glow}`}
@@ -172,14 +120,12 @@ const Medallion = ({ b, onClick }: { b: UnifiedBadge; onClick: () => void }) => 
           </svg>
         )}
 
-        {/* Icon */}
         <div className={`absolute inset-2 rounded-full flex items-center justify-center text-4xl ${
           b.earned ? '' : 'grayscale opacity-60'
         }`}>
           <span>{b.icon}</span>
         </div>
 
-        {/* Lock overlay */}
         {!b.earned && (
           <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow border border-slate-200">
             <Lock className="w-3 h-3 text-slate-500" />
@@ -187,14 +133,12 @@ const Medallion = ({ b, onClick }: { b: UnifiedBadge; onClick: () => void }) => 
         )}
       </div>
 
-      {/* Ribbon name */}
       <div className={`relative px-2 py-1 rounded-md text-[11px] font-extrabold text-center max-w-[110px] leading-tight ${
         b.earned ? `bg-linear-to-r ${skin.ring} text-white` : 'bg-slate-100 text-slate-600'
       }`}>
         {b.name}
       </div>
 
-      {/* Rarity chip */}
       <span className={`text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded ${skin.chip}`}>
         {b.rarity}
       </span>
@@ -202,7 +146,6 @@ const Medallion = ({ b, onClick }: { b: UnifiedBadge; onClick: () => void }) => 
   );
 };
 
-// ---------- Main ----------
 const BadgesShowcase = () => {
   const { user } = useAuth();
   const [items, setItems] = useState<UnifiedBadge[]>([]);
@@ -212,83 +155,102 @@ const BadgesShowcase = () => {
   const [shareOpen, setShareOpen] = useState(false);
   const [shareOpts, setShareOpts] = useState<ShareCardOpts | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
-    void fetchAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
-
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      const { data: { user: u } } = await supabase.auth.getUser();
-      if (!u) return;
+      // Fire the awarder first so any newly-eligible badges show up immediately.
+      await supabase.rpc('check_and_award_badges', { _user_id: user.id });
 
-      const [profileRes, allBadgesRes, userBadgesRes] = await Promise.all([
-        supabase.from('profiles').select('total_points, badges, current_streak').eq('id', u.id).single(),
-        supabase.from('badges').select('*').order('points_required', { ascending: true }),
-        supabase.from('user_badges').select('badge_id, earned_at').eq('user_id', u.id),
+      const [profileRes, badgesRes, userBadgesRes, attemptsRes, sharesRes, perfectRes, morningRes, nightRes, maxDailyRes] = await Promise.all([
+        supabase.from('profiles').select('current_streak').eq('id', user.id).maybeSingle(),
+        supabase.from('badges').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
+        supabase.from('user_badges').select('badge_id, earned_at').eq('user_id', user.id),
+        supabase.from('question_attempts').select('is_correct', { count: 'exact', head: false }).eq('user_id', user.id),
+        supabase.from('points_log').select('id', { count: 'exact', head: true }).eq('user_id', user.id).in('action_type', ['badge_share', 'result_share', 'share']),
+        supabase.from('test_sessions').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('score', 100),
+        supabase.from('question_attempts').select('attempted_at').eq('user_id', user.id).lt('attempted_at', new Date().toISOString()),
+        supabase.from('question_attempts').select('attempted_at').eq('user_id', user.id),
+        supabase.from('question_attempts').select('attempted_at').eq('user_id', user.id),
       ]);
 
-      const userPoints = profileRes.data?.total_points || 0;
-      const earnedDynamic: string[] = Array.isArray(profileRes.data?.badges)
-        ? (profileRes.data!.badges as unknown[]).filter((b): b is string => typeof b === 'string')
-        : [];
+      const streak = profileRes.data?.current_streak || 0;
+      const attempts = attemptsRes.data || [];
+      const totalQ = attempts.length;
+      const totalCorrect = attempts.filter(a => a.is_correct).length;
 
-      const bestAnswerStreak = 0; // not tracked separately; rely on earned flag
-      const bestDayStreak = profileRes.data?.current_streak || 0;
+      // Best consecutive correct streak
+      let bestStreak = 0, cur = 0;
+      for (const a of attempts) {
+        if (a.is_correct) { cur++; if (cur > bestStreak) bestStreak = cur; }
+        else cur = 0;
+      }
+
+      // Morning/night distinct days, max daily
+      const daysByBucket = { morning: new Set<string>(), night: new Set<string>(), all: new Map<string, number>() };
+      for (const a of (maxDailyRes.data || [])) {
+        const d = new Date(a.attempted_at);
+        const day = d.toISOString().slice(0, 10);
+        const hr = d.getUTCHours();
+        if (hr < 8) daysByBucket.morning.add(day);
+        if (hr >= 23) daysByBucket.night.add(day);
+        daysByBucket.all.set(day, (daysByBucket.all.get(day) || 0) + 1);
+      }
+      const maxDaily = Math.max(0, ...Array.from(daysByBucket.all.values()));
+      const morningDays = daysByBucket.morning.size;
+      const nightDays = daysByBucket.night.size;
+      const shares = sharesRes.count || 0;
+      const perfectTests = perfectRes.count || 0;
 
       const earnedAtMap = new Map<string, string>();
       (userBadgesRes.data || []).forEach(ub => earnedAtMap.set(ub.badge_id, ub.earned_at || ''));
 
-      const dyn: UnifiedBadge[] = Object.values(DYNAMIC_BADGE_META).map(d => {
-        const earned = earnedDynamic.includes(d.name);
-        const current = d.metric === 'answer_streak'
-          ? bestAnswerStreak
-          : d.metric === 'day_streak'
-          ? bestDayStreak
-          : 0; // milestone — backend awards it; no live progress bar
-        const pct = Math.min(100, Math.round((current / d.threshold) * 100));
-
-        return {
-          key: `dyn:${d.name}`,
-          name: d.name,
-          icon: d.icon,
-          description: d.description,
-          category: d.category,
-          earned,
-          earnedAt: undefined,
-          rarity: rarityFromThreshold(d.threshold),
-          progressPct: earned ? 100 : pct,
-          progressLabel: `${Math.min(current, d.threshold)} / ${d.threshold}`,
-        };
-      });
-
-      const tableBadges: UnifiedBadge[] = (allBadgesRes.data || []).map((b) => {
+      const rows = (badgesRes.data || []) as BadgeRow[];
+      const unified: UnifiedBadge[] = rows.map((b) => {
+        const rarity = normalizeRarity(b.rarity);
+        const target = b.requirement_value || 1;
+        let current = 0;
+        switch (b.requirement_type) {
+          case 'day_streak':       current = streak; break;
+          case 'answer_streak':    current = bestStreak; break;
+          case 'total_questions':  current = totalQ; break;
+          case 'total_correct':    current = totalCorrect; break;
+          case 'daily_questions':  current = maxDaily; break;
+          case 'perfect_test':     current = perfectTests; break;
+          case 'morning_sessions': current = morningDays; break;
+          case 'night_sessions':   current = nightDays; break;
+          case 'shares':           current = shares; break;
+          default:                 current = 0;
+        }
         const earned = earnedAtMap.has(b.id);
-        const req = b.points_required || 1;
-        const pct = Math.min(100, Math.round((userPoints / req) * 100));
+        const pct = earned ? 100 : Math.min(100, Math.round((current / target) * 100));
+        const label = b.requirement_type === 'manual'
+          ? 'Awarded by JEEnie'
+          : `${Math.min(current, target)} / ${target}`;
+
         return {
-          key: `tbl:${b.id}`,
+          key: b.id,
+          id: b.id,
           name: b.name,
           icon: b.icon || '🏅',
           description: b.description || '',
           category: b.category || 'achievement',
           earned,
           earnedAt: earnedAtMap.get(b.id) || undefined,
-          rarity: rarityFromPoints(req),
-          progressPct: earned ? 100 : pct,
-          progressLabel: `${userPoints} / ${req} pts`,
+          rarity,
+          progressPct: pct,
+          progressLabel: label,
+          requirementType: b.requirement_type,
+          requirementValue: target,
         };
       });
 
-      const all = [...dyn, ...tableBadges];
-      setItems(all);
+      setItems(unified);
 
       // Confetti on newly-earned since last visit
       try {
-        const seenKey = `jeenie.badges.seen.${u.id}`;
+        const seenKey = `jeenie.badges.seen.${user.id}`;
         const seen = new Set<string>(JSON.parse(localStorage.getItem(seenKey) || '[]'));
-        const nowEarned = all.filter(x => x.earned).map(x => x.key);
+        const nowEarned = unified.filter(x => x.earned).map(x => x.key);
         const fresh = nowEarned.filter(k => !seen.has(k));
         if (fresh.length > 0 && seen.size > 0) {
           confetti({ particleCount: 120, spread: 80, origin: { y: 0.3 } });
@@ -300,14 +262,19 @@ const BadgesShowcase = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user) return;
+    void fetchAll();
+  }, [user, fetchAll]);
 
   const earnedCount = useMemo(() => items.filter(i => i.earned).length, [items]);
   const totalCount = items.length;
   const completion = totalCount ? Math.round((earnedCount / totalCount) * 100) : 0;
 
   const rarestEarned = useMemo(() => {
-    const order: (keyof typeof RARITY_RINGS)[] = ['Mythic', 'Legendary', 'Epic', 'Rare', 'Common'];
+    const order: Rarity[] = ['Mythic', 'Legendary', 'Epic', 'Rare', 'Common'];
     for (const r of order) {
       const hit = items.find(i => i.earned && i.rarity === r);
       if (hit) return hit;
@@ -401,7 +368,6 @@ const BadgesShowcase = () => {
               </Button>
             </div>
 
-            {/* Featured medallion */}
             {rarestEarned && (
               <motion.div
                 animate={{ y: [0, -6, 0] }}
@@ -441,7 +407,6 @@ const BadgesShowcase = () => {
               </div>
               <p className="text-xs text-slate-500 mb-3 italic">{CATEGORY_FLAVOR[cat] || 'Earn these by playing the long game.'}</p>
 
-              {/* Milestone bar */}
               <div className="relative w-full h-1.5 bg-slate-100 rounded-full mb-5">
                 <motion.div
                   initial={{ width: 0 }}
@@ -449,13 +414,6 @@ const BadgesShowcase = () => {
                   transition={{ duration: 0.8 }}
                   className="h-full rounded-full bg-linear-to-r from-amber-400 to-orange-500"
                 />
-                {list.map((_, i) => (
-                  <span
-                    key={i}
-                    className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white border border-slate-300"
-                    style={{ left: `calc(${(i / Math.max(1, list.length - 1)) * 100}% - 4px)` }}
-                  />
-                ))}
               </div>
 
               <motion.div

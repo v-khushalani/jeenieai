@@ -67,19 +67,15 @@ export const BadgeUnlockCelebration = () => {
   const check = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const [profileRes, userBadgesRes] = await Promise.all([
-        supabase.from('profiles').select('badges').eq('id', user.id).maybeSingle(),
-        supabase.from('user_badges').select('badge_id, earned_at, badges(name, icon, description, category)').eq('user_id', user.id),
-      ]);
+      const { data: userBadgesData } = await supabase
+        .from('user_badges')
+        .select('badge_id, earned_at, badges(name, icon, description, category, rarity)')
+        .eq('user_id', user.id);
 
-      const dyn: string[] = Array.isArray(profileRes.data?.badges)
-        ? (profileRes.data!.badges as unknown[]).filter((b): b is string => typeof b === 'string')
-        : [];
-
-      const dbBadges: NewBadge[] = (userBadgesRes.data || []).map((row: any) => {
+      const all: NewBadge[] = (userBadgesData || []).map((row: any) => {
         const b = row.badges || {};
         const name = b.name || 'Achievement';
-        const rar = rarityFor(name);
+        const rar = (b.rarity && RARITY_HEX[b.rarity]) ? b.rarity : rarityFor(name);
         return {
           name, icon: b.icon || '🏅',
           description: b.description || '',
@@ -88,18 +84,6 @@ export const BadgeUnlockCelebration = () => {
           earnedAt: row.earned_at,
         };
       });
-
-      const dynBadges: NewBadge[] = dyn.map(name => {
-        const rar = rarityFor(name);
-        return {
-          name, icon: '🏅',
-          description: `You earned the ${name} badge`,
-          category: 'achievement',
-          rarity: rar, ringColor: RARITY_HEX[rar],
-        };
-      });
-
-      const all = [...dbBadges, ...dynBadges];
       const seen = readSeen(user.id);
 
       // First run after login: just record everything as seen, no celebration.
@@ -137,9 +121,6 @@ export const BadgeUnlockCelebration = () => {
       .channel(`badge-unlock-${user.id}`)
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'user_badges', filter: `user_id=eq.${user.id}` },
-        () => { void check(); })
-      .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
         () => { void check(); })
       .subscribe();
 
