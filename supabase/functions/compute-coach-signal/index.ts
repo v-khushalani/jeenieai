@@ -152,6 +152,8 @@ serve(async (req) => {
         trend,
         confidence,
       },
+      streak: computeStreak(missions),
+      weekly_report: buildWeeklyReport(missions, attempts, mastery, classLogs),
       nudge,
       factors: {
         attempts_30d: total, accuracy_30d: Math.round(accuracy * 100),
@@ -167,7 +169,79 @@ serve(async (req) => {
   } catch (e) {
     console.error('compute-coach-signal error', e);
     return json({ error: (e as Error).message }, 500);
+}
+
+// Consecutive-day streak (IST) — a day counts if any mission block was completed OR any question attempted.
+function computeStreak(missions: Array<{ mission_date: string; completed_blocks: number | null }>) {
+  const today = istDate();
+  const doneDates = new Set(missions.filter(m => (m.completed_blocks ?? 0) > 0).map(m => m.mission_date));
+  let current = 0;
+  const d = new Date(today);
+  // Start from today; if today not done, streak still counts yesterday-back
+  if (doneDates.has(today)) { current++; d.setDate(d.getDate() - 1); }
+  else { d.setDate(d.getDate() - 1); }
+  while (doneDates.has(d.toISOString().slice(0, 10))) { current++; d.setDate(d.getDate() - 1); }
+  // Best streak = max consecutive run in the last 14 days window
+  const sorted = [...doneDates].sort();
+  let best = 0, run = 0, prev: Date | null = null;
+  for (const ds of sorted) {
+    const cur = new Date(ds);
+    if (prev && (cur.getTime() - prev.getTime()) === 86400000) run++; else run = 1;
+    best = Math.max(best, run);
+    prev = cur;
   }
+  return { current, best: Math.max(best, current), today_done: doneDates.has(today) };
+}
+
+function buildWeeklyReport(
+  missions: Array<{ mission_date: string; completed_blocks: number | null }>,
+  attempts: Array<{ is_correct: boolean; attempted_at: string }>,
+  mastery: Array<{ subject: string | null; mastery_level: number | null }>,
+  classLogs: Array<{ subject: string; logged_date: string }>,
+) {
+  // Only surface report on Sunday (IST)
+  const todayIST = new Date(new Date().toLocaleString('en-US', { timeZone: IST_TZ }));
+  if (todayIST.getDay() !== 0) return null;
+
+  const weekStart = new Date(todayIST); weekStart.setDate(weekStart.getDate() - 6);
+  const weekStartISO = weekStart.toISOString().slice(0, 10);
+  const prevWeekStart = new Date(weekStart); prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+  const prevWeekStartISO = prevWeekStart.toISOString().slice(0, 10);
+
+  const inWeek = attempts.filter(a => a.attempted_at.slice(0, 10) >= weekStartISO);
+  const inPrev = attempts.filter(a => a.attempted_at.slice(0, 10) >= prevWeekStartISO && a.attempted_at.slice(0, 10) < weekStartISO);
+  const acc = inWeek.length ? Math.round(inWeek.filter(a => a.is_correct).length / inWeek.length * 100) : 0;
+  const accPrev = inPrev.length ? Math.round(inPrev.filter(a => a.is_correct).length / inPrev.length * 100) : acc;
+
+  const activeDays = missions.filter(m => m.mission_date >= weekStartISO && (m.completed_blocks ?? 0) > 0).length;
+
+  // Top / weakest subjects by mastery
+  const bySubject: Record<string, { sum: number; n: number }> = {};
+  mastery.forEach(m => {
+    if (!m.subject) return;
+    bySubject[m.subject] = bySubject[m.subject] ?? { sum: 0, n: 0 };
+    bySubject[m.subject].sum += m.mastery_level ?? 0;
+    bySubject[m.subject].n += 1;
+  });
+  const ranked = Object.entries(bySubject).map(([s, v]) => ({ s, avg: v.sum / v.n })).sort((a, b) => b.avg - a.avg);
+  const topSubject = ranked[0]?.s ?? null;
+  const weakestSubject = ranked.length > 1 ? ranked[ranked.length - 1].s : null;
+
+  const focus = weakestSubject
+    ? `Agle hafte ${weakestSubject} pe zyada focus — 3 din out of 7 minimum.`
+    : `Momentum banaye rakho — daily 1 revision + 1 practice block enough hai.`;
+
+  return {
+    week_start: weekStartISO,
+    active_days: activeDays,
+    total_questions: inWeek.length,
+    accuracy: acc,
+    accuracy_change: acc - accPrev,
+    top_subject: topSubject,
+    weakest_subject: weakestSubject,
+    focus_next_week: focus,
+  };
+}
 });
 
 function json(payload: unknown, status = 200) {
