@@ -362,7 +362,7 @@ const PracticePage: React.FC = () => {
         if (!topicId && topicFilterName) fallbackQuery = fallbackQuery.ilike('topic', `%${topicFilterName}%`);
 
         const { data: fallbackData } = await fallbackQuery.limit(1000);
-        pool = (fallbackData || []).filter(q => !attemptedIds.has(q.id));
+        pool = (fallbackData || []).filter(q => isRevisit ? true : !attemptedIds.has(q.id));
       }
 
       if (pool.length === 0 && userBatchIds.length > 0 && !topicId && !chapterId) {
@@ -377,7 +377,7 @@ const PracticePage: React.FC = () => {
 
 
         const { data: fallbackData } = await fallbackQuery.limit(1000);
-        pool = (fallbackData || []).filter(q => !attemptedIds.has(q.id));
+        pool = (fallbackData || []).filter(q => isRevisit ? true : !attemptedIds.has(q.id));
       }
 
 
@@ -396,7 +396,7 @@ const PracticePage: React.FC = () => {
         }
 
         const { data: fallbackData } = await fallbackQuery.limit(1000);
-        pool = (fallbackData || []).filter(q => !attemptedIds.has(q.id));
+        pool = (fallbackData || []).filter(q => isRevisit ? true : !attemptedIds.has(q.id));
       }
 
       if (pool.length === 0) {
