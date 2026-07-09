@@ -239,6 +239,7 @@ function App() {
                 />
                 <Route path="/explore" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/planner" element={<Navigate to="/ai-planner" replace />} />
+                <Route path="/mission" element={<Navigate to="/ai-planner" replace />} />
 
                 
                 {/* Test Routes */}
