@@ -155,33 +155,53 @@ serve(async (req) => {
       .sort((a, b) => (a.mastery_level ?? 0) - (b.mastery_level ?? 0))[0];
     if (weak && remaining >= 25) {
       const mins = takeMinutes(Math.min(60, Math.round(dailyMinutes * 0.35)));
+      const wAcc = Math.round(((weak.questions_correct ?? 0) / Math.max(1, weak.questions_attempted ?? 1)) * 100);
+      const targetedDiff = wAcc >= 60 ? 'medium' : 'easy';
       blocks.push({
         id: crypto.randomUUID(),
         type: 'weak_fix',
         title: `Weak-spot fix`,
-        subtitle: `${Math.floor(mins / 3)} targeted questions`,
+        subtitle: `${Math.floor(mins / 3)} targeted questions (${targetedDiff})`,
         topic_id: weak.topic_id,
         minutes: mins,
         question_count: Math.floor(mins / 3),
-        why: `Accuracy ${Math.round(((weak.questions_correct ?? 0) / Math.max(1, weak.questions_attempted ?? 1)) * 100)}% — fix ho gaya to overall percentile 2 point improve hoga.`,
-        action_href: `/practice?mode=weak&topic=${weak.topic_id}`,
+        why: `Accuracy ${wAcc}% — fix ho gaya to overall percentile 2 point improve hoga.`,
+        action_href: `/practice?mode=weak&topic=${weak.topic_id}&difficulty=${targetedDiff}`,
       });
     }
 
-    // Revision block (rotate subject)
-    if (remaining >= 20 && subjects.length > 0) {
+    // Revision block — Ebbinghaus spaced repetition (real due items)
+    if (remaining >= 20 && dueRevisions.length > 0) {
+      const rev = dueRevisions[0];
+      const mins = takeMinutes(Math.min(45, remaining));
+      const revLabel = rev.subject ?? subjects[0] ?? 'Revision';
+      const daysSince = rev.interval_days ? Math.round(Number(rev.interval_days)) : 0;
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'revision',
+        title: `Revise ${revLabel}`,
+        subtitle: `${Math.floor(mins / 3)} spaced-repetition Qs`,
+        subject: revLabel,
+        chapter_id: rev.chapter_id ?? undefined,
+        topic_id: rev.topic_id ?? undefined,
+        minutes: mins,
+        question_count: Math.floor(mins / 3),
+        why: `${daysSince} din pehle padha — Ebbinghaus curve ke hisaab se aaj revise nahi kiya to 40% bhool jaoge.`,
+        action_href: `/practice?mode=revision${rev.chapter_id ? `&chapter=${rev.chapter_id}` : ''}${rev.topic_id ? `&topic=${rev.topic_id}` : ''}&difficulty=${adaptiveDifficulty}`,
+      });
+    } else if (remaining >= 20 && subjects.length > 0) {
       const revSubject = subjects[new Date().getDate() % subjects.length];
       const mins = takeMinutes(Math.min(45, remaining));
       blocks.push({
         id: crypto.randomUUID(),
         type: 'revision',
         title: `Revise ${revSubject}`,
-        subtitle: `${Math.floor(mins / 3)} spaced-repetition questions`,
+        subtitle: `${Math.floor(mins / 3)} baseline questions`,
         subject: revSubject,
         minutes: mins,
         question_count: Math.floor(mins / 3),
-        why: `${revSubject} pichhle 3 din se touch nahi kiya — bhoolne se pehle revise.`,
-        action_href: `/practice?mode=revision&subject=${encodeURIComponent(revSubject)}`,
+        why: `Abhi tak ${revSubject} ka revision schedule nahi bana — baseline set karte hain.`,
+        action_href: `/practice?mode=revision&subject=${encodeURIComponent(revSubject)}&difficulty=${adaptiveDifficulty}`,
       });
     }
 
@@ -193,12 +213,12 @@ serve(async (req) => {
         id: crypto.randomUUID(),
         type: 'pyq',
         title: `PYQs — ${pyqSubject}`,
-        subtitle: `${Math.floor(mins / 4)} previous-year questions`,
+        subtitle: `${Math.floor(mins / 4)} previous-year (${adaptiveDifficulty})`,
         subject: pyqSubject,
         minutes: mins,
         question_count: Math.floor(mins / 4),
         why: `Exam-level questions — real difficulty ka feel aayega.`,
-        action_href: `/practice?mode=pyq&subject=${encodeURIComponent(pyqSubject)}`,
+        action_href: `/practice?mode=pyq&subject=${encodeURIComponent(pyqSubject)}&difficulty=${adaptiveDifficulty}`,
       });
     }
 
