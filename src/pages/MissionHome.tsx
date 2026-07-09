@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { toast } from 'sonner';
 import { Play, CheckCircle2, RefreshCw, Sparkles, ChevronRight, Clock, Loader2, Info, Compass, BookOpen, PlusCircle, TrendingUp, TrendingDown, Minus, Zap, Flame, Trophy } from 'lucide-react';
 import LogClassSheet from '@/components/LogClassSheet';
+import ReferralCard from '@/components/ReferralCard';
 
 interface CoachSignal {
   prediction: {
