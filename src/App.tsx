@@ -238,16 +238,8 @@ function App() {
                   }
                 />
                 <Route path="/explore" element={<Navigate to="/dashboard" replace />} />
-                <Route
-                  path="/planner"
-                  element={
-                    <ProtectedRoute>
-                      <PremiumGate featureName="The AI Planner">
-                        <MissionHome />
-                      </PremiumGate>
-                    </ProtectedRoute>
-                  }
-                />
+                <Route path="/planner" element={<Navigate to="/ai-planner" replace />} />
+
                 
                 {/* Test Routes */}
                 <Route path="/test-attempt/:testId" element={
