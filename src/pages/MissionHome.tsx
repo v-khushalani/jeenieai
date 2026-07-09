@@ -12,8 +12,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Play, CheckCircle2, RefreshCw, Sparkles, ChevronRight, Clock, Loader2, Info, Compass, BookOpen, PlusCircle } from 'lucide-react';
+import { Play, CheckCircle2, RefreshCw, Sparkles, ChevronRight, Clock, Loader2, Info, Compass, BookOpen, PlusCircle, TrendingUp, TrendingDown, Minus, Zap } from 'lucide-react';
 import LogClassSheet from '@/components/LogClassSheet';
+
+interface CoachSignal {
+  prediction: {
+    exam: string;
+    on_track_percentile: number;
+    off_track_percentile: number;
+    delta: number;
+    trend: 'up' | 'flat' | 'down';
+    confidence: 'low' | 'medium' | 'high';
+  };
+  nudge: { emoji: string; message: string; tone: 'push' | 'praise' | 'warn' } | null;
+}
 
 type BlockType = 'learn_practice' | 'revision' | 'weak_fix' | 'class_recap' | 'pyq' | 'mock';
 interface MissionBlock {
@@ -80,6 +92,7 @@ export default function MissionHome() {
   const [prepMode, setPrepMode] = useState<DailyMission['prep_mode'] | null>(null);
   const [loggedToday, setLoggedToday] = useState<{ id: string; chapter_name: string | null; subject: string } | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [signal, setSignal] = useState<CoachSignal | null>(null);
 
   const generate = useCallback(async (force = false) => {
     setGenerating(true);
@@ -143,6 +156,11 @@ export default function MissionHome() {
       } else {
         await generate(false);
       }
+
+      // fire coach signal (non-blocking)
+      supabase.functions.invoke('compute-coach-signal').then(({ data }) => {
+        if (data && (data as CoachSignal).prediction) setSignal(data as CoachSignal);
+      }).catch(() => {});
     } finally {
       setLoading(false);
     }
@@ -203,6 +221,46 @@ export default function MissionHome() {
               {greeting}{greetingName ? `, ${greetingName}` : ''} 👋
             </h1>
           </div>
+
+          {/* Live prediction card */}
+          {!loading && !needsSetup && signal?.prediction && (
+            <div className="rounded-xl border border-border/60 bg-card p-3.5 space-y-2.5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+                    {signal.prediction.exam} — Predicted percentile
+                  </p>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <span className="text-2xl font-bold tabular-nums">{signal.prediction.on_track_percentile}</span>
+                    {signal.prediction.trend === 'up' && <TrendingUp className="w-4 h-4 text-emerald-600" />}
+                    {signal.prediction.trend === 'down' && <TrendingDown className="w-4 h-4 text-rose-600" />}
+                    {signal.prediction.trend === 'flat' && <Minus className="w-4 h-4 text-muted-foreground" />}
+                    <span className="text-[11px] text-muted-foreground">
+                      {signal.prediction.confidence === 'low' ? 'low conf.' : `confidence ${signal.prediction.confidence}`}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Miss today</p>
+                  <p className="text-sm font-bold tabular-nums text-rose-600">
+                    {signal.prediction.off_track_percentile}
+                    <span className="text-[10px] text-muted-foreground font-medium ml-1">(-{signal.prediction.delta})</span>
+                  </p>
+                </div>
+              </div>
+              {signal.nudge && (
+                <div className={`flex items-start gap-2 rounded-lg p-2.5 text-xs leading-snug
+                  ${signal.nudge.tone === 'praise' ? 'bg-emerald-500/8 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20' :
+                    signal.nudge.tone === 'warn' ? 'bg-amber-500/8 text-amber-800 dark:text-amber-300 border border-amber-500/20' :
+                    'bg-primary/8 text-primary border border-primary/20'}`}>
+                  <span className="text-base leading-none">{signal.nudge.emoji}</span>
+                  <span className="flex-1">{signal.nudge.message}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+
 
           {/* Companion / Hybrid: log today's class chip */}
           {!loading && !needsSetup && (prepMode === 'companion' || prepMode === 'hybrid') && (
