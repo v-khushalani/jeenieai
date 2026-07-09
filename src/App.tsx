@@ -228,7 +228,7 @@ function App() {
                   
                   
                 
-                {/* Dashboard = Mission Home (new). /explore = legacy dashboard */}
+                {/* Dashboard = elegant EnhancedDashboard. Planner (Mission Home) is Pro/Pro+ only. */}
                 <Route
                   path="/dashboard"
                   element={
@@ -237,11 +237,14 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route path="/explore" element={<Navigate to="/dashboard" replace />} />
                 <Route
-                  path="/explore"
+                  path="/planner"
                   element={
                     <ProtectedRoute>
-                      <ExploreRouter />
+                      <PremiumGate featureName="The AI Planner">
+                        <MissionHome />
+                      </PremiumGate>
                     </ProtectedRoute>
                   }
                 />
