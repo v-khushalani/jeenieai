@@ -348,7 +348,7 @@ const PracticePage: React.FC = () => {
       const { data, error } = await query.limit(500);
       if (error) throw error;
 
-      let pool = (data || []).filter(q => !attemptedIds.has(q.id));
+      let pool = (data || []).filter(q => isRevisit ? true : !attemptedIds.has(q.id));
 
       if (pool.length === 0 && (chapterId || topicFilterName)) {
         let fallbackQuery = supabase
