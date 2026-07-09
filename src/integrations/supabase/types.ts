@@ -1931,6 +1931,57 @@ export type Database = {
         }
         Relationships: []
       }
+      revision_schedule: {
+        Row: {
+          chapter_id: string | null
+          correct_streak: number
+          created_at: string
+          ease_factor: number
+          id: string
+          interval_days: number
+          last_accuracy: number | null
+          last_reviewed_at: string | null
+          next_due_at: string
+          reviews_count: number
+          subject: string | null
+          topic_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          correct_streak?: number
+          created_at?: string
+          ease_factor?: number
+          id?: string
+          interval_days?: number
+          last_accuracy?: number | null
+          last_reviewed_at?: string | null
+          next_due_at?: string
+          reviews_count?: number
+          subject?: string | null
+          topic_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chapter_id?: string | null
+          correct_streak?: number
+          created_at?: string
+          ease_factor?: number
+          id?: string
+          interval_days?: number
+          last_accuracy?: number | null
+          last_reviewed_at?: string | null
+          next_due_at?: string
+          reviews_count?: number
+          subject?: string | null
+          topic_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       study_notes: {
         Row: {
           chapter_id: string | null

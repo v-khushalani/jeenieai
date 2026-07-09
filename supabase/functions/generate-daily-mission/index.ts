@@ -81,7 +81,7 @@ serve(async (req) => {
     const subjects = deriveSubjects(exam, profile?.subjects);
 
     // Load signals
-    const [attemptsRes, masteryRes, classLogRes] = await Promise.all([
+    const [attemptsRes, masteryRes, classLogRes, dueRevRes] = await Promise.all([
       admin.from('question_attempts')
         .select('question_id, is_correct, attempted_at')
         .eq('user_id', userId)
@@ -99,15 +99,26 @@ serve(async (req) => {
         .gte('logged_date', daysAgo(3))
         .order('logged_date', { ascending: false })
         .limit(10),
+      admin.from('revision_schedule')
+        .select('subject, chapter_id, topic_id, next_due_at, interval_days, last_accuracy, correct_streak')
+        .eq('user_id', userId)
+        .lte('next_due_at', new Date().toISOString())
+        .order('next_due_at', { ascending: true })
+        .limit(20),
     ]);
 
     const attempts = attemptsRes.data ?? [];
     const mastery = masteryRes.data ?? [];
     const classLogs = classLogRes.data ?? [];
+    const dueRevisions = dueRevRes.data ?? [];
 
     const totalQs = attempts.length;
     const correctQs = attempts.filter(a => a.is_correct).length;
     const accuracy = totalQs > 0 ? Math.round((correctQs / totalQs) * 100) : 0;
+
+    // Adaptive difficulty from rolling accuracy
+    const adaptiveDifficulty: 'easy' | 'medium' | 'hard' =
+      accuracy >= 75 ? 'hard' : accuracy >= 50 ? 'medium' : 'easy';
 
     // Compose blocks based on mode
     const blocks: MissionBlock[] = [];
@@ -144,33 +155,53 @@ serve(async (req) => {
       .sort((a, b) => (a.mastery_level ?? 0) - (b.mastery_level ?? 0))[0];
     if (weak && remaining >= 25) {
       const mins = takeMinutes(Math.min(60, Math.round(dailyMinutes * 0.35)));
+      const wAcc = Math.round(((weak.questions_correct ?? 0) / Math.max(1, weak.questions_attempted ?? 1)) * 100);
+      const targetedDiff = wAcc >= 60 ? 'medium' : 'easy';
       blocks.push({
         id: crypto.randomUUID(),
         type: 'weak_fix',
         title: `Weak-spot fix`,
-        subtitle: `${Math.floor(mins / 3)} targeted questions`,
+        subtitle: `${Math.floor(mins / 3)} targeted questions (${targetedDiff})`,
         topic_id: weak.topic_id,
         minutes: mins,
         question_count: Math.floor(mins / 3),
-        why: `Accuracy ${Math.round(((weak.questions_correct ?? 0) / Math.max(1, weak.questions_attempted ?? 1)) * 100)}% — fix ho gaya to overall percentile 2 point improve hoga.`,
-        action_href: `/practice?mode=weak&topic=${weak.topic_id}`,
+        why: `Accuracy ${wAcc}% — fix ho gaya to overall percentile 2 point improve hoga.`,
+        action_href: `/practice?mode=weak&topic=${weak.topic_id}&difficulty=${targetedDiff}`,
       });
     }
 
-    // Revision block (rotate subject)
-    if (remaining >= 20 && subjects.length > 0) {
+    // Revision block — Ebbinghaus spaced repetition (real due items)
+    if (remaining >= 20 && dueRevisions.length > 0) {
+      const rev = dueRevisions[0];
+      const mins = takeMinutes(Math.min(45, remaining));
+      const revLabel = rev.subject ?? subjects[0] ?? 'Revision';
+      const daysSince = rev.interval_days ? Math.round(Number(rev.interval_days)) : 0;
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'revision',
+        title: `Revise ${revLabel}`,
+        subtitle: `${Math.floor(mins / 3)} spaced-repetition Qs`,
+        subject: revLabel,
+        chapter_id: rev.chapter_id ?? undefined,
+        topic_id: rev.topic_id ?? undefined,
+        minutes: mins,
+        question_count: Math.floor(mins / 3),
+        why: `${daysSince} din pehle padha — Ebbinghaus curve ke hisaab se aaj revise nahi kiya to 40% bhool jaoge.`,
+        action_href: `/practice?mode=revision${rev.chapter_id ? `&chapter=${rev.chapter_id}` : ''}${rev.topic_id ? `&topic=${rev.topic_id}` : ''}&difficulty=${adaptiveDifficulty}`,
+      });
+    } else if (remaining >= 20 && subjects.length > 0) {
       const revSubject = subjects[new Date().getDate() % subjects.length];
       const mins = takeMinutes(Math.min(45, remaining));
       blocks.push({
         id: crypto.randomUUID(),
         type: 'revision',
         title: `Revise ${revSubject}`,
-        subtitle: `${Math.floor(mins / 3)} spaced-repetition questions`,
+        subtitle: `${Math.floor(mins / 3)} baseline questions`,
         subject: revSubject,
         minutes: mins,
         question_count: Math.floor(mins / 3),
-        why: `${revSubject} pichhle 3 din se touch nahi kiya — bhoolne se pehle revise.`,
-        action_href: `/practice?mode=revision&subject=${encodeURIComponent(revSubject)}`,
+        why: `Abhi tak ${revSubject} ka revision schedule nahi bana — baseline set karte hain.`,
+        action_href: `/practice?mode=revision&subject=${encodeURIComponent(revSubject)}&difficulty=${adaptiveDifficulty}`,
       });
     }
 
@@ -182,12 +213,12 @@ serve(async (req) => {
         id: crypto.randomUUID(),
         type: 'pyq',
         title: `PYQs — ${pyqSubject}`,
-        subtitle: `${Math.floor(mins / 4)} previous-year questions`,
+        subtitle: `${Math.floor(mins / 4)} previous-year (${adaptiveDifficulty})`,
         subject: pyqSubject,
         minutes: mins,
         question_count: Math.floor(mins / 4),
         why: `Exam-level questions — real difficulty ka feel aayega.`,
-        action_href: `/practice?mode=pyq&subject=${encodeURIComponent(pyqSubject)}`,
+        action_href: `/practice?mode=pyq&subject=${encodeURIComponent(pyqSubject)}&difficulty=${adaptiveDifficulty}`,
       });
     }
 
@@ -208,7 +239,7 @@ serve(async (req) => {
     }
 
     const totalMinutes = blocks.reduce((s, b) => s + b.minutes, 0);
-    const reasoning = buildReasoning({ prepMode, dailyMinutes, accuracy, totalQs, hasClass: !!freshClass });
+    const reasoning = buildReasoning({ prepMode, dailyMinutes, accuracy, totalQs, hasClass: !!freshClass, dueCount: dueRevisions.length, adaptiveDifficulty });
 
     // Upsert
     const { data: mission, error: upsertErr } = await admin
@@ -264,12 +295,13 @@ function deriveSubjects(exam: string, provided: unknown): string[] {
   return ['Physics', 'Chemistry', 'Mathematics'];
 }
 
-function buildReasoning({ prepMode, dailyMinutes, accuracy, totalQs, hasClass }: {
-  prepMode: string; dailyMinutes: number; accuracy: number; totalQs: number; hasClass: boolean;
+function buildReasoning({ prepMode, dailyMinutes, accuracy, totalQs, hasClass, dueCount, adaptiveDifficulty }: {
+  prepMode: string; dailyMinutes: number; accuracy: number; totalQs: number; hasClass: boolean; dueCount: number; adaptiveDifficulty: string;
 }) {
   const bits: string[] = [];
   bits.push(`Mode: ${prepMode}. Aaj ke ${dailyMinutes} min plan kiye.`);
-  if (totalQs > 0) bits.push(`Pichhle 14 din mein ${totalQs} Q — accuracy ${accuracy}%.`);
-  if (hasClass && (prepMode === 'companion' || prepMode === 'hybrid')) bits.push('Class log dekh ke practice priorities set kiye.');
+  if (totalQs > 0) bits.push(`Pichhle 14 din: ${totalQs} Q · ${accuracy}% accuracy → difficulty ${adaptiveDifficulty}.`);
+  if (dueCount > 0) bits.push(`${dueCount} topic revision ke liye due hain.`);
+  if (hasClass && (prepMode === 'companion' || prepMode === 'hybrid')) bits.push('Class log ke basis par priorities set kiye.');
   return bits.join(' ');
 }

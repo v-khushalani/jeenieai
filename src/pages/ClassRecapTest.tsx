@@ -95,7 +95,7 @@ export default function ClassRecapTest() {
     if (user?.id) {
       void supabase.from('question_attempts').insert({
         user_id: user.id, question_id: current.id, is_correct: correct,
-        selected_option: picked, time_taken_seconds: 0,
+        selected_option: picked, time_spent: 0, mode: 'class_recap',
       } as any);
     }
   };
