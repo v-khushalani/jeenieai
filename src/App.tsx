@@ -41,6 +41,7 @@ const GoalSelectionPage = lazyWithRetry(() => import('@/pages/GoalSelectionPage'
 
 const AIStudyPlannerPage = lazyWithRetry(() => import('./pages/AIStudyPlannerPage'), "AIStudyPlannerPage");
 const EnhancedDashboard = lazyWithRetry(() => import("./pages/EnhancedDashboard"), "EnhancedDashboard");
+const MissionHome = lazyWithRetry(() => import("./pages/MissionHome"), "MissionHome");
 const AnalyticsPage = lazyWithRetry(() => import("@/pages/AnalyticsPage"), "AnalyticsPage");
 const AdminDashboard = lazyWithRetry(() => import("@/pages/AdminDashboard"), "AdminDashboard");
 const EducatorDashboard = lazyWithRetry(() => import("@/pages/EducatorDashboard"), "EducatorDashboard");
@@ -99,7 +100,7 @@ const RouteAwareLoadingScreen = () => {
   return <LoadingScreen pageName={pageName} />;
 };
 
-// Dashboard Router Component
+// Dashboard Router Component — students land on MissionHome; admin/educator redirect
 const DashboardRouter = () => {
   const { userRole, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -118,8 +119,11 @@ const DashboardRouter = () => {
     return <LoadingScreen pageName="Dashboard" />;
   }
 
-  return <EnhancedDashboard />;
+  return <MissionHome />;
 };
+
+// Legacy dashboard preserved under /explore
+const ExploreRouter = () => <EnhancedDashboard />;
 
 // Auto push subscription component
 const AutoPushSubscriber = () => {
@@ -226,12 +230,20 @@ function App() {
                   
                   
                 
-                {/* Dashboard */}
+                {/* Dashboard = Mission Home (new). /explore = legacy dashboard */}
                 <Route
                   path="/dashboard"
                   element={
                     <ProtectedRoute>
                       <DashboardRouter />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/explore"
+                  element={
+                    <ProtectedRoute>
+                      <ExploreRouter />
                     </ProtectedRoute>
                   }
                 />
