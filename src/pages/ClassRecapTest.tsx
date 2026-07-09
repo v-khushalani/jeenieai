@@ -93,10 +93,10 @@ export default function ClassRecapTest() {
     setRevealed(true);
     setAnswers((prev) => [...prev, { q: current, picked, correct }]);
     if (user?.id) {
-      supabase.from('question_attempts').insert({
+      void supabase.from('question_attempts').insert({
         user_id: user.id, question_id: current.id, is_correct: correct,
         selected_option: picked, time_taken_seconds: 0,
-      }).then(() => {});
+      } as any);
     }
   };
 
