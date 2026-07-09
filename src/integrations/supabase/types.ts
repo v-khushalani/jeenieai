@@ -148,6 +148,10 @@ export type Database = {
           name: string
           points_required: number | null
           points_reward: number | null
+          rarity: string
+          requirement_type: string
+          requirement_value: number
+          sort_order: number
           tier: string | null
         }
         Insert: {
@@ -163,6 +167,10 @@ export type Database = {
           name: string
           points_required?: number | null
           points_reward?: number | null
+          rarity?: string
+          requirement_type?: string
+          requirement_value?: number
+          sort_order?: number
           tier?: string | null
         }
         Update: {
@@ -178,6 +186,10 @@ export type Database = {
           name?: string
           points_required?: number | null
           points_reward?: number | null
+          rarity?: string
+          requirement_type?: string
+          requirement_value?: number
+          sort_order?: number
           tier?: string | null
         }
         Relationships: []
@@ -2951,6 +2963,14 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
+      }
+      check_and_award_badges: {
+        Args: { _user_id: string }
+        Returns: {
+          badge_id: string
+          code: string
+          name: string
+        }[]
       }
       check_and_reset_streak: { Args: { p_user_id: string }; Returns: Json }
       classify_questions_batch: {
