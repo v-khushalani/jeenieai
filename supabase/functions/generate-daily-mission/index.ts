@@ -151,7 +151,7 @@ serve(async (req) => {
     }
 
     // Weak-topic fix (lowest mastery)
-    const weak = [...mastery].filter(m => (m.questions_attempted ?? 0) >= 5)
+    const weak = [...mastery].filter(m => (m.questions_attempted ?? 0) >= 2)
       .sort((a, b) => (a.mastery_level ?? 0) - (b.mastery_level ?? 0))[0];
     if (weak && remaining >= 25) {
       const mins = takeMinutes(Math.min(60, Math.round(dailyMinutes * 0.35)));
