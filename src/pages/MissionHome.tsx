@@ -107,9 +107,11 @@ export default function MissionHome() {
         .maybeSingle();
 
       setGreetingName(profile?.full_name?.split(' ')[0] ?? '');
+      const mode = (profile?.prep_mode as DailyMission['prep_mode']) ?? 'guided';
+      setPrepMode(mode);
 
       if (!profile?.prep_mode_set_at) {
-        setSetupMode((profile?.prep_mode as DailyMission['prep_mode']) ?? 'guided');
+        setSetupMode(mode);
         setSetupMinutes(profile?.daily_study_minutes ?? 120);
         setNeedsSetup(true);
         setLoading(false);
@@ -117,6 +119,18 @@ export default function MissionHome() {
       }
 
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
+      // Check if a class is already logged today
+      const { data: todayLog } = await supabase
+        .from('class_logs')
+        .select('id, chapter_name, subject')
+        .eq('user_id', user.id)
+        .eq('logged_date', today)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setLoggedToday(todayLog ?? null);
+
       const { data: existing } = await supabase
         .from('daily_missions')
         .select('*')
