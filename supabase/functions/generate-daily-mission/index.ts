@@ -81,7 +81,7 @@ serve(async (req) => {
     const subjects = deriveSubjects(exam, profile?.subjects);
 
     // Load signals
-    const [attemptsRes, masteryRes, classLogRes] = await Promise.all([
+    const [attemptsRes, masteryRes, classLogRes, dueRevRes] = await Promise.all([
       admin.from('question_attempts')
         .select('question_id, is_correct, attempted_at')
         .eq('user_id', userId)
@@ -99,15 +99,26 @@ serve(async (req) => {
         .gte('logged_date', daysAgo(3))
         .order('logged_date', { ascending: false })
         .limit(10),
+      admin.from('revision_schedule')
+        .select('subject, chapter_id, topic_id, next_due_at, interval_days, last_accuracy, correct_streak')
+        .eq('user_id', userId)
+        .lte('next_due_at', new Date().toISOString())
+        .order('next_due_at', { ascending: true })
+        .limit(20),
     ]);
 
     const attempts = attemptsRes.data ?? [];
     const mastery = masteryRes.data ?? [];
     const classLogs = classLogRes.data ?? [];
+    const dueRevisions = dueRevRes.data ?? [];
 
     const totalQs = attempts.length;
     const correctQs = attempts.filter(a => a.is_correct).length;
     const accuracy = totalQs > 0 ? Math.round((correctQs / totalQs) * 100) : 0;
+
+    // Adaptive difficulty from rolling accuracy
+    const adaptiveDifficulty: 'easy' | 'medium' | 'hard' =
+      accuracy >= 75 ? 'hard' : accuracy >= 50 ? 'medium' : 'easy';
 
     // Compose blocks based on mode
     const blocks: MissionBlock[] = [];
