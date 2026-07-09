@@ -156,6 +156,11 @@ export default function MissionHome() {
       } else {
         await generate(false);
       }
+
+      // fire coach signal (non-blocking)
+      supabase.functions.invoke('compute-coach-signal').then(({ data }) => {
+        if (data && (data as CoachSignal).prediction) setSignal(data as CoachSignal);
+      }).catch(() => {});
     } finally {
       setLoading(false);
     }
