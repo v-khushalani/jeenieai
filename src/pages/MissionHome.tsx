@@ -12,8 +12,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Play, CheckCircle2, RefreshCw, Sparkles, ChevronRight, Clock, Loader2, Info, Compass, BookOpen, PlusCircle } from 'lucide-react';
+import { Play, CheckCircle2, RefreshCw, Sparkles, ChevronRight, Clock, Loader2, Info, Compass, BookOpen, PlusCircle, TrendingUp, TrendingDown, Minus, Zap } from 'lucide-react';
 import LogClassSheet from '@/components/LogClassSheet';
+
+interface CoachSignal {
+  prediction: {
+    exam: string;
+    on_track_percentile: number;
+    off_track_percentile: number;
+    delta: number;
+    trend: 'up' | 'flat' | 'down';
+    confidence: 'low' | 'medium' | 'high';
+  };
+  nudge: { emoji: string; message: string; tone: 'push' | 'praise' | 'warn' } | null;
+}
 
 type BlockType = 'learn_practice' | 'revision' | 'weak_fix' | 'class_recap' | 'pyq' | 'mock';
 interface MissionBlock {
@@ -80,6 +92,7 @@ export default function MissionHome() {
   const [prepMode, setPrepMode] = useState<DailyMission['prep_mode'] | null>(null);
   const [loggedToday, setLoggedToday] = useState<{ id: string; chapter_name: string | null; subject: string } | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [signal, setSignal] = useState<CoachSignal | null>(null);
 
   const generate = useCallback(async (force = false) => {
     setGenerating(true);
