@@ -16,12 +16,23 @@ const daysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n
 interface Signal {
   prediction: {
     exam: string;
-    on_track_percentile: number;   // if user keeps momentum
-    off_track_percentile: number;  // if user skips today
-    delta: number;                 // on_track - off_track
+    on_track_percentile: number;
+    off_track_percentile: number;
+    delta: number;
     trend: 'up' | 'flat' | 'down';
     confidence: 'low' | 'medium' | 'high';
   };
+  streak: { current: number; best: number; today_done: boolean };
+  weekly_report: {
+    week_start: string;
+    active_days: number;
+    total_questions: number;
+    accuracy: number;
+    accuracy_change: number; // vs previous week
+    top_subject: string | null;
+    weakest_subject: string | null;
+    focus_next_week: string;
+  } | null;
   nudge: { emoji: string; message: string; tone: 'push' | 'praise' | 'warn' } | null;
   factors: Record<string, unknown>;
 }
