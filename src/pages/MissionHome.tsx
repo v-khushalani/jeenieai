@@ -506,6 +506,15 @@ export default function MissionHome() {
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
+
+          {/* Growth: share JEEnie */}
+          {!loading && !needsSetup && (
+            <ReferralCard
+              onTrackPercentile={signal?.prediction?.on_track_percentile}
+              streakDays={signal?.streak?.current}
+            />
+          )}
+
         </div>
       </main>
 
