@@ -422,6 +422,12 @@ export default function MissionHome() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <LogClassSheet
+        open={logOpen}
+        onOpenChange={setLogOpen}
+        onLogged={async () => { await loadOrSetup(); await generate(true); }}
+      />
     </div>
   );
 }
