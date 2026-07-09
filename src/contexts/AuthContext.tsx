@@ -159,10 +159,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
   
-    // 1️⃣ Fetch initial session FIRST
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    // 1️⃣ Fetch initial session FIRST, then validate the user still exists.
+    // If the account was deleted server-side, the cached JWT is stale — force sign-out.
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
       if (error) logger.error("❌ Initial session error:", error);
       logger.log("🔍 Initial session check:", session?.user?.id || "none");
+      if (session) {
+        const { data: { user: freshUser }, error: userErr } = await supabase.auth.getUser();
+        if (userErr || !freshUser) {
+          logger.warn("Stale session detected (user missing) — signing out", userErr?.message);
+          await supabase.auth.signOut();
+          updateAuthState(null);
+          return;
+        }
+      }
       updateAuthState(session);
     });
   
