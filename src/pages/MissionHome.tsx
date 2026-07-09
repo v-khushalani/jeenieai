@@ -441,10 +441,19 @@ export default function MissionHome() {
                 </div>
 
                 {allDone ? (
-                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-center">
-                    <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Aaj ki mission complete! 🔥</p>
-                    <p className="text-[11px] text-muted-foreground">Kal fresh mission ready milegi.</p>
+                  <div className="relative p-4 rounded-xl bg-gradient-to-br from-emerald-500/15 via-emerald-500/8 to-transparent border border-emerald-500/40 text-center overflow-hidden">
+                    <div className="absolute inset-0 pointer-events-none">
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-24 h-24 bg-emerald-500/20 rounded-full blur-2xl animate-pulse" />
+                    </div>
+                    <div className="relative flex items-center justify-center gap-2 mb-1">
+                      <Trophy className="w-5 h-5 text-emerald-600" />
+                      <p className="text-base font-bold text-emerald-700 dark:text-emerald-400">Mission complete! 🔥</p>
+                    </div>
+                    <p className="relative text-[11px] text-muted-foreground">
+                      {signal?.streak?.today_done ? `${signal.streak.current}-day streak alive · ` : ''}Kal fresh mission ready milegi.
+                    </p>
                   </div>
+
                 ) : (
                   <Button
                     size="lg"
