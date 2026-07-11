@@ -220,7 +220,7 @@ export default function CoachMissionPanel() {
 
       if (existing && !isLegacy) {
         setMission(existing as unknown as DailyMission);
-        const firstPending = (existing.blocks as MissionBlock[]).find(
+        const firstPending = (existing.blocks as unknown as MissionBlock[]).find(
           b => (b.progress?.status ?? 'pending') !== 'done',
         );
         if (firstPending) setExpandedBlock(firstPending.id);
