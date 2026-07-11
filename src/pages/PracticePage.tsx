@@ -758,7 +758,14 @@ const PracticePage: React.FC = () => {
       <div className="mobile-app-shell-bottom-nav bg-background flex items-center justify-center p-4 overflow-hidden">
         <Card className="max-w-md w-full text-center p-8">
           <Trophy className="w-16 h-16 text-primary mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Practice Complete!</h2>
+          <h2 className="text-2xl font-bold mb-2">
+            {isMissionBlock ? 'Mission block complete! 🎯' : 'Practice Complete!'}
+          </h2>
+          {isMissionBlock && (
+            <p className="text-sm text-muted-foreground mb-2">
+              Planner mein auto-update ho gaya — coach ne next block ready kar diya.
+            </p>
+          )}
           <div className="grid grid-cols-3 gap-4 my-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">{stats.correct}</div>
@@ -774,24 +781,45 @@ const PracticePage: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => navigate('/study-now')}>
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back
-            </Button>
-            <Button className="flex-1" onClick={() => {
-              setCurrentIndex(0);
-              setStats({ correct: 0, wrong: 0, total: 0 });
-              setAnsweredQuestions(new Map());
-              setDifficultyScore(15);
-              setConsecutiveCorrect(0);
-              fetchQuestions();
-            }}>
-              <RotateCcw className="w-4 h-4 mr-2" /> Retry
-            </Button>
+            {isMissionBlock ? (
+              <>
+                <Button variant="outline" className="flex-1" onClick={() => {
+                  setCurrentIndex(0);
+                  setStats({ correct: 0, wrong: 0, total: 0 });
+                  setAnsweredQuestions(new Map());
+                  setDifficultyScore(15);
+                  setConsecutiveCorrect(0);
+                  fetchQuestions();
+                }}>
+                  <RotateCcw className="w-4 h-4 mr-2" /> More Q
+                </Button>
+                <Button className="flex-1" onClick={() => navigate('/ai-planner')}>
+                  <Trophy className="w-4 h-4 mr-2" /> Back to Planner
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" className="flex-1" onClick={() => navigate('/study-now')}>
+                  <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                </Button>
+                <Button className="flex-1" onClick={() => {
+                  setCurrentIndex(0);
+                  setStats({ correct: 0, wrong: 0, total: 0 });
+                  setAnsweredQuestions(new Map());
+                  setDifficultyScore(15);
+                  setConsecutiveCorrect(0);
+                  fetchQuestions();
+                }}>
+                  <RotateCcw className="w-4 h-4 mr-2" /> Retry
+                </Button>
+              </>
+            )}
           </div>
         </Card>
       </div>
     );
   }
+
 
   return (
     <div className="mobile-app-shell-bottom-nav bg-background flex flex-col overflow-hidden">
