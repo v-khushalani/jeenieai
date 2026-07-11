@@ -152,6 +152,11 @@ const PracticePage: React.FC = () => {
   const topicFilterName = /^[0-9a-f-]{20,}$/i.test(topicName) ? '' : topicName.trim();
   const mode = (searchParams.get('mode') || '').toLowerCase();
   const isRevisit = mode === 'revision' || mode === 'weak';
+  const missionId = searchParams.get('mission_id') || '';
+  const blockId = searchParams.get('block_id') || '';
+  const targetParam = parseInt(searchParams.get('target') || '', 10);
+  const missionTarget = Number.isFinite(targetParam) && targetParam > 0 ? targetParam : 0;
+  const isMissionBlock = !!(missionId && blockId && missionTarget > 0);
   const studyNotesEnabled = useFeatureFlag('study_notes');
 
 
@@ -408,7 +413,9 @@ const PracticePage: React.FC = () => {
 
       // Adaptive serving order: target difficulty first (from session score),
       // then naturally step into other levels if the bucket runs dry.
-      const ordered = orderPoolByLevel(pool, currentDifficulty).slice(0, QUESTIONS_PER_BATCH);
+      // Mission-block deep-links serve EXACTLY `target` questions (not 50).
+      const takeCount = isMissionBlock ? missionTarget : QUESTIONS_PER_BATCH;
+      const ordered = orderPoolByLevel(pool, currentDifficulty).slice(0, takeCount);
       setQuestions(ordered);
 
     } catch (error) {
