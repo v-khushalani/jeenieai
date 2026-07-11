@@ -593,6 +593,22 @@ const PracticePage: React.FC = () => {
 
         await syncDailyProgress(result.is_correct, pointsDelta);
 
+        // Bump mission block progress (idempotent server-side) — live-updates the planner
+        if (isMissionBlock) {
+          const { data: bumpData, error: bumpErr } = await supabase.rpc('bump_mission_block_progress', {
+            p_mission_id: missionId,
+            p_block_id: blockId,
+            p_is_correct: result.is_correct,
+            p_question_id: currentQuestion.id,
+          } as any);
+          if (bumpErr) {
+            logger.error('mission block bump failed:', bumpErr);
+          } else if ((bumpData as any)?.block_done) {
+            confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+            toast.success('Mission block complete! 🎯 Planner updated.');
+          }
+        }
+
         if (practiceStatsRes.error) {
           const errCode = (practiceStatsRes.error as { code?: string }).code;
           if (errCode === '42703') {
