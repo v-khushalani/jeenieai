@@ -2953,6 +2953,15 @@ export type Database = {
         Args: { _badge_id: string; _user_id: string }
         Returns: string
       }
+      bump_mission_block_progress: {
+        Args: {
+          p_block_id: string
+          p_is_correct: boolean
+          p_mission_id: string
+          p_question_id: string
+        }
+        Returns: Json
+      }
       cancel_subscription: { Args: never; Returns: Json }
       change_user_goal: {
         Args: {

@@ -152,6 +152,11 @@ const PracticePage: React.FC = () => {
   const topicFilterName = /^[0-9a-f-]{20,}$/i.test(topicName) ? '' : topicName.trim();
   const mode = (searchParams.get('mode') || '').toLowerCase();
   const isRevisit = mode === 'revision' || mode === 'weak';
+  const missionId = searchParams.get('mission_id') || '';
+  const blockId = searchParams.get('block_id') || '';
+  const targetParam = parseInt(searchParams.get('target') || '', 10);
+  const missionTarget = Number.isFinite(targetParam) && targetParam > 0 ? targetParam : 0;
+  const isMissionBlock = !!(missionId && blockId && missionTarget > 0);
   const studyNotesEnabled = useFeatureFlag('study_notes');
 
 
@@ -408,7 +413,9 @@ const PracticePage: React.FC = () => {
 
       // Adaptive serving order: target difficulty first (from session score),
       // then naturally step into other levels if the bucket runs dry.
-      const ordered = orderPoolByLevel(pool, currentDifficulty).slice(0, QUESTIONS_PER_BATCH);
+      // Mission-block deep-links serve EXACTLY `target` questions (not 50).
+      const takeCount = isMissionBlock ? missionTarget : QUESTIONS_PER_BATCH;
+      const ordered = orderPoolByLevel(pool, currentDifficulty).slice(0, takeCount);
       setQuestions(ordered);
 
     } catch (error) {
@@ -417,11 +424,12 @@ const PracticePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [subject, chapterId, topicId, user, chapter, topicFilterName, isRevisit]);
-  // NOTE: currentDifficulty intentionally NOT in deps — changing difficulty
-  // tier mid-session would refetch the pool and corrupt index-keyed
-  // `answeredQuestions`. Order is recomputed in-place via orderPoolByLevel
-  // when a new batch is loaded.
+  }, [subject, chapterId, topicId, user, chapter, topicFilterName, isRevisit, isMissionBlock, missionTarget]);
+  // NOTE: currentDifficulty intentionally NOT in deps — order is recomputed in
+  // orderPoolByLevel on next fetch instead of refetching mid-session, which would
+  // corrupt index-keyed `answeredQuestions`.
+
+
 
   useEffect(() => { fetchQuestions(); }, [fetchQuestions]);
 
@@ -585,6 +593,22 @@ const PracticePage: React.FC = () => {
 
         await syncDailyProgress(result.is_correct, pointsDelta);
 
+        // Bump mission block progress (idempotent server-side) — live-updates the planner
+        if (isMissionBlock) {
+          const { data: bumpData, error: bumpErr } = await supabase.rpc('bump_mission_block_progress', {
+            p_mission_id: missionId,
+            p_block_id: blockId,
+            p_is_correct: result.is_correct,
+            p_question_id: currentQuestion.id,
+          } as any);
+          if (bumpErr) {
+            logger.error('mission block bump failed:', bumpErr);
+          } else if ((bumpData as any)?.block_done) {
+            confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+            toast.success('Mission block complete! 🎯 Planner updated.');
+          }
+        }
+
         if (practiceStatsRes.error) {
           const errCode = (practiceStatsRes.error as { code?: string }).code;
           if (errCode === '42703') {
@@ -734,7 +758,14 @@ const PracticePage: React.FC = () => {
       <div className="mobile-app-shell-bottom-nav bg-background flex items-center justify-center p-4 overflow-hidden">
         <Card className="max-w-md w-full text-center p-8">
           <Trophy className="w-16 h-16 text-primary mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Practice Complete!</h2>
+          <h2 className="text-2xl font-bold mb-2">
+            {isMissionBlock ? 'Mission block complete! 🎯' : 'Practice Complete!'}
+          </h2>
+          {isMissionBlock && (
+            <p className="text-sm text-muted-foreground mb-2">
+              Planner mein auto-update ho gaya — coach ne next block ready kar diya.
+            </p>
+          )}
           <div className="grid grid-cols-3 gap-4 my-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">{stats.correct}</div>
@@ -750,24 +781,45 @@ const PracticePage: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => navigate('/study-now')}>
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back
-            </Button>
-            <Button className="flex-1" onClick={() => {
-              setCurrentIndex(0);
-              setStats({ correct: 0, wrong: 0, total: 0 });
-              setAnsweredQuestions(new Map());
-              setDifficultyScore(15);
-              setConsecutiveCorrect(0);
-              fetchQuestions();
-            }}>
-              <RotateCcw className="w-4 h-4 mr-2" /> Retry
-            </Button>
+            {isMissionBlock ? (
+              <>
+                <Button variant="outline" className="flex-1" onClick={() => {
+                  setCurrentIndex(0);
+                  setStats({ correct: 0, wrong: 0, total: 0 });
+                  setAnsweredQuestions(new Map());
+                  setDifficultyScore(15);
+                  setConsecutiveCorrect(0);
+                  fetchQuestions();
+                }}>
+                  <RotateCcw className="w-4 h-4 mr-2" /> More Q
+                </Button>
+                <Button className="flex-1" onClick={() => navigate('/ai-planner')}>
+                  <Trophy className="w-4 h-4 mr-2" /> Back to Planner
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" className="flex-1" onClick={() => navigate('/study-now')}>
+                  <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                </Button>
+                <Button className="flex-1" onClick={() => {
+                  setCurrentIndex(0);
+                  setStats({ correct: 0, wrong: 0, total: 0 });
+                  setAnsweredQuestions(new Map());
+                  setDifficultyScore(15);
+                  setConsecutiveCorrect(0);
+                  fetchQuestions();
+                }}>
+                  <RotateCcw className="w-4 h-4 mr-2" /> Retry
+                </Button>
+              </>
+            )}
           </div>
         </Card>
       </div>
     );
   }
+
 
   return (
     <div className="mobile-app-shell-bottom-nav bg-background flex flex-col overflow-hidden">

@@ -1,20 +1,22 @@
 /**
  * CoachMissionPanel — Coach-first hero for AI Planner.
- * Migrated from MissionHome. Renders today's mission, percentile prediction,
- * nudge, streak, optional weekly report, and first-time setup dialog.
+ * v2: block cards show why/what/goal + live progress; subscribes to daily_missions
+ * realtime so progress updates the moment a question is solved anywhere.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import {
   Play, CheckCircle2, RefreshCw, Sparkles, ChevronRight, Clock, Loader2, Info,
-  BookOpen, PlusCircle, TrendingUp, TrendingDown, Minus, Flame, Trophy,
+  BookOpen, PlusCircle, TrendingUp, TrendingDown, Minus, Flame, Trophy, Target,
+  MessageCircle, Users,
 } from 'lucide-react';
 import LogClassSheet from '@/components/LogClassSheet';
 
@@ -39,20 +41,33 @@ interface CoachSignal {
     focus_next_week: string;
   } | null;
   nudge: { emoji: string; message: string; tone: 'push' | 'praise' | 'warn' } | null;
+  factors?: Record<string, unknown>;
 }
 
 type BlockType = 'learn_practice' | 'revision' | 'weak_fix' | 'class_recap' | 'pyq' | 'mock';
+interface BlockProgress {
+  attempted: number;
+  correct: number;
+  status: 'pending' | 'in_progress' | 'done';
+  seen_ids?: string[];
+}
 interface MissionBlock {
   id: string;
   type: BlockType;
   title: string;
   subtitle: string;
   subject?: string;
+  chapter_id?: string;
   chapter_name?: string;
+  topic_id?: string;
   minutes: number;
   question_count: number;
+  passing_goal?: number;
   why: string;
+  what?: string;
+  goal?: string;
   action_href: string;
+  progress?: BlockProgress;
 }
 interface DailyMission {
   id: string;
@@ -66,10 +81,10 @@ interface DailyMission {
 }
 
 const PREP_MODES: Array<{ value: DailyMission['prep_mode']; label: string; desc: string }> = [
-  { value: 'guided',    label: 'Full guidance', desc: 'I want JEEnie to decide everything for me' },
-  { value: 'companion', label: 'Companion',     desc: 'I attend coaching / school — help me practice + revise' },
-  { value: 'hybrid',    label: 'Hybrid',        desc: 'Self-study + some classes' },
-  { value: 'dropper',   label: 'Dropper',       desc: 'Full-time preparation, 8+ hours/day' },
+  { value: 'guided',    label: 'Full guidance', desc: 'JEEnie decide karegi sab' },
+  { value: 'companion', label: 'Companion',     desc: 'Coaching / school + practice help' },
+  { value: 'hybrid',    label: 'Hybrid',        desc: 'Self-study + kuch classes' },
+  { value: 'dropper',   label: 'Dropper',       desc: 'Full-time prep, 8+ hrs/day' },
 ];
 
 const MINUTE_CHOICES = [60, 90, 120, 150, 180, 240];
@@ -92,11 +107,33 @@ const typeLabel: Record<BlockType, string> = {
   mock: 'Mock',
 };
 
+const typeEmoji: Record<BlockType, string> = {
+  learn_practice: '🔵',
+  revision: '🟡',
+  weak_fix: '🔴',
+  class_recap: '🟢',
+  pyq: '🟣',
+  mock: '🟠',
+};
+
 function formatTime(mins: number) {
   if (mins < 60) return `${mins} min`;
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return m === 0 ? `${h} hr` : `${h} hr ${m} min`;
+}
+
+function buildCoachGreeting(signal: CoachSignal | null, mission: DailyMission | null, name?: string): string {
+  if (!mission || !signal) return '';
+  const firstBlock = mission.blocks.find(b => (b.progress?.status ?? 'pending') !== 'done');
+  const p = signal.prediction;
+  const nm = name?.split(' ')[0] || 'champ';
+  if (!firstBlock) {
+    return `Shabaash ${nm}! Aaj ka mission 100% done — percentile ${p.on_track_percentile} pe lock.`;
+  }
+  const target = firstBlock.what || `${firstBlock.question_count} Q`;
+  const gain = Math.max(0.3, p.delta).toFixed(1);
+  return `${nm}, ${firstBlock.minutes} min ka ek block — ${target}. Complete kar liya toh percentile ${p.on_track_percentile} pe hold, warna ${gain} girega.`;
 }
 
 export default function CoachMissionPanel() {
@@ -113,6 +150,8 @@ export default function CoachMissionPanel() {
   const [loggedToday, setLoggedToday] = useState<{ id: string; chapter_name: string | null; subject: string } | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const [signal, setSignal] = useState<CoachSignal | null>(null);
+  const [userName, setUserName] = useState<string | undefined>(undefined);
+  const [minutesTodayFromMe, setMinutesTodayFromMe] = useState<number>(0);
 
   const generate = useCallback(async (force = false) => {
     setGenerating(true);
@@ -120,7 +159,12 @@ export default function CoachMissionPanel() {
       const { data, error } = await supabase.functions.invoke('generate-daily-mission', { body: { force } });
       if (error) throw error;
       const m = (data as { mission?: DailyMission } | null)?.mission;
-      if (m) setMission(m);
+      if (m) {
+        setMission(m);
+        // auto-expand first pending block so the student sees why/what/goal
+        const firstPending = m.blocks.find(b => (b.progress?.status ?? 'pending') !== 'done');
+        if (firstPending) setExpandedBlock(firstPending.id);
+      }
     } catch (e) {
       console.error(e);
       toast.error('Mission generate nahi ho payi — thodi der mein retry karo');
@@ -141,6 +185,7 @@ export default function CoachMissionPanel() {
 
       const mode = ((profile as any)?.prep_mode as DailyMission['prep_mode']) ?? 'guided';
       setPrepMode(mode);
+      setUserName((profile as any)?.full_name);
 
       if (!(profile as any)?.prep_mode_set_at) {
         setSetupMode(mode);
@@ -169,22 +214,16 @@ export default function CoachMissionPanel() {
         .eq('mission_date', today)
         .maybeSingle();
 
-      // If user solved questions after mission was generated, auto-refresh so
-      // the plan reflects new data instead of a stale snapshot.
-      let staleMission = false;
-      if (existing?.generated_at) {
-        const { data: newerAttempt } = await supabase
-          .from('question_attempts')
-          .select('id')
-          .eq('user_id', user.id)
-          .gt('attempted_at', existing.generated_at)
-          .limit(1)
-          .maybeSingle();
-        staleMission = !!newerAttempt;
-      }
+      // If missing OR still on the legacy shape (no progress key on blocks) → regenerate
+      const isLegacy = existing?.blocks && Array.isArray(existing.blocks) &&
+        existing.blocks.length > 0 && !(existing.blocks as any[])[0]?.progress;
 
-      if (existing && !staleMission) {
+      if (existing && !isLegacy) {
         setMission(existing as unknown as DailyMission);
+        const firstPending = (existing.blocks as unknown as MissionBlock[]).find(
+          b => (b.progress?.status ?? 'pending') !== 'done',
+        );
+        if (firstPending) setExpandedBlock(firstPending.id);
       } else {
         await generate(true);
       }
@@ -198,6 +237,23 @@ export default function CoachMissionPanel() {
   }, [user?.id, generate]);
 
   useEffect(() => { void loadOrSetup(); }, [loadOrSetup]);
+
+  // Realtime — reflect mission progress instantly as the student solves questions
+  useEffect(() => {
+    if (!user?.id || !mission?.id) return;
+    const channel = supabase
+      .channel(`mission-${mission.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'daily_missions', filter: `id=eq.${mission.id}` },
+        (payload) => {
+          const next = payload.new as DailyMission;
+          setMission(next);
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id, mission?.id]);
 
   const saveSetup = async () => {
     if (!user?.id) return;
@@ -227,9 +283,16 @@ export default function CoachMissionPanel() {
   };
 
   const totalMinutes = mission?.total_minutes ?? 0;
-  const doneCount = mission?.completed_blocks ?? 0;
+  const doneCount = useMemo(() => {
+    if (!mission) return 0;
+    return mission.blocks.filter(b => (b.progress?.status ?? 'pending') === 'done').length;
+  }, [mission]);
   const totalCount = mission?.blocks?.length ?? 0;
   const allDone = totalCount > 0 && doneCount >= totalCount;
+  const overallPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+
+  const coachGreeting = buildCoachGreeting(signal, mission, userName);
+  const nextBlock = mission?.blocks.find(b => (b.progress?.status ?? 'pending') !== 'done');
 
   return (
     <div className="space-y-3">
@@ -265,7 +328,20 @@ export default function CoachMissionPanel() {
         </div>
       )}
 
-      {/* Live prediction */}
+      {/* Coach greeting (JEEnie voice) */}
+      {!loading && !needsSetup && coachGreeting && (
+        <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/8 to-primary/3 p-3 flex items-start gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+            <MessageCircle className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-primary/80">JEEnie says</p>
+            <p className="text-xs leading-snug mt-0.5">{coachGreeting}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Prediction + streak strip */}
       {!loading && !needsSetup && signal?.prediction && (
         <div className="rounded-xl border border-border/60 bg-card p-3.5 space-y-2.5">
           <div className="flex items-start justify-between gap-3">
@@ -279,7 +355,7 @@ export default function CoachMissionPanel() {
                 {signal.prediction.trend === 'down' && <TrendingDown className="w-4 h-4 text-rose-600" />}
                 {signal.prediction.trend === 'flat' && <Minus className="w-4 h-4 text-muted-foreground" />}
                 <span className="text-[11px] text-muted-foreground">
-                  {signal.prediction.confidence === 'low' ? 'low conf.' : `confidence ${signal.prediction.confidence}`}
+                  {signal.prediction.confidence === 'low' ? 'low conf.' : `${signal.prediction.confidence} conf.`}
                 </span>
                 {signal.streak && signal.streak.current > 0 && (
                   <span className={`ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold
@@ -291,7 +367,7 @@ export default function CoachMissionPanel() {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Miss today</p>
+              <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Skip today</p>
               <p className="text-sm font-bold tabular-nums text-rose-600">
                 {signal.prediction.off_track_percentile}
                 <span className="text-[10px] text-muted-foreground font-medium ml-1">(-{signal.prediction.delta})</span>
@@ -310,7 +386,7 @@ export default function CoachMissionPanel() {
         </div>
       )}
 
-      {/* Log today's class (Companion / Hybrid) */}
+      {/* Log today's class */}
       {!loading && !needsSetup && (prepMode === 'companion' || prepMode === 'hybrid') && (
         loggedToday ? (
           <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5">
@@ -337,7 +413,7 @@ export default function CoachMissionPanel() {
               <BookOpen className="w-4 h-4 text-primary" />
               <div className="text-left">
                 <p className="text-sm font-semibold leading-tight">Aaj coaching mein kya padha?</p>
-                <p className="text-[11px] text-muted-foreground">Log karo — JEEnie 10-Q recap test bana degi</p>
+                <p className="text-[11px] text-muted-foreground">Log karo — JEEnie recap block bana degi</p>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-primary" />
@@ -358,12 +434,13 @@ export default function CoachMissionPanel() {
         <Card className="border-primary/30 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent overflow-hidden">
           <CardContent className="p-5 space-y-4">
             <div className="flex items-start justify-between gap-3">
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-[11px] uppercase tracking-widest font-bold text-primary/80">Today's Mission</p>
                 <div className="flex items-baseline gap-2 mt-0.5">
                   <span className="text-3xl font-bold tabular-nums">{formatTime(totalMinutes)}</span>
-                  <span className="text-xs text-muted-foreground">· {totalCount} blocks</span>
+                  <span className="text-xs text-muted-foreground">· {doneCount}/{totalCount} blocks</span>
                 </div>
+                <Progress value={overallPct} className="h-1.5 mt-2" />
               </div>
               <Button size="icon" variant="ghost" onClick={() => generate(true)} disabled={generating} title="Regenerate">
                 <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
@@ -379,12 +456,21 @@ export default function CoachMissionPanel() {
 
             <div className="space-y-2">
               {mission.blocks.map((b, idx) => {
-                const isDone = idx < doneCount;
+                const prog = b.progress ?? { attempted: 0, correct: 0, status: 'pending' as const };
+                const isDone = prog.status === 'done';
+                const isInProgress = prog.status === 'in_progress';
                 const isExpanded = expandedBlock === b.id;
+                const target = b.question_count || 10;
+                const attemptPct = Math.min(100, Math.round((prog.attempted / Math.max(1, target)) * 100));
+                const passingGoal = b.passing_goal ?? Math.max(1, Math.ceil(target * 0.6));
                 return (
                   <div
                     key={b.id}
-                    className={`rounded-xl border ${isDone ? 'opacity-60 border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-background/80'} transition-all`}
+                    className={`rounded-xl border transition-all ${
+                      isDone ? 'border-emerald-500/40 bg-emerald-500/5' :
+                      isInProgress ? 'border-primary/40 bg-primary/5' :
+                      'border-border bg-background/80'
+                    }`}
                   >
                     <button
                       type="button"
@@ -393,9 +479,11 @@ export default function CoachMissionPanel() {
                     >
                       <div className="shrink-0">
                         {isDone ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          <CheckCircle2 className="w-6 h-6 text-emerald-600" />
                         ) : (
-                          <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[11px] font-bold text-muted-foreground">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                            isInProgress ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+                          }`}>
                             {idx + 1}
                           </div>
                         )}
@@ -403,28 +491,56 @@ export default function CoachMissionPanel() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant="outline" className={`h-4 text-[9px] px-1.5 ${typeAccent[b.type]}`}>
+                            <span className="mr-0.5">{typeEmoji[b.type]}</span>
                             {typeLabel[b.type]}
                           </Badge>
                           <span className="text-[11px] text-muted-foreground flex items-center gap-1">
                             <Clock className="w-3 h-3" /> {b.minutes} min
                           </span>
                         </div>
-                        <p className="text-sm font-semibold leading-tight mt-1 truncate">{b.title}</p>
-                        <p className="text-[11px] text-muted-foreground truncate">{b.subtitle}</p>
+                        <p className={`text-sm font-semibold leading-tight mt-1 truncate ${isDone ? 'line-through text-muted-foreground' : ''}`}>
+                          {b.title}
+                        </p>
+                        {(prog.attempted > 0 || isDone) ? (
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <Progress value={attemptPct} className="h-1 flex-1" />
+                            <span className="text-[10px] font-semibold tabular-nums text-muted-foreground shrink-0">
+                              {prog.attempted}/{target} · {prog.correct} ✓
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground truncate">{b.subtitle}</p>
+                        )}
                       </div>
                       <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
                     </button>
                     {isExpanded && (
-                      <div className="px-3 pb-3 pt-0 space-y-2.5 border-t border-border/50">
-                        <p className="text-[11px] text-muted-foreground leading-snug flex items-start gap-1.5 pt-2.5">
-                          <Info className="w-3 h-3 mt-0.5 shrink-0 text-primary/70" />
-                          <span><span className="font-semibold text-foreground">Why this? </span>{b.why}</span>
-                        </p>
+                      <div className="px-3 pb-3 pt-0 space-y-2 border-t border-border/50">
+                        <div className="pt-2.5 space-y-1.5 text-[11px] leading-snug">
+                          <p className="flex items-start gap-1.5">
+                            <Info className="w-3 h-3 mt-0.5 shrink-0 text-primary/70" />
+                            <span><span className="font-bold text-foreground">Kyun: </span><span className="text-muted-foreground">{b.why}</span></span>
+                          </p>
+                          <p className="flex items-start gap-1.5">
+                            <Play className="w-3 h-3 mt-0.5 shrink-0 text-primary/70" />
+                            <span><span className="font-bold text-foreground">Kya: </span><span className="text-muted-foreground">{b.what || `${target} Q solve karo`}</span></span>
+                          </p>
+                          <p className="flex items-start gap-1.5">
+                            <Target className="w-3 h-3 mt-0.5 shrink-0 text-primary/70" />
+                            <span><span className="font-bold text-foreground">Goal: </span><span className="text-muted-foreground">{b.goal || `${passingGoal}/${target} sahi = ✅ done`}</span></span>
+                          </p>
+                        </div>
                         {!isDone && (
                           <Button size="sm" className="w-full" onClick={() => startBlock(b)}>
                             <Play className="w-3.5 h-3.5 mr-1.5" />
-                            Start this block
+                            {isInProgress ? `Continue (${prog.attempted}/${target})` : 'Start this block'}
                           </Button>
+                        )}
+                        {isDone && (
+                          <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Done · {prog.correct}/{prog.attempted} correct
+                          </div>
                         )}
                       </div>
                     )}
@@ -446,18 +562,48 @@ export default function CoachMissionPanel() {
                   {signal?.streak?.today_done ? `${signal.streak.current}-day streak alive · ` : ''}Kal fresh mission ready milegi.
                 </p>
               </div>
-            ) : (
+            ) : nextBlock ? (
               <Button
                 size="lg"
                 className="w-full h-12 text-sm font-bold rounded-xl"
-                onClick={() => mission.blocks[doneCount] && startBlock(mission.blocks[doneCount])}
+                onClick={() => startBlock(nextBlock)}
               >
                 <Play className="w-4 h-4 mr-2" />
                 {doneCount === 0 ? "START TODAY'S MISSION" : `CONTINUE (${doneCount}/${totalCount})`}
               </Button>
-            )}
+            ) : null}
           </CardContent>
         </Card>
+      )}
+
+      {/* Competitive strip — streak risk + rank ticker */}
+      {!loading && !needsSetup && signal?.prediction && (
+        <div className="rounded-xl border border-border/60 bg-card p-3 grid grid-cols-2 gap-2">
+          <div className="rounded-lg bg-gradient-to-br from-orange-500/8 to-transparent border border-orange-500/20 p-2.5">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Flame className="w-3.5 h-3.5 text-orange-600" />
+              <p className="text-[9px] uppercase tracking-widest font-bold text-orange-700 dark:text-orange-400">Streak risk</p>
+            </div>
+            <p className="text-[11px] leading-snug">
+              {signal.streak?.today_done
+                ? `Aaj ki streak safe ✅ Kal bhi ${signal.streak.current + 1}d ke liye 1 block chahiye.`
+                : `Aaj mission miss ki toh ${signal.streak?.current ?? 0}-day streak reset. ${signal.prediction.delta.toFixed(1)}% percentile bhi girega.`}
+            </p>
+          </div>
+          <div className="rounded-lg bg-gradient-to-br from-blue-500/8 to-transparent border border-blue-500/20 p-2.5">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Users className="w-3.5 h-3.5 text-blue-600" />
+              <p className="text-[9px] uppercase tracking-widest font-bold text-blue-700 dark:text-blue-400">Rank chase</p>
+            </div>
+            <p className="text-[11px] leading-snug">
+              {signal.prediction.trend === 'up'
+                ? `Top ${(100 - signal.prediction.on_track_percentile).toFixed(1)}% mein aa raha hai — pace maintain kar.`
+                : signal.prediction.trend === 'down'
+                  ? `Rank slip ho raha — aaj 2 blocks compulsory.`
+                  : `Consistent pace pe hai. 1 extra block = +${(signal.prediction.delta * 0.5).toFixed(1)}%.`}
+            </p>
+          </div>
+        </div>
       )}
 
       {/* First-time setup */}
@@ -466,7 +612,7 @@ export default function CoachMissionPanel() {
           <DialogHeader>
             <DialogTitle>2 quick questions</DialogTitle>
             <DialogDescription>
-              JEEnie decides your daily mission based on these — you can change them later in Settings.
+              JEEnie decides your daily mission based on these — change later in Settings.
             </DialogDescription>
           </DialogHeader>
 
