@@ -1,6 +1,8 @@
 // Generate today's study mission for a student.
-// Deterministic v1 (no LLM): reads profile, recent attempts, topic mastery, class logs.
-// Composes 2-4 blocks of 30-90 min that add up to the user's daily_study_minutes.
+// Deterministic v2: reads profile, recent attempts, topic mastery, class logs,
+// revision schedule. Composes 2-5 blocks with dynamic question counts and
+// chapter-targeted deep-links. Each block has clear "why + kya + goal" so the
+// student knows exactly what to do and why.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -11,6 +13,12 @@ const corsHeaders = {
 };
 
 type BlockType = 'learn_practice' | 'revision' | 'weak_fix' | 'class_recap' | 'pyq' | 'mock';
+interface BlockProgress {
+  attempted: number;
+  correct: number;
+  status: 'pending' | 'in_progress' | 'done';
+  seen_ids: string[];
+}
 interface MissionBlock {
   id: string;
   type: BlockType;
@@ -21,9 +29,13 @@ interface MissionBlock {
   chapter_name?: string;
   topic_id?: string;
   minutes: number;
-  question_count: number;
-  why: string;         // "Why this?" one-liner
-  action_href: string; // deeplink
+  question_count: number;   // exact number of Q to serve
+  passing_goal: number;     // correct answers required to mark done
+  why: string;              // JEEnie's reason — data-driven
+  what: string;             // exact task summary
+  goal: string;             // pass criteria
+  action_href: string;      // deep-link with all params baked in
+  progress: BlockProgress;
 }
 
 const IST_TZ = 'Asia/Kolkata';
@@ -43,7 +55,6 @@ serve(async (req) => {
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Verify caller
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -57,7 +68,6 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey);
     const today = istDate();
 
-    // Return existing mission for today unless force=true
     if (!force) {
       const { data: existing } = await admin
         .from('daily_missions')
@@ -68,7 +78,6 @@ serve(async (req) => {
       if (existing) return json({ mission: existing, cached: true });
     }
 
-    // Load profile
     const { data: profile } = await admin
       .from('profiles')
       .select('full_name, prep_mode, daily_study_minutes, goal_exam, target_exam, grade, subjects')
@@ -80,14 +89,13 @@ serve(async (req) => {
     const exam = (profile?.goal_exam || profile?.target_exam || 'JEE').toString().toUpperCase();
     const subjects = deriveSubjects(exam, profile?.subjects);
 
-    // Load signals
     const [attemptsRes, masteryRes, classLogRes, dueRevRes] = await Promise.all([
       admin.from('question_attempts')
         .select('question_id, is_correct, attempted_at')
         .eq('user_id', userId)
         .gte('attempted_at', daysAgo(14))
         .order('attempted_at', { ascending: false })
-        .limit(300),
+        .limit(500),
       admin.from('topic_mastery')
         .select('topic_id, mastery_level, questions_attempted, questions_correct, last_attempted')
         .eq('user_id', userId)
@@ -116,132 +124,208 @@ serve(async (req) => {
     const correctQs = attempts.filter(a => a.is_correct).length;
     const accuracy = totalQs > 0 ? Math.round((correctQs / totalQs) * 100) : 0;
 
-    // Adaptive difficulty from rolling accuracy
     const adaptiveDifficulty: 'easy' | 'medium' | 'hard' =
       accuracy >= 75 ? 'hard' : accuracy >= 50 ? 'medium' : 'easy';
 
-    // Compose blocks based on mode
+    // Enrich weak topics with subject + chapter info so we can deep-link
+    const weakTopicIds = mastery.filter(m => (m.questions_attempted ?? 0) >= 2).map(m => m.topic_id);
+    let topicMeta: Record<string, { name?: string; subject?: string; chapter_id?: string; chapter_name?: string }> = {};
+    if (weakTopicIds.length > 0) {
+      const { data: tRows } = await admin
+        .from('topics')
+        .select('id, name, subject, chapter_id, chapter:chapters(name)')
+        .in('id', weakTopicIds as string[]);
+      (tRows ?? []).forEach((t: any) => {
+        topicMeta[t.id] = {
+          name: t.name,
+          subject: t.subject,
+          chapter_id: t.chapter_id ?? undefined,
+          chapter_name: t.chapter?.name ?? undefined,
+        };
+      });
+    }
+
+    // Count recent mistakes per topic (for weak_fix sizing)
+    const mistakesByTopic: Record<string, number> = {};
+    const attemptedQids = new Set<string>();
+    attempts.forEach(a => attemptedQids.add(a.question_id));
+
     const blocks: MissionBlock[] = [];
     let remaining = dailyMinutes;
     const takeMinutes = (m: number) => { const t = Math.min(m, remaining); remaining -= t; return t; };
+    const mkProgress = (): BlockProgress => ({ attempted: 0, correct: 0, status: 'pending', seen_ids: [] });
 
-    // Companion / hybrid mode: today's class first
+    // ── BLOCK 1: Class recap / today's chapter (companion, hybrid) ──
     const freshClass = classLogs.find(c => c.logged_date === today) || classLogs[0];
     if ((prepMode === 'companion' || prepMode === 'hybrid') && freshClass) {
       const isToday = freshClass.logged_date === today;
-      const mins = takeMinutes(Math.min(isToday ? 30 : 60, Math.round(dailyMinutes * (isToday ? 0.3 : 0.5))));
-      if (mins >= 15) blocks.push({
+      const qCount = isToday ? 10 : 12;
+      const mins = takeMinutes(Math.min(isToday ? 30 : 40, Math.round(dailyMinutes * (isToday ? 0.25 : 0.35))));
+      const chapName = freshClass.chapter_name ?? freshClass.subject;
+      if (mins >= 12) blocks.push({
         id: crypto.randomUUID(),
         type: isToday ? 'class_recap' : 'learn_practice',
-        title: isToday ? `Class recap: ${freshClass.chapter_name ?? freshClass.subject}` : `Practice: ${freshClass.chapter_name ?? freshClass.subject}`,
-        subtitle: isToday ? `10 questions from aaj ki class` : `${Math.floor(mins / 3)} questions from ${freshClass.chapter_name ?? freshClass.subject}`,
+        title: isToday ? `Class recap — ${chapName}` : `Practice — ${chapName}`,
+        subtitle: `${qCount} questions · ~${mins} min`,
         subject: freshClass.subject,
         chapter_id: freshClass.chapter_id ?? undefined,
         chapter_name: freshClass.chapter_name ?? undefined,
         topic_id: freshClass.topic_id ?? undefined,
         minutes: mins,
-        question_count: isToday ? 10 : Math.floor(mins / 3),
+        question_count: qCount,
+        passing_goal: Math.ceil(qCount * 0.6),
         why: isToday
-          ? `Aaj coaching mein ${freshClass.chapter_name ?? freshClass.subject} padha — abhi 10-Q recap = 70% retention.`
-          : `${daysBetween(freshClass.logged_date, today)} din pehle class hui — spaced practice ka best time.`,
-        action_href: isToday
+          ? `Aaj ${chapName} class mein padha — abhi recap karega toh 70% content 7 din tak yaad rahega.`
+          : `${daysBetween(freshClass.logged_date, today)} din pehle ${chapName} class hui — spaced practice ka ideal window.`,
+        what: `${qCount} targeted Q solve kar (${chapName})`,
+        goal: `${Math.ceil(qCount * 0.6)}/${qCount} sahi = block done ✅`,
+        action_href: isToday && !freshClass.chapter_id
           ? `/recap/${freshClass.id}`
-          : `/practice?mode=chapter&subject=${encodeURIComponent(freshClass.subject)}${freshClass.chapter_id ? `&chapter=${freshClass.chapter_id}` : ''}`,
+          : buildPracticeHref({
+              mode: 'chapter',
+              subject: freshClass.subject,
+              chapter_id: freshClass.chapter_id,
+              chapter: freshClass.chapter_name,
+              topic_id: freshClass.topic_id,
+              difficulty: adaptiveDifficulty,
+              target: qCount,
+            }),
+        progress: mkProgress(),
       });
     }
 
-    // Weak-topic fix (lowest mastery)
-    const weak = [...mastery].filter(m => (m.questions_attempted ?? 0) >= 2)
-      .sort((a, b) => (a.mastery_level ?? 0) - (b.mastery_level ?? 0))[0];
-    if (weak && remaining >= 25) {
-      const mins = takeMinutes(Math.min(60, Math.round(dailyMinutes * 0.35)));
+    // ── BLOCK 2: Weak-topic fix (dynamic count) ──
+    const weakSorted = [...mastery]
+      .filter(m => (m.questions_attempted ?? 0) >= 2 && (m.mastery_level ?? 100) < 70)
+      .sort((a, b) => (a.mastery_level ?? 0) - (b.mastery_level ?? 0));
+    const weak = weakSorted[0];
+    if (weak && remaining >= 15) {
+      const meta = topicMeta[weak.topic_id] ?? {};
+      const wrongCount = Math.max(0, (weak.questions_attempted ?? 0) - (weak.questions_correct ?? 0));
+      const qCount = clamp(Math.max(8, wrongCount + 3), 8, 15);
+      const mins = takeMinutes(Math.min(Math.max(15, qCount * 2), remaining));
       const wAcc = Math.round(((weak.questions_correct ?? 0) / Math.max(1, weak.questions_attempted ?? 1)) * 100);
-      const targetedDiff = wAcc >= 60 ? 'medium' : 'easy';
+      const topicLabel = meta.name || 'this topic';
       blocks.push({
         id: crypto.randomUUID(),
         type: 'weak_fix',
-        title: `Weak-spot fix`,
-        subtitle: `${Math.floor(mins / 3)} targeted questions (${targetedDiff})`,
+        title: `Weak-fix — ${topicLabel}`,
+        subtitle: `${qCount} targeted Q · ~${mins} min`,
+        subject: meta.subject,
+        chapter_id: meta.chapter_id,
+        chapter_name: meta.chapter_name,
         topic_id: weak.topic_id,
         minutes: mins,
-        question_count: Math.floor(mins / 3),
-        why: `Accuracy ${wAcc}% — fix ho gaya to overall percentile 2 point improve hoga.`,
-        action_href: `/practice?mode=weak&topic=${weak.topic_id}&difficulty=${targetedDiff}`,
+        question_count: qCount,
+        passing_goal: Math.ceil(qCount * 0.6),
+        why: `${topicLabel}: last ${weak.questions_attempted} me se ${weak.questions_correct} sahi (${wAcc}%). Yeh fix ho gaya toh overall percentile ~2 point improve hoga.`,
+        what: `${qCount} targeted Q — sirf ${topicLabel} pe`,
+        goal: `${Math.ceil(qCount * 0.6)}/${qCount} sahi karo toh weak-tag hatega`,
+        action_href: buildPracticeHref({
+          mode: 'weak',
+          topic_id: weak.topic_id,
+          chapter_id: meta.chapter_id,
+          subject: meta.subject,
+          difficulty: wAcc >= 60 ? 'medium' : 'easy',
+          target: qCount,
+        }),
+        progress: mkProgress(),
       });
     }
 
-    // Revision block — Ebbinghaus spaced repetition (real due items)
-    if (remaining >= 20 && dueRevisions.length > 0) {
+    // ── BLOCK 3: Spaced revision (Ebbinghaus due) ──
+    if (remaining >= 15 && dueRevisions.length > 0) {
       const rev = dueRevisions[0];
-      const mins = takeMinutes(Math.min(45, remaining));
+      const qCount = clamp(dueRevisions.length >= 5 ? 12 : 8, 6, 12);
+      const mins = takeMinutes(Math.min(qCount * 3, remaining));
       const revLabel = rev.subject ?? subjects[0] ?? 'Revision';
-      const daysSince = rev.interval_days ? Math.round(Number(rev.interval_days)) : 0;
+      const daysSince = rev.interval_days ? Math.round(Number(rev.interval_days)) : 3;
       blocks.push({
         id: crypto.randomUUID(),
         type: 'revision',
-        title: `Revise ${revLabel}`,
-        subtitle: `${Math.floor(mins / 3)} spaced-repetition Qs`,
+        title: `Revise — ${revLabel}`,
+        subtitle: `${qCount} spaced-repetition Q · ~${mins} min`,
         subject: revLabel,
         chapter_id: rev.chapter_id ?? undefined,
         topic_id: rev.topic_id ?? undefined,
         minutes: mins,
-        question_count: Math.floor(mins / 3),
-        why: `${daysSince} din pehle padha — Ebbinghaus curve ke hisaab se aaj revise nahi kiya to 40% bhool jaoge.`,
-        action_href: `/practice?mode=revision${rev.chapter_id ? `&chapter=${rev.chapter_id}` : ''}${rev.topic_id ? `&topic=${rev.topic_id}` : ''}&difficulty=${adaptiveDifficulty}`,
-      });
-    } else if (remaining >= 20 && subjects.length > 0) {
-      const revSubject = subjects[new Date().getDate() % subjects.length];
-      const mins = takeMinutes(Math.min(45, remaining));
-      blocks.push({
-        id: crypto.randomUUID(),
-        type: 'revision',
-        title: `Revise ${revSubject}`,
-        subtitle: `${Math.floor(mins / 3)} baseline questions`,
-        subject: revSubject,
-        minutes: mins,
-        question_count: Math.floor(mins / 3),
-        why: `Abhi tak ${revSubject} ka revision schedule nahi bana — baseline set karte hain.`,
-        action_href: `/practice?mode=revision&subject=${encodeURIComponent(revSubject)}&difficulty=${adaptiveDifficulty}`,
+        question_count: qCount,
+        passing_goal: Math.ceil(qCount * 0.7),
+        why: `${daysSince} din pehle ye topic padha tha — Ebbinghaus curve ke hisaab se aaj revise nahi kiya toh 40% bhool jaayega.`,
+        what: `${qCount} mixed-Q from ${revLabel} (revision mode)`,
+        goal: `${Math.ceil(qCount * 0.7)}/${qCount} sahi = revision cleared`,
+        action_href: buildPracticeHref({
+          mode: 'revision',
+          subject: revLabel,
+          chapter_id: rev.chapter_id ?? undefined,
+          topic_id: rev.topic_id ?? undefined,
+          difficulty: adaptiveDifficulty,
+          target: qCount,
+        }),
+        progress: mkProgress(),
       });
     }
 
-    // PYQ block for dropper / high-time users
+    // ── BLOCK 4: PYQ (dropper / high-time) ──
     if (remaining >= 20 && (prepMode === 'dropper' || dailyMinutes >= 150)) {
       const pyqSubject = subjects[(new Date().getDate() + 1) % subjects.length] ?? subjects[0];
-      const mins = takeMinutes(Math.min(40, remaining));
+      const qCount = 5;
+      const mins = takeMinutes(Math.min(qCount * 5, remaining));
       blocks.push({
         id: crypto.randomUUID(),
         type: 'pyq',
-        title: `PYQs — ${pyqSubject}`,
-        subtitle: `${Math.floor(mins / 4)} previous-year (${adaptiveDifficulty})`,
+        title: `PYQ — ${pyqSubject}`,
+        subtitle: `${qCount} previous-year Q · ~${mins} min`,
         subject: pyqSubject,
         minutes: mins,
-        question_count: Math.floor(mins / 4),
-        why: `Exam-level questions — real difficulty ka feel aayega.`,
-        action_href: `/practice?mode=pyq&subject=${encodeURIComponent(pyqSubject)}&difficulty=${adaptiveDifficulty}`,
+        question_count: qCount,
+        passing_goal: 3,
+        why: `Real ${exam} paper ka feel — exam-level difficulty pe apni speed check kar.`,
+        what: `${qCount} PYQ from ${pyqSubject}`,
+        goal: `3/${qCount} sahi = exam-ready confidence`,
+        action_href: buildPracticeHref({
+          mode: 'pyq',
+          subject: pyqSubject,
+          difficulty: adaptiveDifficulty,
+          target: qCount,
+        }),
+        progress: mkProgress(),
       });
     }
 
-    // Fallback: if nothing composed yet (new user, no data), give a starter block
+    // ── FALLBACK: New user, no data → baseline ──
     if (blocks.length === 0) {
       const starterSubject = subjects[0] ?? 'Physics';
+      const qCount = 10;
+      const mins = Math.min(30, dailyMinutes);
       blocks.push({
         id: crypto.randomUUID(),
         type: 'learn_practice',
-        title: `Start with ${starterSubject}`,
-        subtitle: '15 warm-up questions',
+        title: `Warm-up — ${starterSubject}`,
+        subtitle: `${qCount} baseline Q · ~${mins} min`,
         subject: starterSubject,
-        minutes: Math.min(45, dailyMinutes),
-        question_count: 15,
-        why: 'Naye ho — pehle baseline banate hain, phir AI adapt karega.',
-        action_href: `/practice?mode=diagnostic&subject=${encodeURIComponent(starterSubject)}`,
+        minutes: mins,
+        question_count: qCount,
+        passing_goal: 6,
+        why: `Abhi tera data kam hai — ${qCount} Q se JEEnie ko baseline milegi, phir kal se personal plan aayega.`,
+        what: `${qCount} mixed-difficulty Q from ${starterSubject}`,
+        goal: `6/${qCount} sahi = baseline set`,
+        action_href: buildPracticeHref({
+          mode: 'diagnostic',
+          subject: starterSubject,
+          target: qCount,
+        }),
+        progress: mkProgress(),
       });
     }
 
     const totalMinutes = blocks.reduce((s, b) => s + b.minutes, 0);
-    const reasoning = buildReasoning({ prepMode, dailyMinutes, accuracy, totalQs, hasClass: !!freshClass, dueCount: dueRevisions.length, adaptiveDifficulty });
+    const reasoning = buildReasoning({
+      prepMode, dailyMinutes, accuracy, totalQs,
+      hasClass: !!freshClass, dueCount: dueRevisions.length, adaptiveDifficulty,
+    });
 
-    // Upsert
+    // Bake mission_id into action_href AFTER upsert — do it in a two-step
     const { data: mission, error: upsertErr } = await admin
       .from('daily_missions')
       .upsert({
@@ -263,7 +347,19 @@ serve(async (req) => {
       return json({ error: upsertErr.message }, 500);
     }
 
-    return json({ mission, cached: false });
+    // Second pass: append mission_id + block_id to each href, save
+    const enrichedBlocks = (mission.blocks as MissionBlock[]).map((b) => ({
+      ...b,
+      action_href: appendMissionParams(b.action_href, mission.id, b.id),
+    }));
+    const { data: updated } = await admin
+      .from('daily_missions')
+      .update({ blocks: enrichedBlocks })
+      .eq('id', mission.id)
+      .select()
+      .single();
+
+    return json({ mission: updated ?? mission, cached: false });
   } catch (e) {
     console.error('generate-daily-mission error', e);
     return json({ error: (e as Error).message }, 500);
@@ -293,6 +389,31 @@ function deriveSubjects(exam: string, provided: unknown): string[] {
   if (Array.isArray(provided) && provided.length > 0) return provided.map(String);
   if (exam.includes('NEET')) return ['Physics', 'Chemistry', 'Biology'];
   return ['Physics', 'Chemistry', 'Mathematics'];
+}
+
+function buildPracticeHref(opts: {
+  mode: string;
+  subject?: string | null;
+  chapter?: string | null;
+  chapter_id?: string | null;
+  topic_id?: string | null;
+  difficulty?: string;
+  target?: number;
+}) {
+  const p = new URLSearchParams();
+  if (opts.mode) p.set('mode', opts.mode);
+  if (opts.subject) p.set('subject', opts.subject);
+  if (opts.chapter) p.set('chapter', opts.chapter);
+  if (opts.chapter_id) p.set('chapter_id', opts.chapter_id);
+  if (opts.topic_id) p.set('topic_id', opts.topic_id);
+  if (opts.difficulty) p.set('difficulty', opts.difficulty);
+  if (opts.target) p.set('target', String(opts.target));
+  return `/practice?${p.toString()}`;
+}
+
+function appendMissionParams(href: string, missionId: string, blockId: string) {
+  const sep = href.includes('?') ? '&' : '?';
+  return `${href}${sep}mission_id=${missionId}&block_id=${blockId}`;
 }
 
 function buildReasoning({ prepMode, dailyMinutes, accuracy, totalQs, hasClass, dueCount, adaptiveDifficulty }: {
