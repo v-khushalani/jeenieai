@@ -593,21 +593,33 @@ const PracticePage: React.FC = () => {
 
         await syncDailyProgress(result.is_correct, pointsDelta);
 
-        // Bump mission block progress (idempotent server-side) — live-updates the planner
-        if (isMissionBlock) {
-          const { data: bumpData, error: bumpErr } = await supabase.rpc('bump_mission_block_progress', {
-            p_mission_id: missionId,
-            p_block_id: blockId,
-            p_is_correct: result.is_correct,
-            p_question_id: currentQuestion.id,
-          } as any);
-          if (bumpErr) {
-            logger.error('mission block bump failed:', bumpErr);
-          } else if ((bumpData as any)?.block_done) {
+        // Bump mission block progress (idempotent server-side) — live-updates the planner.
+        // If we have deep-link params → target that block. Otherwise auto-match by chapter_id
+        // so practicing from Study Now / Roadmap also reflects in today's mission.
+        try {
+          const bumpRes = isMissionBlock
+            ? await supabase.rpc('bump_mission_block_progress', {
+                p_mission_id: missionId,
+                p_block_id: blockId,
+                p_is_correct: result.is_correct,
+                p_question_id: currentQuestion.id,
+              } as any)
+            : chapterId
+              ? await supabase.rpc('bump_mission_progress_by_chapter' as any, {
+                  p_chapter_id: chapterId,
+                  p_is_correct: result.is_correct,
+                  p_question_id: currentQuestion.id,
+                } as any)
+              : { data: null, error: null };
+
+          if ((bumpRes as any)?.data?.block_done) {
             confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
             toast.success('Mission block complete! 🎯 Planner updated.');
           }
+        } catch (e) {
+          logger.error('mission block bump failed:', e);
         }
+
 
         if (practiceStatsRes.error) {
           const errCode = (practiceStatsRes.error as { code?: string }).code;
