@@ -604,13 +604,14 @@ const PracticePage: React.FC = () => {
                 p_is_correct: result.is_correct,
                 p_question_id: currentQuestion.id,
               } as any)
-            : currentQuestion.chapter_id
+            : chapterId
               ? await supabase.rpc('bump_mission_progress_by_chapter' as any, {
-                  p_chapter_id: currentQuestion.chapter_id,
+                  p_chapter_id: chapterId,
                   p_is_correct: result.is_correct,
                   p_question_id: currentQuestion.id,
                 } as any)
               : { data: null, error: null };
+
           if ((bumpRes as any)?.data?.block_done) {
             confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
             toast.success('Mission block complete! 🎯 Planner updated.');
