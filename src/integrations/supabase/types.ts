@@ -2962,6 +2962,14 @@ export type Database = {
         }
         Returns: Json
       }
+      bump_mission_progress_by_chapter: {
+        Args: {
+          p_chapter_id: string
+          p_is_correct: boolean
+          p_question_id: string
+        }
+        Returns: Json
+      }
       cancel_subscription: { Args: never; Returns: Json }
       change_user_goal: {
         Args: {
