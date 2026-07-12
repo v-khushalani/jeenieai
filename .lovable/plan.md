@@ -1,109 +1,109 @@
 
-# AI Planner — Clarity + Live Progress + Coach/Compete Vibe
+# AI Planner — Honest Analysis + Redesign Plan
 
-Teri 4 complaints ko point-by-point fix karenge. Structure same rahega (Coach on top, Roadmap collapsible), lekin har block ab **clear, chapter-targeted, live-updating, aur coach-like** hoga.
+## Tere 4 sawaal ka seedha jawab
+
+### 1. "Bohot zyada text hai" — Haan, sach hai
+
+Abhi ek block card me: type badge + title + subtitle + Kyun line + Kya line + Goal line + progress bar + expand chevron + Start button. Upar se: weekly report card + JEEnie greeting card + prediction card + streak pill + nudge banner + log-class card + competitive strip. **Ek screen pe 8+ cards, 200+ words.** Koi nahi padhega — tu sahi keh raha hai.
+
+**Fix:** Har mission block = **1 line + 1 button.** Kyun/Kya/Goal ko chhota "ℹ️" tap pe hi dikhao. Upar ka clutter (weekly report, greeting, nudge, competitive strip) ek collapsible "Coach note" me daal do. Default view = sirf 3-4 blocks + streak flame + percentile number.
+
+### 2. "Questions solve karne se planner update nahi ho raha" — Half-broken
+
+Code me realtime subscription hai (`daily_missions` UPDATE) aur `bump_mission_block_progress` RPC bhi hai. Lekin practical me ye tab fail hoti hai jab:
+- User `?mission_id=&block_id=` ke bina practice khole (normal Study Now se) → RPC call hi nahi hoti, planner never updates.
+- Realtime publication table pe enabled hai but RLS filter ke wajah se client ko row nahi milti.
+- Optimistic UI nahi hai — user solve karke wapas planner pe aata hai to network round-trip lagta hai.
+
+**Fix:** (a) `bump_mission_block_progress` ko har question attempt pe call karo, mission_id/block_id automatic infer karo current chapter se — deep link zaroori na ho. (b) Planner pe wapas aane pe `refetch` on visibility change. (c) Optimistic bump on submit + realtime confirm.
+
+### 3. "Mission complete ho gaya toh curiosity khatam?" — Bilkul, aaj to dead-end hai
+
+Aaj sab blocks done = "Shabaash" text + kuch nahi. **Zero pull to come back.**
+
+**Fix — Completion = new curiosity trigger:**
+- **"Kal ki mission unlock"** preview card (blurred/locked) — "Kal Thermo chapter test hai, aaj raat 11 baje se open"
+- **Bonus challenge**: "5 extra PYQ solve → +2 rank jump" (optional, rewarding not mandatory)
+- **Streak flame animation** + "Chain: 12 days 🔥, kal break hua toh -3 percentile"
+- **Percentile ticker** live update (91 → 91.4 with tiny +0.4 pop)
+- **Tomorrow preview**: 1-line teaser of tomorrow's hardest block
+
+### 4. "Roadmap better ya AI Planner?" — Dono ka role alag, but UI me confuse ho raha
+
+**Sach:** Roadmap = **strategic view** (start-to-end syllabus ladder, "kaunsa chapter next"). AI Planner = **tactical view** (aaj kya karo). Dono zaroori hain, lekin abhi wo do alag jagah exist karte hain, isliye "sab complete karna hai na?" wala doubt aata hai.
+
+**Fix — Merge into one flow:**
+- **Roadmap is source of truth.** Chapter ladder end-to-end, subject-wise, star-based mastery.
+- **Today's Mission** = next 2-4 pending milestones from roadmap, auto-picked. Not a separate plan.
+- Ek button: "Start today's chapter" → seedha active chapter ke pending milestone pe. Poora syllabus visible bhi rahega scroll karne pe.
+- Poora "complete karna hai" clear — roadmap dikhata hai `12/40 chapters cleared`.
 
 ---
 
-## 1. "Samajh nahi aata kya karna hai / kyun karna hai" — Clarity fix
+## Redesign Plan (build karne ke liye)
 
-Har mission block card ko 3-line contract dega:
+### Screen structure (top → bottom)
 
 ```text
-┌─────────────────────────────────────────────┐
-│ 🔴 WEAK FIX · Thermodynamics                │
-│ Kyun: Last 8 me se 3 sahi (37%). Yahi topic│
-│       JEE me 4-6 marks ka hai.              │
-│ Kya:  12 targeted Q solve kar (~18 min)     │
-│ Goal: 8/12 sahi = ✅ done, badge unlock     │
-│                              [ Start → ]    │
-└─────────────────────────────────────────────┘
+┌─ Sticky top: [streak 🔥 12d]  [percentile 91.2 ↑]  [refresh] ┐
+├────────────────────────────────────────────────────────────────┤
+│ AAJ (3 mission cards, minimal)                                 │
+│  ┌─────────────────────────────────────┐                       │
+│  │ 🔴 Thermo · Weak fix        8/12 ●●●─  [Start →]           │
+│  ├─────────────────────────────────────┤                       │
+│  │ 🟣 5 PYQ · Physics          0/5   ───   [Start →]           │
+│  ├─────────────────────────────────────┤                       │
+│  │ ✅ Rotation revision        10/10 done                      │
+│  └─────────────────────────────────────┘                       │
+│  [ℹ Why these?]  ← collapsed by default                         │
+├────────────────────────────────────────────────────────────────┤
+│ ROADMAP (Physics · Chem · Math tabs)                           │
+│  12/40 chapters cleared ━━━━━━━━━━━━━━━━━━━ 30%                │
+│  Chapter ladder (scrollable)                                   │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-- **Why line** (data-driven, JEEnie voice, Hinglish) — pehli baar "kyun" clearly dikhega.
-- **Kya line** — exact task (Q count + time).
-- **Goal line** — pass criteria user ko pehle se pata.
-- Card ke color/icon se type instantly clear: 🔴 weak-fix, 🟡 revision, 🔵 learn, 🟣 PYQ, 🟠 mock.
+Weekly report + JEEnie greeting + nudge → all move inside **[ℹ Why these?]** collapsible. Log Class → small "+ log class" chip in top bar, not a full card.
 
-## 2. "Start pe click karo, us hi chapter ke practice me jaana chahiye" — Deep linking fix
+### Live sync fix
 
-Aaj `action_href` generic hai (`/practice`). Change:
+- Extend `bump_mission_block_progress` RPC: agar `mission_id/block_id` null hain but attempt ka `chapter_id` kisi aaj ke mission block se match kare, tab auto-match karke bump karo. Isse Study Now se solve karne pe bhi planner update ho.
+- `PracticePage`: submit ke turant baad optimistic local state bump + RPC call, phir realtime confirm.
+- `CoachMissionPanel`: `document.visibilitychange` pe refetch — user planner pe wapas aaye to fresh state.
 
-- Mission block me `chapter_id` store karenge (already partially there).
-- `Start` button → `/practice?chapter=<chapter_id>&mode=<weak|revision|learn>&target=<n>&missionBlockId=<id>`
-- `PracticePage` in params ko read karega:
-  - `chapter` → sirf usi chapter ke Q filter
-  - `mode=weak` → sirf pending mistakes / low-accuracy Q
-  - `target=n` → sirf n Q serve kare, phir "Mission block complete" screen
-  - `missionBlockId` → complete hone pe backend ko notify
+### Completion loop (new curiosity)
 
-## 3. "Jitne Q required utne hi aaye (not always 50)" — Dynamic question count
+- Naya component `MissionCompleteCard.tsx` — sab blocks done hone pe replace kare mission list ko:
+  - Big percentile delta animation
+  - Streak flame + "next milestone in X days"
+  - "Kal ka preview" (locked card, 1-line teaser from tomorrow's `generate-daily-mission` dry-run)
+  - Optional "Bonus challenge" chip
+- Push a small toast every time a block completes: `"+0.3 percentile • Thermo done ✅"`.
 
-`generate-daily-mission` edge function me:
+### Roadmap ↔ Planner merge
 
-- Har block ka `question_count` ab data-driven:
-  - **weak_fix**: `min(pendingMistakes + wrongIn(last 14 days), 15)` — usually 8-15
-  - **revision**: `min(strongTopicQ * 0.2, 10)` — usually 5-10
-  - **learn**: chapter ke syllabus % ke hisab se, 10-20
-  - **PYQ**: 5 (curated)
-  - **mock**: full/half based on `total_minutes`
-- No hard-coded 50. Sirf `daily_target_minutes` ke andar fit ho.
+- Remove standalone "AI Planner" clutter; keep RoadmapView as anchor.
+- `generate-daily-mission` already uses chapters — expose it as "Today's slice of roadmap" heading, not a separate universe.
+- Roadmap chapter card pe agar wo chapter aaj ki mission me hai → chhota "AAJ" tag lagao. Ek concept, do views.
 
-## 4. "Q solve karu toh planner me reflect ho + auto-done" — Live sync
+### Files to touch
 
-Naya lightweight system:
+- `src/components/planner/CoachMissionPanel.tsx` — strip to minimal block cards, collapse everything secondary, add `MissionCompleteCard`, visibility-change refetch.
+- `src/pages/PracticePage.tsx` — optimistic block bump on submit; call RPC even without deep-link params if chapter matches today's mission.
+- `supabase/functions/generate-daily-mission/index.ts` — trim block copy (no long "why" strings; keep short chip); add "tomorrow preview" endpoint mode.
+- `supabase/migrations/*` — patch `bump_mission_block_progress` to auto-match by (user_id, today, chapter_id) when block_id absent.
+- `src/components/AIStudyPlanner.tsx` — reorder: sticky header → today mission → roadmap. Drop weekly-plan tab (already covered by roadmap).
+- New: `src/components/planner/MissionCompleteCard.tsx`, `src/components/planner/StickyPlannerHeader.tsx`.
 
-**a) Server-side block progress**
-- `daily_missions.blocks` JSONB me har block ka `progress: { attempted: n, correct: n, status: 'pending|in_progress|done' }` add karenge.
-- New edge function `update-mission-progress` (ya existing `validate_practice_answer` RPC me extend) — jab bhi answer submit ho aur `missionBlockId` present ho, corresponding block ka progress bump kare.
-- Jab `attempted >= target` OR `correct >= passingGoal` → `status = 'done'`, `completed_blocks++`.
-- Jab sab blocks done → mission `status = 'completed'` + streak bump + celebration.
+### Out of scope
 
-**b) Client-side realtime**
-- `CoachMissionPanel` me Supabase Realtime subscription on `daily_missions` row → UI instantly updates jab practice page pe koi Q solve ho.
-- Har block card pe mini progress bar: `8/12 · 5 sahi`.
-- Complete hone pe card green + confetti flash + "+15 XP" pill.
-
-## 5. Personal Coach + Competitive vibe
-
-**Coach vibe additions (top of panel):**
-- **JEEnie greeting line** (dynamic, uses signal): _"Aaj Thermo fix kar liya toh percentile 91 → 93 jayega. Chal, 18 min ka game hai."_
-- **Mid-day check-in nudge**: agar 2pm tak 0 block done → gentle push notification / banner.
-- **End-of-day recap card**: _"Aaj 2/3 done. Kal PYQ ke saath open karenge."_
-
-**Competitive layer (new strip below mission):**
-- **Predicted rank ticker**: `#12,450 → #10,200` with arrow + delta (live update as blocks complete).
-- **Daily challenge chip**: "Aaj top 500 users ne avg 45 min padha. Tu abhi 12 min." (rank percentile among active users today).
-- **Streak flame** already hai — bada karenge + "Break karega toh -X percentile" warning at risk hours.
-- **Friends leaderboard mini row** (if referrals exist) — top 3 friends ke aaj ke minutes.
+- No new tables. No new gamification systems (badges/friends leaderboard stay as-is).
+- No changes to subscription gating, Study Now internals beyond the optimistic bump.
+- Roadmap engine logic (`roadmapEngine.ts`) stays; only visual placement changes.
 
 ---
 
-## Files to touch
-
-**Frontend**
-- `src/components/planner/CoachMissionPanel.tsx` — new card layout (why/kya/goal), progress bars, realtime subscribe, coach greeting, competitive strip.
-- `src/pages/PracticePage.tsx` — parse `chapter`, `mode`, `target`, `missionBlockId` from URL; enforce target; show "Mission block complete" screen on finish.
-- `src/components/AIStudyPlanner.tsx` — small: pass fresh signals to panel, minor copy tweaks.
-- New: `src/components/planner/CompetitiveStrip.tsx` — rank ticker + daily challenge + friends row.
-
-**Backend (edge functions + DB)**
-- `supabase/functions/generate-daily-mission/index.ts` — dynamic `question_count` logic, richer `why` string per block, `passing_goal` field, `chapter_id` in every block.
-- `supabase/functions/compute-coach-signal/index.ts` — add `daily_rank_percentile` (among today-active users) + `friends_today` array.
-- New edge function `update-mission-progress` (or extend `validate_practice_answer`) — bump block progress on each attempt.
-- Migration: `daily_missions.blocks` JSONB shape extended (no schema change, just documented shape); enable Realtime on `daily_missions`.
-
-**Out of scope**
-- No changes to roadmap ladder, badges system, or subscription gating.
-- No new tables; reuse `daily_missions`, `question_attempts`, `profiles`.
-
----
-
-## Technical details
-
-- Realtime: `ALTER PUBLICATION supabase_realtime ADD TABLE public.daily_missions;` + RLS check that user can only subscribe to own row.
-- PracticePage target enforcement: after Nth answer, block further Q loads, show summary screen with `correct/target`, XP earned, "Next block" CTA linking to next pending block from same mission.
-- `update-mission-progress`: idempotent — dedupe by `(mission_id, block_id, question_attempt_id)` inside the JSONB so retries are safe.
-- Coach greeting: composed in `compute-coach-signal` (server-side, uses Lovable AI Gateway `google/gemini-2.5-flash` for one-line Hinglish message; cached for the day).
+**TL;DR:** Text 70% kam karna hai, live-sync ko chapter-level pe auto-match karna hai, mission-complete pe ek curiosity hook (tomorrow preview + percentile pop) daalna hai, aur roadmap ko main anchor banake planner ko uska "aaj wala slice" bana dena hai.
 
 Ready to build?
