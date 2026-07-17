@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { fetchAllPaginated } from '@/utils/supabasePagination';
+
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, ArrowRight, CheckCircle, XCircle, Loader2,
