@@ -3005,6 +3005,73 @@ export type Database = {
         Args: { p_cmd: string; p_name: string; p_table: string }
         Returns: undefined
       }
+      fetch_unseen_questions: {
+        Args: {
+          p_batch_ids?: string[]
+          p_chapter_id?: string
+          p_exam?: string
+          p_limit?: number
+          p_subject?: string
+          p_topic_id?: string
+          p_topic_name?: string
+          p_user_id: string
+        }
+        Returns: {
+          batch_id: string | null
+          chapter: string | null
+          chapter_id: string | null
+          class_level: number | null
+          concept_id: string | null
+          content_hash: string | null
+          correct_answer: string | null
+          correct_option: string | null
+          correct_options: string[] | null
+          created_at: string | null
+          difficulty: string | null
+          difficulty_jee_mains:
+            | Database["public"]["Enums"]["difficulty_level"]
+            | null
+          difficulty_neet:
+            | Database["public"]["Enums"]["difficulty_level"]
+            | null
+          exam: string | null
+          exam_relevance: Database["public"]["Enums"]["exam_code"][] | null
+          explanation: string | null
+          id: string
+          is_active: boolean | null
+          is_pyq: boolean | null
+          is_verified: boolean | null
+          language: string | null
+          numerical_answer: number | null
+          numerical_tolerance: number | null
+          option_a: string | null
+          option_b: string | null
+          option_c: string | null
+          option_d: string | null
+          options: Json | null
+          pyq_exam: string | null
+          pyq_session: string | null
+          pyq_year: number | null
+          question: string | null
+          question_image_url: string | null
+          question_text: string | null
+          question_type: string | null
+          source: string | null
+          source_row_id: string | null
+          subject: string | null
+          subject_id: string | null
+          topic: string | null
+          topic_id: string | null
+          updated_at: string | null
+          year: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "questions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       finish_battle: { Args: { p_battle_id: string }; Returns: Json }
       fix_chapter_batch_distribution: { Args: never; Returns: Json }
       fn_expire_batch_subscriptions: { Args: never; Returns: undefined }
