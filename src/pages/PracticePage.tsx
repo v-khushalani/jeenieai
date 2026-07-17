@@ -288,26 +288,12 @@ const PracticePage: React.FC = () => {
     }
   }, [user?.id]);
 
-  const fetchQuestions = useCallback(async (difficulty?: string) => {
+  const fetchQuestions = useCallback(async (_difficulty?: string) => {
     setLoading(true);
     try {
-      const attemptedIds = new Set<string>();
-      if (user?.id) {
-        const [practiceIds, testIds] = await Promise.all([
-          fetchAllPaginated(() =>
-            supabase.from('question_attempts').select('question_id').eq('user_id', user.id).eq('mode', 'practice')
-          ),
-          fetchAllPaginated(() =>
-            supabase.from('question_attempts').select('question_id').eq('user_id', user.id).eq('mode', 'test')
-          ),
-        ]);
-        practiceIds.forEach((r: any) => attemptedIds.add(r.question_id));
-        testIds.forEach((r: any) => attemptedIds.add(r.question_id));
-      }
-
-      // Get user's batch to filter questions by exam type
-      let userBatchIds: string[] = [];
+      // Resolve exam + batch filters from profile
       let examFilter: string | null = null;
+      let userBatchIds: string[] = [];
       if (user?.id) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -316,7 +302,6 @@ const PracticePage: React.FC = () => {
           .single();
         const profileExam = profile?.target_exam || 'JEE';
         examFilter = getExamFilter(profileExam, profile?.grade || 12) || mapBatchToExamField(profileExam, profile?.grade || 12);
-        
         if (profile?.target_exam) {
           const { data: batches } = await supabase
             .from('batches')
@@ -327,97 +312,83 @@ const PracticePage: React.FC = () => {
         }
       }
 
-      let query = supabase
-        .from('questions')
-        .select('id, question, question_text, question_image_url, option_a, option_b, option_c, option_d, options, correct_options, numerical_answer, numerical_tolerance, difficulty, question_type, topic, topic_id, chapter, subject, exam, is_pyq, pyq_exam, pyq_year, pyq_session')
-        .or('is_active.is.null,is_active.eq.true');
+      const takeCount = isMissionBlock ? missionTarget : QUESTIONS_PER_BATCH;
 
-      if (examFilter) query = query.eq('exam', examFilter);
-
-      if (topicId) query = query.eq('topic_id', topicId);
-      else if (chapterId) query = query.eq('chapter_id', chapterId);
-      else if (subject) query = query.ilike('subject', subject);
-      if (!topicId && topicFilterName) query = query.ilike('topic', `%${topicFilterName}%`);
-
-      // Filter by user's batch so JEE students don't see NEET questions
-      if (userBatchIds.length > 0 && !topicId && !chapterId) {
-        query = query.in('batch_id', userBatchIds);
-      }
-
-      // No strict difficulty filter on the primary fetch — we pull a wide pool
-      // and let orderPoolByLevel(currentDifficulty) decide serving order.
-      // This guarantees Easy questions appear first when they exist, instead
-      // of failing the strict eq and then randomly serving Hard.
-
-
-      const { data, error } = await query.limit(500);
-      if (error) throw error;
-
-      let pool = (data || []).filter(q => isRevisit ? true : !attemptedIds.has(q.id));
-
-      if (pool.length === 0 && (chapterId || topicFilterName)) {
-        let fallbackQuery = supabase
+      // Revisit mode: intentionally re-serve previously attempted questions in this scope
+      if (isRevisit) {
+        let q = supabase
           .from('questions')
           .select('id, question, question_text, question_image_url, option_a, option_b, option_c, option_d, options, correct_options, numerical_answer, numerical_tolerance, difficulty, question_type, topic, topic_id, chapter, subject, exam, is_pyq, pyq_exam, pyq_year, pyq_session')
           .or('is_active.is.null,is_active.eq.true');
-        if (examFilter) fallbackQuery = fallbackQuery.eq('exam', examFilter);
-
-        if (chapterId && chapter) fallbackQuery = fallbackQuery.ilike('chapter', `%${chapter}%`);
-        if (subject) fallbackQuery = fallbackQuery.ilike('subject', subject);
-        if (!topicId && topicFilterName) fallbackQuery = fallbackQuery.ilike('topic', `%${topicFilterName}%`);
-
-        const { data: fallbackData } = await fallbackQuery.limit(1000);
-        pool = (fallbackData || []).filter(q => isRevisit ? true : !attemptedIds.has(q.id));
+        if (examFilter) q = q.eq('exam', examFilter);
+        if (topicId) q = q.eq('topic_id', topicId);
+        else if (chapterId) q = q.eq('chapter_id', chapterId);
+        else if (subject) q = q.ilike('subject', subject);
+        if (!topicId && topicFilterName) q = q.ilike('topic', `%${topicFilterName}%`);
+        const { data, error } = await q.limit(500);
+        if (error) throw error;
+        const ordered = orderPoolByLevel(data || [], currentDifficulty).slice(0, takeCount);
+        setQuestions(ordered);
+        setLoading(false);
+        return;
       }
 
-      if (pool.length === 0 && userBatchIds.length > 0 && !topicId && !chapterId) {
-        let fallbackQuery = supabase
-          .from('questions')
-          .select('id, question, question_text, question_image_url, option_a, option_b, option_c, option_d, options, correct_options, numerical_answer, numerical_tolerance, difficulty, question_type, topic, topic_id, chapter, subject, exam, is_pyq, pyq_exam, pyq_year, pyq_session')
-          .or('is_active.is.null,is_active.eq.true');
-        if (examFilter) fallbackQuery = fallbackQuery.eq('exam', examFilter);
-
-        if (subject) fallbackQuery = fallbackQuery.ilike('subject', subject);
-        if (!topicId && topicFilterName) fallbackQuery = fallbackQuery.ilike('topic', `%${topicFilterName}%`);
-
-
-        const { data: fallbackData } = await fallbackQuery.limit(1000);
-        pool = (fallbackData || []).filter(q => isRevisit ? true : !attemptedIds.has(q.id));
-      }
-
-
-
-      if (pool.length === 0 && examFilter) {
-        let fallbackQuery = supabase
-          .from('questions')
-          .select('id, question, question_text, question_image_url, option_a, option_b, option_c, option_d, options, correct_options, numerical_answer, numerical_tolerance, difficulty, question_type, topic, topic_id, chapter, subject, exam, is_pyq, pyq_exam, pyq_year, pyq_session')
-          .or('is_active.is.null,is_active.eq.true');
-        if (topicId) fallbackQuery = fallbackQuery.eq('topic_id', topicId);
-        else if (chapterId) fallbackQuery = fallbackQuery.eq('chapter_id', chapterId);
-        else if (subject) fallbackQuery = fallbackQuery.ilike('subject', subject);
-        if (!topicId && topicFilterName) fallbackQuery = fallbackQuery.ilike('topic', `%${topicFilterName}%`);
-        if (userBatchIds.length > 0 && !topicId && !chapterId) {
-          fallbackQuery = fallbackQuery.in('batch_id', userBatchIds);
-        }
-
-        const { data: fallbackData } = await fallbackQuery.limit(1000);
-        pool = (fallbackData || []).filter(q => isRevisit ? true : !attemptedIds.has(q.id));
-      }
-
-      if (pool.length === 0) {
-        toast.success('You\'ve completed all questions in this section! 🎉 Try another topic.');
+      // Default: strict unseen-only via RPC (server-side NOT EXISTS on question_attempts)
+      if (!user?.id) {
         setQuestions([]);
         setLoading(false);
         return;
       }
 
-      // Adaptive serving order: target difficulty first (from session score),
-      // then naturally step into other levels if the bucket runs dry.
-      // Mission-block deep-links serve EXACTLY `target` questions (not 50).
-      const takeCount = isMissionBlock ? missionTarget : QUESTIONS_PER_BATCH;
-      const ordered = orderPoolByLevel(pool, currentDifficulty).slice(0, takeCount);
-      setQuestions(ordered);
+      // Fetch a wider pool than we need so difficulty ordering has room to pick from
+      const rpcLimit = Math.max(takeCount * 4, 60);
 
+      const buildRpcArgs = (opts: {
+        useChapter?: boolean;
+        useTopic?: boolean;
+        useSubject?: boolean;
+        useBatches?: boolean;
+        useExam?: boolean;
+      }) => ({
+        p_user_id: user.id,
+        p_exam: opts.useExam !== false ? examFilter : null,
+        p_subject: opts.useSubject && subject ? subject : null,
+        p_chapter_id: opts.useChapter && chapterId ? chapterId : null,
+        p_topic_id: opts.useTopic && topicId ? topicId : null,
+        p_topic_name: !topicId && topicFilterName ? topicFilterName : null,
+        p_batch_ids: opts.useBatches && userBatchIds.length > 0 && !topicId && !chapterId ? userBatchIds : null,
+        p_limit: rpcLimit,
+      });
+
+      // Primary: all filters on
+      let { data: pool, error: rpcErr } = await supabase.rpc('fetch_unseen_questions', buildRpcArgs({
+        useChapter: true, useTopic: true, useSubject: true, useBatches: true, useExam: true,
+      }));
+      if (rpcErr) throw rpcErr;
+
+      // Fallback ladder: drop batch filter, then exam filter, then subject (only if no chapter/topic)
+      if ((!pool || pool.length === 0) && userBatchIds.length > 0) {
+        const r = await supabase.rpc('fetch_unseen_questions', buildRpcArgs({
+          useChapter: true, useTopic: true, useSubject: true, useBatches: false, useExam: true,
+        }));
+        pool = r.data || [];
+      }
+      if ((!pool || pool.length === 0) && examFilter) {
+        const r = await supabase.rpc('fetch_unseen_questions', buildRpcArgs({
+          useChapter: true, useTopic: true, useSubject: true, useBatches: false, useExam: false,
+        }));
+        pool = r.data || [];
+      }
+
+      if (!pool || pool.length === 0) {
+        toast.success("You've completed all questions in this section! 🎉 Try another topic.");
+        setQuestions([]);
+        setLoading(false);
+        return;
+      }
+
+      const ordered = orderPoolByLevel(pool as Question[], currentDifficulty).slice(0, takeCount);
+      setQuestions(ordered);
     } catch (error) {
       logger.error('Failed to fetch practice questions:', error);
       toast.error('Failed to load questions');
@@ -425,6 +396,7 @@ const PracticePage: React.FC = () => {
       setLoading(false);
     }
   }, [subject, chapterId, topicId, user, chapter, topicFilterName, isRevisit, isMissionBlock, missionTarget]);
+
   // NOTE: currentDifficulty intentionally NOT in deps — order is recomputed in
   // orderPoolByLevel on next fetch instead of refetching mid-session, which would
   // corrupt index-keyed `answeredQuestions`.
