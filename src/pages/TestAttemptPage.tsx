@@ -508,7 +508,11 @@ const TestAttemptPage = () => {
           }));
 
         if (attemptInserts.length > 0) {
-          const { error: attemptsError } = await supabase.from('question_attempts').insert(attemptInserts);
+          // Upsert with ignoreDuplicates so a race / retry never breaks the batch.
+          // Unique constraint on (user_id, question_id) enforces "one attempt per question, forever".
+          const { error: attemptsError } = await supabase
+            .from('question_attempts')
+            .upsert(attemptInserts, { onConflict: 'user_id,question_id', ignoreDuplicates: true });
           if (attemptsError) {
             throw attemptsError;
           }

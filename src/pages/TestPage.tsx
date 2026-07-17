@@ -801,7 +801,13 @@ const TestPage: React.FC = () => {
           });
         }));
 
-        questions = chapterBatches.flat();
+        // Merge + de-duplicate across chapters so the same question can never repeat within one test
+        const seenInSession = new Set<string>();
+        questions = chapterBatches.flat().filter(q => {
+          if (!q?.id || seenInSession.has(q.id)) return false;
+          seenInSession.add(q.id);
+          return true;
+        });
       }
 
       if (!questions || questions.length === 0) {
