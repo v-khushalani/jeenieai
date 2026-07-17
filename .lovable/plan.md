@@ -1,139 +1,98 @@
+# Planner v2 — "Aaj ki Hit-List" (auto-tick to-do)
 
-# Teen problems, teen fixes — co-founder mode
+## Part A: Hide percentile (quick)
 
-## 1. QUESTION REPEATS — root cause + strict fix
+Har jagah se percentile number/UI hata do jab tak Option B (real peer data) ready nahi. Rank/percentile ki jagah **streak + XP + today's progress** dikhega.
 
-### Kya ho raha hai (honest diagnosis)
+**Files touched:**
+- `src/components/planner/CoachMissionPanel.tsx` — sticky header se percentile chip remove
+- `src/components/AIStudyPlanner.tsx` — rank prediction card hide
+- `src/pages/EnhancedDashboard.tsx` — percentile widget hide
+- `supabase/functions/compute-coach-signal/index.ts` — response me `percentile` field bhejna band (backward-safe, sirf frontend consume nahi karega)
 
-Repeat 3 jagah se leak ho raha hai:
-
-1. **Client-side dedup on a capped pool.** `PracticePage.fetchQuestions` question table se `.limit(500)` pool laata hai, phir client pe `attemptedIds` se filter karta hai. Agar user ne us chapter ke 500 me se kuch attempt kar liye, aur DB me aur bhi hain — no problem. Lekin agar attempts kabhi insert fail hue (network, RLS, dupe key), to woh id `question_attempts` me nahi hai → same question wapas serve ho jaata hai.
-2. **Fallback branches** (lines 358, 373, 390 in `PracticePage.tsx`) dedup toh karte hain, lekin **server-side `not.in` filter nahi hai**. Agar attempted list 500+ hai to client filter ke baad pool khaali ho jaata hai aur fallback bhi wahi 500 attempted rows laata hai — cycle.
-3. **TestPage** (`getAttemptedQuestionIds`) sirf `question_attempts` dekhta hai. Lekin ek hi test session me question do baar aa sakta hai agar cross-subject batches merge hote waqt dedup key subject-scoped ho jaati hai. Aur test-session ke andar-hi-andar dedup nahi hai (ek hi test me repeat).
-4. **No DB-level guarantee.** `question_attempts` pe `UNIQUE(user_id, question_id, mode)` constraint nahi hai — silent duplicate insert allowed hai, aur "already attempted" ka source of truth soft hai.
-
-### Strict fix (isko hardcode kar denge)
-
-- **DB level:**
-  - `CREATE UNIQUE INDEX` on `question_attempts(user_id, question_id)` (across all modes — jo bhi question ek baar dekha, dobara kabhi nahi).
-  - New RPC `fetch_unseen_questions(user_id, filters, limit)` — Postgres side pe `NOT EXISTS` join se sirf unseen ids return kare. Client filtering hatao.
-  - New table `served_questions(user_id, question_id, session_id, served_at)` — jaise hi question **serve** hoti hai (submit se pehle), yahan insert. Isse "user ne dekha but submit nahi kiya" wale bhi repeat nahi honge.
-- **Client:**
-  - `PracticePage` aur `TestPage` dono `fetch_unseen_questions` RPC use karein. Client dedup as safety net only.
-  - Test session ke andar `usedIds` Set maintain — same test me question repeat impossible.
-- **Fallback rule:** agar unseen pool khatam ho jaaye, "You've completed this chapter" screen dikhao + suggest next chapter. **Kabhi bhi seen question wapas nahi.**
-- **Revisit mode** (`isRevisit`) sirf explicit "Revise wrong answers" flow me chalega — default nahi.
-
-### Files
-
-- New migration: unique index + `fetch_unseen_questions` RPC + `served_questions` table
-- `src/pages/PracticePage.tsx` — swap fetch to RPC
-- `src/pages/TestPage.tsx` — swap fetch to RPC + in-session `usedIds`
-- `src/pages/StudyNowPage.tsx` — same RPC path
+Percentile logic delete NAHI karenge — sirf UI hidden. Baad me Option B ke liye code available rahega.
 
 ---
 
-## 2. PERCENTILE — abhi kya hai vs kya hona chahiye
+## Part B: Planner redesign — "Hit-List" model
 
-### Abhi ka formula (from `compute-coach-signal/index.ts`)
+### Mental model (ek line me)
+
+**"Aaj ye 5 cheezein karni hain. Har cheez jaise-jaise complete hoti hai, khud tick lag jaata hai. Jaise Todoist + Duolingo ka bachcha."**
+
+Complex mission blocks, Kya/Kyun/Goal collapsibles, weekly reports — sab gone. Ek clean list. Bas.
+
+### Screen anatomy
 
 ```text
-base = 55
-gain = accuracy*22 + consistency*12 + coverage*6 + avgMastery*8 + trend*±2
-percentile = clamp(35..99.5, base + gain)
+┌─────────────────────────────────────────────┐
+│  Good morning, Aarav 👋                     │
+│  🔥 12 day streak · ⚡ 340 XP today         │
+├─────────────────────────────────────────────┤
+│  AAJ KI HIT-LIST                    3 / 5   │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60% │
+├─────────────────────────────────────────────┤
+│  ☑  Thermodynamics · 10 Q          +40 XP   │  ← auto-ticked, struck-through, green
+│  ☑  Rotation revision · 5 Q        +20 XP   │
+│  ☑  Organic PYQ · 8 Q              +30 XP   │
+│  ○  Calculus practice · 12 Q       +50 XP   │  ← current (highlighted, pulse dot)
+│     ▶ Start  · ~15 min · 4/12 done          │
+│  ○  Waves quick-fix · 5 Q          +20 XP   │  ← locked-feel, dimmed
+├─────────────────────────────────────────────┤
+│  🎯 Finish all 5 → +100 XP bonus + 🏆 badge │
+└─────────────────────────────────────────────┘
 ```
 
-Ye **dummy** feel isliye deta hai:
-- Base 55 hardcoded — koi bhi banda app open kare, 55 se kam nahi.
-- `accuracy` = last 30 days ke sabhi attempts ka avg. Easy questions bhi 1 unit, JEE Adv PYQ bhi 1 unit — no weightage.
-- Coverage: sirf 3 subjects touch karne pe max — matlab ek chapter ke 5 easy Q + doosre subject ke 5 easy Q = full coverage credit.
-- Peer comparison **zero** — actual "percentile" ka matlab hi hai "kitne % students se aage ho". Yahan koi peer data nahi use ho raha.
+### Behaviour rules
 
-### Honest percentile v2
+1. **Auto-tick, no manual "Done" button.** Question solve karte hi (existing `bump_mission_progress_by_chapter` RPC + realtime subscription), row me progress bar bharta hai. Target hit → row satisfying animation ke saath ticks off (checkmark draw + slight bounce + XP counter fly to header).
+2. **Sequential focus.** Sirf **ek** row "current" hoti hai (highlighted, expanded with Start button). Baaki rows compact single-line. Complete hone pe next row auto-becomes-current.
+3. **XP over percentile.** Har task pe XP value visible. Header me today's XP counter live update. Streak + XP = engagement currency (percentile ki jagah).
+4. **Realtime sync.** Existing `visibilitychange` refetch + Supabase realtime channel on `daily_missions` row. Tab wapas aate hi UI already updated.
+5. **Completion celebration.** Saare 5 tick → full-screen confetti + "Aaj ka mission clear! Streak safe 🔥 · +100 bonus XP" card + "Kal ka teaser" (blurred preview of tomorrow's first task, unlocks 6 AM).
+6. **Empty/late-day states.**
+   - Sab done: "Ek aur round?" → optional bonus 5 Q from weakest chapter (extra XP, doesn't affect streak).
+   - Din khatam, incomplete: "Kal fresh start. Ye 2 tasks kal reschedule ho gaye" (gentle, no shame).
+7. **Kyun/Kya (context) — on tap only.** Har row tap karo → bottom sheet me chhoti explanation: "Ye kyun aaj: Last week Thermo me 52% tha, aaj fix karenge." No walls of text on main screen.
 
-Do options — tu decide:
+### What gets removed / merged
 
-**Option A: "Predicted Rank Band" (recommended, low infra)**
-- Naam hi badal — "Predicted Rank Band: 2000–4000" instead of "91.2 percentile". Honest hai, dummy nahi lagta.
-- Formula: har chapter ka JEE weightage × user's mastery × PYQ accuracy → expected marks. Expected marks → historical rank curve (static JSON of JEE 2023/24 marks-vs-rank).
-- Confidence badge: Low (< 100 attempts), Medium (100–500), High (500+).
+- ❌ `MissionCompleteCard` heavy version → replaced by lightweight confetti + XP card
+- ❌ "JEEnie note" collapsible, "Rank-chase" strip, "Weekly report" panel → all gone from planner screen (move to Analytics page if needed)
+- ❌ Roadmap tab as separate mental model → keep as `/roadmap` route but add small "📖 Full syllabus map" link at bottom of Hit-List
+- ❌ Percentile chip, rank prediction band
+- ✅ Streak chip stays (top-left)
+- ✅ XP counter (new, top-right)
 
-**Option B: True percentile (needs peer aggregation)**
-- Aggregate table `user_daily_stats` (already partially exists via `daily_progress`). Nightly job: compute each user's `expected_marks`, rank sabko, store percentile.
-- User dekhta hai: "Tu top 8.8% me hai (12,340 active JEE 2026 students me se)."
-- Requires: min 1000 active users for stat to be meaningful; till then, fallback to Option A with a "Beta" tag.
+### Data model — reuse what exists
 
-### Recommendation
+- `daily_missions` table already stores today's blocks with `progress`, `target`, `chapter_id`, `status`. Perfect for Hit-List rows — no schema change needed.
+- Add one column: `daily_missions.xp_reward INT DEFAULT 20` (per block). Filled by `generate-daily-mission` edge fn based on target size.
+- New `profiles.daily_xp INT` + `profiles.total_xp INT` — increment via existing `bump_mission_progress_by_chapter` when block completes.
 
-Ship **Option A now** + start collecting peer aggregate for Option B in background. Rename UI se `percentile` word hata do jab tak Option B ready nahi — "Predicted JEE Rank" zyada credible feel deta hai.
+### Files to edit (Part B)
+
+- **`src/components/planner/CoachMissionPanel.tsx`** — full rewrite as `HitListPanel` (~200 lines, was 600+). List rows, current-row expansion, auto-tick animation, XP fly.
+- **New `src/components/planner/HitListRow.tsx`** — single row component with three states (done/current/upcoming).
+- **New `src/components/planner/CompletionCelebration.tsx`** — confetti + XP card + tomorrow teaser.
+- **`supabase/functions/generate-daily-mission/index.ts`** — add `xp_reward` per block (5 Q = 20 XP, 10 Q = 40 XP, PYQ = 1.5x).
+- **New migration** — add `xp_reward` to `daily_missions`, add `daily_xp` + `total_xp` to `profiles`, update `bump_mission_progress_by_chapter` RPC to increment XP + mark block done when `progress >= target`.
+- **`src/pages/PracticePage.tsx`** — on question submit, existing RPC call now also returns `xp_gained` and `block_completed` bool; show tiny toast "+8 XP" on each correct, "+40 XP · Task complete! ✅" on block done.
+- **`src/pages/AIStudyPlannerPage.tsx`** — no structural change, just renders the new HitListPanel.
+- **`src/hooks/useStreakData.tsx`** — extend to also return `daily_xp` + `total_xp` (single fetch).
+
+### Implementation order
+
+1. **Slice 1 (this build):** Hide percentile everywhere + Hit-List UI rebuild (rows, auto-tick, sequential focus, current-row expansion). Uses existing progress data — no DB changes yet.
+2. **Slice 2 (next):** XP system migration + edge fn update + celebration card + tomorrow teaser.
+3. **Slice 3 (later):** Bonus round, reschedule logic, roadmap-as-map link.
+
+Slice 1 alone will make the planner feel like a real to-do list. Slice 2 adds the dopamine loop.
 
 ---
 
-## 3. AI PLANNER — co-founder redesign
+## Confirm before I build
 
-### Sach bolun to abhi ka planner kya galat hai
-
-- **3 alag mental models** — Roadmap (strategic), AI Planner mission blocks (tactical), Study Now (raw practice). Student confused: "kahan se start karun?"
-- **Coach vibe missing.** Text hai, emojis hain, lekin koi **decision tu student ke liye nahi le raha**. Har jagah 4 buttons, 6 cards.
-- **No feedback loop that feels alive.** Question solve karo → mission update → done. But **kya seekha**, **kal kya**, **iska rank pe kya impact** — silent.
-- **Zero stakes.** Streak break ho ya na ho, kuch bada nahi hota. Competitive angle sirf ek strip me hai.
-
-### Best version (mera pitch)
-
-**Ek hi flow, ek hi screen, ek hi CTA at a time.**
-
-```text
-┌──────────────────────────────────────────────┐
-│ 🔥 Streak: 12d   Rank: 3,200 ↑42   Day 187/487│  ← sticky
-├──────────────────────────────────────────────┤
-│                                              │
-│   AAJ KA MISSION                             │
-│   ─────────────                              │
-│   Thermodynamics · Weak fix                  │
-│   10 Q · ~18 min · Pass @ 6/10               │
-│                                              │
-│   [   ▶  START  (biggest button on screen)  ]│
-│                                              │
-│   ↓ tap for details                          │
-│   Kal ka teaser: Rotation PYQ marathon       │
-├──────────────────────────────────────────────┤
-│  Progress today:  ●●○○○  (2/5 blocks)        │
-│  Next 2 blocks: [Rotation revision] [5 PYQ]  │
-├──────────────────────────────────────────────┤
-│  📖 Full roadmap  ·  📊 My stats  ·  🏆 Rank │
-└──────────────────────────────────────────────┘
-```
-
-**Rules for the "co-founder" version:**
-
-1. **One decision at a time.** Sirf "aaj ka current block" hero pe. Baaki blocks stack me chhote.
-2. **Every block has stakes.**
-   - Pass criteria clear: "6/10 = +0.4 percentile, 3 din streak safe."
-   - Fail feel real: "3/10 hua = chapter ko phir se schedule karenge kal."
-3. **Live coach commentary** — question solve karte waqt mini toast: "Bhai, thermodynamics me tu 78% pe hai — 2 aur sahi = mastery unlock 🔓."
-4. **Curiosity hooks after block completion:**
-   - Live rank ticker jump (3,242 → 3,200 with animation)
-   - "Tera dost Aryan ne aaj 2 blocks kiye — tu 3 pe hai 🔥" (if friends feature on)
-   - "Kal ka block preview" (locked/blurred, unlocks tomorrow)
-5. **Roadmap becomes a "map" view, not a competitor screen.** Ek "Zoom out" button — dikhata hai poora syllabus with today's block highlighted as "You are here." Roadmap is not a separate feature — it's the map behind today's mission.
-6. **Weekly boss fight** — har Sunday ek "Boss test" (30 Q from week's chapters). Beat karo → percentile jump animation + shareable card.
-7. **Streak with real consequence.** Streak break = rank prediction gir jaata hai visibly (3,200 → 3,600). Isse dar lagta hai, motivation ke saath.
-
-### Implementation slices (proposed, need approval)
-
-- **Slice 1: Single-focus mission screen.** Rebuild `CoachMissionPanel` — hero block + stacked mini blocks + live commentary hook. Kill sabhi secondary cards.
-- **Slice 2: Real stakes.** Block completion → animated rank jump + toast. Block fail → auto-reschedule tomorrow.
-- **Slice 3: Weekly boss test.** New edge fn `generate-weekly-boss` + `WeeklyBossCard.tsx`.
-- **Slice 4: Roadmap as map.** RoadmapView becomes zoomed-out view of today's position, not separate tab.
-
-Out of scope for now: friends leaderboard, live multiplayer, notifications infra.
-
----
-
-## What I need from you before I build
-
-1. **Repeats fix:** unique index across all modes (including tests) OK? Ya tests me repeat OK rakhna hai (kyunki mock tests me PYQ dobara aana valid hota hai)?
-2. **Percentile:** Option A (Predicted Rank Band, ship this week) ya Option B (true peer percentile, needs 2 weeks + peer data)?
-3. **Planner:** Full redesign (slice 1+2 first, slice 3+4 next week) — green light?
-
-Approve karo, main teenon build karta hoon strict order me: repeats → percentile → planner.
+- Slice 1 (percentile hide + Hit-List UI) — green light?
+- XP naming OK, ya "Points" / "Coins" / kuch aur prefer karega?
+- Confetti celebration cool hai, ya subtle checkmark-only prefer karega (less "gamey")?
