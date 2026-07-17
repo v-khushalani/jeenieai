@@ -544,7 +544,11 @@ const PracticePage: React.FC = () => {
           mode: 'practice',
           time_spent: 0,
         });
-        if (attemptInsertError) throw attemptInsertError;
+        // Ignore unique-violation (23505): means this (user, question) was already recorded.
+        // We treat the first attempt as the source of truth and just move on.
+        if (attemptInsertError && (attemptInsertError as { code?: string }).code !== '23505') {
+          throw attemptInsertError;
+        }
 
         const pointsDelta = getPointsDelta(currentQuestion.difficulty, result.is_correct);
         const [practiceStatsRes, streakRes, topicMasteryRes] = await Promise.all([
