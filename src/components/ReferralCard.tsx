@@ -31,7 +31,7 @@ export default function ReferralCard({ onTrackPercentile, streakDays }: Props) {
   const link = `${APP_URL}/?ref=${code}`;
   const message = [
     `Yaar, JEE/NEET prep ke liye ek AI coach mila — *JEEnie Bhai*.`,
-    onTrackPercentile ? `Mera predicted percentile: *${onTrackPercentile}* 🎯` : null,
+    null,
     streakDays && streakDays >= 3 ? `${streakDays}-day streak chal rahi hai 🔥` : null,
     ``,
     `Roz decide karta hai kya padhna hai — kaafi solid hai.`,
