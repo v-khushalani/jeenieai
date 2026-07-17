@@ -1,11 +1,11 @@
 /**
- * CoachMissionPanel — v3: minimal, curiosity-driven.
- * • Sticky header: streak + percentile + refresh
- * • Mission blocks: 1 line + type dot + progress + Start (Kyun/Kya/Goal on tap)
- * • Secondary content (weekly report, JEEnie note, nudge, streak risk, rank chase)
- *   collapsed inside "Why these?" — default hidden.
- * • MissionCompleteCard on all-done: percentile pop + streak flame + tomorrow teaser
- * • Live sync: realtime + visibility refetch
+ * CoachMissionPanel — v4: "Aaj ki Hit-List"
+ * Sequential auto-ticking to-do list. One task in focus at a time.
+ * • Header: streak + today's progress (percentile hidden — Slice 2 will add XP)
+ * • Rows: done (struck + green tick), current (expanded + Start), upcoming (dimmed)
+ * • Auto-tick as questions solve (realtime + visibility refetch)
+ * • Tap row → bottom sheet with Kyun/Kya/Goal (no walls of text on main screen)
+ * • On all done → clean celebration card + tomorrow teaser
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,36 +14,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import {
-  Play, CheckCircle2, RefreshCw, Sparkles, ChevronDown, Clock, Loader2,
-  BookOpen, PlusCircle, TrendingUp, TrendingDown, Flame, Trophy, Target,
+  Play, CheckCircle2, RefreshCw, Sparkles, Loader2, BookOpen, PlusCircle,
+  Flame, Trophy, Circle, Info,
 } from 'lucide-react';
 import LogClassSheet from '@/components/LogClassSheet';
 
 interface CoachSignal {
-  prediction: {
-    exam: string;
-    on_track_percentile: number;
-    off_track_percentile: number;
-    delta: number;
-    trend: 'up' | 'flat' | 'down';
-    confidence: 'low' | 'medium' | 'high';
-  };
   streak?: { current: number; best: number; today_done: boolean };
-  weekly_report?: {
-    week_start: string;
-    active_days: number;
-    total_questions: number;
-    accuracy: number;
-    accuracy_change: number;
-    top_subject: string | null;
-    weakest_subject: string | null;
-    focus_next_week: string;
-  } | null;
   nudge: { emoji: string; message: string; tone: 'push' | 'praise' | 'warn' } | null;
-  factors?: Record<string, unknown>;
 }
 
 type BlockType = 'learn_practice' | 'revision' | 'weak_fix' | 'class_recap' | 'pyq' | 'mock';
@@ -91,13 +75,13 @@ const PREP_MODES: Array<{ value: DailyMission['prep_mode']; label: string; desc:
 
 const MINUTE_CHOICES = [60, 90, 120, 150, 180, 240];
 
-const typeDot: Record<BlockType, string> = {
-  learn_practice: 'bg-blue-500',
-  revision:       'bg-amber-500',
-  weak_fix:       'bg-rose-500',
-  class_recap:    'bg-emerald-500',
-  pyq:            'bg-violet-500',
-  mock:           'bg-orange-500',
+const typeAccent: Record<BlockType, string> = {
+  learn_practice: 'text-blue-600',
+  revision:       'text-amber-600',
+  weak_fix:       'text-rose-600',
+  class_recap:    'text-emerald-600',
+  pyq:            'text-violet-600',
+  mock:           'text-orange-600',
 };
 
 const typeShort: Record<BlockType, string> = {
@@ -125,12 +109,12 @@ export default function CoachMissionPanel() {
   const [needsSetup, setNeedsSetup] = useState(false);
   const [setupMode, setSetupMode] = useState<DailyMission['prep_mode']>('guided');
   const [setupMinutes, setSetupMinutes] = useState<number>(120);
-  const [expandedBlock, setExpandedBlock] = useState<string | null>(null);
   const [prepMode, setPrepMode] = useState<DailyMission['prep_mode'] | null>(null);
   const [loggedToday, setLoggedToday] = useState<{ id: string; chapter_name: string | null; subject: string } | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const [signal, setSignal] = useState<CoachSignal | null>(null);
-  const [whyOpen, setWhyOpen] = useState(false);
+  const [sheetBlock, setSheetBlock] = useState<MissionBlock | null>(null);
+  const [justCompleted, setJustCompleted] = useState<Set<string>>(new Set());
 
   const generate = useCallback(async (force = false) => {
     setGenerating(true);
@@ -138,11 +122,7 @@ export default function CoachMissionPanel() {
       const { data, error } = await supabase.functions.invoke('generate-daily-mission', { body: { force } });
       if (error) throw error;
       const m = (data as { mission?: DailyMission } | null)?.mission;
-      if (m) {
-        setMission(m);
-        const firstPending = m.blocks.find(b => (b.progress?.status ?? 'pending') !== 'done');
-        if (firstPending) setExpandedBlock(firstPending.id);
-      }
+      if (m) setMission(m);
     } catch (e) {
       console.error(e);
       toast.error('Mission generate nahi ho payi — thodi der mein retry karo');
@@ -208,16 +188,16 @@ export default function CoachMissionPanel() {
 
       if (existing && !isLegacy) {
         setMission(existing as unknown as DailyMission);
-        const firstPending = (existing.blocks as unknown as MissionBlock[]).find(
-          b => (b.progress?.status ?? 'pending') !== 'done',
-        );
-        if (firstPending) setExpandedBlock(firstPending.id);
       } else {
         await generate(true);
       }
 
+      // Streak/nudge only — percentile hidden
       supabase.functions.invoke('compute-coach-signal').then(({ data }) => {
-        if (data && (data as CoachSignal).prediction) setSignal(data as CoachSignal);
+        if (data) {
+          const s = data as any;
+          setSignal({ streak: s.streak, nudge: s.nudge });
+        }
       }).catch(() => {});
     } finally {
       setLoading(false);
@@ -247,6 +227,26 @@ export default function CoachMissionPanel() {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [refreshMissionOnly]);
 
+  // Detect newly-completed blocks → briefly animate the tick
+  useEffect(() => {
+    if (!mission) return;
+    const done = mission.blocks.filter(b => (b.progress?.status ?? 'pending') === 'done').map(b => b.id);
+    setJustCompleted(prev => {
+      const next = new Set(prev);
+      done.forEach(id => {
+        if (!prev.has(id)) {
+          next.add(id);
+          setTimeout(() => {
+            setJustCompleted(cur => {
+              const c = new Set(cur); c.delete(id); return c;
+            });
+          }, 1600);
+        }
+      });
+      return next;
+    });
+  }, [mission]);
+
   const saveSetup = async () => {
     if (!user?.id) return;
     const { error } = await supabase
@@ -260,7 +260,7 @@ export default function CoachMissionPanel() {
     if (error) { toast.error(error.message); return; }
     setNeedsSetup(false);
     await generate(true);
-    toast.success('Aaj ki mission ready hai 🚀');
+    toast.success('Aaj ki hit-list ready hai 🚀');
   };
 
   const startBlock = async (block: MissionBlock) => {
@@ -281,35 +281,45 @@ export default function CoachMissionPanel() {
   const totalCount = mission?.blocks?.length ?? 0;
   const allDone = totalCount > 0 && doneCount >= totalCount;
   const overallPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
-  const nextBlock = mission?.blocks.find(b => (b.progress?.status ?? 'pending') !== 'done');
+
+  // First non-done block = the "current" focus row
+  const currentBlockId = useMemo(() => {
+    if (!mission) return null;
+    const found = mission.blocks.find(b => (b.progress?.status ?? 'pending') !== 'done');
+    return found?.id ?? null;
+  }, [mission]);
+
   const tomorrowTeaser = useMemo(() => {
     if (!mission) return null;
     const weak = mission.blocks.find(b => b.type === 'weak_fix');
     if (weak?.chapter_name) return `Kal ${weak.chapter_name} ka chapter test open hoga`;
     const learn = mission.blocks.find(b => b.type === 'learn_practice');
     if (learn?.chapter_name) return `Kal ${learn.chapter_name} ke next-level Qs`;
-    return 'Kal fresh mission — PYQ + weak-spot fix';
+    return 'Kal fresh hit-list — PYQ + weak-spot fix';
   }, [mission]);
 
   return (
     <div className="space-y-3">
-      {/* Sticky-ish header: streak · percentile · refresh */}
-      {!loading && !needsSetup && (signal?.prediction || signal?.streak) && (
-        <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2">
-          {signal?.streak && signal.streak.current > 0 && (
-            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold ${
+      {/* Header — streak + refresh (percentile hidden) */}
+      {!loading && !needsSetup && (
+        <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5">
+          {signal?.streak && signal.streak.current > 0 ? (
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
               signal.streak.today_done ? 'bg-orange-500/15 text-orange-600' : 'bg-muted text-muted-foreground'
             }`}>
               <Flame className="w-3.5 h-3.5" />
-              <span className="tabular-nums">{signal.streak.current}d</span>
+              <span className="tabular-nums">{signal.streak.current}d streak</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground">
+              <Flame className="w-3.5 h-3.5" />
+              <span>Start streak</span>
             </div>
           )}
-          {signal?.prediction && (
-            <div className="flex items-baseline gap-1.5 flex-1">
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Percentile</span>
-              <span className="text-lg font-bold tabular-nums">{signal.prediction.on_track_percentile}</span>
-              {signal.prediction.trend === 'up' && <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />}
-              {signal.prediction.trend === 'down' && <TrendingDown className="w-3.5 h-3.5 text-rose-600" />}
+          {mission && (
+            <div className="flex-1 text-right">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold leading-none">Aaj</p>
+              <p className="text-sm font-bold tabular-nums leading-tight mt-0.5">{doneCount}<span className="text-muted-foreground font-normal">/{totalCount}</span></p>
             </div>
           )}
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => generate(true)} disabled={generating}>
@@ -322,111 +332,142 @@ export default function CoachMissionPanel() {
         <Card className="border-dashed">
           <CardContent className="py-10 flex flex-col items-center gap-2 text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin" />
-            <p className="text-sm">Aaj ki mission taiyaar kar raha hu…</p>
+            <p className="text-sm">Aaj ki hit-list bana raha hu…</p>
           </CardContent>
         </Card>
       )}
 
-      {/* MISSION LIST — minimal cards */}
+      {/* HIT-LIST */}
       {!loading && mission && !allDone && (
         <div className="space-y-2">
           <div className="flex items-center justify-between px-1">
             <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
-              Aaj · {doneCount}/{totalCount} done
+              Aaj ki Hit-List
             </p>
-            <span className="text-[10px] text-muted-foreground">{formatTime(mission.total_minutes)}</span>
+            <span className="text-[10px] text-muted-foreground tabular-nums">{overallPct}%</span>
           </div>
-          <Progress value={overallPct} className="h-1" />
+          <Progress value={overallPct} className="h-1.5" />
 
-          {mission.blocks.map((b) => {
-            const prog = b.progress ?? { attempted: 0, correct: 0, status: 'pending' as const };
-            const isDone = prog.status === 'done';
-            const isInProgress = prog.status === 'in_progress';
-            const isExpanded = expandedBlock === b.id;
-            const target = b.question_count || 10;
-            const attemptPct = Math.min(100, Math.round((prog.attempted / Math.max(1, target)) * 100));
-            const passingGoal = b.passing_goal ?? Math.max(1, Math.ceil(target * 0.6));
+          <ul className="space-y-2 pt-1">
+            {mission.blocks.map((b) => {
+              const prog = b.progress ?? { attempted: 0, correct: 0, status: 'pending' as const };
+              const isDone = prog.status === 'done';
+              const isCurrent = !isDone && b.id === currentBlockId;
+              const isUpcoming = !isDone && !isCurrent;
+              const target = b.question_count || 10;
+              const attemptPct = Math.min(100, Math.round((prog.attempted / Math.max(1, target)) * 100));
+              const wasJustDone = justCompleted.has(b.id);
 
-            return (
-              <div
-                key={b.id}
-                className={`rounded-xl border transition-all overflow-hidden ${
-                  isDone ? 'border-emerald-500/40 bg-emerald-500/5' :
-                  isInProgress ? 'border-primary/40 bg-primary/5' :
-                  'border-border bg-card'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 p-3">
-                  {isDone ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                  ) : (
-                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${typeDot[b.type]}`} />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold leading-tight truncate ${isDone ? 'line-through text-muted-foreground' : ''}`}>
-                      {b.title}
-                    </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] text-muted-foreground">{typeShort[b.type]}</span>
-                      <span className="text-[10px] text-muted-foreground">·</span>
-                      <span className="text-[10px] text-muted-foreground tabular-nums">
-                        {isDone || prog.attempted > 0 ? `${prog.attempted}/${target}` : `${target} Q · ${b.minutes}m`}
-                      </span>
-                      {(prog.attempted > 0 || isDone) && (
-                        <div className="flex-1 max-w-[80px]">
+              return (
+                <li
+                  key={b.id}
+                  className={`group rounded-xl border transition-all overflow-hidden ${
+                    isDone
+                      ? 'border-emerald-500/30 bg-emerald-500/5'
+                      : isCurrent
+                      ? 'border-primary/50 bg-primary/5 shadow-sm'
+                      : 'border-border/60 bg-card opacity-70'
+                  } ${wasJustDone ? 'animate-scale-in' : ''}`}
+                >
+                  <div className="flex items-center gap-3 p-3">
+                    {/* Tick / bullet */}
+                    <button
+                      type="button"
+                      onClick={() => setSheetBlock(b)}
+                      className="shrink-0"
+                      aria-label="Task details"
+                    >
+                      {isDone ? (
+                        <div className={`w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center ${wasJustDone ? 'animate-scale-in' : ''}`}>
+                          <CheckCircle2 className="w-4 h-4 text-white" strokeWidth={3} />
+                        </div>
+                      ) : isCurrent ? (
+                        <div className="relative">
+                          <Circle className="w-6 h-6 text-primary" strokeWidth={2.5} />
+                          <span className="absolute inset-0 m-auto w-2 h-2 rounded-full bg-primary animate-pulse" />
+                        </div>
+                      ) : (
+                        <Circle className="w-6 h-6 text-muted-foreground/40" strokeWidth={2} />
+                      )}
+                    </button>
+
+                    {/* Body */}
+                    <button
+                      type="button"
+                      onClick={() => setSheetBlock(b)}
+                      className="flex-1 min-w-0 text-left"
+                    >
+                      <p className={`text-sm font-semibold leading-tight truncate ${
+                        isDone ? 'line-through text-muted-foreground' : ''
+                      }`}>
+                        {b.title}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className={`text-[10px] font-semibold ${typeAccent[b.type]}`}>{typeShort[b.type]}</span>
+                        <span className="text-[10px] text-muted-foreground">·</span>
+                        <span className="text-[10px] text-muted-foreground tabular-nums">
+                          {isDone ? `${target}/${target}` : `${prog.attempted}/${target} Q`}
+                        </span>
+                        {!isDone && (
+                          <>
+                            <span className="text-[10px] text-muted-foreground">·</span>
+                            <span className="text-[10px] text-muted-foreground">{b.minutes}m</span>
+                          </>
+                        )}
+                      </div>
+                      {isCurrent && prog.attempted > 0 && (
+                        <div className="mt-2">
                           <Progress value={attemptPct} className="h-1" />
                         </div>
                       )}
-                    </div>
+                    </button>
+
+                    {/* Action */}
+                    {isCurrent && (
+                      <Button size="sm" className="h-9 px-3 shrink-0" onClick={() => startBlock(b)}>
+                        <Play className="w-3.5 h-3.5 mr-1" />
+                        {prog.attempted > 0 ? 'Continue' : 'Start'}
+                      </Button>
+                    )}
+                    {isUpcoming && (
+                      <button
+                        type="button"
+                        onClick={() => setSheetBlock(b)}
+                        className="shrink-0 p-1 text-muted-foreground/60 hover:text-foreground"
+                        aria-label="Info"
+                      >
+                        <Info className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
-                  {!isDone && (
-                    <Button size="sm" className="h-8 px-3 shrink-0" onClick={() => startBlock(b)}>
-                      <Play className="w-3 h-3 mr-1" />
-                      {isInProgress ? 'Continue' : 'Start'}
-                    </Button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setExpandedBlock(isExpanded ? null : b.id)}
-                    className="p-1 -mr-1 shrink-0 text-muted-foreground hover:text-foreground"
-                    aria-label="Details"
-                  >
-                    <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                  </button>
-                </div>
-                {isExpanded && (
-                  <div className="px-3 pb-3 pt-0 border-t border-border/50 space-y-1 text-[11px] leading-snug">
-                    <p className="pt-2"><span className="font-semibold">Kyun: </span><span className="text-muted-foreground">{b.why}</span></p>
-                    <p><span className="font-semibold">Kya: </span><span className="text-muted-foreground">{b.what || `${target} Q solve karo (~${b.minutes} min)`}</span></p>
-                    <p><span className="font-semibold">Goal: </span><span className="text-muted-foreground">{b.goal || `${passingGoal}/${target} sahi = done ✅`}</span></p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className="text-[10px] text-center text-muted-foreground pt-1">
+            Solve karte hi khud tick lag jayega ✨
+          </p>
         </div>
       )}
 
-      {/* MISSION COMPLETE — curiosity hook */}
+      {/* ALL DONE — celebration */}
       {!loading && mission && allDone && (
-        <div className="rounded-2xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent p-5 space-y-4 overflow-hidden relative">
+        <div className="rounded-2xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent p-6 space-y-4 relative overflow-hidden animate-scale-in">
           <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl animate-pulse pointer-events-none" />
-          <div className="relative text-center space-y-1">
-            <Trophy className="w-8 h-8 text-emerald-600 mx-auto" />
-            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">Mission clear! 🔥</p>
-            {signal?.prediction && (
-              <p className="text-xs text-muted-foreground">
-                Percentile <span className="font-bold text-foreground tabular-nums">{signal.prediction.on_track_percentile}</span> pe lock
-                <span className="text-emerald-600 font-bold"> +{signal.prediction.delta.toFixed(1)}</span>
-              </p>
-            )}
+          <div className="relative text-center space-y-2">
+            <div className="w-14 h-14 mx-auto rounded-full bg-emerald-500 flex items-center justify-center animate-scale-in">
+              <Trophy className="w-7 h-7 text-white" />
+            </div>
+            <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">Hit-List clear! 🎯</p>
+            <p className="text-xs text-muted-foreground">Saare {totalCount} tasks done. Aaj tu winner.</p>
           </div>
 
           {signal?.streak && signal.streak.current > 0 && (
-            <div className="relative flex items-center justify-center gap-2 py-2 rounded-lg bg-orange-500/10 border border-orange-500/30">
+            <div className="relative flex items-center justify-center gap-2 py-2.5 rounded-lg bg-orange-500/10 border border-orange-500/30">
               <Flame className="w-4 h-4 text-orange-600" />
               <p className="text-xs font-semibold text-orange-700 dark:text-orange-400">
-                {signal.streak.current}-day streak alive · kal 1 block se aage
+                {signal.streak.current}-day streak alive 🔥
               </p>
             </div>
           )}
@@ -436,61 +477,6 @@ export default function CoachMissionPanel() {
               <p className="text-[10px] uppercase tracking-widest font-bold text-primary/80 mb-1">Kal ka teaser</p>
               <p className="text-xs">{tomorrowTeaser}</p>
               <p className="text-[10px] text-muted-foreground mt-1">Aaj raat 12 baje unlock</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* "Why these?" — everything secondary tucked here */}
-      {!loading && !needsSetup && mission && (signal || mission.reasoning) && (
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setWhyOpen(v => !v)}
-            className="w-full flex items-center justify-between px-3 py-2.5 text-left"
-          >
-            <span className="text-xs font-semibold flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-              JEEnie note {whyOpen ? '' : '· tap to expand'}
-            </span>
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${whyOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {whyOpen && (
-            <div className="px-3 pb-3 pt-0 space-y-3 border-t border-border/50">
-              {mission.reasoning && (
-                <p className="pt-3 text-[11px] leading-snug text-muted-foreground">{mission.reasoning}</p>
-              )}
-              {signal?.nudge && (
-                <div className={`flex items-start gap-2 rounded-lg p-2.5 text-[11px] leading-snug ${
-                  signal.nudge.tone === 'praise' ? 'bg-emerald-500/8 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20' :
-                  signal.nudge.tone === 'warn' ? 'bg-amber-500/8 text-amber-800 dark:text-amber-300 border border-amber-500/20' :
-                  'bg-primary/8 text-primary border border-primary/20'
-                }`}>
-                  <span className="text-base leading-none">{signal.nudge.emoji}</span>
-                  <span className="flex-1">{signal.nudge.message}</span>
-                </div>
-              )}
-              {signal?.prediction && (
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div className="rounded-lg bg-muted/50 p-2">
-                    <p className="text-muted-foreground">Skip today</p>
-                    <p className="font-bold text-rose-600 tabular-nums">{signal.prediction.off_track_percentile}</p>
-                  </div>
-                  <div className="rounded-lg bg-muted/50 p-2">
-                    <p className="text-muted-foreground">On-track gain</p>
-                    <p className="font-bold text-emerald-600 tabular-nums">+{signal.prediction.delta.toFixed(1)}</p>
-                  </div>
-                </div>
-              )}
-              {signal?.weekly_report && (
-                <div className="rounded-lg bg-primary/5 border border-primary/20 p-2.5 text-[11px]">
-                  <p className="font-semibold flex items-center gap-1"><Trophy className="w-3 h-3 text-primary" /> This week</p>
-                  <p className="text-muted-foreground mt-0.5">
-                    {signal.weekly_report.active_days}/7 days · {signal.weekly_report.total_questions} Q · {signal.weekly_report.accuracy}% acc
-                  </p>
-                  <p className="text-muted-foreground mt-1">Focus: {signal.weekly_report.focus_next_week}</p>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -519,13 +505,59 @@ export default function CoachMissionPanel() {
         </button>
       )}
 
+      {/* Task detail bottom-sheet — Kyun / Kya / Goal */}
+      <Sheet open={!!sheetBlock} onOpenChange={(v) => { if (!v) setSheetBlock(null); }}>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          {sheetBlock && (
+            <>
+              <SheetHeader className="text-left">
+                <SheetTitle className="flex items-center gap-2">
+                  <span className={`text-xs font-bold ${typeAccent[sheetBlock.type]}`}>
+                    {typeShort[sheetBlock.type]}
+                  </span>
+                  <span className="text-muted-foreground text-xs">·</span>
+                  <span>{sheetBlock.title}</span>
+                </SheetTitle>
+              </SheetHeader>
+              <div className="space-y-3 py-4 text-sm leading-snug">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-1">Kyun</p>
+                  <p className="text-foreground/90">{sheetBlock.why}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-1">Kya</p>
+                  <p className="text-foreground/90">
+                    {sheetBlock.what || `${sheetBlock.question_count} Q solve karo (~${sheetBlock.minutes} min)`}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-1">Goal</p>
+                  <p className="text-foreground/90">
+                    {sheetBlock.goal || `${sheetBlock.passing_goal ?? Math.ceil(sheetBlock.question_count * 0.6)}/${sheetBlock.question_count} sahi = auto-tick ✅`}
+                  </p>
+                </div>
+              </div>
+              {(sheetBlock.progress?.status ?? 'pending') !== 'done' && (
+                <Button
+                  className="w-full"
+                  onClick={() => { const b = sheetBlock; setSheetBlock(null); void startBlock(b); }}
+                >
+                  <Play className="w-4 h-4 mr-1.5" />
+                  {(sheetBlock.progress?.attempted ?? 0) > 0 ? 'Continue' : 'Start'}
+                </Button>
+              )}
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+
       {/* First-time setup */}
       <Dialog open={needsSetup} onOpenChange={(v) => { if (!v) setNeedsSetup(false); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>2 quick questions</DialogTitle>
             <DialogDescription>
-              JEEnie decides your daily mission based on these — change later in Settings.
+              JEEnie decides your daily hit-list based on these — change later in Settings.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -566,7 +598,7 @@ export default function CoachMissionPanel() {
           <DialogFooter>
             <Button onClick={saveSetup} className="w-full" disabled={generating}>
               {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-              Build my mission
+              Build my hit-list
             </Button>
           </DialogFooter>
         </DialogContent>
