@@ -282,6 +282,14 @@ export default function CoachMissionPanel() {
   const totalCount = mission?.blocks?.length ?? 0;
   const allDone = totalCount > 0 && doneCount >= totalCount;
   const overallPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+  const xpEarned = useMemo(() =>
+    (mission?.blocks ?? [])
+      .filter(b => (b.progress?.status ?? 'pending') === 'done')
+      .reduce((s, b) => s + (b.xp_reward ?? 0), 0),
+  [mission]);
+  const xpTotal = useMemo(() =>
+    (mission?.blocks ?? []).reduce((s, b) => s + (b.xp_reward ?? 0), 0) + 100, // +100 completion bonus
+  [mission]);
 
   // First non-done block = the "current" focus row
   const currentBlockId = useMemo(() => {
