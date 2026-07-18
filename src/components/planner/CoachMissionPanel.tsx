@@ -415,6 +415,12 @@ export default function CoachMissionPanel() {
                             <span className="text-[10px] text-muted-foreground">{b.minutes}m</span>
                           </>
                         )}
+                        {!!b.xp_reward && (
+                          <>
+                            <span className="text-[10px] text-muted-foreground">·</span>
+                            <span className="text-[10px] font-bold text-amber-600">+{b.xp_reward} XP</span>
+                          </>
+                        )}
                       </div>
                       {isCurrent && prog.attempted > 0 && (
                         <div className="mt-2">
