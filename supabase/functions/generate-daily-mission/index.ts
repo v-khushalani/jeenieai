@@ -264,6 +264,7 @@ serve(async (req) => {
         minutes: mins,
         question_count: qCount,
         passing_goal: Math.ceil(qCount * 0.7),
+        xp_reward: xpFor('revision', qCount),
         why: `${daysSince} din pehle ye topic padha tha — Ebbinghaus curve ke hisaab se aaj revise nahi kiya toh 40% bhool jaayega.`,
         what: `${qCount} mixed-Q from ${revLabel} (revision mode)`,
         goal: `${Math.ceil(qCount * 0.7)}/${qCount} sahi = revision cleared`,
