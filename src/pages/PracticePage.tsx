@@ -588,9 +588,15 @@ const PracticePage: React.FC = () => {
                 } as any)
               : { data: null, error: null };
 
-          if ((bumpRes as any)?.data?.block_done) {
+          const bumpData = (bumpRes as any)?.data ?? {};
+          const xp = (bumpData.xp_awarded ?? 0) + (bumpData.bonus_awarded ?? 0);
+          if (bumpData.block_done) {
             confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-            toast.success('Mission block complete! 🎯 Planner updated.');
+            toast.success(xp > 0 ? `Block clear! +${xp} XP 🎯` : 'Block clear! 🎯');
+          }
+          if (bumpData.mission_status === 'completed' && bumpData.bonus_awarded > 0) {
+            confetti({ particleCount: 220, spread: 100, origin: { y: 0.5 }, startVelocity: 45 });
+            setTimeout(() => toast.success('Aaj ki hit-list poori! +100 XP bonus 🏆'), 400);
           }
         } catch (e) {
           logger.error('mission block bump failed:', e);
