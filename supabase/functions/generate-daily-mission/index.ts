@@ -185,6 +185,7 @@ serve(async (req) => {
         minutes: mins,
         question_count: qCount,
         passing_goal: Math.ceil(qCount * 0.6),
+        xp_reward: xpFor(isToday ? 'class_recap' : 'learn_practice', qCount),
         why: isToday
           ? `Aaj ${chapName} class mein padha — abhi recap karega toh 70% content 7 din tak yaad rahega.`
           : `${daysBetween(freshClass.logged_date, today)} din pehle ${chapName} class hui — spaced practice ka ideal window.`,
