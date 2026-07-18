@@ -185,7 +185,10 @@ export default function CoachMissionPanel() {
         .maybeSingle();
 
       const isLegacy = existing?.blocks && Array.isArray(existing.blocks) &&
-        existing.blocks.length > 0 && !(existing.blocks as any[])[0]?.progress;
+        existing.blocks.length > 0 && (
+          !(existing.blocks as any[])[0]?.progress ||
+          (existing.blocks as any[])[0]?.xp_reward == null
+        );
 
       if (existing && !isLegacy) {
         setMission(existing as unknown as DailyMission);
