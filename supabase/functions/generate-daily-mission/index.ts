@@ -294,6 +294,7 @@ serve(async (req) => {
         minutes: mins,
         question_count: qCount,
         passing_goal: 3,
+        xp_reward: xpFor('pyq', qCount),
         why: `Real ${exam} paper ka feel — exam-level difficulty pe apni speed check kar.`,
         what: `${qCount} PYQ from ${pyqSubject}`,
         goal: `3/${qCount} sahi = exam-ready confidence`,
