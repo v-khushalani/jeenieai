@@ -1309,6 +1309,8 @@ export type Database = {
           daily_goal: number | null
           daily_question_limit: number | null
           daily_study_minutes: number
+          daily_xp: number
+          daily_xp_date: string | null
           educator_approved: boolean
           email: string | null
           full_name: string | null
@@ -1356,6 +1358,8 @@ export type Database = {
           daily_goal?: number | null
           daily_question_limit?: number | null
           daily_study_minutes?: number
+          daily_xp?: number
+          daily_xp_date?: string | null
           educator_approved?: boolean
           email?: string | null
           full_name?: string | null
@@ -1403,6 +1407,8 @@ export type Database = {
           daily_goal?: number | null
           daily_question_limit?: number | null
           daily_study_minutes?: number
+          daily_xp?: number
+          daily_xp_date?: string | null
           educator_approved?: boolean
           email?: string | null
           full_name?: string | null
