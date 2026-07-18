@@ -322,6 +322,7 @@ serve(async (req) => {
         minutes: mins,
         question_count: qCount,
         passing_goal: 6,
+        xp_reward: xpFor('learn_practice', qCount),
         why: `Abhi tera data kam hai — ${qCount} Q se JEEnie ko baseline milegi, phir kal se personal plan aayega.`,
         what: `${qCount} mixed-difficulty Q from ${starterSubject}`,
         goal: `6/${qCount} sahi = baseline set`,
