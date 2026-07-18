@@ -230,6 +230,7 @@ serve(async (req) => {
         minutes: mins,
         question_count: qCount,
         passing_goal: Math.ceil(qCount * 0.6),
+        xp_reward: xpFor('weak_fix', qCount),
         why: `${topicLabel}: last ${weak.questions_attempted} me se ${weak.questions_correct} sahi (${wAcc}%). Yeh fix ho gaya toh overall percentile ~2 point improve hoga.`,
         what: `${qCount} targeted Q — sirf ${topicLabel} pe`,
         goal: `${Math.ceil(qCount * 0.6)}/${qCount} sahi karo toh weak-tag hatega`,
