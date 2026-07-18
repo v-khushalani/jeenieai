@@ -31,12 +31,23 @@ interface MissionBlock {
   minutes: number;
   question_count: number;   // exact number of Q to serve
   passing_goal: number;     // correct answers required to mark done
+  xp_reward: number;        // XP given on block completion
   why: string;              // JEEnie's reason — data-driven
   what: string;             // exact task summary
   goal: string;             // pass criteria
   action_href: string;      // deep-link with all params baked in
   progress: BlockProgress;
 }
+
+const XP_PER_Q: Record<BlockType, number> = {
+  learn_practice: 10,
+  revision: 12,
+  weak_fix: 15,
+  class_recap: 12,
+  pyq: 20,
+  mock: 25,
+};
+function xpFor(type: BlockType, count: number) { return XP_PER_Q[type] * count; }
 
 const IST_TZ = 'Asia/Kolkata';
 const istDate = () => {
