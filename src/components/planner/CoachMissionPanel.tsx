@@ -49,6 +49,7 @@ interface MissionBlock {
   minutes: number;
   question_count: number;
   passing_goal?: number;
+  xp_reward?: number;
   why: string;
   what?: string;
   goal?: string;
