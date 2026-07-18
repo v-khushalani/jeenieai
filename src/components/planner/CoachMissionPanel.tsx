@@ -49,6 +49,7 @@ interface MissionBlock {
   minutes: number;
   question_count: number;
   passing_goal?: number;
+  xp_reward?: number;
   why: string;
   what?: string;
   goal?: string;
@@ -184,7 +185,10 @@ export default function CoachMissionPanel() {
         .maybeSingle();
 
       const isLegacy = existing?.blocks && Array.isArray(existing.blocks) &&
-        existing.blocks.length > 0 && !(existing.blocks as any[])[0]?.progress;
+        existing.blocks.length > 0 && (
+          !(existing.blocks as any[])[0]?.progress ||
+          (existing.blocks as any[])[0]?.xp_reward == null
+        );
 
       if (existing && !isLegacy) {
         setMission(existing as unknown as DailyMission);
@@ -281,6 +285,14 @@ export default function CoachMissionPanel() {
   const totalCount = mission?.blocks?.length ?? 0;
   const allDone = totalCount > 0 && doneCount >= totalCount;
   const overallPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+  const xpEarned = useMemo(() =>
+    (mission?.blocks ?? [])
+      .filter(b => (b.progress?.status ?? 'pending') === 'done')
+      .reduce((s, b) => s + (b.xp_reward ?? 0), 0),
+  [mission]);
+  const xpTotal = useMemo(() =>
+    (mission?.blocks ?? []).reduce((s, b) => s + (b.xp_reward ?? 0), 0) + 100, // +100 completion bonus
+  [mission]);
 
   // First non-done block = the "current" focus row
   const currentBlockId = useMemo(() => {
@@ -317,9 +329,15 @@ export default function CoachMissionPanel() {
             </div>
           )}
           {mission && (
-            <div className="flex-1 text-right">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold leading-none">Aaj</p>
-              <p className="text-sm font-bold tabular-nums leading-tight mt-0.5">{doneCount}<span className="text-muted-foreground font-normal">/{totalCount}</span></p>
+            <div className="flex-1 flex items-center justify-end gap-2">
+              <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 text-amber-600 text-[11px] font-bold tabular-nums">
+                <Trophy className="w-3 h-3" />
+                {xpEarned}<span className="text-amber-600/60 font-normal">/{xpTotal} XP</span>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold leading-none">Aaj</p>
+                <p className="text-sm font-bold tabular-nums leading-tight mt-0.5">{doneCount}<span className="text-muted-foreground font-normal">/{totalCount}</span></p>
+              </div>
             </div>
           )}
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => generate(true)} disabled={generating}>
@@ -412,6 +430,12 @@ export default function CoachMissionPanel() {
                           <>
                             <span className="text-[10px] text-muted-foreground">·</span>
                             <span className="text-[10px] text-muted-foreground">{b.minutes}m</span>
+                          </>
+                        )}
+                        {!!b.xp_reward && (
+                          <>
+                            <span className="text-[10px] text-muted-foreground">·</span>
+                            <span className="text-[10px] font-bold text-amber-600">+{b.xp_reward} XP</span>
                           </>
                         )}
                       </div>

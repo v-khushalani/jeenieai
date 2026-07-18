@@ -31,12 +31,23 @@ interface MissionBlock {
   minutes: number;
   question_count: number;   // exact number of Q to serve
   passing_goal: number;     // correct answers required to mark done
+  xp_reward: number;        // XP given on block completion
   why: string;              // JEEnie's reason — data-driven
   what: string;             // exact task summary
   goal: string;             // pass criteria
   action_href: string;      // deep-link with all params baked in
   progress: BlockProgress;
 }
+
+const XP_PER_Q: Record<BlockType, number> = {
+  learn_practice: 10,
+  revision: 12,
+  weak_fix: 15,
+  class_recap: 12,
+  pyq: 20,
+  mock: 25,
+};
+function xpFor(type: BlockType, count: number) { return XP_PER_Q[type] * count; }
 
 const IST_TZ = 'Asia/Kolkata';
 const istDate = () => {
@@ -174,6 +185,7 @@ serve(async (req) => {
         minutes: mins,
         question_count: qCount,
         passing_goal: Math.ceil(qCount * 0.6),
+        xp_reward: xpFor(isToday ? 'class_recap' : 'learn_practice', qCount),
         why: isToday
           ? `Aaj ${chapName} class mein padha — abhi recap karega toh 70% content 7 din tak yaad rahega.`
           : `${daysBetween(freshClass.logged_date, today)} din pehle ${chapName} class hui — spaced practice ka ideal window.`,
@@ -218,6 +230,7 @@ serve(async (req) => {
         minutes: mins,
         question_count: qCount,
         passing_goal: Math.ceil(qCount * 0.6),
+        xp_reward: xpFor('weak_fix', qCount),
         why: `${topicLabel}: last ${weak.questions_attempted} me se ${weak.questions_correct} sahi (${wAcc}%). Yeh fix ho gaya toh overall percentile ~2 point improve hoga.`,
         what: `${qCount} targeted Q — sirf ${topicLabel} pe`,
         goal: `${Math.ceil(qCount * 0.6)}/${qCount} sahi karo toh weak-tag hatega`,
@@ -251,6 +264,7 @@ serve(async (req) => {
         minutes: mins,
         question_count: qCount,
         passing_goal: Math.ceil(qCount * 0.7),
+        xp_reward: xpFor('revision', qCount),
         why: `${daysSince} din pehle ye topic padha tha — Ebbinghaus curve ke hisaab se aaj revise nahi kiya toh 40% bhool jaayega.`,
         what: `${qCount} mixed-Q from ${revLabel} (revision mode)`,
         goal: `${Math.ceil(qCount * 0.7)}/${qCount} sahi = revision cleared`,
@@ -280,6 +294,7 @@ serve(async (req) => {
         minutes: mins,
         question_count: qCount,
         passing_goal: 3,
+        xp_reward: xpFor('pyq', qCount),
         why: `Real ${exam} paper ka feel — exam-level difficulty pe apni speed check kar.`,
         what: `${qCount} PYQ from ${pyqSubject}`,
         goal: `3/${qCount} sahi = exam-ready confidence`,
@@ -307,6 +322,7 @@ serve(async (req) => {
         minutes: mins,
         question_count: qCount,
         passing_goal: 6,
+        xp_reward: xpFor('learn_practice', qCount),
         why: `Abhi tera data kam hai — ${qCount} Q se JEEnie ko baseline milegi, phir kal se personal plan aayega.`,
         what: `${qCount} mixed-difficulty Q from ${starterSubject}`,
         goal: `6/${qCount} sahi = baseline set`,
