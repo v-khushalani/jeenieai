@@ -29,7 +29,7 @@ interface UserProfile {
   joined_at: string;
   grade?: number;
   target_exam?: string;
-  role?: 'user' | 'admin' | 'educator';
+  role?: 'user' | 'admin' | 'educator' | 'super_admin';
   is_premium?: boolean;
   subscription_tier?: Tier;
   subscription_plan?: string | null;
@@ -146,13 +146,14 @@ export const UserManagement: React.FC = () => {
     }
   };
 
-  const updateUserRole = async (userId: string, newRole: 'user' | 'admin' | 'educator') => {
+  const updateUserRole = async (userId: string, newRole: 'user' | 'admin' | 'educator' | 'super_admin') => {
     try {
       const dbRole = newRole === 'user' ? 'student' : newRole;
-      const { error } = await supabase
-        .from('user_roles')
-        .upsert([{ user_id: userId, role: dbRole as any }], { onConflict: 'user_id' });
-      if (error) throw error;
+      // user_roles unique is (user_id, role) — replace by delete-then-insert
+      const delRes = await supabase.from('user_roles').delete().eq('user_id', userId);
+      if (delRes.error) throw delRes.error;
+      const insRes = await supabase.from('user_roles').insert([{ user_id: userId, role: dbRole as any }]);
+      if (insRes.error) throw insRes.error;
       setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, role: newRole } : u));
       toast.success(`Role updated to ${newRole}`);
     } catch (error) {
@@ -267,6 +268,7 @@ export const UserManagement: React.FC = () => {
   };
 
   const getRoleIcon = (role?: string) => {
+    if (role === 'super_admin') return <Shield className="h-4 w-4 text-destructive" />;
     if (role === 'admin') return <Shield className="h-4 w-4 text-primary" />;
     if (role === 'educator') return <GraduationCap className="h-4 w-4 text-primary" />;
     return <User className="h-4 w-4 text-muted-foreground" />;
@@ -426,6 +428,7 @@ export const UserManagement: React.FC = () => {
                             <SelectItem value="user">Student</SelectItem>
                             <SelectItem value="educator">Educator</SelectItem>
                             <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="super_admin">Super Admin</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
