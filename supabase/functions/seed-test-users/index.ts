@@ -17,15 +17,15 @@ interface Spec {
   tier?: "pro" | "pro_plus";
 }
 
-// Uniform pattern: <role>@j.test / Test@1234 — easiest to remember.
+// Uniform pattern: <role>@jeenie.test / Test@1234 — easiest to remember.
 const PASSWORD = "Test@1234";
 const SPECS: Spec[] = [
-  { key: "user",     email: "user@j.test",     password: PASSWORD, fullName: "Free User",    role: "student" },
-  { key: "pro",      email: "pro@j.test",      password: PASSWORD, fullName: "Pro User",     role: "student", premium: true, tier: "pro" },
-  { key: "proplus",  email: "proplus@j.test",  password: PASSWORD, fullName: "Pro+ User",    role: "student", premium: true, tier: "pro_plus" },
-  { key: "admin",    email: "admin@j.test",    password: PASSWORD, fullName: "Admin User",   role: "admin" },
-  { key: "super",    email: "super@j.test",    password: PASSWORD, fullName: "Super Admin",  role: "super_admin" },
-  { key: "educator", email: "educator@j.test", password: PASSWORD, fullName: "Educator",     role: "educator" },
+  { key: "user",     email: "user@jeenie.test",     password: PASSWORD, fullName: "Free User",    role: "student" },
+  { key: "pro",      email: "pro@jeenie.test",      password: PASSWORD, fullName: "Pro User",     role: "student", premium: true, tier: "pro" },
+  { key: "proplus",  email: "proplus@jeenie.test",  password: PASSWORD, fullName: "Pro+ User",    role: "student", premium: true, tier: "pro_plus" },
+  { key: "admin",    email: "admin@jeenie.test",    password: PASSWORD, fullName: "Admin User",   role: "admin" },
+  { key: "super",    email: "super@jeenie.test",    password: PASSWORD, fullName: "Super Admin",  role: "super_admin" },
+  { key: "educator", email: "educator@jeenie.test", password: PASSWORD, fullName: "Educator",     role: "educator" },
 ];
 
 Deno.serve(async (req) => {
