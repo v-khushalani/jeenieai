@@ -268,6 +268,7 @@ export const UserManagement: React.FC = () => {
   };
 
   const getRoleIcon = (role?: string) => {
+    if (role === 'super_admin') return <Shield className="h-4 w-4 text-destructive" />;
     if (role === 'admin') return <Shield className="h-4 w-4 text-primary" />;
     if (role === 'educator') return <GraduationCap className="h-4 w-4 text-primary" />;
     return <User className="h-4 w-4 text-muted-foreground" />;
