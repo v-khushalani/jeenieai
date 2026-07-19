@@ -146,13 +146,14 @@ export const UserManagement: React.FC = () => {
     }
   };
 
-  const updateUserRole = async (userId: string, newRole: 'user' | 'admin' | 'educator') => {
+  const updateUserRole = async (userId: string, newRole: 'user' | 'admin' | 'educator' | 'super_admin') => {
     try {
       const dbRole = newRole === 'user' ? 'student' : newRole;
-      const { error } = await supabase
-        .from('user_roles')
-        .upsert([{ user_id: userId, role: dbRole as any }], { onConflict: 'user_id' });
-      if (error) throw error;
+      // user_roles unique is (user_id, role) — replace by delete-then-insert
+      const delRes = await supabase.from('user_roles').delete().eq('user_id', userId);
+      if (delRes.error) throw delRes.error;
+      const insRes = await supabase.from('user_roles').insert([{ user_id: userId, role: dbRole as any }]);
+      if (insRes.error) throw insRes.error;
       setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, role: newRole } : u));
       toast.success(`Role updated to ${newRole}`);
     } catch (error) {
