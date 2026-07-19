@@ -29,7 +29,7 @@ interface UserProfile {
   joined_at: string;
   grade?: number;
   target_exam?: string;
-  role?: 'user' | 'admin' | 'educator';
+  role?: 'user' | 'admin' | 'educator' | 'super_admin';
   is_premium?: boolean;
   subscription_tier?: Tier;
   subscription_plan?: string | null;
