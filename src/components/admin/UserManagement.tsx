@@ -428,6 +428,7 @@ export const UserManagement: React.FC = () => {
                             <SelectItem value="user">Student</SelectItem>
                             <SelectItem value="educator">Educator</SelectItem>
                             <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="super_admin">Super Admin</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
