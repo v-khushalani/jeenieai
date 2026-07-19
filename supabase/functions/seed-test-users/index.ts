@@ -1,4 +1,4 @@
-// Admin-only QA helper: seeds 5 test users (student, student_pro, student_pro_plus, admin, educator).
+// Admin-only QA helper: seeds all test users with uniform simple creds.
 // Hardened by a fixed setup token. Idempotent: re-running refreshes passwords and entitlements.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -17,12 +17,15 @@ interface Spec {
   tier?: "pro" | "pro_plus";
 }
 
-// Uniform pattern: <role>@jeenie.test / Test@1234 — easy to remember for QA.
+// Uniform pattern: <role>@j.test / Test@1234 — easiest to remember.
+const PASSWORD = "Test@1234";
 const SPECS: Spec[] = [
-  { key: "free",     email: "free@jeenie.test",    password: "Test@1234", fullName: "Free User",     role: "student" },
-  { key: "pro",      email: "pro@jeenie.test",     password: "Test@1234", fullName: "Pro User",      role: "student", premium: true, tier: "pro" },
-  { key: "proplus",  email: "proplus@jeenie.test", password: "Test@1234", fullName: "Pro+ User",     role: "student", premium: true, tier: "pro_plus" },
-  { key: "admin",    email: "admin@jeenie.test",   password: "Test@1234", fullName: "Admin User",    role: "super_admin" },
+  { key: "user",     email: "user@j.test",     password: PASSWORD, fullName: "Free User",    role: "student" },
+  { key: "pro",      email: "pro@j.test",      password: PASSWORD, fullName: "Pro User",     role: "student", premium: true, tier: "pro" },
+  { key: "proplus",  email: "proplus@j.test",  password: PASSWORD, fullName: "Pro+ User",    role: "student", premium: true, tier: "pro_plus" },
+  { key: "admin",    email: "admin@j.test",    password: PASSWORD, fullName: "Admin User",   role: "admin" },
+  { key: "super",    email: "super@j.test",    password: PASSWORD, fullName: "Super Admin",  role: "super_admin" },
+  { key: "educator", email: "educator@j.test", password: PASSWORD, fullName: "Educator",     role: "educator" },
 ];
 
 Deno.serve(async (req) => {
@@ -42,7 +45,6 @@ Deno.serve(async (req) => {
     const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
     const results: Record<string, unknown> = {};
 
-    // Cache existing users (single list call)
     const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 500 });
 
     for (const spec of SPECS) {
@@ -70,7 +72,6 @@ Deno.serve(async (req) => {
         userId = created.user.id;
       }
 
-      // Profile upsert
       await admin.from("profiles").upsert({
         id: userId,
         email: spec.email,
@@ -87,14 +88,12 @@ Deno.serve(async (req) => {
         onboarding_completed: true,
       }, { onConflict: "id" });
 
-      // Role — remove any other roles first so user has exactly the intended one
       await admin.from("user_roles").delete().eq("user_id", userId).neq("role", spec.role);
       await admin.from("user_roles").upsert(
         { user_id: userId, role: spec.role },
         { onConflict: "user_id,role" }
       );
 
-      // Pro / Pro+ get all batch subscriptions for content access
       if (spec.premium) {
         const { data: batches } = await admin.from("batches").select("id").eq("is_active", true);
         if (batches?.length) {
@@ -111,12 +110,10 @@ Deno.serve(async (req) => {
       }
 
       results[spec.key] = {
-        user_id: userId,
         email: spec.email,
         password: spec.password,
         role: spec.role,
-        premium: !!spec.premium,
-        tier: spec.tier || null,
+        tier: spec.tier || "free",
       };
     }
 
