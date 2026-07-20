@@ -300,14 +300,16 @@ export const EducatorContentManager: React.FC = () => {
               <Label>Description</Label>
               <Textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} rows={2} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label>Grade <span className="text-destructive">*</span></Label>
-                <Select value={String(form.grade)} onValueChange={(v) => setForm((p) => ({ ...p, grade: parseInt(v) }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{GRADES.map((g) => <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
+            <div className={uploadType === 'presentation' ? 'grid grid-cols-2 gap-4' : 'space-y-1'}>
+              {uploadType === 'presentation' && (
+                <div className="space-y-1">
+                  <Label>Grade <span className="text-destructive">*</span></Label>
+                  <Select value={String(form.grade)} onValueChange={(v) => setForm((p) => ({ ...p, grade: parseInt(v) }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{GRADES.map((g) => <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-1">
                 <Label>Subject <span className="text-destructive">*</span></Label>
                 <Select value={form.subject} onValueChange={(v) => setForm((p) => ({ ...p, subject: v, chapter_id: '' }))}>
@@ -316,6 +318,9 @@ export const EducatorContentManager: React.FC = () => {
                 </Select>
               </div>
             </div>
+            {uploadType !== 'presentation' && (
+              <p className="text-xs text-muted-foreground -mt-1">Animations & games are universal — available to all grades.</p>
+            )}
 
             {uploadType === 'presentation' && (
               <div className="space-y-1">
