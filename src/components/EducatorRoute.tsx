@@ -15,11 +15,9 @@ const EducatorRoute: React.FC<EducatorRouteProps> = ({ children }) => {
 
   useEffect(() => {
     if (!user || !isAuthenticated) return;
+    // Educator portal is strictly for educators. Admins have their own panel
+    // and should NOT be able to open /educator routes.
     if (userRole !== 'educator') {
-      // Admin/super_admin bypass approval check
-      if (userRole === 'admin' || userRole === 'super_admin') {
-        setApprovalStatus('approved');
-      }
       return;
     }
 
