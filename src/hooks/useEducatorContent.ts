@@ -279,7 +279,7 @@ export function useEducatorContent() {
         title: input.title,
         description: input.description ?? null,
         subject: input.subject.toLowerCase(),
-        grade: input.grade,
+        grade: input.grade ?? null,
         chapter_id: normalizedChapterId,
         content_type: 'simulation',
         is_active: false,
