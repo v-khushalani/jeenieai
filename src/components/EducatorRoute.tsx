@@ -61,13 +61,8 @@ const EducatorRoute: React.FC<EducatorRouteProps> = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Admins can also access educator portal
-  const allowed =
-    userRole === 'educator' ||
-    userRole === 'admin' ||
-    userRole === 'super_admin';
-
-  if (!allowed) {
+  // Educator portal is educator-only. Admins go back to /dashboard (they have /admin).
+  if (userRole !== 'educator') {
     return <Navigate to="/dashboard" replace />;
   }
 
