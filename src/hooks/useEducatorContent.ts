@@ -91,7 +91,7 @@ export interface AddSimulationInput {
   title: string;
   description?: string;
   subject: string;
-  grade: number;
+  grade?: number | null;
   chapter_id?: string;
   embed_url?: string;
   file?: File;
@@ -102,7 +102,7 @@ export interface AddGameInput {
   title: string;
   description?: string;
   subject: string;
-  grade: number;
+  grade?: number | null;
   chapter_id?: string;
   embed_url?: string;
   file?: File;
