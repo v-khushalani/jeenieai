@@ -91,7 +91,7 @@ export interface AddSimulationInput {
   title: string;
   description?: string;
   subject: string;
-  grade: number;
+  grade?: number | null;
   chapter_id?: string;
   embed_url?: string;
   file?: File;
@@ -102,7 +102,7 @@ export interface AddGameInput {
   title: string;
   description?: string;
   subject: string;
-  grade: number;
+  grade?: number | null;
   chapter_id?: string;
   embed_url?: string;
   file?: File;
@@ -279,7 +279,7 @@ export function useEducatorContent() {
         title: input.title,
         description: input.description ?? null,
         subject: input.subject.toLowerCase(),
-        grade: input.grade,
+        grade: input.grade ?? null,
         chapter_id: normalizedChapterId,
         content_type: 'simulation',
         is_active: false,
@@ -346,7 +346,7 @@ export function useEducatorContent() {
         title: input.title,
         description: input.description ?? null,
         subject: input.subject.toLowerCase(),
-        grade: input.grade,
+        grade: input.grade ?? null,
         chapter_id: normalizedChapterId,
         content_type: 'game',
         is_active: false,
