@@ -67,10 +67,18 @@ const VirtualLab: React.FC = () => {
       return buildHostedSimulationUrl(signedUrl, item.title);
     }
 
-    // For HTML documents, load directly via signed URL so relative assets,
-    // CDN scripts, and inline scripts resolve against a real origin.
-    // srcDoc has no base URL and breaks most standalone HTML simulations.
-    return signedUrl;
+    // Supabase storage may serve .html with a non-HTML Content-Type,
+    // making browsers render source as text. Fetch the bytes and re-serve
+    // via a Blob URL forced to text/html so it renders as a real page.
+    try {
+      const response = await fetch(signedUrl, { cache: 'no-store' });
+      if (!response.ok) return '';
+      const text = await response.text();
+      const blob = new Blob([text], { type: 'text/html' });
+      return URL.createObjectURL(blob);
+    } catch {
+      return '';
+    }
   };
 
   const openViewer = async (item: EducatorContentItem, fullscreen = false) => {
