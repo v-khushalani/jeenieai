@@ -67,9 +67,10 @@ const VirtualLab: React.FC = () => {
       return buildHostedSimulationUrl(signedUrl, item.title);
     }
 
-    const response = await fetch(signedUrl, { cache: 'no-store' });
-    if (!response.ok) return '';
-    return await response.text();
+    // For HTML documents, load directly via signed URL so relative assets,
+    // CDN scripts, and inline scripts resolve against a real origin.
+    // srcDoc has no base URL and breaks most standalone HTML simulations.
+    return signedUrl;
   };
 
   const openViewer = async (item: EducatorContentItem, fullscreen = false) => {
@@ -198,7 +199,7 @@ const VirtualLab: React.FC = () => {
                           className="flex-1 bg-slate-900 border-b-4 border-slate-950 hover:bg-slate-800 hover:border-slate-900 text-white shadow-xs transition-all active:border-b-0 active:translate-y-1 rounded-xl font-bold h-10 px-4"
                           onClick={(e) => {
                             e.stopPropagation();
-                            openViewer(item);
+                            openViewer(item, true);
                           }}
                         >
                           <Play className="h-4 w-4 mr-2" /> Launch
