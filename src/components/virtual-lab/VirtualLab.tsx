@@ -67,9 +67,10 @@ const VirtualLab: React.FC = () => {
       return buildHostedSimulationUrl(signedUrl, item.title);
     }
 
-    const response = await fetch(signedUrl, { cache: 'no-store' });
-    if (!response.ok) return '';
-    return await response.text();
+    // For HTML documents, load directly via signed URL so relative assets,
+    // CDN scripts, and inline scripts resolve against a real origin.
+    // srcDoc has no base URL and breaks most standalone HTML simulations.
+    return signedUrl;
   };
 
   const openViewer = async (item: EducatorContentItem, fullscreen = false) => {
