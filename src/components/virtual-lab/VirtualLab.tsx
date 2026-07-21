@@ -114,7 +114,7 @@ const VirtualLab: React.FC = () => {
           </div>
           <div className="flex-1 min-h-0">
             {fullscreenSrc ? (
-              <SimulationViewer src={fullscreenSrc} title={fullscreenItem.title} onClose={() => { setFullscreenItem(null); setFullscreenSrc(''); }} className="h-full" />
+              <SimulationViewer src={fullscreenSrc} title={fullscreenItem.title} onClose={() => { setFullscreenItem(null); setFullscreenSrc(''); }} className="h-full" hideHeader />
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
                 <div className="text-center space-y-3">
