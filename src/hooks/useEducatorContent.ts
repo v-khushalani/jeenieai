@@ -14,13 +14,30 @@ async function nativeStorageUpload(
   file: File,
 ): Promise<void> {
   const url = `${supabaseUrl}/storage/v1/object/${bucket}/${path}`;
+  // Infer content-type from extension when the File carries none / a wrong one.
+  // Critical for .html — otherwise Supabase serves it as octet-stream and
+  // browsers show the source as plain text instead of rendering it.
+  const extToMime: Record<string, string> = {
+    html: 'text/html',
+    htm: 'text/html',
+    js: 'text/javascript',
+    css: 'text/css',
+    json: 'application/json',
+    pdf: 'application/pdf',
+    svg: 'image/svg+xml',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+  };
+  const ext = (path.split('.').pop() || '').toLowerCase();
+  const contentType = extToMime[ext] || file.type || 'application/octet-stream';
+
   const res = await window.fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      // Let the browser set Content-Type with boundary for form data,
-      // or set explicitly for plain files:
-      'Content-Type': file.type || 'application/octet-stream',
+      'Content-Type': contentType,
+      'x-upsert': 'true',
     },
     body: file,
   });
