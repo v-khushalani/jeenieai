@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Beaker, Link2, Loader2, Play, Search, Upload, ShieldCheck, X } from 'lucide-react';
+import { Beaker, Link2, Loader2, Play, Search, Upload, X } from 'lucide-react';
 import { useEducatorContent, EducatorContentItem } from '@/hooks/useEducatorContent';
 import { buildHostedSimulationUrl, getSimulationContentKind } from '@/lib/simulationPipeline';
 import SimulationViewer from '@/components/educator/SimulationViewer';
