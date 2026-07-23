@@ -137,7 +137,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           position: absolute;
           inset: -20%;
           pointer-events: none;
-          z-index: 15;
+          z-index: 8;
           opacity: 0.07;
           background-image: repeating-linear-gradient(
             -22deg,
@@ -166,6 +166,12 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           -ms-user-select: none;
           user-select: none;
           -webkit-touch-callout: none;
+        }
+        .simulation-frame {
+          position: relative;
+          z-index: 1;
+          pointer-events: auto;
+          touch-action: auto;
         }
       `}</style>
 
@@ -219,8 +225,6 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
             </div>
           )}
 
-          <AnnotationOverlay />
-
           {/* Animated diagonal JEEnie watermark grid */}
           <div className="jeenie-watermark" aria-hidden="true">
             {Array.from({ length: 24 }).map((_, i) => (
@@ -233,18 +237,24 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
             src={effectiveSrc}
             srcDoc={htmlContent || undefined}
             title={title}
-            className="w-full h-full border-0"
-            sandbox="allow-scripts allow-same-origin allow-pointer-lock"
+            className="simulation-frame w-full h-full border-0"
+            sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals"
+            allow="fullscreen; pointer-lock"
             referrerPolicy="no-referrer"
             style={{
               display: 'block',
               transition: 'filter 0.3s ease',
               filter: devtoolsOpen ? 'blur(18px)' : 'none',
             }}
-            onLoad={() => setIsLoaded(true)}
+            onLoad={() => {
+              setIsLoaded(true);
+              iframeRef.current?.focus();
+            }}
             onError={() => setHasError(true)}
             onContextMenu={(e) => e.preventDefault()}
           />
+
+          <AnnotationOverlay />
 
           {devtoolsOpen && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-background/80 backdrop-blur-sm text-center px-6">

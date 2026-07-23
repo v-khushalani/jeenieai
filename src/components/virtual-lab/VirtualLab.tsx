@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Beaker, Link2, Loader2, Play, Search, Upload, ShieldCheck, X } from 'lucide-react';
+import { Beaker, Link2, Loader2, Play, Search, Upload, X } from 'lucide-react';
 import { useEducatorContent, EducatorContentItem } from '@/hooks/useEducatorContent';
 import { buildHostedSimulationUrl, getSimulationContentKind } from '@/lib/simulationPipeline';
 import SimulationViewer from '@/components/educator/SimulationViewer';
@@ -81,7 +81,7 @@ const VirtualLab: React.FC = () => {
     }
   };
 
-  const fullscreenHostRef = React.useRef<HTMLDivElement>(null);
+  const fullscreenHostRef = useRef<HTMLDivElement>(null);
 
   const openViewer = async (item: EducatorContentItem, fullscreen = false) => {
     const src = await resolveContentSrc(item);
@@ -90,15 +90,6 @@ const VirtualLab: React.FC = () => {
     if (fullscreen) {
       setFullscreenItem(item);
       setFullscreenSrc(src);
-      // Request true browser fullscreen so the top nav disappears
-      requestAnimationFrame(() => {
-        const host = fullscreenHostRef.current;
-        if (host && !document.fullscreenElement) {
-          host.requestFullscreen?.().catch(() => {
-            /* fall back to overlay */
-          });
-        }
-      });
       return;
     }
 
@@ -106,6 +97,23 @@ const VirtualLab: React.FC = () => {
     setViewerSrc(src);
     setViewerOpen(true);
   };
+
+  useEffect(() => {
+    if (!fullscreenItem) return;
+
+    const requestNativeFullscreen = async () => {
+      const host = fullscreenHostRef.current;
+      if (!host || document.fullscreenElement) return;
+
+      try {
+        await host.requestFullscreen?.({ navigationUI: 'hide' });
+      } catch {
+        // Fixed overlay still covers the app when native fullscreen is denied.
+      }
+    };
+
+    void requestNativeFullscreen();
+  }, [fullscreenItem]);
 
   const exitFullscreen = () => {
     if (document.fullscreenElement) {
@@ -129,18 +137,17 @@ const VirtualLab: React.FC = () => {
   return (
     <div className="space-y-6">
       {fullscreenItem && (
-        <div ref={fullscreenHostRef} className="fixed inset-0 z-[100] bg-background flex flex-col">
-          <div className="flex items-center justify-between px-4 py-1.5 border-b border-border bg-card shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground truncate">{fullscreenItem.title}</span>
-              <Badge className="text-[10px] bg-primary text-primary-foreground hover:bg-primary/90">Virtual Lab</Badge>
-            </div>
-            <Button size="sm" variant="ghost" onClick={exitFullscreen} className="text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4 mr-1" /> Exit
-            </Button>
-          </div>
-          <div className="flex-1 min-h-0">
+        <div ref={fullscreenHostRef} className="fixed inset-0 z-[100] bg-background">
+          <Button
+            size="icon"
+            variant="secondary"
+            onClick={exitFullscreen}
+            className="absolute right-3 top-3 z-[140] h-9 w-9 rounded-full border border-border bg-card/95 shadow-md"
+            aria-label="Exit fullscreen"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <div className="h-[100dvh] w-[100dvw] min-h-0">
             {fullscreenSrc ? (
               <SimulationViewer src={fullscreenSrc} title={fullscreenItem.title} onClose={exitFullscreen} className="h-full" hideHeader />
             ) : (
