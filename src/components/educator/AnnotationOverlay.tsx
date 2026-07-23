@@ -130,6 +130,10 @@ const AnnotationOverlay: React.FC = () => {
 	}, [resizeCanvas]);
 
 	useEffect(() => {
+		resizeCanvas();
+	}, [annotationMode, resizeCanvas]);
+
+	useEffect(() => {
 		renderStrokes();
 	}, [renderVersion, renderStrokes]);
 
