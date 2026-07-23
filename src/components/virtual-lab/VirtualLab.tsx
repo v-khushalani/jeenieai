@@ -81,6 +81,8 @@ const VirtualLab: React.FC = () => {
     }
   };
 
+  const fullscreenHostRef = React.useRef<HTMLDivElement>(null);
+
   const openViewer = async (item: EducatorContentItem, fullscreen = false) => {
     const src = await resolveContentSrc(item);
     if (!src) return;
@@ -88,6 +90,15 @@ const VirtualLab: React.FC = () => {
     if (fullscreen) {
       setFullscreenItem(item);
       setFullscreenSrc(src);
+      // Request true browser fullscreen so the top nav disappears
+      requestAnimationFrame(() => {
+        const host = fullscreenHostRef.current;
+        if (host && !document.fullscreenElement) {
+          host.requestFullscreen?.().catch(() => {
+            /* fall back to overlay */
+          });
+        }
+      });
       return;
     }
 
@@ -96,25 +107,42 @@ const VirtualLab: React.FC = () => {
     setViewerOpen(true);
   };
 
+  const exitFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => undefined);
+    }
+    setFullscreenItem(null);
+    setFullscreenSrc('');
+  };
+
+  useEffect(() => {
+    const onFsChange = () => {
+      if (!document.fullscreenElement && fullscreenItem) {
+        setFullscreenItem(null);
+        setFullscreenSrc('');
+      }
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, [fullscreenItem]);
+
   return (
     <div className="space-y-6">
       {fullscreenItem && (
-        <div className="fixed inset-0 z-40 bg-background/95 backdrop-blur-xs flex flex-col">
-          <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card shrink-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <ShieldCheck className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground truncate">{fullscreenItem.title}</span>
-                <Badge className="text-[10px] bg-primary text-primary-foreground hover:bg-primary/90">Virtual Lab</Badge>
-              </div>
+        <div ref={fullscreenHostRef} className="fixed inset-0 z-[100] bg-background flex flex-col">
+          <div className="flex items-center justify-between px-4 py-1.5 border-b border-border bg-card shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground truncate">{fullscreenItem.title}</span>
+              <Badge className="text-[10px] bg-primary text-primary-foreground hover:bg-primary/90">Virtual Lab</Badge>
             </div>
-            <Button size="sm" variant="ghost" onClick={() => { setFullscreenItem(null); setFullscreenSrc(''); }} className="text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4 mr-1" /> Exit Fullscreen
+            <Button size="sm" variant="ghost" onClick={exitFullscreen} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4 mr-1" /> Exit
             </Button>
           </div>
           <div className="flex-1 min-h-0">
             {fullscreenSrc ? (
-              <SimulationViewer src={fullscreenSrc} title={fullscreenItem.title} onClose={() => { setFullscreenItem(null); setFullscreenSrc(''); }} className="h-full" hideHeader />
+              <SimulationViewer src={fullscreenSrc} title={fullscreenItem.title} onClose={exitFullscreen} className="h-full" hideHeader />
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
                 <div className="text-center space-y-3">
@@ -127,6 +155,8 @@ const VirtualLab: React.FC = () => {
           </div>
         </div>
       )}
+
+
 
       <div>
         <h2 className="text-2xl font-bold text-foreground">Interactive Animations</h2>
