@@ -334,14 +334,18 @@ const AnnotationOverlay: React.FC = () => {
 
 	return (
 		<div ref={rootRef} className="absolute inset-0 z-20 pointer-events-none select-none">
-			<canvas
-				ref={canvasRef}
-				className={annotationMode ? 'absolute inset-0 pointer-events-auto' : 'absolute inset-0 pointer-events-none'}
-				onPointerDown={onCanvasPointerDown}
-				onPointerMove={onCanvasPointerMove}
-				onPointerUp={onCanvasPointerUp}
-				onPointerCancel={onCanvasPointerCancel}
-			/>
+			{annotationMode && (
+				<canvas
+					ref={canvasRef}
+					className="absolute inset-0 pointer-events-auto"
+					onPointerDown={onCanvasPointerDown}
+					onPointerMove={onCanvasPointerMove}
+					onPointerUp={onCanvasPointerUp}
+					onPointerCancel={onCanvasPointerCancel}
+				/>
+			)}
+
+			{!annotationMode && <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />}
 
 			{laserPoint && annotationMode && tool === 'laser' && (
 				<div
