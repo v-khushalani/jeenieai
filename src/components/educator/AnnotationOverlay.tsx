@@ -37,9 +37,10 @@ const AnnotationOverlay: React.FC = () => {
 	const [lineWidth, setLineWidth] = useState(3);
 	const [highlighterOpacity, setHighlighterOpacity] = useState(0.2);
 	const [color, setColor] = useState(COLORS[0]);
-	const [collapsed, setCollapsed] = useState(false);
-	const [isPanelVisible, setIsPanelVisible] = useState(true);
+	const [collapsed, setCollapsed] = useState(true);
+	const [isPanelVisible, setIsPanelVisible] = useState(false);
 	const [panelPos, setPanelPos] = useState({ x: 16, y: 16 });
+
 	const [laserPoint, setLaserPoint] = useState<Point | null>(null);
 	const [renderVersion, setRenderVersion] = useState(0);
 

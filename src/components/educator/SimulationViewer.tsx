@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Maximize2, Minimize2, X, Loader2, AlertTriangle, Sparkles } from 'lucide-react';
+import { Maximize2, Minimize2, X, Loader2, AlertTriangle, Sparkles, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AnnotationOverlay from './AnnotationOverlay';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SimulationViewerProps {
   src: string;
@@ -19,14 +20,23 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
   onClose,
   hideHeader = false,
 }) => {
+  const { user } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [devtoolsOpen, setDevtoolsOpen] = useState(false);
+  const [now, setNow] = useState(() => new Date());
   const normalizedSrc = src.trim();
   const htmlContent = normalizedSrc.startsWith('<') ? src : '';
   const effectiveSrc = htmlContent ? undefined : normalizedSrc || undefined;
+
+  const institute =
+    (user?.user_metadata?.institute as string) ||
+    (user?.user_metadata?.full_name as string) ||
+    user?.email ||
+    'JEEnie Educator';
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
@@ -45,11 +55,16 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
-  // Reset loading state when src changes
   useEffect(() => {
     setIsLoaded(false);
     setHasError(!normalizedSrc);
   }, [normalizedSrc]);
+
+  // Live watermark clock
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // Blur on tab switch
   useEffect(() => {
@@ -61,17 +76,44 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
-  // Block print/save shortcuts
+  // DevTools detection (size-diff heuristic)
+  useEffect(() => {
+    const check = () => {
+      const threshold = 160;
+      const widthGap = window.outerWidth - window.innerWidth;
+      const heightGap = window.outerHeight - window.innerHeight;
+      setDevtoolsOpen(widthGap > threshold || heightGap > threshold);
+    };
+    check();
+    const id = window.setInterval(check, 1200);
+    window.addEventListener('resize', check);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('resize', check);
+    };
+  }, []);
+
+  // Block print/save/devtools shortcuts + right-click + selection
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'PrintScreen') e.preventDefault();
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's')) e.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && ['p', 's', 'u'].includes(e.key.toLowerCase())) e.preventDefault();
       if (e.key === 'F12') e.preventDefault();
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['i', 'j', 'c', 'I', 'J', 'C'].includes(e.key)) e.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase())) e.preventDefault();
     };
+    const noContext = (e: MouseEvent) => e.preventDefault();
+    const noDrag = (e: DragEvent) => e.preventDefault();
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    document.addEventListener('contextmenu', noContext);
+    document.addEventListener('dragstart', noDrag);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      document.removeEventListener('contextmenu', noContext);
+      document.removeEventListener('dragstart', noDrag);
+    };
   }, []);
+
+  const stamp = `${institute} • ${now.toLocaleString()}`;
 
   return (
     <>
@@ -86,13 +128,52 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
             margin-top: 200px;
           }
         }
+        @keyframes jeenieWatermarkDrift {
+          0%   { transform: translate3d(-6%, -4%, 0) rotate(-22deg); }
+          50%  { transform: translate3d(4%, 3%, 0) rotate(-22deg); }
+          100% { transform: translate3d(-6%, -4%, 0) rotate(-22deg); }
+        }
+        .jeenie-watermark {
+          position: absolute;
+          inset: -20%;
+          pointer-events: none;
+          z-index: 15;
+          opacity: 0.07;
+          background-image: repeating-linear-gradient(
+            -22deg,
+            transparent 0 120px,
+            rgba(15,23,42,0.001) 120px 121px
+          );
+          animation: jeenieWatermarkDrift 24s ease-in-out infinite;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 60px 80px;
+          padding: 40px;
+          align-content: center;
+          justify-content: center;
+          user-select: none;
+        }
+        .jeenie-watermark span {
+          font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+          font-weight: 700;
+          font-size: 20px;
+          letter-spacing: 0.08em;
+          color: #0f172a;
+          white-space: nowrap;
+        }
+        .jeenie-no-select {
+          -webkit-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+          -webkit-touch-callout: none;
+        }
       `}</style>
 
       <div
         ref={containerRef}
         className={cn(
-          'simulation-viewer flex flex-col bg-muted rounded-lg overflow-hidden',
-          isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'w-full',
+          'simulation-viewer jeenie-no-select flex flex-col bg-muted rounded-lg overflow-hidden',
+          isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : 'w-full',
           className
         )}
       >
@@ -103,12 +184,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
               <span className="text-sm font-semibold text-foreground truncate">{title}</span>
             </div>
             <div className="flex items-center gap-1">
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={toggleFullscreen}
-                className="h-8 w-8"
-              >
+              <Button size="icon" variant="ghost" onClick={toggleFullscreen} className="h-8 w-8">
                 {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
               </Button>
               {onClose && (
@@ -126,7 +202,10 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
         )}
 
         {/* iframe area */}
-        <div className="relative flex-1 min-h-0" style={{ height: isFullscreen ? 'calc(100vh - 48px)' : (hideHeader ? '100%' : '600px') }}>
+        <div
+          className="relative flex-1 min-h-0"
+          style={{ height: isFullscreen ? 'calc(100vh - 28px)' : hideHeader ? '100%' : '600px' }}
+        >
           {!isLoaded && !hasError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted z-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -139,20 +218,49 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
               <p className="text-sm">{src ? 'Failed to load content.' : 'No Interactive Animation source configured.'}</p>
             </div>
           )}
+
           <AnnotationOverlay />
+
+          {/* Animated diagonal JEEnie watermark grid */}
+          <div className="jeenie-watermark" aria-hidden="true">
+            {Array.from({ length: 24 }).map((_, i) => (
+              <span key={i}>JEEnie • {stamp}</span>
+            ))}
+          </div>
+
           <iframe
             ref={iframeRef}
             src={effectiveSrc}
             srcDoc={htmlContent || undefined}
             title={title}
             className="w-full h-full border-0"
-             sandbox="allow-scripts allow-same-origin allow-pointer-lock"
+            sandbox="allow-scripts allow-same-origin allow-pointer-lock"
             referrerPolicy="no-referrer"
-            style={{ display: 'block', transition: 'filter 0.3s ease' }}
+            style={{
+              display: 'block',
+              transition: 'filter 0.3s ease',
+              filter: devtoolsOpen ? 'blur(18px)' : 'none',
+            }}
             onLoad={() => setIsLoaded(true)}
             onError={() => setHasError(true)}
             onContextMenu={(e) => e.preventDefault()}
           />
+
+          {devtoolsOpen && (
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-background/80 backdrop-blur-sm text-center px-6">
+              <ShieldAlert className="h-10 w-10 text-destructive" />
+              <p className="text-sm font-semibold text-foreground">Developer tools detected</p>
+              <p className="text-xs text-muted-foreground max-w-sm">
+                For content protection, this simulation is paused while developer tools are open. Please close them to continue.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Powered by JEEnie footer strip */}
+        <div className="flex items-center justify-between gap-3 px-3 py-1 bg-card/95 border-t border-border text-[10px] text-muted-foreground shrink-0">
+          <span className="font-semibold tracking-wide text-foreground/80">Powered by JEEnie</span>
+          <span className="truncate opacity-70">© 2026 JEEnie. All Rights Reserved.</span>
         </div>
       </div>
     </>
