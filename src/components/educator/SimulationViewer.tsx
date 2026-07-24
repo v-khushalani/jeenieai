@@ -23,6 +23,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
   const { user } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const resizeTimersRef = useRef<number[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -49,11 +50,51 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
     }
   };
 
+  const clearResizeTimers = () => {
+    resizeTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+    resizeTimersRef.current = [];
+  };
+
+  const nudgeSimulationResize = () => {
+    const frameWindow = iframeRef.current?.contentWindow;
+    if (!frameWindow) return;
+
+    try {
+      frameWindow.dispatchEvent(new Event('resize'));
+      frameWindow.dispatchEvent(new Event('orientationchange'));
+      frameWindow.postMessage({ type: 'JEENIE_SIMULATION_VIEWPORT_RESIZE' }, '*');
+    } catch {
+      // Cross-origin embeds may reject parent-driven resize events.
+    }
+  };
+
+  const scheduleSimulationResizeNudges = () => {
+    clearResizeTimers();
+    [0, 80, 220, 500, 900, 1500].forEach((delay) => {
+      const timerId = window.setTimeout(nudgeSimulationResize, delay);
+      resizeTimersRef.current.push(timerId);
+    });
+  };
+
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handler);
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver(() => {
+      window.requestAnimationFrame(nudgeSimulationResize);
+    });
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => () => clearResizeTimers(), []);
 
   useEffect(() => {
     setIsLoaded(false);
@@ -264,6 +305,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
             onLoad={() => {
               setIsLoaded(true);
               iframeRef.current?.focus();
+              scheduleSimulationResizeNudges();
             }}
             onError={() => setHasError(true)}
             onContextMenu={(e) => e.preventDefault()}
