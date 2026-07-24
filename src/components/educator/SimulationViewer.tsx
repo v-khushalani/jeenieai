@@ -76,12 +76,27 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
-  // DevTools detection (size-diff heuristic)
+  // DevTools detection (size-diff heuristic). Disable inside Lovable/embedded
+  // previews because outerWidth/innerWidth compares the host browser to the
+  // iframe viewport there, causing false positives that block simulations.
   useEffect(() => {
     const check = () => {
-      const threshold = 160;
-      const widthGap = window.outerWidth - window.innerWidth;
-      const heightGap = window.outerHeight - window.innerHeight;
+      const isEmbedded = (() => {
+        try {
+          return window.self !== window.top;
+        } catch {
+          return true;
+        }
+      })();
+
+      if (isEmbedded || window.outerWidth <= 0 || window.outerHeight <= 0) {
+        setDevtoolsOpen(false);
+        return;
+      }
+
+      const threshold = 260;
+      const widthGap = Math.abs(window.outerWidth - window.innerWidth);
+      const heightGap = Math.abs(window.outerHeight - window.innerHeight);
       setDevtoolsOpen(widthGap > threshold || heightGap > threshold);
     };
     check();
@@ -158,7 +173,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           font-weight: 700;
           font-size: 20px;
           letter-spacing: 0.08em;
-          color: #0f172a;
+          color: hsl(var(--foreground));
           white-space: nowrap;
         }
         .jeenie-no-select {
@@ -210,7 +225,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
         {/* iframe area */}
         <div
           className="relative flex-1 min-h-0"
-          style={{ height: isFullscreen ? 'calc(100vh - 28px)' : hideHeader ? '100%' : '600px' }}
+          style={hideHeader ? undefined : { height: isFullscreen ? 'calc(100dvh - 28px)' : '600px' }}
         >
           {!isLoaded && !hasError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted z-10">
