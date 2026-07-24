@@ -84,14 +84,32 @@ const VirtualLab: React.FC = () => {
   const fullscreenHostRef = useRef<HTMLDivElement>(null);
 
   const openViewer = async (item: EducatorContentItem, fullscreen = false) => {
-    const src = await resolveContentSrc(item);
-    if (!src) return;
-
     if (fullscreen) {
       setFullscreenItem(item);
+      setFullscreenSrc('');
+
+      // Native fullscreen must be requested directly from the user's click.
+      // Waiting for storage/signing first loses browser user-activation and
+      // leaves the app inside the normal preview frame on real devices.
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {
+          // The fixed overlay still provides an in-app fullscreen fallback.
+        });
+      }
+
+      const src = await resolveContentSrc(item);
+      if (!src) {
+        setFullscreenItem(null);
+        return;
+      }
+
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       setFullscreenSrc(src);
       return;
     }
+
+    const src = await resolveContentSrc(item);
+    if (!src) return;
 
     setViewerItem(item);
     setViewerSrc(src);

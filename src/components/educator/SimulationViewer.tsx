@@ -23,6 +23,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
   const { user } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const resizeTimersRef = useRef<number[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -49,11 +50,51 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
     }
   };
 
+  const clearResizeTimers = () => {
+    resizeTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+    resizeTimersRef.current = [];
+  };
+
+  const nudgeSimulationResize = () => {
+    const frameWindow = iframeRef.current?.contentWindow;
+    if (!frameWindow) return;
+
+    try {
+      frameWindow.dispatchEvent(new Event('resize'));
+      frameWindow.dispatchEvent(new Event('orientationchange'));
+      frameWindow.postMessage({ type: 'JEENIE_SIMULATION_VIEWPORT_RESIZE' }, '*');
+    } catch {
+      // Cross-origin embeds may reject parent-driven resize events.
+    }
+  };
+
+  const scheduleSimulationResizeNudges = () => {
+    clearResizeTimers();
+    [0, 80, 220, 500, 900, 1500].forEach((delay) => {
+      const timerId = window.setTimeout(nudgeSimulationResize, delay);
+      resizeTimersRef.current.push(timerId);
+    });
+  };
+
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handler);
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver(() => {
+      window.requestAnimationFrame(nudgeSimulationResize);
+    });
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => () => clearResizeTimers(), []);
 
   useEffect(() => {
     setIsLoaded(false);
@@ -76,12 +117,27 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
-  // DevTools detection (size-diff heuristic)
+  // DevTools detection (size-diff heuristic). Disable inside Lovable/embedded
+  // previews because outerWidth/innerWidth compares the host browser to the
+  // iframe viewport there, causing false positives that block simulations.
   useEffect(() => {
     const check = () => {
-      const threshold = 160;
-      const widthGap = window.outerWidth - window.innerWidth;
-      const heightGap = window.outerHeight - window.innerHeight;
+      const isEmbedded = (() => {
+        try {
+          return window.self !== window.top;
+        } catch {
+          return true;
+        }
+      })();
+
+      if (isEmbedded || window.outerWidth <= 0 || window.outerHeight <= 0) {
+        setDevtoolsOpen(false);
+        return;
+      }
+
+      const threshold = 260;
+      const widthGap = Math.abs(window.outerWidth - window.innerWidth);
+      const heightGap = Math.abs(window.outerHeight - window.innerHeight);
       setDevtoolsOpen(widthGap > threshold || heightGap > threshold);
     };
     check();
@@ -158,7 +214,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           font-weight: 700;
           font-size: 20px;
           letter-spacing: 0.08em;
-          color: #0f172a;
+          color: hsl(var(--foreground));
           white-space: nowrap;
         }
         .jeenie-no-select {
@@ -210,7 +266,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
         {/* iframe area */}
         <div
           className="relative flex-1 min-h-0"
-          style={{ height: isFullscreen ? 'calc(100vh - 28px)' : hideHeader ? '100%' : '600px' }}
+          style={hideHeader ? undefined : { height: isFullscreen ? 'calc(100dvh - 28px)' : '600px' }}
         >
           {!isLoaded && !hasError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted z-10">
@@ -249,6 +305,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
             onLoad={() => {
               setIsLoaded(true);
               iframeRef.current?.focus();
+              scheduleSimulationResizeNudges();
             }}
             onError={() => setHasError(true)}
             onContextMenu={(e) => e.preventDefault()}

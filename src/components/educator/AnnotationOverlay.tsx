@@ -361,12 +361,12 @@ const AnnotationOverlay: React.FC = () => {
 				</div>
 			)}
 
-			{!isPanelVisible && (
-				<div className="absolute pointer-events-auto left-3 top-3 z-30">
+      {!isPanelVisible && (
+        <div className="absolute pointer-events-auto right-14 top-3 z-30">
 					<Button
 						size="sm"
 						variant="secondary"
-						className="h-8 rounded-full px-3 text-xs shadow-md border border-slate-300"
+            className="h-8 rounded-full px-3 text-xs shadow-md border border-border bg-card/95 text-foreground"
 						onClick={() => {
 							setIsPanelVisible(true);
 							setCollapsed(false);
@@ -380,12 +380,12 @@ const AnnotationOverlay: React.FC = () => {
 			{isPanelVisible && (
 				<div
 					ref={panelRef}
-					className="absolute pointer-events-auto w-[240px] max-w-[85vw] rounded-xl border border-slate-300 bg-white/95 backdrop-blur-sm shadow-lg"
+          className="absolute pointer-events-auto w-[240px] max-w-[85vw] rounded-xl border border-border bg-card/95 backdrop-blur-sm shadow-lg"
 					style={{ transform: `translate(${panelPos.x}px, ${panelPos.y}px)` }}
 				>
-					<div className="flex items-center justify-between px-2.5 py-2 border-b border-slate-200">
+          <div className="flex items-center justify-between px-2.5 py-2 border-b border-border">
 						<div
-							className="flex items-center gap-2 text-[11px] font-semibold text-slate-700 cursor-grab active:cursor-grabbing"
+              className="flex items-center gap-2 text-[11px] font-semibold text-foreground cursor-grab active:cursor-grabbing"
 							onPointerDown={startDragPanel}
 							onPointerMove={movePanel}
 							onPointerUp={stopDragPanel}
@@ -442,7 +442,7 @@ const AnnotationOverlay: React.FC = () => {
 										key={c}
 										type="button"
 										onClick={() => setColor(c)}
-										className={`h-6 w-6 rounded-full border ${color === c ? 'ring-2 ring-slate-700 border-slate-700' : 'border-slate-300'}`}
+                className={`h-6 w-6 rounded-full border ${color === c ? 'ring-2 ring-foreground border-foreground' : 'border-border'}`}
 										style={{ backgroundColor: c }}
 										aria-label={`Pick color ${c}`}
 									/>
@@ -450,7 +450,7 @@ const AnnotationOverlay: React.FC = () => {
 							</div>
 
 							<div className="space-y-1">
-								<div className="text-[11px] font-medium text-slate-600">Stroke: {lineWidth}px</div>
+              <div className="text-[11px] font-medium text-muted-foreground">Stroke: {lineWidth}px</div>
 								<input
 									type="range"
 									min={1}
@@ -463,7 +463,7 @@ const AnnotationOverlay: React.FC = () => {
 
 							{tool === 'highlighter' && (
 								<div className="space-y-1">
-									<div className="text-[11px] font-medium text-slate-600">Opacity: {Math.round(highlighterOpacity * 100)}%</div>
+                <div className="text-[11px] font-medium text-muted-foreground">Opacity: {Math.round(highlighterOpacity * 100)}%</div>
 									<input
 										type="range"
 										min={8}
@@ -475,7 +475,7 @@ const AnnotationOverlay: React.FC = () => {
 								</div>
 							)}
 
-							<div className="text-[10px] text-slate-500 leading-relaxed">
+            <div className="text-[10px] text-muted-foreground leading-relaxed">
 								Magic eraser removes one full stroke. Laser is non-writing pointer mode.
 							</div>
 						</div>
