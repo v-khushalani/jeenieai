@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -95,8 +95,6 @@ const VirtualLab: React.FC = () => {
     }
   };
 
-  const fullscreenHostRef = useRef<HTMLDivElement>(null);
-
   const openViewer = async (item: EducatorContentItem, fullscreen = false) => {
     if (fullscreen) {
       setFullscreenItem(item);
@@ -130,23 +128,6 @@ const VirtualLab: React.FC = () => {
     setViewerOpen(true);
   };
 
-  useEffect(() => {
-    if (!fullscreenItem) return;
-
-    const requestNativeFullscreen = async () => {
-      const host = fullscreenHostRef.current;
-      if (!host || document.fullscreenElement) return;
-
-      try {
-        await host.requestFullscreen?.({ navigationUI: 'hide' });
-      } catch {
-        // Fixed overlay still covers the app when native fullscreen is denied.
-      }
-    };
-
-    void requestNativeFullscreen();
-  }, [fullscreenItem]);
-
   const exitFullscreen = () => {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => undefined);
@@ -169,7 +150,7 @@ const VirtualLab: React.FC = () => {
   return (
     <div className="space-y-6">
       {fullscreenItem && (
-        <div ref={fullscreenHostRef} className="fixed inset-0 z-[100] bg-background">
+        <div className="fixed inset-0 z-[100] bg-background">
           <Button
             size="icon"
             variant="secondary"
