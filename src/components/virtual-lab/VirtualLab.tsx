@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,21 @@ import SimulationViewer from '@/components/educator/SimulationViewer';
 
 import { PROGRAM_SUBJECTS } from '@/utils/programConfig';
 const SUBJECTS = PROGRAM_SUBJECTS['Class'];
+
+const embedHtmlWithSignedBase = (html: string, signedUrl: string) => {
+  const baseTag = `<base href="${signedUrl}">`;
+  const normalizedHtml = html.replace(/^\uFEFF/, '');
+
+  if (/<base\s/i.test(normalizedHtml)) {
+    return normalizedHtml;
+  }
+
+  if (/<head[^>]*>/i.test(normalizedHtml)) {
+    return normalizedHtml.replace(/<head([^>]*)>/i, `<head$1>${baseTag}`);
+  }
+
+  return `<!doctype html><html><head>${baseTag}</head><body>${normalizedHtml}</body></html>`;
+};
 
 const VirtualLab: React.FC = () => {
   const { items, loading, fetchContent, getSignedUrl } = useEducatorContent();
@@ -68,20 +83,17 @@ const VirtualLab: React.FC = () => {
     }
 
     // Supabase storage may serve .html with a non-HTML Content-Type,
-    // making browsers render source as text. Fetch the bytes and re-serve
-    // via a Blob URL forced to text/html so it renders as a real page.
+    // making browsers render source as text. Fetch the bytes and render via
+    // iframe srcDoc so uploaded HTML behaves like a directly opened document.
     try {
       const response = await fetch(signedUrl, { cache: 'no-store' });
       if (!response.ok) return '';
       const text = await response.text();
-      const blob = new Blob([text], { type: 'text/html' });
-      return URL.createObjectURL(blob);
+      return embedHtmlWithSignedBase(text, signedUrl);
     } catch {
       return '';
     }
   };
-
-  const fullscreenHostRef = useRef<HTMLDivElement>(null);
 
   const openViewer = async (item: EducatorContentItem, fullscreen = false) => {
     if (fullscreen) {
@@ -116,23 +128,6 @@ const VirtualLab: React.FC = () => {
     setViewerOpen(true);
   };
 
-  useEffect(() => {
-    if (!fullscreenItem) return;
-
-    const requestNativeFullscreen = async () => {
-      const host = fullscreenHostRef.current;
-      if (!host || document.fullscreenElement) return;
-
-      try {
-        await host.requestFullscreen?.({ navigationUI: 'hide' });
-      } catch {
-        // Fixed overlay still covers the app when native fullscreen is denied.
-      }
-    };
-
-    void requestNativeFullscreen();
-  }, [fullscreenItem]);
-
   const exitFullscreen = () => {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => undefined);
@@ -155,7 +150,7 @@ const VirtualLab: React.FC = () => {
   return (
     <div className="space-y-6">
       {fullscreenItem && (
-        <div ref={fullscreenHostRef} className="fixed inset-0 z-[100] bg-background">
+        <div className="fixed inset-0 z-[100] bg-background">
           <Button
             size="icon"
             variant="secondary"

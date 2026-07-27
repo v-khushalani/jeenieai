@@ -28,6 +28,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [devtoolsOpen, setDevtoolsOpen] = useState(false);
+  const [usesParentWatermark, setUsesParentWatermark] = useState(true);
   const [now, setNow] = useState(() => new Date());
   const normalizedSrc = src.trim();
   const htmlContent = normalizedSrc.startsWith('<') ? src : '';
@@ -76,6 +77,106 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
     });
   };
 
+  const injectWatermarkIntoFrame = () => {
+    const frameWindow = iframeRef.current?.contentWindow;
+    const frameDocument = iframeRef.current?.contentDocument;
+    if (!frameWindow || !frameDocument?.body) return false;
+
+    try {
+      frameDocument.getElementById('jeenie-frame-protection-style')?.remove();
+      frameDocument.getElementById('jeenie-frame-watermark')?.remove();
+
+      const style = frameDocument.createElement('style');
+      style.id = 'jeenie-frame-protection-style';
+      style.textContent = `
+        @keyframes jeenieFrameWatermarkDrift {
+          0% { transform: translate3d(-5%, -4%, 0) rotate(-22deg); }
+          50% { transform: translate3d(4%, 3%, 0) rotate(-22deg); }
+          100% { transform: translate3d(-5%, -4%, 0) rotate(-22deg); }
+        }
+        html, body {
+          -webkit-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+          -webkit-touch-callout: none;
+        }
+        #jeenie-frame-watermark {
+          position: fixed;
+          inset: -24%;
+          z-index: 2147483646;
+          pointer-events: none;
+          opacity: 0.065;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 58px 76px;
+          padding: 42px;
+          align-content: center;
+          justify-content: center;
+          animation: jeenieFrameWatermarkDrift 24s ease-in-out infinite;
+          contain: layout paint style;
+        }
+        #jeenie-frame-watermark span {
+          font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          font-size: 19px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          color: color-mix(in srgb, CanvasText 76%, transparent);
+          white-space: nowrap;
+        }
+        @media print {
+          body * { visibility: hidden !important; }
+          body::before {
+            content: 'Printing is disabled for protected JEEnie content.';
+            visibility: visible !important;
+            display: block;
+            padding-top: 35vh;
+            text-align: center;
+            font: 700 24px ui-sans-serif, system-ui, -apple-system, sans-serif;
+          }
+        }
+      `;
+      frameDocument.head.appendChild(style);
+
+      const layer = frameDocument.createElement('div');
+      layer.id = 'jeenie-frame-watermark';
+      layer.setAttribute('aria-hidden', 'true');
+
+      const renderWatermark = () => {
+        layer.replaceChildren();
+        const currentStamp = `${institute} • ${new Date().toLocaleString()}`;
+        for (let i = 0; i < 36; i += 1) {
+          const span = frameDocument.createElement('span');
+          span.textContent = `JEEnie • ${currentStamp}`;
+          layer.appendChild(span);
+        }
+      };
+
+      renderWatermark();
+      frameDocument.body.appendChild(layer);
+      const intervalId = frameWindow.setInterval(renderWatermark, 30_000);
+
+      const blockKey = (event: KeyboardEvent) => {
+        if (event.key === 'PrintScreen') event.preventDefault();
+        if ((event.ctrlKey || event.metaKey) && ['p', 's', 'u'].includes(event.key.toLowerCase())) event.preventDefault();
+        if (event.key === 'F12') event.preventDefault();
+        if ((event.ctrlKey || event.metaKey) && event.shiftKey && ['i', 'j', 'c'].includes(event.key.toLowerCase())) {
+          event.preventDefault();
+        }
+      };
+      const preventDefault = (event: Event) => event.preventDefault();
+
+      frameDocument.addEventListener('contextmenu', preventDefault, true);
+      frameDocument.addEventListener('dragstart', preventDefault, true);
+      frameDocument.addEventListener('selectstart', preventDefault, true);
+      frameDocument.addEventListener('keydown', blockKey, true);
+      frameWindow.addEventListener('beforeunload', () => frameWindow.clearInterval(intervalId), { once: true });
+
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handler);
@@ -99,6 +200,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
   useEffect(() => {
     setIsLoaded(false);
     setHasError(!normalizedSrc);
+    setUsesParentWatermark(true);
   }, [normalizedSrc]);
 
   // Live watermark clock
@@ -193,7 +295,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           position: absolute;
           inset: -20%;
           pointer-events: none;
-          z-index: 8;
+          z-index: 2;
           opacity: 0.07;
           background-image: repeating-linear-gradient(
             -22deg,
@@ -208,6 +310,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           align-content: center;
           justify-content: center;
           user-select: none;
+          mix-blend-mode: multiply;
         }
         .jeenie-watermark span {
           font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -225,7 +328,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
         }
         .simulation-frame {
           position: relative;
-          z-index: 1;
+          z-index: 10;
           pointer-events: auto;
           touch-action: auto;
         }
@@ -282,11 +385,13 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           )}
 
           {/* Animated diagonal JEEnie watermark grid */}
-          <div className="jeenie-watermark" aria-hidden="true">
-            {Array.from({ length: 24 }).map((_, i) => (
-              <span key={i}>JEEnie • {stamp}</span>
-            ))}
-          </div>
+          {usesParentWatermark && (
+            <div className="jeenie-watermark" aria-hidden="true">
+              {Array.from({ length: 24 }).map((_, i) => (
+                <span key={i}>JEEnie • {stamp}</span>
+              ))}
+            </div>
+          )}
 
           <iframe
             ref={iframeRef}
@@ -304,6 +409,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
             }}
             onLoad={() => {
               setIsLoaded(true);
+              setUsesParentWatermark(!injectWatermarkIntoFrame());
               iframeRef.current?.focus();
               scheduleSimulationResizeNudges();
             }}
