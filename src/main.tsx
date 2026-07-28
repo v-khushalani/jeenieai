@@ -6,7 +6,6 @@ import './index.css';
 import { initSentry } from '@/lib/sentry';
 import { initMixpanel } from '@/integrations/analytics';
 import safeLocalStorage from '@/utils/safeStorage';
-import { registerSW } from 'virtual:pwa-register';
 
 declare global {
   interface Window {
@@ -74,19 +73,5 @@ if (import.meta.env.DEV && 'serviceWorker' in navigator) {
   }
 }
 
-// Ensure users pick up the latest dashboard/mobile UI build quickly in production.
-if (import.meta.env.PROD) {
-  registerSW({
-    immediate: true,
-    onRegisteredSW(_swUrl, registration) {
-      registration?.update();
-      setInterval(() => registration?.update(), 60 * 1000);
-    },
-    onNeedRefresh() {
-      window.location.reload();
-    },
-    onOfflineReady() {
-      // No-op: app can work offline after initial load.
-    },
-  });
-}
+// App-shell service worker registration was removed: /sw.js is now a cleanup
+// worker for one release so returning browsers drop stale PWA caches.

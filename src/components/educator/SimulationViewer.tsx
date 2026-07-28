@@ -27,12 +27,12 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [devtoolsOpen, setDevtoolsOpen] = useState(false);
-  const [usesParentWatermark, setUsesParentWatermark] = useState(!htmlContent);
-  const [now, setNow] = useState(() => new Date());
   const normalizedSrc = src.trim();
   const htmlContent = normalizedSrc.startsWith('<') ? src : '';
   const effectiveSrc = htmlContent ? undefined : normalizedSrc || undefined;
+  const [devtoolsOpen, setDevtoolsOpen] = useState(false);
+  const [usesParentWatermark, setUsesParentWatermark] = useState(!htmlContent);
+  const [now, setNow] = useState(() => new Date());
 
   const institute =
     (user?.user_metadata?.institute as string) ||
