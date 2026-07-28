@@ -27,12 +27,12 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [devtoolsOpen, setDevtoolsOpen] = useState(false);
-  const [usesParentWatermark, setUsesParentWatermark] = useState(true);
-  const [now, setNow] = useState(() => new Date());
   const normalizedSrc = src.trim();
   const htmlContent = normalizedSrc.startsWith('<') ? src : '';
   const effectiveSrc = htmlContent ? undefined : normalizedSrc || undefined;
+  const [devtoolsOpen, setDevtoolsOpen] = useState(false);
+  const [usesParentWatermark, setUsesParentWatermark] = useState(!htmlContent);
+  const [now, setNow] = useState(() => new Date());
 
   const institute =
     (user?.user_metadata?.institute as string) ||
@@ -105,7 +105,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           inset: -24%;
           z-index: 2147483646;
           pointer-events: none;
-          opacity: 0.065;
+          opacity: 0.055;
           display: flex;
           flex-wrap: wrap;
           gap: 58px 76px;
@@ -114,6 +114,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           justify-content: center;
           animation: jeenieFrameWatermarkDrift 24s ease-in-out infinite;
           contain: layout paint style;
+          mix-blend-mode: multiply;
         }
         #jeenie-frame-watermark span {
           font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -200,8 +201,8 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
   useEffect(() => {
     setIsLoaded(false);
     setHasError(!normalizedSrc);
-    setUsesParentWatermark(true);
-  }, [normalizedSrc]);
+    setUsesParentWatermark(!htmlContent);
+  }, [normalizedSrc, htmlContent]);
 
   // Live watermark clock
   useEffect(() => {
@@ -295,7 +296,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           position: absolute;
           inset: -20%;
           pointer-events: none;
-          z-index: 2;
+          z-index: 1;
           opacity: 0.07;
           background-image: repeating-linear-gradient(
             -22deg,
@@ -331,6 +332,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           z-index: 10;
           pointer-events: auto;
           touch-action: auto;
+          background: hsl(var(--background));
         }
       `}</style>
 
@@ -338,7 +340,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
         ref={containerRef}
         className={cn(
           'simulation-viewer jeenie-no-select flex flex-col bg-muted rounded-lg overflow-hidden',
-          isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : 'w-full',
+          hideHeader ? 'h-full w-full rounded-none' : isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : 'w-full',
           className
         )}
       >
@@ -368,7 +370,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
 
         {/* iframe area */}
         <div
-          className="relative flex-1 min-h-0"
+          className="relative flex-1 min-h-0 isolate"
           style={hideHeader ? undefined : { height: isFullscreen ? 'calc(100dvh - 28px)' : '600px' }}
         >
           {!isLoaded && !hasError && (
@@ -409,7 +411,8 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
             }}
             onLoad={() => {
               setIsLoaded(true);
-              setUsesParentWatermark(!injectWatermarkIntoFrame());
+              const injected = injectWatermarkIntoFrame();
+              setUsesParentWatermark(!htmlContent && !injected);
               iframeRef.current?.focus();
               scheduleSimulationResizeNudges();
             }}

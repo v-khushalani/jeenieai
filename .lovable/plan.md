@@ -1,98 +1,69 @@
-# Planner v2 — "Aaj ki Hit-List" (auto-tick to-do)
+## Audit findings
 
-## Part A: Hide percentile (quick)
+I logged in as `educator@jeenie.test` and launched the approved `refraction` simulation.
 
-Har jagah se percentile number/UI hata do jab tak Option B (real peer data) ready nahi. Rank/percentile ki jagah **streak + XP + today's progress** dikhega.
+Confirmed from live audit:
+- Educator login works and `/educator` opens.
+- `Interactive Animations` loads 2 approved simulations from `educator_content`.
+- Storage signing and HTML fetch return `200`.
+- The iframe is present, full-screen sized, topmost at the tested points, and contains the actual simulation DOM.
+- The refraction simulation slider/input state changes correctly when events reach the iframe.
 
-**Files touched:**
-- `src/components/planner/CoachMissionPanel.tsx` — sticky header se percentile chip remove
-- `src/components/AIStudyPlanner.tsx` — rank prediction card hide
-- `src/pages/EnhancedDashboard.tsx` — percentile widget hide
-- `supabase/functions/compute-coach-signal/index.ts` — response me `percentile` field bhejna band (backward-safe, sirf frontend consume nahi karega)
+Likely exact issues causing your real preview to differ:
+1. **Service worker / PWA stale code mismatch**
+   - Runtime error shows `/sw.js` failed to update.
+   - Production registers a service worker on preview/published builds.
+   - This can make your browser keep older viewer code while my fresh Playwright browser loads latest code, explaining “your screenshots perfect, my real screen blank.”
+2. **Fullscreen layering is split across two fullscreen systems**
+   - `VirtualLab` requests fullscreen on `document.documentElement`.
+   - `SimulationViewer` also has its own fullscreen container logic.
+   - This creates fragile stacking/order behavior across real browsers and embedded Lovable preview.
+3. **Annotation overlay is above the iframe**
+   - Current root overlay is `z-20`; iframe is `z-10`.
+   - It uses `pointer-events: none` normally, but its annotation button/panel are clickable overlays above the simulation. This should be isolated so only the annotation controls sit above the iframe, not a full-screen overlay layer.
+4. **Parent + injected watermark fallback can still affect rendering**
+   - The code tries iframe injection, then parent watermark fallback.
+   - For same-origin `srcDoc`, parent fallback should not be needed and should stay disabled once iframe injection succeeds.
 
-Percentile logic delete NAHI karenge — sirf UI hidden. Baad me Option B ke liye code available rahega.
+## Fix plan
 
----
+1. **Make fullscreen a single source of truth**
+   - Keep fullscreen opening in `VirtualLab` only.
+   - Render `SimulationViewer` as a pure full-viewport viewer when launched.
+   - Remove/avoid the nested `SimulationViewer` fullscreen toggle path for launched animations.
 
-## Part B: Planner redesign — "Hit-List" model
-
-### Mental model (ek line me)
-
-**"Aaj ye 5 cheezein karni hain. Har cheez jaise-jaise complete hoti hai, khud tick lag jaata hai. Jaise Todoist + Duolingo ka bachcha."**
-
-Complex mission blocks, Kya/Kyun/Goal collapsibles, weekly reports — sab gone. Ek clean list. Bas.
-
-### Screen anatomy
+2. **Hard-fix stacking order**
+   - Use this stable order:
 
 ```text
-┌─────────────────────────────────────────────┐
-│  Good morning, Aarav 👋                     │
-│  🔥 12 day streak · ⚡ 340 XP today         │
-├─────────────────────────────────────────────┤
-│  AAJ KI HIT-LIST                    3 / 5   │
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60% │
-├─────────────────────────────────────────────┤
-│  ☑  Thermodynamics · 10 Q          +40 XP   │  ← auto-ticked, struck-through, green
-│  ☑  Rotation revision · 5 Q        +20 XP   │
-│  ☑  Organic PYQ · 8 Q              +30 XP   │
-│  ○  Calculus practice · 12 Q       +50 XP   │  ← current (highlighted, pulse dot)
-│     ▶ Start  · ~15 min · 4/12 done          │
-│  ○  Waves quick-fix · 5 Q          +20 XP   │  ← locked-feel, dimmed
-├─────────────────────────────────────────────┤
-│  🎯 Finish all 5 → +100 XP bonus + 🏆 badge │
-└─────────────────────────────────────────────┘
+z 100  launch overlay shell
+z 30   close / annotation controls only
+z 20   annotation canvas only when Draw mode is ON
+z 10   iframe simulation
+z 0    viewer background
 ```
 
-### Behaviour rules
+   - When annotation mode is OFF, no full-screen overlay should sit above the iframe.
+   - The “Open Annotation” button should be the only clickable annotation element above the iframe.
 
-1. **Auto-tick, no manual "Done" button.** Question solve karte hi (existing `bump_mission_progress_by_chapter` RPC + realtime subscription), row me progress bar bharta hai. Target hit → row satisfying animation ke saath ticks off (checkmark draw + slight bounce + XP counter fly to header).
-2. **Sequential focus.** Sirf **ek** row "current" hoti hai (highlighted, expanded with Start button). Baaki rows compact single-line. Complete hone pe next row auto-becomes-current.
-3. **XP over percentile.** Har task pe XP value visible. Header me today's XP counter live update. Streak + XP = engagement currency (percentile ki jagah).
-4. **Realtime sync.** Existing `visibilitychange` refetch + Supabase realtime channel on `daily_missions` row. Tab wapas aate hi UI already updated.
-5. **Completion celebration.** Saare 5 tick → full-screen confetti + "Aaj ka mission clear! Streak safe 🔥 · +100 bonus XP" card + "Kal ka teaser" (blurred preview of tomorrow's first task, unlocks 6 AM).
-6. **Empty/late-day states.**
-   - Sab done: "Ek aur round?" → optional bonus 5 Q from weakest chapter (extra XP, doesn't affect streak).
-   - Din khatam, incomplete: "Kal fresh start. Ye 2 tasks kal reschedule ho gaye" (gentle, no shame).
-7. **Kyun/Kya (context) — on tap only.** Har row tap karo → bottom sheet me chhoti explanation: "Ye kyun aaj: Last week Thermo me 52% tha, aaj fix karenge." No walls of text on main screen.
+3. **Disable parent watermark for HTML simulations that allow iframe injection**
+   - For `srcDoc` HTML, inject watermark/protection inside the iframe.
+   - Do not render the parent watermark over the iframe unless injection fails.
+   - Keep watermark opacity low and `pointer-events: none` inside iframe.
 
-### What gets removed / merged
+4. **Add a production cache reset for this broken SW generation**
+   - Update service-worker registration logic so if `/sw.js` update fails or a new build is detected, it unregisters old service workers and clears app caches once, then reloads.
+   - Avoid caching Supabase signed storage URLs for simulations.
+   - This directly targets the mismatch between my fresh audit and your real browser.
 
-- ❌ `MissionCompleteCard` heavy version → replaced by lightweight confetti + XP card
-- ❌ "JEEnie note" collapsible, "Rank-chase" strip, "Weekly report" panel → all gone from planner screen (move to Analytics page if needed)
-- ❌ Roadmap tab as separate mental model → keep as `/roadmap` route but add small "📖 Full syllabus map" link at bottom of Hit-List
-- ❌ Percentile chip, rank prediction band
-- ✅ Streak chip stays (top-left)
-- ✅ XP counter (new, top-right)
+5. **Add viewer debug guards, not visible UI**
+   - Add console/debug-safe checks for iframe load, HTML length, injection success, and top element at center only in development.
+   - This makes future “blank screen” reports diagnosable without showing extra student-facing text.
 
-### Data model — reuse what exists
-
-- `daily_missions` table already stores today's blocks with `progress`, `target`, `chapter_id`, `status`. Perfect for Hit-List rows — no schema change needed.
-- Add one column: `daily_missions.xp_reward INT DEFAULT 20` (per block). Filled by `generate-daily-mission` edge fn based on target size.
-- New `profiles.daily_xp INT` + `profiles.total_xp INT` — increment via existing `bump_mission_progress_by_chapter` when block completes.
-
-### Files to edit (Part B)
-
-- **`src/components/planner/CoachMissionPanel.tsx`** — full rewrite as `HitListPanel` (~200 lines, was 600+). List rows, current-row expansion, auto-tick animation, XP fly.
-- **New `src/components/planner/HitListRow.tsx`** — single row component with three states (done/current/upcoming).
-- **New `src/components/planner/CompletionCelebration.tsx`** — confetti + XP card + tomorrow teaser.
-- **`supabase/functions/generate-daily-mission/index.ts`** — add `xp_reward` per block (5 Q = 20 XP, 10 Q = 40 XP, PYQ = 1.5x).
-- **New migration** — add `xp_reward` to `daily_missions`, add `daily_xp` + `total_xp` to `profiles`, update `bump_mission_progress_by_chapter` RPC to increment XP + mark block done when `progress >= target`.
-- **`src/pages/PracticePage.tsx`** — on question submit, existing RPC call now also returns `xp_gained` and `block_completed` bool; show tiny toast "+8 XP" on each correct, "+40 XP · Task complete! ✅" on block done.
-- **`src/pages/AIStudyPlannerPage.tsx`** — no structural change, just renders the new HitListPanel.
-- **`src/hooks/useStreakData.tsx`** — extend to also return `daily_xp` + `total_xp` (single fetch).
-
-### Implementation order
-
-1. **Slice 1 (this build):** Hide percentile everywhere + Hit-List UI rebuild (rows, auto-tick, sequential focus, current-row expansion). Uses existing progress data — no DB changes yet.
-2. **Slice 2 (next):** XP system migration + edge fn update + celebration card + tomorrow teaser.
-3. **Slice 3 (later):** Bonus round, reschedule logic, roadmap-as-map link.
-
-Slice 1 alone will make the planner feel like a real to-do list. Slice 2 adds the dopamine loop.
-
----
-
-## Confirm before I build
-
-- Slice 1 (percentile hide + Hit-List UI) — green light?
-- XP naming OK, ya "Points" / "Coins" / kuch aur prefer karega?
-- Confetti celebration cool hai, ya subtle checkmark-only prefer karega (less "gamey")?
+6. **Verify after implementation**
+   - Login as educator.
+   - Launch `refraction` and `Projectile Motion`.
+   - Check screenshot visibility.
+   - Programmatically move at least one slider/input and confirm displayed values change.
+   - Check `elementFromPoint` over the simulation returns `IFRAME`, not an overlay.
+   - Confirm no `/sw.js` update error blocks the app in the current preview.

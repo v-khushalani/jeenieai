@@ -337,11 +337,11 @@ const AnnotationOverlay: React.FC = () => {
 	};
 
 	return (
-		<div ref={rootRef} className="absolute inset-0 z-20 pointer-events-none select-none">
+		<div ref={rootRef} className="absolute inset-0 z-30 pointer-events-none select-none">
 			{annotationMode && (
 				<canvas
 					ref={canvasRef}
-					className="absolute inset-0 pointer-events-auto"
+					className="absolute inset-0 z-20 pointer-events-auto"
 					onPointerDown={onCanvasPointerDown}
 					onPointerMove={onCanvasPointerMove}
 					onPointerUp={onCanvasPointerUp}
@@ -349,7 +349,7 @@ const AnnotationOverlay: React.FC = () => {
 				/>
 			)}
 
-			{!annotationMode && <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />}
+			{!annotationMode && <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none" />}
 
 			{laserPoint && annotationMode && tool === 'laser' && (
 				<div
@@ -362,7 +362,7 @@ const AnnotationOverlay: React.FC = () => {
 			)}
 
       {!isPanelVisible && (
-        <div className="absolute pointer-events-auto right-14 top-3 z-30">
+				<div className="absolute pointer-events-auto right-14 top-3 z-40">
 					<Button
 						size="sm"
 						variant="secondary"
@@ -381,7 +381,7 @@ const AnnotationOverlay: React.FC = () => {
 				<div
 					ref={panelRef}
           className="absolute pointer-events-auto w-[240px] max-w-[85vw] rounded-xl border border-border bg-card/95 backdrop-blur-sm shadow-lg"
-					style={{ transform: `translate(${panelPos.x}px, ${panelPos.y}px)` }}
+					style={{ transform: `translate(${panelPos.x}px, ${panelPos.y}px)`, zIndex: 40 }}
 				>
           <div className="flex items-center justify-between px-2.5 py-2 border-b border-border">
 						<div
