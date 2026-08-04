@@ -3185,6 +3185,7 @@ export type Database = {
             }
             Returns: string
           }
+      mojibake_byte: { Args: { ch: string }; Returns: number }
       redeem_referral: { Args: { _code: string }; Returns: Json }
       repair_mojibake_batch: { Args: { p_limit?: number }; Returns: number }
       reset_user_progress: { Args: { p_user_id: string }; Returns: Json }

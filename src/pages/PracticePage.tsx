@@ -836,12 +836,23 @@ const PracticePage: React.FC = () => {
         </div>
       </div>
 
+      {/* Free-tier daily quota — always visible for limited users */}
+      {Number.isFinite(dailyRemaining) && dailyRemaining > 3 && !dailyLimitReached && (
+        <div className="shrink-0 bg-muted/60 text-muted-foreground text-center py-1.5 text-xs font-medium">
+          Free plan: {dailyUsed}/{dailyLimit} questions today ·{' '}
+          <button onClick={() => navigate('/subscription-plans')} className="underline font-semibold text-primary">
+            Unlimited karo →
+          </button>
+        </div>
+      )}
+
       {/* Daily limit warning banner */}
       {dailyRemaining <= 3 && dailyRemaining > 0 && !dailyLimitReached && (
         <div className="shrink-0 bg-amber-500/90 text-white text-center py-1.5 text-xs font-medium">
           ⚠️ Only {dailyRemaining} questions left today! <button onClick={() => navigate('/subscription-plans')} className="underline font-bold">View Plans →</button>
         </div>
       )}
+
 
       {/* Stats Bar */}
       <div className="shrink-0 container mx-auto max-w-3xl px-4 pt-2">
