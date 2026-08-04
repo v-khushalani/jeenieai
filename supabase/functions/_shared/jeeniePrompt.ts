@@ -168,7 +168,13 @@ export function detectMode(question: string, hasImage: boolean): Mode {
   if (hasImage && (looksNumeric || q.length < 40)) return "steps";
   if (looksNumeric) return "steps";
 
-  return "quick";
+  // Pure factual one-liners ("SI unit of flux?", "formula of ...") → quick.
+  const isPureFact = q.split(/\s+/).length <= 8 &&
+    /\b(unit|units|formula|value of|full form|define|definition|kya hai|what is)\b/.test(q);
+  if (isPureFact) return "quick";
+
+  // Default: concept walk-through, not a 2-line reply. Yahi "bada bhai" feel deta hai.
+  return "deep";
 }
 
 // Adaptive output length: base cap (tier) × complexity factor (question) ×
@@ -181,24 +187,25 @@ export function computeMaxTokens(
 ): number {
   // User intent ALWAYS wins. Ultra-short means ultra-short — no exceptions.
   if (intent === "ultra_short") return 120;
-  if (intent === "short") return 240;
+  if (intent === "short") return 300;
 
-  // Tight defaults. Edge function auto-retries with a bigger budget if the
-  // model truncates, so the typical request stays cheap.
-  const base = tier === "free" ? 280 : tier === "pro" ? 600 : 1000;
+  // Depth-first budgets. Edge function still auto-retries on truncation.
+  const base = tier === "free" ? 500 : tier === "pro" ? 1000 : 1800;
   const q = (question || "").trim();
   const words = q.split(/\s+/).length;
 
-  const isShortFact = words < 15 && !/[=∫Σ]/.test(q) && !/\d.*[+\-*/].*\d/.test(q);
+  const isShortFact = words < 10 && !/[=∫Σ]/.test(q) && !/\d.*[+\-*/].*\d/.test(q);
   const isNumeric = /[=∫Σ√]/.test(q) || /\b(derive|prove|solve|calculate)\b/i.test(q);
   const isMultiPart = /\b(everything|all|complete|entire chapter|full)\b/i.test(q) || intent === "long";
 
-  let factor = 0.55;
-  if (isShortFact && !hasImage) factor = 0.3;
-  if (isNumeric || hasImage) factor = 0.9;
-  if (isMultiPart) factor = 1.1;
+  let factor = 0.7;
+  if (isShortFact && !hasImage) factor = 0.4;
+  if (isNumeric || hasImage) factor = 0.95;
+  if (isMultiPart) factor = 1.15;
 
-  return Math.max(160, Math.round(base * factor));
+  return Math.max(220, Math.round(base * factor));
+}
+
 }
 
 // Rough INR cost estimator. Flash: $0.075/M in, $0.30/M out. Pro: $1.25/M, $5/M. USD→INR ≈ 84.
