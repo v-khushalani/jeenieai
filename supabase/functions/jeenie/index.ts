@@ -19,7 +19,7 @@ import {
 // Hard per-request output ceiling. Auto-retry path can grow up to this on
 // truncation. Default budgets stay tight (see computeMaxTokens) — only
 // truncated responses get the extra headroom, so cost stays minimal.
-const MAX_OUTPUT_TOKENS_CEILING = 2500;
+const MAX_OUTPUT_TOKENS_CEILING = 4000;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,7 +62,7 @@ function gcRecentPrompts() {
   }
 }
 
-const PRO_MODEL_ENABLED = Deno.env.get("JEENIE_PRO_MODEL_ENABLED") === "true";
+const PRO_MODEL_ENABLED = Deno.env.get("JEENIE_PRO_MODEL_ENABLED") !== "false";
 
 const FUNNY_FALLBACKS = [
   "**Hello Puttar!** 🧞‍♂️\n\nAre yaar! JEEnie ka chirag thoda garam ho gaya hai! 🔥😅\n\nEk minute ruk, thanda hone de... phir tera doubt pakka solve karunga! 💪\n\n⏰ **2 second mein dobara try kar!**",
@@ -423,7 +423,7 @@ serve(async (req) => {
 
     // Model routing: Pro+ deep/master may route to Pro model when flag enabled.
     const usePro = PRO_MODEL_ENABLED && userTier === "pro_plus" && (resolvedMode === "deep" || resolvedMode === "master");
-    const primaryModel = usePro ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash";
+    const primaryModel = usePro ? "google/gemini-2.5-pro" : "google/gemini-3.6-flash";
 
     let responseText: string | null = null;
     let provider = "fallback";
