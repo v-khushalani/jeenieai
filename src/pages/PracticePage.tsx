@@ -357,7 +357,12 @@ const PracticePage: React.FC = () => {
         p_chapter_id: opts.useChapter && chapterId ? chapterId : null,
         p_topic_id: opts.useTopic && topicId ? topicId : null,
         p_topic_name: !topicId && topicFilterName ? topicFilterName : null,
-        p_batch_ids: opts.useBatches && userBatchIds.length > 0 && !topicId && !chapterId ? userBatchIds : null,
+        // Batch scoping is intentionally OFF: questions.batch_id is siloed per
+        // exam family (Chemistry rows sit under the NEET Class 12 batch), which
+        // made served questions disagree with displayed counts. Exam pool +
+        // class-level guard inside the RPC already scope correctly.
+        p_batch_ids: null,
+
         p_limit: rpcLimit,
       });
 
