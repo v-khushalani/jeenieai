@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PointsService from '@/services/pointsService';
+import StreakService from '@/services/streakService';
 import { logger } from '@/utils/logger';
 import { normalizeProgram, PROGRAM_SUBJECTS } from '@/utils/programConfig';
 import { parseGrade } from '@/utils/gradeParser';
@@ -47,6 +48,10 @@ export const useUserStats = () => {
       setLoading(true);
       setError(null);
 
+      // Recalibrate the dynamic daily goal (streak target) from recent activity.
+      // No-op if the user locked / disabled the smart goal, or already synced today.
+      await StreakService.refreshDynamicGoal(user.id).catch(() => null);
+
       // PARALLEL: fetch everything independent in one round-trip batch.
       const istOffset = 5.5 * 60 * 60 * 1000;
       const todayStr = new Date(Date.now() + istOffset).toISOString().split('T')[0];
@@ -68,14 +73,14 @@ export const useUserStats = () => {
           .from("question_attempts")
           .select("is_correct, created_at, question_id, mode")
           .eq("user_id", user.id)
-          .eq("mode", "practice")
+          .neq("mode", "test")
           .order("created_at", { ascending: false })
           .limit(3000),
         supabase
           .from('question_attempts')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
-          .eq('mode', 'practice'),
+          .neq('mode', 'test'),
         supabase
           .from('daily_progress')
           .select('questions_completed, questions_correct')

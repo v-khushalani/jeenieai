@@ -125,7 +125,7 @@ const AnalyticsPage = () => {
       const windowStart = startOfMonth(subMonths(new Date(), 1));
       const [{ data: prof }, { data: rawAttempts }] = await Promise.all([
         supabase.from("profiles").select("grade, target_exam, daily_goal, current_streak, longest_streak, total_points").eq("id", user.id).single(),
-        supabase.from("question_attempts").select("time_spent, is_correct, created_at, question_id, mode").eq("user_id", user.id).eq("mode", "practice").gte("created_at", windowStart.toISOString()),
+        supabase.from("question_attempts").select("time_spent, is_correct, created_at, question_id, mode").eq("user_id", user.id).neq("mode", "test").gte("created_at", windowStart.toISOString()),
       ]);
       setProfile(prof);
 

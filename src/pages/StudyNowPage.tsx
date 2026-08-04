@@ -9,6 +9,7 @@ import {
   Play, Target, Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import ComingSoonBanner from '@/components/ComingSoonBanner';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import Header from '@/components/Header';
@@ -577,7 +578,7 @@ const StudyNowPage: React.FC = () => {
                 {isLoading ? (
                   <LoadingScreen pageName="Study Now" message="Loading chapters..." />
                 ) : chapters.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground text-sm">No chapters found for {selectedSubject}.</div>
+                  <ComingSoonBanner subtitle={`${selectedSubject} ke chapters jaldi add ho rahe hain. Tab tak dusra subject try karo!`} />
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 min-h-0 overflow-y-auto pr-1 sm:pr-2">
                     {chapters.map((ch, i) => (

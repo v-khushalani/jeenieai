@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import ComingSoonBanner from '@/components/ComingSoonBanner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -148,15 +149,13 @@ const EducatorGames: React.FC = () => {
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
       ) : Object.keys(grouped).length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
-            <Gamepad2 className="h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">
-              {searchQuery || subjectFilter ? 'No games match your search.' : 'No games available yet.'}
-            </p>
-            <p className="text-xs text-muted-foreground">Ask admin to upload game content in Educator Content Manager.</p>
-          </CardContent>
-        </Card>
+        <ComingSoonBanner
+          icon={<Gamepad2 className="h-7 w-7" />}
+          title={searchQuery || subjectFilter ? 'No match found' : 'Coming Soon'}
+          subtitle={searchQuery || subjectFilter
+            ? 'Is search se koi game nahi mila. Filter badal ke dekho.'
+            : 'Classroom games banaye ja rahe hain. Jaldi add honge!'}
+        />
       ) : (
         <div className="space-y-6">
           {Object.entries(grouped).map(([subject, games]) => (
