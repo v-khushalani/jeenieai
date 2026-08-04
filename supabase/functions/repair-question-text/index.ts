@@ -23,8 +23,8 @@ Deno.serve(async (req) => {
   let rounds = 0;
   const startedAt = Date.now();
 
-  while (rounds < 60 && Date.now() - startedAt < 110_000) {
-    const { data, error } = await admin.rpc("repair_mojibake_batch", { p_limit: 300 });
+  while (rounds < 400 && Date.now() - startedAt < 110_000) {
+    const { data, error } = await admin.rpc("repair_mojibake_batch", { p_limit: 40 });
     if (error) {
       return new Response(JSON.stringify({ error: error.message, repaired: total, rounds }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
