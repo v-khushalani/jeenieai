@@ -64,7 +64,7 @@ export function QuestionLivePreview({
 
       <div className="space-y-1.5">
         {OPTION_KEYS.map((key) => {
-          const value = (question as Record<string, unknown>)[`option_${key}`] as string | undefined;
+          const value = (question as unknown as Record<string, string | undefined>)[`option_${key}`];
           if (!value) return null;
           const isCorrect = correct === key.toUpperCase();
           return (
