@@ -3080,6 +3080,7 @@ export type Database = {
       }
       finish_battle: { Args: { p_battle_id: string }; Returns: Json }
       fix_chapter_batch_distribution: { Args: never; Returns: Json }
+      fix_mojibake: { Args: { t: string }; Returns: string }
       fn_expire_batch_subscriptions: { Args: never; Returns: undefined }
       generate_referral_code: { Args: never; Returns: string }
       get_chapter_difficulty_distribution: {
