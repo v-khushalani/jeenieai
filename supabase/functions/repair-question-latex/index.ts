@@ -100,26 +100,34 @@ Deno.serve(async (req) => {
   let failed = 0;
   let rateLimited = false;
   const startedAt = Date.now();
+  const CONCURRENCY = 8;
 
-  for (const row of rows ?? []) {
-    if (Date.now() - startedAt > 100_000) break;
-    try {
-      const fixed = await repairOne(row, apiKey);
-      const update: Record<string, unknown> = { question_text: fixed.question_text };
-      if (Array.isArray(fixed.options) && fixed.options.length > 0) update.options = fixed.options;
-      if (typeof fixed.explanation === "string" && fixed.explanation.trim()) {
-        update.explanation = fixed.explanation;
+  const queue = [...(rows ?? [])];
+  async function worker() {
+    while (queue.length > 0 && !rateLimited && Date.now() - startedAt < 100_000) {
+      const row = queue.shift();
+      if (!row) return;
+      try {
+        const fixed = await repairOne(row, apiKey!);
+        const update: Record<string, unknown> = { question_text: fixed.question_text };
+        if (Array.isArray(fixed.options) && fixed.options.length > 0) update.options = fixed.options;
+        if (typeof fixed.explanation === "string" && fixed.explanation.trim()) {
+          update.explanation = fixed.explanation;
+        }
+        const { error: upErr } = await admin.from("questions").update(update).eq("id", row.id);
+        if (upErr) throw new Error(upErr.message);
+        repaired += 1;
+      } catch (e) {
+        if (String(e).includes("rate_limited")) { rateLimited = true; return; }
+        failed += 1;
+        // Park it so the queue keeps moving; a human can review later.
+        await admin.from("questions").update({ text_quality: "needs_review" }).eq("id", row.id);
       }
-      const { error: upErr } = await admin.from("questions").update(update).eq("id", row.id);
-      if (upErr) throw new Error(upErr.message);
-      repaired += 1;
-    } catch (e) {
-      if (String(e).includes("rate_limited")) { rateLimited = true; break; }
-      failed += 1;
-      // Park it so the queue keeps moving; a human can review later.
-      await admin.from("questions").update({ text_quality: "needs_review" }).eq("id", row.id);
     }
   }
+
+  await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+
 
   const { count } = await admin
     .from("questions")
