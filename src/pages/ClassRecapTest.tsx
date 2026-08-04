@@ -93,10 +93,23 @@ export default function ClassRecapTest() {
     setRevealed(true);
     setAnswers((prev) => [...prev, { q: current, picked, correct }]);
     if (user?.id) {
-      void supabase.from('question_attempts').insert({
-        user_id: user.id, question_id: current.id, is_correct: correct,
-        selected_option: picked, time_spent: 0, mode: 'class_recap',
-      } as any);
+      const points = correct ? 5 : 0;
+      void (async () => {
+        await supabase.from('question_attempts').insert({
+          user_id: user.id, question_id: current.id, is_correct: correct,
+          selected_option: picked, time_spent: 0, mode: 'class_recap',
+        } as any);
+        // Count recap questions towards daily goal / streak / points (tests are excluded, this is not a test).
+        await Promise.all([
+          supabase.rpc('sync_daily_progress', {
+            p_user_id: user.id, p_is_correct: correct, p_points_delta: points,
+          } as any),
+          supabase.rpc('update_practice_stats', {
+            p_user_id: user.id, p_points_delta: points, p_is_correct: correct,
+          } as any),
+          supabase.rpc('update_streak_stats', { p_user_id: user.id } as any),
+        ]);
+      })();
     }
   };
 

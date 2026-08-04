@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PointsService from '@/services/pointsService';
+import StreakService from '@/services/streakService';
 import { logger } from '@/utils/logger';
 import { normalizeProgram, PROGRAM_SUBJECTS } from '@/utils/programConfig';
 import { parseGrade } from '@/utils/gradeParser';
@@ -46,6 +47,10 @@ export const useUserStats = () => {
     try {
       setLoading(true);
       setError(null);
+
+      // Recalibrate the dynamic daily goal (streak target) from recent activity.
+      // No-op if the user locked / disabled the smart goal, or already synced today.
+      await StreakService.refreshDynamicGoal(user.id).catch(() => null);
 
       // PARALLEL: fetch everything independent in one round-trip batch.
       const istOffset = 5.5 * 60 * 60 * 1000;
