@@ -214,8 +214,52 @@ function collapseOcrLetterSpacing(text: string): string {
   });
 }
 
+// ── HTML entities that commonly survive imports ──
+const HTML_ENTITY_MAP: Record<string, string> = {
+  '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"',
+  '&#39;': "'", '&apos;': "'", '&deg;': '°', '&times;': '×', '&divide;': '÷',
+  '&plusmn;': '±', '&rarr;': '→', '&larr;': '←', '&harr;': '↔', '&hellip;': '…',
+  '&ndash;': '–', '&mdash;': '—', '&alpha;': 'α', '&beta;': 'β', '&gamma;': 'γ',
+  '&delta;': 'δ', '&theta;': 'θ', '&lambda;': 'λ', '&mu;': 'μ', '&pi;': 'π',
+  '&sigma;': 'σ', '&omega;': 'ω', '&infin;': '∞', '&radic;': '√', '&ne;': '≠',
+  '&le;': '≤', '&ge;': '≥', '&asymp;': '≈',
+};
+
+function decodeHtmlEntities(text: string): string {
+  let out = text;
+  for (const [entity, char] of Object.entries(HTML_ENTITY_MAP)) {
+    out = out.split(entity).join(char);
+  }
+  // Numeric entities (&#8594; / &#x2192;)
+  out = out.replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)));
+  out = out.replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)));
+  return out;
+}
+
+/**
+ * Detects common "glitch" patterns in imported question text so admins can
+ * spot and fix bad rows before publishing.
+ */
+export function detectTextGlitches(text: string): string[] {
+  if (!text) return [];
+  const issues: string[] = [];
+  if (/Ã|Â|â€|Î|Ï|\uFFFD/.test(text)) issues.push('Mojibake characters');
+  if (/&[a-z]+;|&#\d+;/i.test(text)) issues.push('HTML entities');
+  if (/\\n|\\t|\\r/.test(text)) issues.push('Escaped newlines');
+  if (/<\s*\/?\s*(?:p|div|br|span|font|table)\b/i.test(text)) issues.push('Raw HTML tags');
+  if (/\\\\[a-zA-Z]+/.test(text)) issues.push('Double-escaped LaTeX');
+  if ((text.match(/\$/g) || []).length % 2 === 1) issues.push('Unbalanced $ delimiter');
+  if (/[ ]{3,}/.test(text)) issues.push('Extra spacing');
+  return issues;
+}
+
 function normalizeOcrArtifacts(text: string): string {
   let normalized = repairMojibake(text);
+  normalized = decodeHtmlEntities(normalized);
+  // Literal escape sequences that arrive as text from CSV / JSON imports
+  normalized = normalized.replace(/\\r\\n|\\n/g, '\n').replace(/\\t/g, ' ');
+  // Double-escaped LaTeX (\\frac -> \frac)
+  normalized = normalized.replace(/\\\\(?=[a-zA-Z]{2,})/g, '\\');
   normalized = normalizeHtmlMathTags(normalized);
   normalized = normalizeOcrMatrix(normalized);
 
