@@ -324,6 +324,9 @@ export async function loadPlannerData(
   // Foundation: strict per-grade isolation (Class 7 sees only Class 7 chapters, etc.)
   if (exam === 'Foundation' && typeof classLevel === 'number') {
     chapterQuery = chapterQuery.eq('class_level', classLevel);
+  } else if (classLevel === 11 || classLevel === 12) {
+    // Class 11/12 students: only their own year (plus untagged chapters).
+    chapterQuery = chapterQuery.or(`class_level.eq.${classLevel},class_level.is.null`);
   }
   const { data: chapterRows, error: chapterError } = await chapterQuery;
 
