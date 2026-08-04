@@ -144,6 +144,9 @@ export function buildSystemPrompt(tier: Tier, mode: Mode, subject?: string, inte
   if (intent !== "ultra_short") parts.push(TEACHING[mode]);
   parts.push(LENGTH[tier]);
 
+  // Few-shot tone anchors — skip only when the student asked for a tiny reply.
+  if (intent !== "ultra_short" && intent !== "short") parts.push(FEWSHOT);
+
   if (intent === "ultra_short") parts.push(ULTRA_SHORT_OVERRIDE);
   else if (intent === "short") parts.push(SHORT_OVERRIDE);
   else if (intent === "long") parts.push(LONG_OVERRIDE);
@@ -151,6 +154,7 @@ export function buildSystemPrompt(tier: Tier, mode: Mode, subject?: string, inte
   if (subject) parts.push(`Current subject context: ${subject}.`);
   return parts.join("\n\n");
 }
+
 
 // Keyword/regex classifier — zero extra LLM call.
 export function detectMode(question: string, hasImage: boolean): Mode {
