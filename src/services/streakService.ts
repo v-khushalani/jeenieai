@@ -150,7 +150,7 @@ export class StreakService {
       .from('question_attempts')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .eq('mode', 'practice')
+      .neq('mode', 'test')
       .gte('created_at', `${today}T00:00:00.000Z`)
       .lte('created_at', `${today}T23:59:59.999Z`);
 

@@ -68,14 +68,14 @@ export const useUserStats = () => {
           .from("question_attempts")
           .select("is_correct, created_at, question_id, mode")
           .eq("user_id", user.id)
-          .eq("mode", "practice")
+          .neq("mode", "test")
           .order("created_at", { ascending: false })
           .limit(3000),
         supabase
           .from('question_attempts')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
-          .eq('mode', 'practice'),
+          .neq('mode', 'test'),
         supabase
           .from('daily_progress')
           .select('questions_completed, questions_correct')

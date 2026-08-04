@@ -156,7 +156,7 @@ export class UserLimitsService {
       .from('question_attempts')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .eq('mode', 'practice')
+      .neq('mode', 'test')
       .gte('created_at', startUTC)
       .lte('created_at', endUTC);
 
