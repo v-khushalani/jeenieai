@@ -146,6 +146,10 @@ export async function buildSubjectRoadmap(
   // Foundation students see ONLY their own grade — no cross-grade bleed.
   if (exam === 'Foundation' && typeof classLevel === 'number') {
     chapterQuery = chapterQuery.eq('class_level', classLevel);
+  } else if (typeof classLevel === 'number' && (classLevel === 11 || classLevel === 12)) {
+    // Class 11 / 12 students see only their own year's syllabus (+ chapters
+    // with no class tag). Droppers (no grade) keep the full 11+12 ladder.
+    chapterQuery = chapterQuery.or(`class_level.eq.${classLevel},class_level.is.null`);
   }
   const { data: chapterRows, error: chapErr } = await chapterQuery;
 

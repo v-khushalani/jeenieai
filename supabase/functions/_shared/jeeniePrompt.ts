@@ -206,7 +206,7 @@ export function computeMaxTokens(
   return Math.max(220, Math.round(base * factor));
 }
 
-}
+
 
 // Rough INR cost estimator. Flash: $0.075/M in, $0.30/M out. Pro: $1.25/M, $5/M. USD→INR ≈ 84.
 const RATE_USD_PER_TOKEN: Record<string, { input: number; output: number }> = {
@@ -259,18 +259,9 @@ export function scrubTierMentions(text: string): { text: string; tripped: boolea
 // ROAST MODE — single-line savage Hinglish roasts for the user's weakest topic
 // ============================================================================
 
-export type RoastPersona =
-  | "bada_bhai" | "brainrot" | "desi_aunty" | "sarcastic_prof" | "meme_lord"
-  | "cricket_commentator" | "bollywood_villain" | "chai_tapri";
+// Roast personas removed — a single open prompt gives the model full freedom,
+// which kills the repeated hooks/structures the fixed persona templates caused.
 
-export const ROAST_PERSONAS: RoastPersona[] = [
-  "bada_bhai", "brainrot", "desi_aunty", "sarcastic_prof", "meme_lord",
-  "cricket_commentator", "bollywood_villain", "chai_tapri",
-];
-
-export function pickRoastPersona(): RoastPersona {
-  return ROAST_PERSONAS[Math.floor(Math.random() * ROAST_PERSONAS.length)];
-}
 
 // Topic → concept keyword hooks. The model is told to weave at least one in,
 // so roasts feel SPECIFIC to the chapter, not generic "you're bad at physics".
@@ -326,7 +317,7 @@ function bucketFor(acc: number): Bucket {
 
 // Few-shot examples per bucket — these are what made the old version land.
 // Generic enough that the model adapts them to the actual topic.
-const FEWSHOT: Record<Bucket, string[]> = {
+const ROAST_FEWSHOT: Record<Bucket, string[]> = {
   BRUTAL: [
     "Tera entropy infinite hai, knowledge zero — thermodynamics ne tujhe dekh ke heat death declare kar diya 💀",
     "SN1 mechanism tujhe dekh ke khud SN2 ban gaya — bhaag liya bhai, ruka bhi nahi.",
@@ -349,66 +340,66 @@ const FEWSHOT: Record<Bucket, string[]> = {
   ],
 };
 
-const PERSONA_STYLE: Record<RoastPersona, string> = {
-  bada_bhai:
-    "Persona: BADA BHAI. Older-brother savage tease. Bollywood/cricket references allowed (Dhoni helicopter, Pushpa jhukega nahi, Gabbar, kitne aadmi the). Tough love — burn first, faint hope at the end.",
-  brainrot:
-    "Persona: GEN-Z BRAINROT. Maximum chaos. Allowed: 'it's giving DNF', 'ratio + L', 'skibidi physics', 'bro thought…', 'no cap', 'fr fr', '💀', 'NPC behaviour', 'topic said: not today'. Punchy, short, unhinged. Mix Hinglish + Gen-Z slang.",
-  desi_aunty:
-    "Persona: DESI AUNTY. Passive-aggressive. 'Beta padosi ka beta to AIR 50 le aaya', 'Sharma ji ka beta', 'Itni mehnat se to maine roti banayi thi', 'Tujhse to woh Pintu accha hai'. Sweet voice, savage burn. AVOID overused 'Rasode mein kaun tha' — find fresh aunty lines.",
-  sarcastic_prof:
-    "Persona: SARCASTIC PROFESSOR. Deadpan academic burn. 'Your understanding of entropy is itself maximum entropy.' Dry, witty, uses the concept against the student. No emojis except a single 🤓 if it fits.",
-  meme_lord:
-    "Persona: MEME LORD. Fresh desi-internet humour. AVOID stale memes ('Rasode mein kaun tha', 'Binod', 'ye bik gayi hai gormint', 'Pushpa jhukega nahi') — those are dead. Use current-flavour lines: 'main character energy nahi hai', 'tere concept ka arc abhi start bhi nahi hua', 'bhai ye NPC dialogue lag raha hai', 'red flag alert', 'tera prep = beta version'. Roast through wit, not tired references.",
-  cricket_commentator:
-    "Persona: CRICKET COMMENTATOR. Hinglish match-style narration. 'And he plays the shot… OH! Straight to the fielder!' Frame the topic as a bowler and the student as a batsman playing a bad shot. Use terms: yorker, googly, LBW, clean bowled, duck, DRS. One-line commentary energy, punchy end.",
-  bollywood_villain:
-    "Persona: BOLLYWOOD VILLAIN. Dramatic, theatrical menace. Channel Gabbar / Mogambo / Kancha Cheena. 'Kitne marks the?' / 'Mogambo khush hua… NAHI hua'. Menacing tone, meta-topic threat, but never personal.",
-  chai_tapri:
-    "Persona: CHAI-TAPRI PHILOSOPHER. Street-corner wisdom uncle who over-analyses everything. 'Dekh bhai, chai ki tarah hai concept — pehle strong, phir feeka, phir tu bhool gaya cheeni daalna.' Life-analogy roast with a small twist at the end.",
-};
+// Random "angle" nudge — not a persona/template, just a direction so the
+// structure of consecutive roasts differs. The model still writes freely.
+const ANGLES = [
+  "wordplay on the concept itself",
+  "filmy / Bollywood scene",
+  "cricket or sports commentary",
+  "exam-hall disaster scene",
+  "situationship / relationship analogy",
+  "Gen-Z internet chaos",
+  "street-corner desi uncle logic",
+  "over-dramatic news-anchor breaking news",
+  "job interview gone wrong",
+  "gaming / rank-push analogy",
+  "courtroom cross-examination",
+  "startup pitch that flopped",
+];
 
 export function buildRoastPrompt(opts: {
   topic: string;
   accuracy: number;
-  persona: RoastPersona;
   excludeRoasts?: string[];
   seed?: string;
 }): string {
   const acc = Math.max(0, Math.min(100, Math.round(opts.accuracy)));
   const bucket = bucketFor(acc);
   const hooks = hooksFor(opts.topic);
-  const fewshot = FEWSHOT[bucket].map((e, i) => `  ${i + 1}. ${e}`).join("\n");
+  const fewshot = ROAST_FEWSHOT[bucket].map((e, i) => `  ${i + 1}. ${e}`).join("\n");
   const avoid = (opts.excludeRoasts || []).slice(0, 10)
     .map((r, i) => `  ${i + 1}. "${r}"`).join("\n");
   const seed = opts.seed || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const angle = ANGLES[Math.floor(Math.random() * ANGLES.length)];
 
   return [
     `You are JEEnie — roasting a JEE/NEET student on their WEAKEST topic.`,
-    PERSONA_STYLE[opts.persona],
+    `No fixed character, no house style. You are free: pick your own voice, format and humour each time. Be bold, crazy and genuinely funny — not a safe template.`,
     ``,
     `TARGET:`,
     `- Topic/Chapter: "${opts.topic}"`,
     `- Accuracy: ${acc}%`,
     `- Tone bucket: ${bucket} (${acc < 20 ? "fully savage, RIP" : acc < 40 ? "hard burn, tiny hope" : acc < 60 ? "mid-tier situationship" : acc < 80 ? "playful jab" : "light flex-roast"})`,
-    `- Concept hooks to weave in (pick ONE naturally): ${hooks.join(", ")}`,
+    `- Concept words from this chapter (MUST use at least one, twisted into the joke): ${hooks.join(", ")}`,
+    `- This time lean towards: ${angle} (a nudge only — if a better idea hits, take it)`,
     `- Freshness seed (do NOT include in output, just use to vary phrasing): ${seed}`,
     ``,
     `EXAMPLES of bucket-${bucket} energy (DO NOT copy — match the vibe, write fresh):`,
     fewshot,
-    avoid ? `\nAvoid repeating or paraphrasing these recent roasts (write something clearly different):\n${avoid}` : ``,
+    avoid ? `\nAvoid repeating or paraphrasing these recent roasts — different opening word, different structure, different punchline:\n${avoid}` : ``,
     ``,
     `HARD RULES:`,
     `1. ONE single line of savage Hinglish prose. Max ~220 characters. Punchline at the end.`,
-    `2. MUST feel specific to "${opts.topic}" — weave in a concept hook or topic wordplay.`,
+    `2. MUST be about "${opts.topic}" specifically — use a real concept/formula/law from this chapter and turn it against the student. A roast that would work for any other chapter is a FAIL.`,
     `3. Weave ${acc}% naturally — mock the number or what it implies, don't say "accuracy is".`,
     `4. NO greeting (Hello/Puttar/Bhai/Yo/Are), NO labels ("Topic:", "Roast:"), NO markdown/bullets/quotes/asterisks.`,
     `5. NO line breaks. NO leading emoji. Up to 2 emojis at the end only.`,
     `6. Twist the punchline — setup builds expectation, payoff subverts it.`,
-    `7. Go hard on the topic, memes, references, wordplay — anything funny is fair game. Only off-limits: attacks on the student's family, appearance, caste, religion, gender, or identity.`,
-    `8. Every call MUST produce a fresh roast — new angle, new structure, new punchline. No recycled templates.`,
+    `7. Go hard: memes, references, wordplay, dark humour — all fair game. Only off-limits: the student's family, appearance, caste, religion, gender, or identity.`,
+    `8. Never reuse an opening pattern or joke skeleton. New angle, new structure, every single call.`,
     ``,
     `Return ONLY the roast sentence. Nothing else.`,
   ].filter(Boolean).join("\n");
 }
+
 

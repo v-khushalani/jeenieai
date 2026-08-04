@@ -9,11 +9,9 @@ import {
   resolveTier,
   scrubTierMentions,
   buildRoastPrompt,
-  pickRoastPersona,
   type Mode,
   type ModeSource,
   type Tier,
-  type RoastPersona,
 } from "../_shared/jeeniePrompt.ts";
 
 // Hard per-request output ceiling. Auto-retry path can grow up to this on
@@ -61,8 +59,6 @@ function gcRecentPrompts() {
     if (now - v > DEDUPE_WINDOW_MS) RECENT_PROMPTS.delete(k);
   }
 }
-
-const PRO_MODEL_ENABLED = Deno.env.get("JEENIE_PRO_MODEL_ENABLED") !== "false";
 
 const FUNNY_FALLBACKS = [
   "**Hello Puttar!** 🧞‍♂️\n\nAre yaar! JEEnie ka chirag thoda garam ho gaya hai! 🔥😅\n\nEk minute ruk, thanda hone de... phir tera doubt pakka solve karunga! 💪\n\n⏰ **2 second mein dobara try kar!**",
@@ -194,10 +190,9 @@ serve(async (req) => {
       const excludeRoasts: string[] = Array.isArray(body?.excludeRoasts)
         ? body.excludeRoasts.slice(0, 10).map((s: unknown) => String(s).slice(0, 250))
         : [];
-      const persona: RoastPersona = (body?.persona as RoastPersona) || pickRoastPersona();
       const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${user.id.slice(0, 6)}`;
 
-      const roastPrompt = buildRoastPrompt({ topic, accuracy, persona, excludeRoasts, seed });
+      const roastPrompt = buildRoastPrompt({ topic, accuracy, excludeRoasts, seed });
       const messages = [
         { role: "system", content: roastPrompt },
         { role: "user", content: `Roast me on "${topic}" (${Math.round(accuracy)}%). One line. Go.` },
@@ -236,14 +231,13 @@ serve(async (req) => {
       }
 
       const latency = Date.now() - startedAt;
-      console.log(`[JEENIE:roast] persona=${persona} acc=${accuracy} topic="${topic}" ok=${!!roastText} ${latency}ms`);
+      console.log(`[JEENIE:roast] acc=${accuracy} topic="${topic}" ok=${!!roastText} ${latency}ms`);
 
       return new Response(
         JSON.stringify({
           response: roastText || "",
           content: roastText || "",
           suggestions: [],
-          persona,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -421,9 +415,8 @@ serve(async (req) => {
       messages.push({ role: "user", content: contextPrompt });
     }
 
-    // Model routing: Pro+ deep/master may route to Pro model when flag enabled.
-    const usePro = PRO_MODEL_ENABLED && userTier === "pro_plus" && (resolvedMode === "deep" || resolvedMode === "master");
-    const primaryModel = usePro ? "google/gemini-2.5-pro" : "google/gemini-3.6-flash";
+    // Single free-tier model for every user/mode — no paid Pro model routing.
+    const primaryModel = "google/gemini-3.6-flash";
 
     let responseText: string | null = null;
     let provider = "fallback";
