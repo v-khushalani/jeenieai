@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 
 interface Props { onTrackPercentile?: number; streakDays?: number; }
 
-const APP_URL = (typeof window !== 'undefined' ? window.location.origin : 'https://jeenieai.lovable.app');
+const APP_URL = (typeof window !== 'undefined' ? window.location.origin : 'https://www.jeenie.website');
 
 export default function ReferralCard({ onTrackPercentile, streakDays }: Props) {
   const { user } = useAuth();

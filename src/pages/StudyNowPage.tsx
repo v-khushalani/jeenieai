@@ -516,15 +516,23 @@ const StudyNowPage: React.FC = () => {
             <>
               {isLoading ? (
                 <LoadingScreen pageName="Study Now" message="Loading study subjects..." />
+              ) : availableSubjects.length === 0 || availableSubjects.every((s) => (subjectQuestionCounts[String(s || '').trim().toUpperCase()] ?? 0) === 0) ? (
+                <div className="flex-1 min-h-0 flex items-center justify-center pb-4">
+                  <ComingSoonBanner
+                    className="w-full max-w-xl"
+                    subtitle="Is class ke liye questions abhi taiyaar ho rahe hain. Bahut jaldi live honge!"
+                  />
+                </div>
               ) : (
                 <div className="flex-1 min-h-0 flex items-center justify-center overflow-y-auto sm:overflow-y-auto pb-4 sm:pb-6">
                   <div className={`grid grid-cols-1 ${subjectGridColumns} gap-3 sm:gap-5 w-full max-w-6xl py-2 sm:py-6 md:py-8 content-center place-content-center`}>
                     {availableSubjects.map((subName) => {
                       const subjectQuestionCount = subjectQuestionCounts[String(subName || '').trim().toUpperCase()] ?? 0;
+                      const subjectEmpty = subjectQuestionCount === 0;
                       const meta = SUBJECT_META[subName] || { icon: <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-white" />, gradient: 'from-slate-500 to-slate-600', border: 'border-slate-200 hover:border-slate-400', bg: 'bg-slate-100' };
                       return (
                         <div key={subName} className="w-full overflow-visible">
-                          <div className={`group relative rounded-3xl bg-card/95 border-2 border-l-4 border-l-[#e6eeff] ${meta.border} cursor-pointer shadow-lg sm:shadow-xl transition-all duration-300 sm:hover:shadow-2xl min-h-32 sm:min-h-54 flex flex-col box-border origin-center sm:hover:scale-[1.03]`} onClick={() => handleSubjectClick(subName)}>
+                          <div className={`group relative rounded-3xl bg-card/95 border-2 border-l-4 border-l-[#e6eeff] ${meta.border} ${subjectEmpty ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer sm:hover:scale-[1.03]'} shadow-lg sm:shadow-xl transition-all duration-300 sm:hover:shadow-2xl min-h-32 sm:min-h-54 flex flex-col box-border origin-center`} onClick={() => { if (!subjectEmpty) handleSubjectClick(subName); }}>
                             <div className="p-3 sm:p-6 text-center h-full flex flex-col justify-between gap-2 sm:gap-4">
                               <div>
                                 <div className={`w-10 h-10 sm:w-16 sm:h-16 bg-linear-to-br ${meta.gradient} rounded-2xl flex items-center justify-center mx-auto mb-2.5 sm:mb-4 transition-all duration-300 shadow-lg sm:shadow-xl sm:group-hover:scale-110 sm:group-hover:-translate-y-1`}>
@@ -534,18 +542,27 @@ const StudyNowPage: React.FC = () => {
                               </div>
 
                               <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
-                                <Badge variant="secondary" className="text-[10px] sm:text-xs font-semibold bg-primary/10 text-primary border-primary/20">
-                                  {subjectQuestionCount} Questions
-                                </Badge>
-                                <Badge variant="outline" className="text-[10px] sm:text-xs font-semibold">
-                                  {(subjectChapterCounts[String(subName || '').trim().toUpperCase()] ?? 0)} Chapters
-                                </Badge>
+                                {subjectEmpty ? (
+                                  <Badge variant="secondary" className="text-[10px] sm:text-xs font-semibold bg-amber-100 text-amber-700 border-amber-200">
+                                    Coming Soon
+                                  </Badge>
+                                ) : (
+                                  <>
+                                    <Badge variant="secondary" className="text-[10px] sm:text-xs font-semibold bg-primary/10 text-primary border-primary/20">
+                                      {subjectQuestionCount} Questions
+                                    </Badge>
+                                    <Badge variant="outline" className="text-[10px] sm:text-xs font-semibold">
+                                      {(subjectChapterCounts[String(subName || '').trim().toUpperCase()] ?? 0)} Chapters
+                                    </Badge>
+                                  </>
+                                )}
                               </div>
 
-                              <Button className="w-full bg-linear-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-semibold py-3 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 text-base mt-1 sm:mt-0">
+                              <Button disabled={subjectEmpty} className="w-full bg-linear-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-semibold py-3 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 text-base mt-1 sm:mt-0">
                                 <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                                <span>Start Practicing</span>
+                                <span>{subjectEmpty ? 'Coming Soon' : 'Start Practicing'}</span>
                               </Button>
+
                             </div>
                           </div>
                         </div>
@@ -577,12 +594,14 @@ const StudyNowPage: React.FC = () => {
                 </div>
                 {isLoading ? (
                   <LoadingScreen pageName="Study Now" message="Loading chapters..." />
-                ) : chapters.length === 0 ? (
-                  <ComingSoonBanner subtitle={`${selectedSubject} ke chapters jaldi add ho rahe hain. Tab tak dusra subject try karo!`} />
+                ) : chapters.length === 0 || chapters.every((c) => (c.question_count || 0) === 0) ? (
+                  <ComingSoonBanner subtitle={`${selectedSubject} ke questions jaldi add ho rahe hain. Tab tak dusra subject try karo!`} />
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 min-h-0 overflow-y-auto pr-1 sm:pr-2">
-                    {chapters.map((ch, i) => (
-                      <div key={ch.id} className="p-3 sm:p-4 border-2 rounded-2xl cursor-pointer transition-all duration-200 border-border bg-card hover:border-primary/50 hover:shadow-md hover:bg-card/90" onClick={() => handleChapterClick(ch)}>
+                    {chapters.map((ch, i) => {
+                      const chapterEmpty = (ch.question_count || 0) === 0;
+                      return (
+                      <div key={ch.id} className={`p-3 sm:p-4 border-2 rounded-2xl transition-all duration-200 border-border bg-card ${chapterEmpty ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-primary/50 hover:shadow-md hover:bg-card/90'}`} onClick={() => { if (!chapterEmpty) handleChapterClick(ch); }}>
                         <div className="flex items-center space-x-3 sm:space-x-4">
                           <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-linear-to-br from-primary to-blue-600 flex items-center justify-center text-white font-bold text-xs sm:text-sm shrink-0 shadow-xs">
                             {i + 1}
@@ -607,12 +626,17 @@ const StudyNowPage: React.FC = () => {
                                 <Sparkles className="w-3 h-3" /> Theory
                               </Badge>
                             )}
-                            <Badge variant="outline" className="text-[10px] sm:text-xs">{ch.question_count || 0} Qs</Badge>
+                            {chapterEmpty ? (
+                              <Badge variant="secondary" className="text-[10px] sm:text-xs bg-amber-100 text-amber-700 border-amber-200">Coming Soon</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] sm:text-xs">{ch.question_count} Qs</Badge>
+                            )}
                             <ChevronRight className="h-4 w-4 text-muted-foreground" />
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -653,22 +677,28 @@ const StudyNowPage: React.FC = () => {
                               </Badge>
                             </div>
                           </div>
-                          <Button className="w-full sm:w-auto bg-linear-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-semibold rounded-xl shadow-md" onClick={() => handlePracticeChapter(selectedChapter)}>
+                          <Button disabled={(selectedChapter.question_count || 0) === 0} className="w-full sm:w-auto bg-linear-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-semibold rounded-xl shadow-md" onClick={() => handlePracticeChapter(selectedChapter)}>
                             <Play className="w-4 h-4 mr-2" />
-                            Start Practice
+                            {(selectedChapter.question_count || 0) === 0 ? 'Coming Soon' : 'Start Practice'}
                           </Button>
                         </div>
                       </div>
                     )}
 
                     {topics.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        Topics are not available for this chapter yet. Use the full chapter practice above.
-                      </div>
+                      (selectedChapter?.question_count || 0) === 0 ? (
+                        <ComingSoonBanner subtitle="Is chapter ke questions jaldi add ho rahe hain. Tab tak dusra chapter try karo!" />
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          Topics are not available for this chapter yet. Use the full chapter practice above.
+                        </div>
+                      )
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 min-h-0 overflow-y-auto pr-1 sm:pr-2">
-                        {topics.map(topic => (
-                          <div key={topic.id} className="p-3 sm:p-4 border-2 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-[1.01] border-border bg-card hover:border-purple-400 hover:shadow-md" onClick={() => handleTopicClick(topic)}>
+                        {topics.map(topic => {
+                          const topicEmpty = (topic.question_count || 0) === 0;
+                          return (
+                          <div key={topic.id} className={`p-3 sm:p-4 border-2 rounded-2xl transition-all duration-200 border-border bg-card ${topicEmpty ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.01] hover:border-purple-400 hover:shadow-md'}`} onClick={() => { if (!topicEmpty) handleTopicClick(topic); }}>
                             <div className="flex items-center space-x-3">
                               <div className="w-9 h-9 rounded-xl bg-linear-to-br from-purple-600 to-indigo-600 flex items-center justify-center shadow-xs">
                                 <Target className="w-4 h-4 text-white" />
@@ -678,13 +708,19 @@ const StudyNowPage: React.FC = () => {
                                 {topic.description && <div className="text-xs text-muted-foreground truncate">{topic.description}</div>}
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                <Badge variant="outline" className="text-[10px]">{topic.question_count || 0} Qs</Badge>
+                                {topicEmpty ? (
+                                  <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">Coming Soon</Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[10px]">{topic.question_count} Qs</Badge>
+                                )}
                                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
                               </div>
 
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
+
                       </div>
                     )}
                   </div>

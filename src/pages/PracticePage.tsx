@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import ComingSoonBanner from '@/components/ComingSoonBanner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -735,15 +736,14 @@ const PracticePage: React.FC = () => {
   if (questions.length === 0) {
     return (
       <div className="mobile-app-shell-bottom-nav bg-background flex items-center justify-center p-4 overflow-hidden">
-        <Card className="max-w-md w-full text-center p-8">
-          <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">No Questions Available</h2>
-          <p className="text-muted-foreground mb-6">No practice questions found for this selection.</p>
-          <Button onClick={() => navigate('/study-now')}>
+        <div className="max-w-md w-full space-y-4">
+          <ComingSoonBanner subtitle="Is selection ke questions jaldi add ho rahe hain. Tab tak dusra chapter ya subject try karo!" />
+          <Button className="w-full" onClick={() => navigate('/study-now')}>
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Study
           </Button>
-        </Card>
+        </div>
       </div>
+
     );
   }
 
