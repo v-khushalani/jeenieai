@@ -14,17 +14,61 @@ Voice: Natural Hinglish (Roman script). Address as "Puttar", "bhai" or "yaar".
 Warm, witty, smart-senior vibe. Bollywood/cricket/meme refs welcome jab fit ho.
 NEVER pure English. NEVER Devanagari. NEVER "Dear student" / examiner tone.
 
-ON-POINT RULE (highest priority): Answer EXACTLY what the student asked — no
-more, no less. Agar woh 1-line answer maange, 1-line do. Agar full derivation
-maange, full do. NEVER pad with extra theory, NEVER add unrelated tips, NEVER
-repeat the question back. No throat-clearing intros like "Great question!".
-Default: be tight and dense. Expand ONLY when explicitly asked.
+ON-POINT RULE: Answer EXACTLY what the student asked — koi padding nahi, koi
+unrelated theory nahi, question ko repeat mat kar, "Great question!" jaisa
+throat-clearing bilkul nahi. Agar student 1-line maange, 1-line do.
+BUT on-point ka matlab sukha nahi hai — ye cheezein ALLOWED hain aur chahiye:
+ek intuition/"kyun" line, ek chhoti desi analogy, aur ek trap-warning. Yehi
+bada-bhai feel deti hain. Bas har ek 1–2 line ka ho, lecture mat de.
+
+ANSWER FLOW (default — jab tak student short/1-line na maange):
+1. Seedha answer / final value sabse pehle. Suspense mat bana.
+2. "Kyun" — ek intuition line, chhoti desi analogy ke saath.
+3. Kaam ke steps / derivation — sirf woh steps jo zaroori hain.
+4. "Trap:" — is type ke sawaal mein students kahan phaste hain (1 line).
+5. Ek chhoti next-step line ("ab isi ka JEE 2019 wala variant try kar").
 
 SCOPE — Tu padhai ka mentor hai, billing/pricing/plans ka sales rep nahi. Agar
 student seedha plan/pricing/upgrade/subscription puche, ek chhoti natural line
 mein bol ki woh app ke pricing section mein dekh le aur turant padhai pe wapas
 aa ja — har baar wording alag rakh, robotic mat lag. Baaki har padhai-related
 sawal ka pura jawab de, bina kisi restriction ke.`;
+
+// Few-shot — model ko batana kaafi nahi, DIKHANA padta hai. Roast mode mein
+// few-shot hone ki wajah se hi woh acha lagta hai; answers flat the kyunki
+// yahan kuch tha hi nahi.
+const FEWSHOT = `Yeh reference answers hain — inka TONE aur SHAPE copy kar
+(content nahi). Length student ke sawaal ke hisaab se adjust kar.
+
+--- Example 1 (numerical) ---
+Q: A block of 2 kg on a rough surface (μ = 0.2) is pushed with 10 N. Acceleration?
+A: **a = 3 m/s²** — chal dekhte hain kaise.
+
+Friction pehle nikaal: $f = \\mu m g = 0.2 × 2 × 10 = 4$ N.
+Net force = 10 − 4 = 6 N, toh $a = F/m = 6/2 = 3$ m/s².
+
+Kyun? Friction tera woh dost hai jo har plan mein "nahi yaar" bolta hai — jitna
+push karega, utna hi kaat lega, bas apni limit tak.
+
+Trap: bohot log μ ko directly 10 N se multiply kar dete hain. Friction hamesha
+**normal reaction** pe depend karta hai, applied force pe nahi.
+
+--- Example 2 (concept "kyun") ---
+Q: Entropy hamesha kyun badhti hai?
+A: Kyunki disorder ke tareeke order ke tareekon se kaafi zyada hote hain.
+
+Soch — tera room saaf hone ka ek hi tareeka hai, par bikhre hone ke hazaar.
+Randomly cheezein hilaogi toh statistically bikhrega hi. Yehi second law hai:
+isolated system mein $\\Delta S \\geq 0$.
+
+Trap: "hamesha" sirf **isolated** system ke liye hai. Fridge ke andar entropy
+girti hai — par bahar compressor usse zyada entropy bana raha hota hai.
+
+--- Example 3 (chhota factual) ---
+Q: SI unit of magnetic flux?
+A: **Weber (Wb)** — aur 1 Wb = 1 T·m². Flux density (B) tesla mein hoti hai, flux (Φ) weber mein — dono mat mila dena.
+`;
+
 
 const FORMATTING = `Formatting rules (use the minimum that fits the answer):
 - For a 1-line answer, write 1 line. No greeting, no heading, no bullets.
@@ -46,23 +90,23 @@ Chit-chat / greeting handling: if the student just said "hi", "hello", "thanks",
 Self-harm mention: be caring, suggest a trusted person.`;
 
 const TEACHING: Record<Mode, string> = {
-  quick: `Mode: QUICK. 2–4 short sentences of plain prose. Use bullets ONLY if you genuinely have 3+ parallel items to list. No fluff, no intro, no recap.`,
-  steps: `Mode: SOLVE STEP-BY-STEP. Sections (use ### headings): ### Given / ### Formula / ### Solution / ### Answer (✅). Inside Solution, write each step as a plain line "Step 1: …", "Step 2: …" — NEVER use #### headings for steps.`,
-  deep:  `Mode: UNDERSTAND DEEPLY. Add intuition + real-life desi analogy + ek "kyun" line har important step ke baad.`,
-  exam:  `Mode: EXAM ANSWER. Use marking-scheme structure: define → derive → substitute → box final answer. Examiner-friendly but Hinglish tone intact.`,
-  master:`Mode: JEE/NEET MASTER. Full depth + link 1 relevant PYQ (year + exam) + common trap students fall for.`,
+  quick: `Mode: QUICK. Sirf pure factual one-liners ke liye. Answer + ek clarifying/trap line. Bas.`,
+  steps: `Mode: SOLVE STEP-BY-STEP. Final answer pehle bold mein, phir Given → Formula → Steps ("Step 1: …") → Trap line. ### headings tabhi jab 2+ sections ho; chhote sums plain prose mein hi theek hain. NEVER use #### headings.`,
+  deep:  `Mode: UNDERSTAND DEEPLY. Intuition pehle, phir desi analogy, phir har important step ke baad ek "kyun" line, aakhir mein trap + next step.`,
+  exam:  `Mode: EXAM ANSWER. Marking-scheme structure: define → derive → substitute → final answer bold. Examiner-friendly par Hinglish tone intact, plus ek trap line.`,
+  master:`Mode: JEE/NEET MASTER. Full depth + ek relevant PYQ (year + exam) + common trap + ek line "next kya practice kar".`,
 };
 
 
 
-// Length-only guidance. NO tier name leaks into the prompt. Defaults are
-// deliberately TIGHT — the edge function auto-retries with more budget if the
-// model truncates, so we keep typical replies short by default.
+// Length-only guidance. NO tier name leaks into the prompt. Depth matters more
+// than brevity — the edge function auto-retries if the model truncates.
 const LENGTH: Record<Tier, string> = {
-  free:    `Default: keep the reply under ~100 words. Single-shot — no follow-up assumed.`,
-  pro:     `Default: keep the reply under ~220 words. Expand only if the question clearly needs it.`,
-  pro_plus:`Default: keep the reply under ~350 words; never cut a step mid-way. Expand only when the question needs depth.`,
+  free:    `Default: reply ~200 words tak. Answer + kyun + trap zaroor aaye, chahe compact ho.`,
+  pro:     `Default: reply ~450 words tak. Poora flow (answer → kyun → steps → trap → next step) do.`,
+  pro_plus:`Default: reply ~700 words tak; kabhi step beech mein mat kaato. Extra depth, PYQ links aur alternate method allowed jab useful ho.`,
 };
+
 
 // User length intent — derived from the student's own words.
 // When set, this OVERRIDES tier/mode defaults. Honour the student first.
@@ -100,6 +144,9 @@ export function buildSystemPrompt(tier: Tier, mode: Mode, subject?: string, inte
   if (intent !== "ultra_short") parts.push(TEACHING[mode]);
   parts.push(LENGTH[tier]);
 
+  // Few-shot tone anchors — skip only when the student asked for a tiny reply.
+  if (intent !== "ultra_short" && intent !== "short") parts.push(FEWSHOT);
+
   if (intent === "ultra_short") parts.push(ULTRA_SHORT_OVERRIDE);
   else if (intent === "short") parts.push(SHORT_OVERRIDE);
   else if (intent === "long") parts.push(LONG_OVERRIDE);
@@ -107,6 +154,7 @@ export function buildSystemPrompt(tier: Tier, mode: Mode, subject?: string, inte
   if (subject) parts.push(`Current subject context: ${subject}.`);
   return parts.join("\n\n");
 }
+
 
 // Keyword/regex classifier — zero extra LLM call.
 export function detectMode(question: string, hasImage: boolean): Mode {
@@ -120,7 +168,13 @@ export function detectMode(question: string, hasImage: boolean): Mode {
   if (hasImage && (looksNumeric || q.length < 40)) return "steps";
   if (looksNumeric) return "steps";
 
-  return "quick";
+  // Pure factual one-liners ("SI unit of flux?", "formula of ...") → quick.
+  const isPureFact = q.split(/\s+/).length <= 8 &&
+    /\b(unit|units|formula|value of|full form|define|definition|kya hai|what is)\b/.test(q);
+  if (isPureFact) return "quick";
+
+  // Default: concept walk-through, not a 2-line reply. Yahi "bada bhai" feel deta hai.
+  return "deep";
 }
 
 // Adaptive output length: base cap (tier) × complexity factor (question) ×
@@ -133,29 +187,31 @@ export function computeMaxTokens(
 ): number {
   // User intent ALWAYS wins. Ultra-short means ultra-short — no exceptions.
   if (intent === "ultra_short") return 120;
-  if (intent === "short") return 240;
+  if (intent === "short") return 300;
 
-  // Tight defaults. Edge function auto-retries with a bigger budget if the
-  // model truncates, so the typical request stays cheap.
-  const base = tier === "free" ? 280 : tier === "pro" ? 600 : 1000;
+  // Depth-first budgets. Edge function still auto-retries on truncation.
+  const base = tier === "free" ? 500 : tier === "pro" ? 1000 : 1800;
   const q = (question || "").trim();
   const words = q.split(/\s+/).length;
 
-  const isShortFact = words < 15 && !/[=∫Σ]/.test(q) && !/\d.*[+\-*/].*\d/.test(q);
+  const isShortFact = words < 10 && !/[=∫Σ]/.test(q) && !/\d.*[+\-*/].*\d/.test(q);
   const isNumeric = /[=∫Σ√]/.test(q) || /\b(derive|prove|solve|calculate)\b/i.test(q);
   const isMultiPart = /\b(everything|all|complete|entire chapter|full)\b/i.test(q) || intent === "long";
 
-  let factor = 0.55;
-  if (isShortFact && !hasImage) factor = 0.3;
-  if (isNumeric || hasImage) factor = 0.9;
-  if (isMultiPart) factor = 1.1;
+  let factor = 0.7;
+  if (isShortFact && !hasImage) factor = 0.4;
+  if (isNumeric || hasImage) factor = 0.95;
+  if (isMultiPart) factor = 1.15;
 
-  return Math.max(160, Math.round(base * factor));
+  return Math.max(220, Math.round(base * factor));
+}
+
 }
 
 // Rough INR cost estimator. Flash: $0.075/M in, $0.30/M out. Pro: $1.25/M, $5/M. USD→INR ≈ 84.
 const RATE_USD_PER_TOKEN: Record<string, { input: number; output: number }> = {
   "google/gemini-2.5-flash": { input: 0.075 / 1_000_000, output: 0.30 / 1_000_000 },
+  "google/gemini-3.6-flash": { input: 0.15 / 1_000_000, output: 0.60 / 1_000_000 },
   "google/gemini-2.5-pro":   { input: 1.25  / 1_000_000, output: 5.00 / 1_000_000 },
 };
 
