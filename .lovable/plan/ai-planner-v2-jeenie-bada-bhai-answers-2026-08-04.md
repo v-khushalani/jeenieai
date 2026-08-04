@@ -53,7 +53,7 @@ Result: 3 tabs + 2 engines → 1 scroll, 1 engine, aaj ka kaam pehli screen par.
 
 Prompt file (`_shared/jeeniePrompt.ts`) mein personality toh sahi likhi hai, par uske neeche ke layers usko daba dete hain:
 
-- **Default mode `quick`** — jab tak "why/kyun/derive" na likho, har jawab 2–4 sentence ka ban jaata hai.
+- **Default mode `quick**` — jab tak "why/kyun/derive" na likho, har jawab 2–4 sentence ka ban jaata hai.
 - **Word caps bohot tight**: free ~100, pro ~220, pro+ ~350 words. Depth ki jagah hi nahi bachti.
 - **Token budget bhi kam**: base 280/600/1000 × factor 0.3–0.9 → aksar 300–600 tokens.
 - **"ON-POINT RULE"** har analogy, har "kyun", har trap-warning ko explicitly mana karta hai — yehi cheezein bada-bhai feel deti hain.
@@ -72,7 +72,9 @@ Prompt file (`_shared/jeeniePrompt.ts`) mein personality toh sahi likhi hai, par
   4. "Trap": is sawaal mein log kahan phaste hain.
   5. Ek line next step ("ab ye wala PYQ try kar").
 - **3–4 few-shot examples** prompt mein daalo (ek numerical, ek concept "kyun", ek MCQ, ek chhota factual) — roast mode wale style mein. Yahi sabse bada difference layega.
-- **Pro+ ke liye behtar model**: `google/gemini-3.6-flash` par shift, aur deep/master ke liye pro model flag on.
+- **Pro+ ke liye** 
+- &nbsp;
+- **behtar model**: `google/gemini-3.6-flash` par shift, aur deep/master ke liye pro model flag on.
 - Free tier chhota rahega, par flat nahi — usme bhi analogy + trap line.
 
 ## Technical notes
