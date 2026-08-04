@@ -24,7 +24,7 @@ import {
   BarChart3, Users, BookOpen, Bell, FileText,
   CheckSquare, Home, Package,
   Eye, LogOut, Shield, ToggleLeft,
-  Download, CreditCard, Sparkles,
+  Download, CreditCard, Sparkles, FileSpreadsheet,
 } from 'lucide-react';
 
 // Lazy load heavy admin components
