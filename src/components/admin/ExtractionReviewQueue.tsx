@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MathDisplay } from "./MathDisplay";
+import { QuestionLivePreview } from "./QuestionLivePreview";
 import { logger } from "@/utils/logger";
 import { bulkAutoAssign, clearCurriculumCache } from "@/services/topicAssignmentService";
 import { quickTextSimilarity } from "@/services/nlp";
@@ -1139,7 +1140,8 @@ export function ExtractionReviewQueue() {
 
                   {editMode && editedQuestion ? (
                     /* Edit Mode */
-                    <div className="space-y-4">
+                    <div className="grid gap-4 lg:grid-cols-2 items-start">
+                      <div className="space-y-4">
                       <div className="space-y-2">
                         <Label>Question</Label>
                         <Textarea value={editedQuestion.parsed_question.question} onChange={(e) => updateEditedField("question", e.target.value)} rows={4} />
@@ -1270,6 +1272,21 @@ export function ExtractionReviewQueue() {
                       <div className="space-y-2">
                         <Label>Explanation</Label>
                         <Textarea value={editedQuestion.parsed_question.explanation || ""} onChange={(e) => updateEditedField("explanation", e.target.value)} rows={2} />
+                      </div>
+                      </div>
+
+                      <div className="lg:sticky lg:top-4">
+                        <QuestionLivePreview
+                          question={{
+                            question: editedQuestion.parsed_question.question,
+                            option_a: (editedQuestion.parsed_question as any).option_a,
+                            option_b: (editedQuestion.parsed_question as any).option_b,
+                            option_c: (editedQuestion.parsed_question as any).option_c,
+                            option_d: (editedQuestion.parsed_question as any).option_d,
+                            correct_option: editedQuestion.parsed_question.correct_option,
+                            explanation: editedQuestion.parsed_question.explanation,
+                          }}
+                        />
                       </div>
                     </div>
                   ) : (

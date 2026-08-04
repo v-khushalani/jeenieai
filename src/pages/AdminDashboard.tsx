@@ -24,7 +24,7 @@ import {
   BarChart3, Users, BookOpen, Bell, FileText,
   CheckSquare, Home, Package,
   Eye, LogOut, Shield, ToggleLeft,
-  Download, CreditCard, Sparkles,
+  Download, CreditCard, Sparkles, FileSpreadsheet,
 } from 'lucide-react';
 
 // Lazy load heavy admin components
@@ -36,6 +36,7 @@ const ChapterManager = lazy(() => import('@/components/admin/ChapterManager'));
 const NotificationManager = lazy(() => import('@/components/admin/NotificationManager').then(m => ({ default: m.NotificationManager })));
 const PDFQuestionExtractor = lazy(() => import('@/components/admin/PDFQuestionExtractor').then(m => ({ default: m.PDFQuestionExtractor })));
 const ExtractionReviewQueue = lazy(() => import('@/components/admin/ExtractionReviewQueue').then(m => ({ default: m.ExtractionReviewQueue })));
+const BulkCsvUploader = lazy(() => import('@/components/admin/BulkCsvUploader'));
 
 const EducatorContentManager = lazy(() => import('@/components/admin/EducatorContentManager'));
 const FeatureFlagManager = lazy(() => import('@/components/admin/FeatureFlagManager'));
@@ -115,6 +116,7 @@ const AdminDashboard = () => {
       { id: 'setup', label: 'Exams & Batches', icon: Package, group: 'content' },
       { id: 'educator-content', label: 'Educator Review', icon: CheckSquare, badge: pendingEducatorReviewCount, group: 'content' },
       // Questions tools
+      { id: 'csv-upload', label: 'Bulk CSV Upload', icon: FileSpreadsheet, group: 'tools' },
       { id: 'hf-importer', label: 'HF Importer', icon: Download, group: 'tools' },
       { id: 'pdf-extract', label: 'PDF Extractor', icon: FileText, group: 'tools' },
       { id: 'review-queue', label: 'Review Queue', icon: Eye, badge: pendingReviewCount, group: 'tools' },
@@ -153,6 +155,7 @@ const AdminDashboard = () => {
     'educator-content': 'Educator Review',
     'pdf-extract': 'PDF Extractor',
     'review-queue': 'Review Queue',
+    'csv-upload': 'Bulk CSV Upload',
     'hf-importer': 'Hugging Face Importer',
     'feature-flags': 'Feature Flags',
   };
@@ -172,6 +175,7 @@ const AdminDashboard = () => {
       case 'educator-content': return <EducatorContentManager />;
       case 'pdf-extract': return <PDFQuestionExtractor />;
       case 'review-queue': return <ExtractionReviewQueue />;
+      case 'csv-upload': return <BulkCsvUploader />;
       case 'hf-importer': return <HuggingFaceImporter />;
       case 'feature-flags': return <FeatureFlagManager />;
       default: return <DashboardOverview />;
