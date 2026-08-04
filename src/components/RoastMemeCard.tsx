@@ -84,32 +84,15 @@ function pushRecent(uid: string, line: string) {
   } catch { /* ignore */ }
 }
 
-const PERSONA_LABEL: Record<string, string> = {
-  bada_bhai: '🧞‍♂️ bada bhai mode',
-  brainrot: '💀 brainrot mode',
-  desi_aunty: '👵 desi aunty mode',
-  sarcastic_prof: '🤓 sarcastic prof mode',
-  meme_lord: '🎭 meme lord mode',
-  cricket_commentator: '🏏 commentator mode',
-  bollywood_villain: '🎬 villain mode',
-  chai_tapri: '☕ chai-tapri mode',
-};
-
-const PERSONAS = [
-  'bada_bhai', 'brainrot', 'desi_aunty', 'sarcastic_prof', 'meme_lord',
-  'cricket_commentator', 'bollywood_villain', 'chai_tapri',
-];
-
 export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
   const { user } = useAuth();
   const shareCardEnabled = useFeatureFlag('share_card');
   const [roast, setRoast] = useState<string | null>(null);
-  const [persona, setPersona] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareOpts, setShareOpts] = useState<RoastOpts | null>(null);
 
-  const generateRoast = async (forcePersona?: string) => {
+  const generateRoast = async () => {
     if (!weakestTopic || weakestTopic === 'Not enough data') {
       toast.info('Solve a few more questions first — JEEnie needs ammo to roast!');
       return;
@@ -117,15 +100,12 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
     setLoading(true);
     const exclude = user ? loadRecent(user.id) : [];
     try {
-      const nextPersona = forcePersona
-        || PERSONAS.filter(p => p !== persona)[Math.floor(Math.random() * (PERSONAS.length - 1))];
       const { data, error } = await supabase.functions.invoke('jeenie', {
         body: {
           mode: 'roast',
           topic: weakestTopic,
           accuracy: Math.round(weakestAccuracy),
           excludeRoasts: exclude,
-          persona: nextPersona,
         },
       });
       let text = (data?.response || data?.content || '').toString();
@@ -137,16 +117,12 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
 
       if (error || !text || exclude.includes(text)) {
         text = pickFallback(weakestTopic, weakestAccuracy, exclude);
-        setPersona(null);
-      } else {
-        setPersona(data?.persona || null);
       }
       setRoast(text);
       if (user && text) pushRecent(user.id, text);
     } catch {
       const text = pickFallback(weakestTopic, weakestAccuracy, exclude);
       setRoast(text);
-      setPersona(null);
       if (user && text) pushRecent(user.id, text);
     } finally {
       setLoading(false);
@@ -176,11 +152,6 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
             <h3 className="text-sm font-bold text-[#013062]">JEEnie Roast 💀</h3>
             <p className="text-[11px] text-[#013062]/70">Tera weakest topic — sharp, shareable aur thoda sa savage.</p>
           </div>
-          {persona && PERSONA_LABEL[persona] && (
-            <span className="text-[9px] font-medium text-[#013062]/70 bg-white/70 border border-[#013062]/15 rounded-full px-2 py-0.5 shrink-0">
-              {PERSONA_LABEL[persona]}
-            </span>
-          )}
         </div>
 
         {roast ? (
