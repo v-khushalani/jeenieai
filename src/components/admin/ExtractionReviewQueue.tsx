@@ -1272,6 +1272,21 @@ export function ExtractionReviewQueue() {
                         <Label>Explanation</Label>
                         <Textarea value={editedQuestion.parsed_question.explanation || ""} onChange={(e) => updateEditedField("explanation", e.target.value)} rows={2} />
                       </div>
+                      </div>
+
+                      <div className="lg:sticky lg:top-4">
+                        <QuestionLivePreview
+                          question={{
+                            question: editedQuestion.parsed_question.question,
+                            option_a: (editedQuestion.parsed_question as any).option_a,
+                            option_b: (editedQuestion.parsed_question as any).option_b,
+                            option_c: (editedQuestion.parsed_question as any).option_c,
+                            option_d: (editedQuestion.parsed_question as any).option_d,
+                            correct_option: editedQuestion.parsed_question.correct_option,
+                            explanation: editedQuestion.parsed_question.explanation,
+                          }}
+                        />
+                      </div>
                     </div>
                   ) : (
                     /* View Mode */
