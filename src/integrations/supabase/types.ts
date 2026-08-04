@@ -3016,6 +3016,11 @@ export type Database = {
         Args: { p_cmd: string; p_name: string; p_table: string }
         Returns: undefined
       }
+      exam_family: { Args: { p_exam: string }; Returns: string[] }
+      exam_pool: {
+        Args: { p_exam: string; p_subject: string }
+        Returns: string[]
+      }
       fetch_unseen_questions: {
         Args: {
           p_batch_ids?: string[]
