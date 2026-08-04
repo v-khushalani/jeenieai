@@ -17,15 +17,15 @@ interface Spec {
   tier?: "pro" | "pro_plus";
 }
 
-// Uniform pattern: <role>@jeenie.test / Test@1234 — easiest to remember.
+// Uniform pattern: <role>@jeenie.website / Test@1234 — easiest to remember.
 const PASSWORD = "Test@1234";
 const SPECS: Spec[] = [
-  { key: "user",     email: "user@jeenie.test",     password: PASSWORD, fullName: "Free User",    role: "student" },
-  { key: "pro",      email: "pro@jeenie.test",      password: PASSWORD, fullName: "Pro User",     role: "student", premium: true, tier: "pro" },
-  { key: "proplus",  email: "proplus@jeenie.test",  password: PASSWORD, fullName: "Pro+ User",    role: "student", premium: true, tier: "pro_plus" },
-  { key: "admin",    email: "admin@jeenie.test",    password: PASSWORD, fullName: "Admin User",   role: "admin" },
-  { key: "super",    email: "super@jeenie.test",    password: PASSWORD, fullName: "Super Admin",  role: "super_admin" },
-  { key: "educator", email: "educator@jeenie.test", password: PASSWORD, fullName: "Educator",     role: "educator" },
+  { key: "user",     email: "user@jeenie.website",     password: PASSWORD, fullName: "Free User",    role: "student" },
+  { key: "pro",      email: "pro@jeenie.website",      password: PASSWORD, fullName: "Pro User",     role: "student", premium: true, tier: "pro" },
+  { key: "proplus",  email: "proplus@jeenie.website",  password: PASSWORD, fullName: "Pro+ User",    role: "student", premium: true, tier: "pro_plus" },
+  { key: "admin",    email: "admin@jeenie.website",    password: PASSWORD, fullName: "Admin User",   role: "admin" },
+  { key: "super",    email: "super@jeenie.website",    password: PASSWORD, fullName: "Super Admin",  role: "super_admin" },
+  { key: "educator", email: "educator@jeenie.website", password: PASSWORD, fullName: "Educator",     role: "educator" },
 ];
 
 Deno.serve(async (req) => {
@@ -46,6 +46,16 @@ Deno.serve(async (req) => {
     const results: Record<string, unknown> = {};
 
     const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 500 });
+
+    // Remove legacy @jeenie.test accounts entirely (auth user + cascading data).
+    const legacy = (list?.users || []).filter((u) => u.email?.toLowerCase().endsWith("@jeenie.test"));
+    const removed: string[] = [];
+    for (const u of legacy) {
+      await admin.from("user_roles").delete().eq("user_id", u.id);
+      await admin.from("profiles").delete().eq("id", u.id);
+      const { error: delErr } = await admin.auth.admin.deleteUser(u.id);
+      if (!delErr) removed.push(u.email!);
+    }
 
     for (const spec of SPECS) {
       let userId: string | null = null;
@@ -86,6 +96,7 @@ Deno.serve(async (req) => {
         daily_question_limit: spec.premium ? 9999 : 100,
         goal_locked: true,
         onboarding_completed: true,
+        educator_approved: spec.role === "educator",
       }, { onConflict: "id" });
 
       await admin.from("user_roles").delete().eq("user_id", userId).neq("role", spec.role);
@@ -117,7 +128,7 @@ Deno.serve(async (req) => {
       };
     }
 
-    return new Response(JSON.stringify({ ok: true, users: results }, null, 2), {
+    return new Response(JSON.stringify({ ok: true, removed_legacy: removed, users: results }, null, 2), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
