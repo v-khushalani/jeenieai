@@ -57,6 +57,77 @@ export class StreakService {
     }
   }
 
+  /**
+   * Dynamic daily goal (streak target — NOT a paywall limit).
+   * Looks at the last 7 days of real activity (every mode except tests) and
+   * nudges the goal up/down so it stays challenging but achievable.
+   * Runs at most once per day per user.
+   */
+  static async refreshDynamicGoal(userId: string): Promise<number | null> {
+    const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const cacheKey = `dynamicGoalSynced:${userId}`;
+    try {
+      if (localStorage.getItem(cacheKey) === today) return null;
+    } catch { /* storage unavailable — just recompute */ }
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('daily_goal, smart_goal_enabled, goal_locked')
+        .eq('id', userId)
+        .single();
+
+      // Manual goal / locked goal → never override the student's choice.
+      if (profile?.goal_locked || profile?.smart_goal_enabled === false) return null;
+
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const { data: attempts } = await supabase
+        .from('question_attempts')
+        .select('is_correct, created_at')
+        .eq('user_id', userId)
+        .neq('mode', 'test')
+        .gte('created_at', sevenDaysAgo.toISOString());
+
+      const rows = attempts || [];
+      const current = profile?.daily_goal || 15;
+      if (rows.length === 0) return current;
+
+      const activeDays = new Set(
+        rows.map(a => new Date(new Date(a.created_at as string).getTime() + 5.5 * 3600 * 1000)
+          .toISOString().split('T')[0])
+      ).size;
+      const avgPerActiveDay = rows.length / Math.max(1, activeDays);
+      const accuracy = (rows.filter(a => a.is_correct).length / rows.length) * 100;
+
+      // Base on what the student actually sustains, then adjust by accuracy.
+      let target = avgPerActiveDay;
+      if (accuracy >= 80) target *= 1.2;
+      else if (accuracy >= 65) target *= 1.1;
+      else if (accuracy < 50) target *= 0.9;
+
+      // Consistency bonus: showing up most days earns a bigger goal.
+      if (activeDays >= 6) target += 5;
+      else if (activeDays >= 4) target += 2;
+
+      let next = Math.round(Math.min(75, Math.max(15, target)) / 5) * 5;
+      // Smooth: never jump more than 10 in a single day.
+      next = Math.max(current - 10, Math.min(current + 10, next));
+      next = Math.min(75, Math.max(15, next));
+
+      if (next !== current) {
+        await supabase.from('profiles').update({ daily_goal: next }).eq('id', userId);
+      }
+
+      try { localStorage.setItem(cacheKey, today); } catch { /* ignore */ }
+      return next;
+    } catch (error) {
+      logger.error('Error refreshing dynamic goal:', error);
+      return null;
+    }
+  }
+
   private static async store7DayAccuracy(userId: string, accuracy: number) {
     await supabase.rpc('update_daily_accuracy', {
       p_user_id: userId,
