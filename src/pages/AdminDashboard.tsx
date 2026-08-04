@@ -116,6 +116,7 @@ const AdminDashboard = () => {
       { id: 'setup', label: 'Exams & Batches', icon: Package, group: 'content' },
       { id: 'educator-content', label: 'Educator Review', icon: CheckSquare, badge: pendingEducatorReviewCount, group: 'content' },
       // Questions tools
+      { id: 'csv-upload', label: 'Bulk CSV Upload', icon: FileSpreadsheet, group: 'tools' },
       { id: 'hf-importer', label: 'HF Importer', icon: Download, group: 'tools' },
       { id: 'pdf-extract', label: 'PDF Extractor', icon: FileText, group: 'tools' },
       { id: 'review-queue', label: 'Review Queue', icon: Eye, badge: pendingReviewCount, group: 'tools' },
@@ -154,6 +155,7 @@ const AdminDashboard = () => {
     'educator-content': 'Educator Review',
     'pdf-extract': 'PDF Extractor',
     'review-queue': 'Review Queue',
+    'csv-upload': 'Bulk CSV Upload',
     'hf-importer': 'Hugging Face Importer',
     'feature-flags': 'Feature Flags',
   };
@@ -173,6 +175,7 @@ const AdminDashboard = () => {
       case 'educator-content': return <EducatorContentManager />;
       case 'pdf-extract': return <PDFQuestionExtractor />;
       case 'review-queue': return <ExtractionReviewQueue />;
+      case 'csv-upload': return <BulkCsvUploader />;
       case 'hf-importer': return <HuggingFaceImporter />;
       case 'feature-flags': return <FeatureFlagManager />;
       default: return <DashboardOverview />;
