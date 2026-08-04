@@ -1139,7 +1139,8 @@ export function ExtractionReviewQueue() {
 
                   {editMode && editedQuestion ? (
                     /* Edit Mode */
-                    <div className="space-y-4">
+                    <div className="grid gap-4 lg:grid-cols-2 items-start">
+                      <div className="space-y-4">
                       <div className="space-y-2">
                         <Label>Question</Label>
                         <Textarea value={editedQuestion.parsed_question.question} onChange={(e) => updateEditedField("question", e.target.value)} rows={4} />
