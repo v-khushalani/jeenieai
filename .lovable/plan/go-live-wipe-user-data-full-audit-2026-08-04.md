@@ -11,8 +11,8 @@ profiles, user_roles, user_badges, question_attempts, test_sessions, test_attemp
 
 Result: signup counter starts at zero. Existing logged-in browsers auto-logout (the AuthContext guard for deleted accounts is already in place).
 
-Then re-seed the standard test accounts (password `Test@1234`):
-user@jeenie.test, pro@jeenie.test, proplus@jeenie.test, educator@jeenie.test, admin@jeenie.test, superadmin@jeenie.test — with correct roles/tiers applied server-side.
+Then re-seed the standard test accounts (password `Test@1234`):  
+[user@jeenie.website](mailto:user@jeenie.test), [pro@jeenie.website](mailto:pro@jeenie.test), [proplus@jeenie.website](mailto:proplus@jeenie.test), [educator@jeenie.website](mailto:user@jeenie.test), [admin@jeenie.website](mailto:user@jeenie.test), [superadmin@jeenie.website](mailto:user@jeenie.test) — with correct roles/tiers applied server-side.
 
 ## Part 2 — Full Playwright audit (every mode)
 
