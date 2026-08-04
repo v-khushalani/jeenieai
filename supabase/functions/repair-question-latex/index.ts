@@ -100,11 +100,11 @@ Deno.serve(async (req) => {
   let failed = 0;
   let rateLimited = false;
   const startedAt = Date.now();
-  const CONCURRENCY = 8;
+  const CONCURRENCY = 5;
 
   const queue = [...(rows ?? [])];
   async function worker() {
-    while (queue.length > 0 && !rateLimited && Date.now() - startedAt < 100_000) {
+    while (queue.length > 0 && !rateLimited && Date.now() - startedAt < 45_000) {
       const row = queue.shift();
       if (!row) return;
       try {
