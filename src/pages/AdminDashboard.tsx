@@ -36,6 +36,7 @@ const ChapterManager = lazy(() => import('@/components/admin/ChapterManager'));
 const NotificationManager = lazy(() => import('@/components/admin/NotificationManager').then(m => ({ default: m.NotificationManager })));
 const PDFQuestionExtractor = lazy(() => import('@/components/admin/PDFQuestionExtractor').then(m => ({ default: m.PDFQuestionExtractor })));
 const ExtractionReviewQueue = lazy(() => import('@/components/admin/ExtractionReviewQueue').then(m => ({ default: m.ExtractionReviewQueue })));
+const BulkCsvUploader = lazy(() => import('@/components/admin/BulkCsvUploader'));
 
 const EducatorContentManager = lazy(() => import('@/components/admin/EducatorContentManager'));
 const FeatureFlagManager = lazy(() => import('@/components/admin/FeatureFlagManager'));
