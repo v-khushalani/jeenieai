@@ -317,7 +317,7 @@ function bucketFor(acc: number): Bucket {
 
 // Few-shot examples per bucket — these are what made the old version land.
 // Generic enough that the model adapts them to the actual topic.
-const FEWSHOT: Record<Bucket, string[]> = {
+const ROAST_FEWSHOT: Record<Bucket, string[]> = {
   BRUTAL: [
     "Tera entropy infinite hai, knowledge zero — thermodynamics ne tujhe dekh ke heat death declare kar diya 💀",
     "SN1 mechanism tujhe dekh ke khud SN2 ban gaya — bhaag liya bhai, ruka bhi nahi.",
@@ -366,7 +366,7 @@ export function buildRoastPrompt(opts: {
   const acc = Math.max(0, Math.min(100, Math.round(opts.accuracy)));
   const bucket = bucketFor(acc);
   const hooks = hooksFor(opts.topic);
-  const fewshot = FEWSHOT[bucket].map((e, i) => `  ${i + 1}. ${e}`).join("\n");
+  const fewshot = ROAST_FEWSHOT[bucket].map((e, i) => `  ${i + 1}. ${e}`).join("\n");
   const avoid = (opts.excludeRoasts || []).slice(0, 10)
     .map((r, i) => `  ${i + 1}. "${r}"`).join("\n");
   const seed = opts.seed || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
