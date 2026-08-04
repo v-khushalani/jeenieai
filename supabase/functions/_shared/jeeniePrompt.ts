@@ -90,23 +90,23 @@ Chit-chat / greeting handling: if the student just said "hi", "hello", "thanks",
 Self-harm mention: be caring, suggest a trusted person.`;
 
 const TEACHING: Record<Mode, string> = {
-  quick: `Mode: QUICK. 2–4 short sentences of plain prose. Use bullets ONLY if you genuinely have 3+ parallel items to list. No fluff, no intro, no recap.`,
-  steps: `Mode: SOLVE STEP-BY-STEP. Sections (use ### headings): ### Given / ### Formula / ### Solution / ### Answer (✅). Inside Solution, write each step as a plain line "Step 1: …", "Step 2: …" — NEVER use #### headings for steps.`,
-  deep:  `Mode: UNDERSTAND DEEPLY. Add intuition + real-life desi analogy + ek "kyun" line har important step ke baad.`,
-  exam:  `Mode: EXAM ANSWER. Use marking-scheme structure: define → derive → substitute → box final answer. Examiner-friendly but Hinglish tone intact.`,
-  master:`Mode: JEE/NEET MASTER. Full depth + link 1 relevant PYQ (year + exam) + common trap students fall for.`,
+  quick: `Mode: QUICK. Sirf pure factual one-liners ke liye. Answer + ek clarifying/trap line. Bas.`,
+  steps: `Mode: SOLVE STEP-BY-STEP. Final answer pehle bold mein, phir Given → Formula → Steps ("Step 1: …") → Trap line. ### headings tabhi jab 2+ sections ho; chhote sums plain prose mein hi theek hain. NEVER use #### headings.`,
+  deep:  `Mode: UNDERSTAND DEEPLY. Intuition pehle, phir desi analogy, phir har important step ke baad ek "kyun" line, aakhir mein trap + next step.`,
+  exam:  `Mode: EXAM ANSWER. Marking-scheme structure: define → derive → substitute → final answer bold. Examiner-friendly par Hinglish tone intact, plus ek trap line.`,
+  master:`Mode: JEE/NEET MASTER. Full depth + ek relevant PYQ (year + exam) + common trap + ek line "next kya practice kar".`,
 };
 
 
 
-// Length-only guidance. NO tier name leaks into the prompt. Defaults are
-// deliberately TIGHT — the edge function auto-retries with more budget if the
-// model truncates, so we keep typical replies short by default.
+// Length-only guidance. NO tier name leaks into the prompt. Depth matters more
+// than brevity — the edge function auto-retries if the model truncates.
 const LENGTH: Record<Tier, string> = {
-  free:    `Default: keep the reply under ~100 words. Single-shot — no follow-up assumed.`,
-  pro:     `Default: keep the reply under ~220 words. Expand only if the question clearly needs it.`,
-  pro_plus:`Default: keep the reply under ~350 words; never cut a step mid-way. Expand only when the question needs depth.`,
+  free:    `Default: reply ~200 words tak. Answer + kyun + trap zaroor aaye, chahe compact ho.`,
+  pro:     `Default: reply ~450 words tak. Poora flow (answer → kyun → steps → trap → next step) do.`,
+  pro_plus:`Default: reply ~700 words tak; kabhi step beech mein mat kaato. Extra depth, PYQ links aur alternate method allowed jab useful ho.`,
 };
+
 
 // User length intent — derived from the student's own words.
 // When set, this OVERRIDES tier/mode defaults. Honour the student first.
