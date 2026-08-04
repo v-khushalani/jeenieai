@@ -211,6 +211,7 @@ export function computeMaxTokens(
 // Rough INR cost estimator. Flash: $0.075/M in, $0.30/M out. Pro: $1.25/M, $5/M. USD→INR ≈ 84.
 const RATE_USD_PER_TOKEN: Record<string, { input: number; output: number }> = {
   "google/gemini-2.5-flash": { input: 0.075 / 1_000_000, output: 0.30 / 1_000_000 },
+  "google/gemini-3.6-flash": { input: 0.15 / 1_000_000, output: 0.60 / 1_000_000 },
   "google/gemini-2.5-pro":   { input: 1.25  / 1_000_000, output: 5.00 / 1_000_000 },
 };
 
