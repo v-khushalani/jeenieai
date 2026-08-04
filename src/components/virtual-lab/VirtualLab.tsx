@@ -217,15 +217,13 @@ const VirtualLab: React.FC = () => {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : Object.keys(groupedItems).length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
-            <Beaker className="h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">
-              {searchQuery || subjectFilter ? 'No Interactive Animations match your search.' : 'No Interactive Animations uploaded yet.'}
-            </p>
-            <p className="text-xs text-muted-foreground">Upload Interactive Animations from the admin panel to make them available here.</p>
-          </CardContent>
-        </Card>
+        <ComingSoonBanner
+          icon={<Beaker className="h-7 w-7" />}
+          title={searchQuery || subjectFilter ? 'No match found' : 'Coming Soon'}
+          subtitle={searchQuery || subjectFilter
+            ? 'Is search se koi animation nahi mila. Filter badal ke dekho.'
+            : 'Interactive animations abhi taiyaar ho rahe hain. Jaldi live honge!'}
+        />
       ) : (
         <div className="space-y-6">
           {Object.entries(groupedItems).map(([subject, subjectItems]) => (

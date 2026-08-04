@@ -95,13 +95,10 @@ const EducatorChapters: React.FC = () => {
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
       ) : Object.keys(grouped).length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
-            <FileText className="h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">No presentations yet for Class {gradeFilter}.</p>
-            <p className="text-xs text-muted-foreground">Ask your admin to upload content.</p>
-          </CardContent>
-        </Card>
+        <ComingSoonBanner
+          icon={<FileText className="h-7 w-7" />}
+          subtitle={`Class ${gradeFilter} ke presentations abhi upload nahi hue. Jaldi aa rahe hain!`}
+        />
       ) : (
         <div className="space-y-4">
           {Object.entries(grouped).map(([subject, chapterMap]) => {
