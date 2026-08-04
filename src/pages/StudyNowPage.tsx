@@ -149,11 +149,17 @@ const StudyNowPage: React.FC = () => {
       .eq('is_active', true)
       .order('chapter_number', { ascending: true });
 
-    if (userBatchIds.length > 0) {
-      query = query.in('batch_id', userBatchIds);
-    } else if (userGrade) {
+    // Chapters are curriculum-level content shared across exam families
+    // (a Class 12 Chemistry chapter is the same for JEE and NEET). Scoping by
+    // batch_id siloed JEE students to the 2 chapters filed under "JEE Class 12"
+    // and hid ~21k questions. Scope by class level instead; exam filtering
+    // still happens at the question level via exam_pool().
+    if (userGrade) {
       query = query.eq('class_level', userGrade);
+    } else if (userBatchIds.length > 0) {
+      query = query.in('batch_id', userBatchIds);
     }
+
 
     const { data, error } = await query;
     if (error) throw error;
