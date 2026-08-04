@@ -1772,6 +1772,7 @@ export type Database = {
           source_row_id: string | null
           subject: string | null
           subject_id: string | null
+          text_quality: string | null
           topic: string | null
           topic_id: string | null
           updated_at: string | null
@@ -1821,6 +1822,7 @@ export type Database = {
           source_row_id?: string | null
           subject?: string | null
           subject_id?: string | null
+          text_quality?: string | null
           topic?: string | null
           topic_id?: string | null
           updated_at?: string | null
@@ -1870,6 +1872,7 @@ export type Database = {
           source_row_id?: string | null
           subject?: string | null
           subject_id?: string | null
+          text_quality?: string | null
           topic?: string | null
           topic_id?: string | null
           updated_at?: string | null
@@ -2959,6 +2962,7 @@ export type Database = {
         Args: { _badge_id: string; _user_id: string }
         Returns: string
       }
+      backfill_text_quality: { Args: { p_limit?: number }; Returns: number }
       bump_mission_block_progress: {
         Args: {
           p_block_id: string
@@ -2996,6 +3000,7 @@ export type Database = {
         }[]
       }
       check_and_reset_streak: { Args: { p_user_id: string }; Returns: Json }
+      classify_question_text: { Args: { p_text: string }; Returns: string }
       classify_questions_batch: {
         Args: { p_batch_size?: number }
         Returns: Json
@@ -3066,6 +3071,7 @@ export type Database = {
           source_row_id: string | null
           subject: string | null
           subject_id: string | null
+          text_quality: string | null
           topic: string | null
           topic_id: string | null
           updated_at: string | null
