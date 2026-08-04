@@ -67,8 +67,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ compact = false }) => {
       if (rpcError) {
         logger.error('Leaderboard RPC error:', rpcError);
         // Fallback to profiles-only fetch if RPC fails (migration not applied)
-        const { data: profiles, error: profileError } = await supabase
-          .from('profiles')
+        const { data: profiles, error: profileError } = await (supabase as any)
+          .from('profiles_public')
           .select('id, full_name, avatar_url, total_points, current_streak, total_questions_solved, overall_accuracy')
           .order('total_points', { ascending: false })
           .limit(100);
