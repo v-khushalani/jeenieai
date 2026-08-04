@@ -1,0 +1,1 @@
+ALTER FUNCTION public.repair_mojibake_batch(int) SET statement_timeout = '120s';
