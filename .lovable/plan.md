@@ -1,69 +1,49 @@
-## Audit findings
+# Play Store Launch Plan for JEEnie AI
 
-I logged in as `educator@jeenie.test` and launched the approved `refraction` simulation.
+## Current state
+- App is already a Capacitor native app (`capacitor.config.ts` + `@capacitor/android`).
+- Android platform dependency is installed.
+- To go live on Play Store, we only need to build the Android bundle and upload it.
 
-Confirmed from live audit:
-- Educator login works and `/educator` opens.
-- `Interactive Animations` loads 2 approved simulations from `educator_content`.
-- Storage signing and HTML fetch return `200`.
-- The iframe is present, full-screen sized, topmost at the tested points, and contains the actual simulation DOM.
-- The refraction simulation slider/input state changes correctly when events reach the iframe.
+## Can a non-technical person do it?
+Yes, mostly. Steps 1-4 are one-time setup; Step 5 is just clicking "Create release" and uploading a file every update.
 
-Likely exact issues causing your real preview to differ:
-1. **Service worker / PWA stale code mismatch**
-   - Runtime error shows `/sw.js` failed to update.
-   - Production registers a service worker on preview/published builds.
-   - This can make your browser keep older viewer code while my fresh Playwright browser loads latest code, explaining “your screenshots perfect, my real screen blank.”
-2. **Fullscreen layering is split across two fullscreen systems**
-   - `VirtualLab` requests fullscreen on `document.documentElement`.
-   - `SimulationViewer` also has its own fullscreen container logic.
-   - This creates fragile stacking/order behavior across real browsers and embedded Lovable preview.
-3. **Annotation overlay is above the iframe**
-   - Current root overlay is `z-20`; iframe is `z-10`.
-   - It uses `pointer-events: none` normally, but its annotation button/panel are clickable overlays above the simulation. This should be isolated so only the annotation controls sit above the iframe, not a full-screen overlay layer.
-4. **Parent + injected watermark fallback can still affect rendering**
-   - The code tries iframe injection, then parent watermark fallback.
-   - For same-origin `srcDoc`, parent fallback should not be needed and should stay disabled once iframe injection succeeds.
+## Exact steps (short)
 
-## Fix plan
+1. **Create Google Play Developer account**
+   - Go to [play.google.com/console](https://play.google.com/console).
+   - Pay one-time $25 fee.
+   - Use your business Gmail / Google account.
 
-1. **Make fullscreen a single source of truth**
-   - Keep fullscreen opening in `VirtualLab` only.
-   - Render `SimulationViewer` as a pure full-viewport viewer when launched.
-   - Remove/avoid the nested `SimulationViewer` fullscreen toggle path for launched animations.
+2. **Prepare app identity**
+   - App name: JEEnie AI.
+   - Short & full description.
+   - Screenshots (phone + tablet).
+   - App icon (512x512 PNG).
+   - Feature graphic (1024x500 PNG).
+   - Privacy policy URL (we already have `/privacy-policy`).
 
-2. **Hard-fix stacking order**
-   - Use this stable order:
+3. **Build Android App Bundle (AAB)**
+   - In Android Studio, open the `android/` folder.
+   - Go to Build → Generate Signed App Bundle / APK.
+   - Create a keystore file (save password safely — lost = no future updates).
+   - Select `release` → it creates `.aab` file.
 
-```text
-z 100  launch overlay shell
-z 30   close / annotation controls only
-z 20   annotation canvas only when Draw mode is ON
-z 10   iframe simulation
-z 0    viewer background
-```
+4. **Upload first release**
+   - In Play Console, create app → fill details.
+   - Go to Production → Create new release.
+   - Upload the `.aab` file.
+   - Set countries, content rating, pricing (free/paid).
+   - Submit for review (usually 1-3 days).
 
-   - When annotation mode is OFF, no full-screen overlay should sit above the iframe.
-   - The “Open Annotation” button should be the only clickable annotation element above the iframe.
+5. **Future updates**
+   - Just rebuild `.aab` with higher version number and upload again.
 
-3. **Disable parent watermark for HTML simulations that allow iframe injection**
-   - For `srcDoc` HTML, inject watermark/protection inside the iframe.
-   - Do not render the parent watermark over the iframe unless injection fails.
-   - Keep watermark opacity low and `pointer-events: none` inside iframe.
+## What we should do before publishing
+- Remove the `server.url` hot-reload config so app works offline/standalone.
+- Test on a real Android phone.
+- Add splash screen + app icons properly.
+- Set version code/name in `android/app/build.gradle`.
 
-4. **Add a production cache reset for this broken SW generation**
-   - Update service-worker registration logic so if `/sw.js` update fails or a new build is detected, it unregisters old service workers and clears app caches once, then reloads.
-   - Avoid caching Supabase signed storage URLs for simulations.
-   - This directly targets the mismatch between my fresh audit and your real browser.
-
-5. **Add viewer debug guards, not visible UI**
-   - Add console/debug-safe checks for iframe load, HTML length, injection success, and top element at center only in development.
-   - This makes future “blank screen” reports diagnosable without showing extra student-facing text.
-
-6. **Verify after implementation**
-   - Login as educator.
-   - Launch `refraction` and `Projectile Motion`.
-   - Check screenshot visibility.
-   - Programmatically move at least one slider/input and confirm displayed values change.
-   - Check `elementFromPoint` over the simulation returns `IFRAME`, not an overlay.
-   - Confirm no `/sw.js` update error blocks the app in the current preview.
+## Recommendation
+Yes, we can proceed. I can prepare the Android build files and a checklist; you only need to create the Play Console account and upload the file.
