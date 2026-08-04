@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MathDisplay } from "./MathDisplay";
+import { QuestionLivePreview } from "./QuestionLivePreview";
 import { logger } from "@/utils/logger";
 import { bulkAutoAssign, clearCurriculumCache } from "@/services/topicAssignmentService";
 import { quickTextSimilarity } from "@/services/nlp";
