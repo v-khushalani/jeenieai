@@ -475,6 +475,30 @@ export default function CoachMissionPanel() {
         </div>
       )}
 
+      {/* EMPTY — no mission could be built */}
+      {!loading && !needsSetup && !mission && (
+        <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-6 text-center space-y-3">
+          <div className="w-12 h-12 mx-auto rounded-full bg-primary/15 flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-bold">Aaj ki Hit-List ready nahi hai</p>
+            <p className="text-xs text-muted-foreground">
+              5 questions solve karo — Jeenie tumhara pattern samajh ke plan bana degi.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            <Button size="sm" onClick={() => navigate('/practice')}>
+              <Play className="w-3.5 h-3.5 mr-1" /> Practice shuru karo
+            </Button>
+            <Button size="sm" variant="outline" disabled={generating} onClick={() => void generate(true)}>
+              {generating ? 'Ban raha hai…' : 'Hit-List banao'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+
       {/* ALL DONE — celebration */}
       {!loading && mission && allDone && (
         <div className="rounded-2xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent p-6 space-y-4 relative overflow-hidden animate-scale-in">
