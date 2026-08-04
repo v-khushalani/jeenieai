@@ -225,6 +225,7 @@ function App() {
                   {/* Goal Selection - requires auth */}
                   <Route path="/goal-selection" element={<ProtectedRoute><GoalSelectionPage /></ProtectedRoute>} />
                   <Route path="/pyq" element={<Navigate to="/tests" replace />} />
+                  <Route path="/test" element={<Navigate to="/tests" replace />} />
                   
                   
                 
