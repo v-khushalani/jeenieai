@@ -1,6 +1,6 @@
 // src/components/RoastMemeCard.tsx
 // AI-generated roast for the user's weakest topic, shareable as an image.
-// Tiny client payload — server owns the prompt, persona roulette, and few-shot.
+// Tiny client payload — server owns the prompt and few-shot.
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
