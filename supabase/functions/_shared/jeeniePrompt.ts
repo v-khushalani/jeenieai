@@ -259,18 +259,9 @@ export function scrubTierMentions(text: string): { text: string; tripped: boolea
 // ROAST MODE — single-line savage Hinglish roasts for the user's weakest topic
 // ============================================================================
 
-export type RoastPersona =
-  | "bada_bhai" | "brainrot" | "desi_aunty" | "sarcastic_prof" | "meme_lord"
-  | "cricket_commentator" | "bollywood_villain" | "chai_tapri";
+// Roast personas removed — a single open prompt gives the model full freedom,
+// which kills the repeated hooks/structures the fixed persona templates caused.
 
-export const ROAST_PERSONAS: RoastPersona[] = [
-  "bada_bhai", "brainrot", "desi_aunty", "sarcastic_prof", "meme_lord",
-  "cricket_commentator", "bollywood_villain", "chai_tapri",
-];
-
-export function pickRoastPersona(): RoastPersona {
-  return ROAST_PERSONAS[Math.floor(Math.random() * ROAST_PERSONAS.length)];
-}
 
 // Topic → concept keyword hooks. The model is told to weave at least one in,
 // so roasts feel SPECIFIC to the chapter, not generic "you're bad at physics".
