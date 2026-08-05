@@ -305,7 +305,12 @@ const StudyNowPage: React.FC = () => {
   // for a subject if RPC data is not available.
   useEffect(() => {
     const fetchSubjectTotals = async () => {
-      if (availableSubjects.length === 0) return;
+      if (availableSubjects.length === 0) {
+        // Nothing to count yet — stay in "loading" until the profile resolves.
+        if (!profileLoading) setCountsLoading(false);
+        return;
+      }
+      setCountsLoading(true);
       try {
         const map: Record<string, number> = {};
 
@@ -328,11 +333,14 @@ const StudyNowPage: React.FC = () => {
       } catch (err) {
         logger.error('Error fetching subject totals:', err);
         // Do NOT wipe existing counts on transient errors — keep last-good values.
+      } finally {
+        setCountsLoading(false);
       }
     };
 
     fetchSubjectTotals();
-  }, [availableSubjects, fetchChapterCountsForRows, loadChapterRowsForSubject, summarizeChapterCounts, userBatchIds, userExam, userGrade]);
+  }, [availableSubjects, fetchChapterCountsForRows, loadChapterRowsForSubject, summarizeChapterCounts, userBatchIds, userExam, userGrade, profileLoading]);
+
 
   const fetchChapters = async (subject: string) => {
     const requestId = ++requestSeqRef.current;
