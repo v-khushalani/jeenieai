@@ -76,6 +76,9 @@ const StudyNowPage: React.FC = () => {
   const [profileLoading, setProfileLoading] = useState(true);
   const [subjectQuestionCounts, setSubjectQuestionCounts] = useState<Record<string, number>>({});
   const [subjectChapterCounts, setSubjectChapterCounts] = useState<Record<string, number>>({});
+  // Counts arrive after a separate RPC round-trip. Until they land we must NOT
+  // render "Coming Soon" (0 questions) — that was flashing on every load.
+  const [countsLoading, setCountsLoading] = useState(true);
   const [userGrade, setUserGrade] = useState<number | null>(null);
   const [userExam, setUserExam] = useState<string | null>(null);
   const requestSeqRef = useRef(0);
