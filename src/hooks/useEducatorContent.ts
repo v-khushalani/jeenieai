@@ -142,7 +142,9 @@ function resolveSupabaseUrl(): string {
 
 export function useEducatorContent() {
   const [items, setItems] = useState<EducatorContentItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Start in the loading state so consumers never flash a "Coming Soon"
+  // empty state before the very first fetch resolves.
+  const [loading, setLoading] = useState(true);
 
   const fetchContent = useCallback(
     async (filters: EducatorContentFilters = {}) => {
