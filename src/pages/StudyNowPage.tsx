@@ -76,6 +76,9 @@ const StudyNowPage: React.FC = () => {
   const [profileLoading, setProfileLoading] = useState(true);
   const [subjectQuestionCounts, setSubjectQuestionCounts] = useState<Record<string, number>>({});
   const [subjectChapterCounts, setSubjectChapterCounts] = useState<Record<string, number>>({});
+  // Counts arrive after a separate RPC round-trip. Until they land we must NOT
+  // render "Coming Soon" (0 questions) — that was flashing on every load.
+  const [countsLoading, setCountsLoading] = useState(true);
   const [userGrade, setUserGrade] = useState<number | null>(null);
   const [userExam, setUserExam] = useState<string | null>(null);
   const requestSeqRef = useRef(0);
@@ -302,7 +305,12 @@ const StudyNowPage: React.FC = () => {
   // for a subject if RPC data is not available.
   useEffect(() => {
     const fetchSubjectTotals = async () => {
-      if (availableSubjects.length === 0) return;
+      if (availableSubjects.length === 0) {
+        // Nothing to count yet — stay in "loading" until the profile resolves.
+        if (!profileLoading) setCountsLoading(false);
+        return;
+      }
+      setCountsLoading(true);
       try {
         const map: Record<string, number> = {};
 
@@ -325,11 +333,14 @@ const StudyNowPage: React.FC = () => {
       } catch (err) {
         logger.error('Error fetching subject totals:', err);
         // Do NOT wipe existing counts on transient errors — keep last-good values.
+      } finally {
+        setCountsLoading(false);
       }
     };
 
     fetchSubjectTotals();
-  }, [availableSubjects, fetchChapterCountsForRows, loadChapterRowsForSubject, summarizeChapterCounts, userBatchIds, userExam, userGrade]);
+  }, [availableSubjects, fetchChapterCountsForRows, loadChapterRowsForSubject, summarizeChapterCounts, userBatchIds, userExam, userGrade, profileLoading]);
+
 
   const fetchChapters = async (subject: string) => {
     const requestId = ++requestSeqRef.current;
@@ -489,7 +500,7 @@ const StudyNowPage: React.FC = () => {
 
 
 
-  const isLoading = profileLoading || loading;
+  const isLoading = profileLoading || loading || (level === 'subjects' && countsLoading);
   const subjectGridColumns = availableSubjects.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2 xl:grid-cols-3';
   const loadingMessage = level === 'chapters'
     ? 'Loading chapters...'
