@@ -500,7 +500,7 @@ const StudyNowPage: React.FC = () => {
 
 
 
-  const isLoading = profileLoading || loading;
+  const isLoading = profileLoading || loading || (level === 'subjects' && countsLoading);
   const subjectGridColumns = availableSubjects.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2 xl:grid-cols-3';
   const loadingMessage = level === 'chapters'
     ? 'Loading chapters...'
