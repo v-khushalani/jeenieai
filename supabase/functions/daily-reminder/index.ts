@@ -9,14 +9,14 @@ const corsHeaders = {
 };
 
 const MESSAGES = {
-  evening: (left: number) => ({
+  evening: {
     title: 'Aaj ka goal adhoora hai 👀',
-    body: `${left} XP aur — 10 minute ka kaam hai. Streak bacha le.`,
-  }),
-  last_call: (left: number) => ({
+    message: '10 minute ka kaam hai. Streak bacha le, abhi solve kar.',
+  },
+  last_call: {
     title: 'Last call — streak khatre mein 🔥',
-    body: `Sirf ${left} XP baaki. Abhi solve kar, warna kal se zero se shuru.`,
-  }),
+    message: 'Thode XP baaki hain. Abhi nahi kiya toh kal se zero se shuru.',
+  },
 };
 
 Deno.serve(async (req) => {
@@ -31,10 +31,8 @@ Deno.serve(async (req) => {
       // no body — default slot
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey);
 
     // Last call only goes to students with a streak worth protecting.
     const minStreak = slot === 'last_call' ? 3 : 0;
@@ -43,32 +41,41 @@ Deno.serve(async (req) => {
     });
     if (error) throw error;
 
-    const targets = users ?? [];
-    let sent = 0;
-
-    for (const u of targets) {
-      const left = Math.max(1, Number(u.xp_goal) - Number(u.daily_xp));
-      const msg = MESSAGES[slot](left);
-      try {
-        const res = await supabase.functions.invoke('send-push-notification', {
-          body: { userId: u.user_id, title: msg.title, body: msg.body, url: '/practice' },
-        });
-        if (!res.error) sent++;
-      } catch (_) {
-        // one failed device must not stop the batch
-      }
-      // best-effort in-app notification as well
-      await supabase.from('user_notifications').insert({
-        user_id: u.user_id,
-        title: msg.title,
-        body: msg.body,
-        message: msg.body,
-        type: 'reminder',
-        link: '/practice',
+    const targets = (users ?? []) as Array<{ user_id: string }>;
+    if (targets.length === 0) {
+      return new Response(JSON.stringify({ slot, candidates: 0, sent: 0 }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    return new Response(JSON.stringify({ slot, candidates: targets.length, sent }), {
+    const msg = MESSAGES[slot];
+    const userIds = targets.map((u) => u.user_id);
+
+    // Push (best effort — students without a subscription simply get the in-app one).
+    let pushResult: unknown = null;
+    try {
+      const res = await supabase.functions.invoke('send-push-notification', {
+        body: { title: msg.title, message: msg.message, user_ids: userIds },
+        headers: { Authorization: `Bearer ${serviceKey}` },
+      });
+      pushResult = res.error ? { error: String(res.error) } : res.data;
+    } catch (e) {
+      pushResult = { error: String(e) };
+    }
+
+    // In-app notification for everyone in the list.
+    await supabase.from('user_notifications').insert(
+      userIds.map((id) => ({
+        user_id: id,
+        title: msg.title,
+        body: msg.message,
+        message: msg.message,
+        type: 'reminder',
+        link: '/practice',
+      })),
+    );
+
+    return new Response(JSON.stringify({ slot, candidates: userIds.length, pushResult }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
