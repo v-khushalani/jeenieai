@@ -144,6 +144,13 @@ const Header = () => {
             ))}
           </nav>
 
+          {/* Always-visible daily loop: XP ring + streak */}
+          {isAuthenticated && !isAdmin && !isEducator && (
+            <div className="flex items-center md:mr-1">
+              <XpStreakChip />
+            </div>
+          )}
+
           {/* Right Side */}
           <div className="hidden md:flex items-center gap-2 lg:gap-3">
             <button
