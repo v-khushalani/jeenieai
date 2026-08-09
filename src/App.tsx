@@ -61,7 +61,6 @@ const FAQPage = lazyWithRetry(() => import('@/pages/FAQPage'), "FAQPage");
 const WrappedPage = lazyWithRetry(() => import('@/pages/WrappedPage'), "WrappedPage");
 const BattlePage = lazyWithRetry(() => import('@/pages/BattlePage'), "BattlePage");
 const SharePage = lazyWithRetry(() => import('@/pages/SharePage'), "SharePage");
-const LeaguePage = lazyWithRetry(() => import('@/pages/LeaguePage'), "LeaguePage");
 
 // Components
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -360,18 +359,6 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-
-                {/* Weekly League */}
-                <Route
-                  path="/league"
-                  element={
-                    <ProtectedRoute>
-                      <LeaguePage />
-                    </ProtectedRoute>
-                  }
-                />
-
-
 
                 {/* Battle Mode (Pro+ only) */}
                 <Route

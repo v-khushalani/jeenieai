@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Home, BookOpen, User, Target, Trophy } from 'lucide-react';
+import { Home, BookOpen, User, Target } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
@@ -24,7 +24,6 @@ const MobileNavigation = () => {
     { icon: Home, label: 'Dashboard', path: '/dashboard', show: true },
     { icon: BookOpen, label: 'Study', path: '/study-now', show: studyEnabled },
     { icon: Target, label: 'Tests', path: '/tests', show: testsEnabled },
-    { icon: Trophy, label: 'League', path: '/league', show: true },
     { icon: User, label: 'Profile', path: '/profile', show: true }
   ].filter(i => i.show) : [
     { icon: Home, label: 'Home', path: '/' },

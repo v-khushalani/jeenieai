@@ -20,7 +20,6 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
-import StreakRepairBanner from "@/components/gamification/StreakRepairBanner";
 import LoadingScreen from "@/components/ui/LoadingScreen";
 
 import Leaderboard from "@/components/Leaderboard";
@@ -210,9 +209,7 @@ const EnhancedDashboard = () => {
       <div className="relative z-10 flex-1 min-h-0 overflow-hidden lg:overflow-y-auto">
         <div className="flex min-h-full flex-col">
           <div className="container mx-auto px-2 sm:px-4 lg:px-6 max-w-7xl py-2 sm:py-3 min-h-full flex flex-col">
-
-            <StreakRepairBanner />
-
+            
             <div className="flex flex-col gap-2 sm:gap-3 h-full min-h-0">
 
 
