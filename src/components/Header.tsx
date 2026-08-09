@@ -56,6 +56,7 @@ const Header = () => {
       { name: 'Dashboard', path: '/dashboard' },
       ...(studyNowEnabled ? [{ name: 'Study Now', path: '/study-now' }] : []),
       ...(testsEnabled ? [{ name: 'Tests', path: '/tests' }] : []),
+      { name: 'League', path: '/league' },
       ...(isPremium && aiPlannerEnabled ? [
         { name: 'AI Planner', path: '/ai-planner' },
       ] : []),
