@@ -20,6 +20,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
+import StreakRepairBanner from "@/components/gamification/StreakRepairBanner";
 import LoadingScreen from "@/components/ui/LoadingScreen";
 
 import Leaderboard from "@/components/Leaderboard";
