@@ -25,6 +25,7 @@ import StudyNotesPanel from '@/components/study/StudyNotesPanel';
 import StudyNotesIntro from '@/components/study/StudyNotesIntro';
 
 import confetti from 'canvas-confetti';
+import { awardXp } from '@/hooks/useXpStatus';
 
 interface Question {
   id: string;
