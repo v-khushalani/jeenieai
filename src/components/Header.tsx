@@ -95,6 +95,7 @@ const Header = () => {
     'Pro+ Library': <BookOpen className="w-4 h-4" />,
     Profile: <UserIcon className="w-4 h-4" />,
     Badges: <Award className="w-4 h-4" />,
+    League: <Trophy className="w-4 h-4" />,
     Settings: <Settings className="w-4 h-4" />,
     Admin: <Shield className="w-4 h-4" />,
   };
