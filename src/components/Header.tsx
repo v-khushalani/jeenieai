@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
 import { logger } from '@/utils/logger';
 import safeLocalStorage from '@/utils/safeStorage';
+import XpStreakChip from '@/components/gamification/XpStreakChip';
 import {
   DropdownMenu,
   DropdownMenuContent,
