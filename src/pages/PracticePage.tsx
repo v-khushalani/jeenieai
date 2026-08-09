@@ -25,6 +25,7 @@ import StudyNotesPanel from '@/components/study/StudyNotesPanel';
 import StudyNotesIntro from '@/components/study/StudyNotesIntro';
 
 import confetti from 'canvas-confetti';
+import { awardXp } from '@/hooks/useXpStatus';
 
 interface Question {
   id: string;
@@ -574,6 +575,24 @@ const PracticePage: React.FC = () => {
         ]);
 
         await syncDailyProgress(result.is_correct, pointsDelta);
+
+        // Real XP — stored server-side, feeds the daily goal, streak and weekly league.
+        // Combo = how many correct in a row BEFORE this answer.
+        const xpRes = await awardXp(result.is_correct, consecutiveCorrect);
+        if (xpRes.xpAwarded > 0) {
+          const comboNote =
+            newConsecutive >= 10 ? ` · ${newConsecutive} combo 🔥🔥`
+            : newConsecutive >= 5 ? ` · ${newConsecutive} combo 🔥`
+            : newConsecutive >= 3 ? ` · ${newConsecutive} combo`
+            : '';
+          toast.success(`+${xpRes.xpAwarded} XP${comboNote}`, { duration: 1400 });
+          if (xpRes.dailyXp >= xpRes.xpGoal && xpRes.dailyXp - xpRes.xpAwarded < xpRes.xpGoal) {
+            confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, startVelocity: 45 });
+            setTimeout(() => toast.success('Aaj ka goal poora! Streak safe 🔥'), 400);
+          }
+        }
+
+
 
         // Bump mission block progress (idempotent server-side) — live-updates the planner.
         // If we have deep-link params → target that block. Otherwise auto-match by chapter_id

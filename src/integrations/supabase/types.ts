@@ -1179,6 +1179,71 @@ export type Database = {
         }
         Relationships: []
       }
+      league_members: {
+        Row: {
+          final_rank: number | null
+          id: string
+          joined_at: string
+          league_id: string
+          next_tier: string | null
+          updated_at: string
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          final_rank?: number | null
+          id?: string
+          joined_at?: string
+          league_id: string
+          next_tier?: string | null
+          updated_at?: string
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          final_rank?: number | null
+          id?: string
+          joined_at?: string
+          league_id?: string
+          next_tier?: string | null
+          updated_at?: string
+          user_id?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_members_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leagues: {
+        Row: {
+          created_at: string
+          cycle_end: string
+          cycle_start: string
+          id: string
+          tier: string
+        }
+        Insert: {
+          created_at?: string
+          cycle_end: string
+          cycle_start: string
+          id?: string
+          tier?: string
+        }
+        Update: {
+          created_at?: string
+          cycle_end?: string
+          cycle_start?: string
+          id?: string
+          tier?: string
+        }
+        Relationships: []
+      }
       payment_audit: {
         Row: {
           changed_by_user: string | null
@@ -1328,6 +1393,8 @@ export type Database = {
           longest_streak: number | null
           onboarding_completed: boolean | null
           overall_accuracy: number | null
+          pending_streak_repair: number
+          pending_streak_repair_date: string | null
           phone: string | null
           prep_mode: string
           prep_mode_set_at: string | null
@@ -1377,6 +1444,8 @@ export type Database = {
           longest_streak?: number | null
           onboarding_completed?: boolean | null
           overall_accuracy?: number | null
+          pending_streak_repair?: number
+          pending_streak_repair_date?: string | null
           phone?: string | null
           prep_mode?: string
           prep_mode_set_at?: string | null
@@ -1426,6 +1495,8 @@ export type Database = {
           longest_streak?: number | null
           onboarding_completed?: boolean | null
           overall_accuracy?: number | null
+          pending_streak_repair?: number
+          pending_streak_repair_date?: string | null
           phone?: string | null
           prep_mode?: string
           prep_mode_set_at?: string | null
@@ -2962,6 +3033,10 @@ export type Database = {
         Args: { _badge_id: string; _user_id: string }
         Returns: string
       }
+      award_xp: {
+        Args: { p_amount?: number; p_combo?: number; p_is_correct: boolean }
+        Returns: Json
+      }
       backfill_text_quality: { Args: { p_limit?: number }; Returns: number }
       bump_mission_block_progress: {
         Args: {
@@ -3006,7 +3081,9 @@ export type Database = {
         Returns: Json
       }
       cleanup_expired_subscriptions: { Args: never; Returns: undefined }
+      close_league_cycle: { Args: never; Returns: Json }
       create_referral: { Args: { p_referral_code: string }; Returns: Json }
+      current_cycle_start: { Args: never; Returns: string }
       delete_duplicate_questions: { Args: never; Returns: Json }
       ensure_daily_progress: {
         Args: { p_daily_target?: number; p_user_id: string }
@@ -3128,6 +3205,21 @@ export type Database = {
           total_questions: number
         }[]
       }
+      get_my_league: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          cycle_end: string
+          cycle_start: string
+          full_name: string
+          is_me: boolean
+          league_id: string
+          rank: number
+          tier: string
+          user_id: string
+          xp: number
+        }[]
+      }
       get_questions_for_remap: {
         Args: { batch_size?: number }
         Returns: {
@@ -3163,6 +3255,7 @@ export type Database = {
               topic_id: string
             }[]
           }
+      get_xp_status: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3175,6 +3268,7 @@ export type Database = {
         Returns: undefined
       }
       is_active_pro_plus: { Args: { p_user_id: string }; Returns: boolean }
+      join_current_league: { Args: never; Returns: string }
       log_points:
         | {
             Args: {
@@ -3208,6 +3302,7 @@ export type Database = {
       }
       redeem_referral: { Args: { _code: string }; Returns: Json }
       repair_mojibake_batch: { Args: { p_limit?: number }; Returns: number }
+      repair_streak: { Args: never; Returns: Json }
       reset_user_progress: { Args: { p_user_id: string }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
@@ -3237,6 +3332,7 @@ export type Database = {
         }
         Returns: Json
       }
+      tier_shift: { Args: { p_delta: number; p_tier: string }; Returns: string }
       update_daily_accuracy: {
         Args: { p_accuracy: number; p_user_id: string }
         Returns: Json
@@ -3269,6 +3365,16 @@ export type Database = {
       upsert_topic_mastery: {
         Args: { p_is_correct: boolean; p_topic_id: string; p_user_id: string }
         Returns: Json
+      }
+      users_needing_reminder: {
+        Args: { p_min_streak?: number }
+        Returns: {
+          current_streak: number
+          daily_xp: number
+          full_name: string
+          user_id: string
+          xp_goal: number
+        }[]
       }
       validate_practice_answer: {
         Args: {

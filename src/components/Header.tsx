@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
 import { logger } from '@/utils/logger';
 import safeLocalStorage from '@/utils/safeStorage';
+import XpStreakChip from '@/components/gamification/XpStreakChip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +56,7 @@ const Header = () => {
       { name: 'Dashboard', path: '/dashboard' },
       ...(studyNowEnabled ? [{ name: 'Study Now', path: '/study-now' }] : []),
       ...(testsEnabled ? [{ name: 'Tests', path: '/tests' }] : []),
+      { name: 'League', path: '/league' },
       ...(isPremium && aiPlannerEnabled ? [
         { name: 'AI Planner', path: '/ai-planner' },
       ] : []),
@@ -93,6 +95,7 @@ const Header = () => {
     'Pro+ Library': <BookOpen className="w-4 h-4" />,
     Profile: <UserIcon className="w-4 h-4" />,
     Badges: <Award className="w-4 h-4" />,
+    League: <Trophy className="w-4 h-4" />,
     Settings: <Settings className="w-4 h-4" />,
     Admin: <Shield className="w-4 h-4" />,
   };
@@ -143,6 +146,13 @@ const Header = () => {
               </button>
             ))}
           </nav>
+
+          {/* Always-visible daily loop: XP ring + streak */}
+          {isAuthenticated && !isAdmin && !isEducator && (
+            <div className="flex items-center md:mr-1">
+              <XpStreakChip />
+            </div>
+          )}
 
           {/* Right Side */}
           <div className="hidden md:flex items-center gap-2 lg:gap-3">
