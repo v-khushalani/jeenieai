@@ -361,6 +361,18 @@ function App() {
                   }
                 />
 
+                {/* Weekly League */}
+                <Route
+                  path="/league"
+                  element={
+                    <ProtectedRoute>
+                      <LeaguePage />
+                    </ProtectedRoute>
+                  }
+                />
+
+
+
                 {/* Battle Mode (Pro+ only) */}
                 <Route
                   path="/battle"
