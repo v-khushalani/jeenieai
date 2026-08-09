@@ -1181,25 +1181,31 @@ export type Database = {
       }
       league_members: {
         Row: {
+          final_rank: number | null
           id: string
           joined_at: string
           league_id: string
+          next_tier: string | null
           updated_at: string
           user_id: string
           xp: number
         }
         Insert: {
+          final_rank?: number | null
           id?: string
           joined_at?: string
           league_id: string
+          next_tier?: string | null
           updated_at?: string
           user_id: string
           xp?: number
         }
         Update: {
+          final_rank?: number | null
           id?: string
           joined_at?: string
           league_id?: string
+          next_tier?: string | null
           updated_at?: string
           user_id?: string
           xp?: number
@@ -3075,6 +3081,7 @@ export type Database = {
         Returns: Json
       }
       cleanup_expired_subscriptions: { Args: never; Returns: undefined }
+      close_league_cycle: { Args: never; Returns: Json }
       create_referral: { Args: { p_referral_code: string }; Returns: Json }
       current_cycle_start: { Args: never; Returns: string }
       delete_duplicate_questions: { Args: never; Returns: Json }
@@ -3325,6 +3332,7 @@ export type Database = {
         }
         Returns: Json
       }
+      tier_shift: { Args: { p_delta: number; p_tier: string }; Returns: string }
       update_daily_accuracy: {
         Args: { p_accuracy: number; p_user_id: string }
         Returns: Json
