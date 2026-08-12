@@ -207,11 +207,8 @@ const PracticePage: React.FC = () => {
     questionStartTime.current = Date.now();
 
     // Auto-show AI button after 45 seconds if not answered
-    const timer = setTimeout(() => {
-      if (!answeredQuestions.has(currentIndex)) {
-        setShowAIButton(true);
-      }
-    }, 45000);
+    // Removed delay, button is always visible
+    const timer = setTimeout(() => {}, 0);
 
     return () => clearTimeout(timer);
   }, [currentIndex, answeredQuestions]);
