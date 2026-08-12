@@ -505,7 +505,7 @@ export default function AIStudyPlanner() {
       })();
 
       const profData = profResult.data;
-      if (profError) logger.warn('Planner profile load warning', profError);
+      if (profResult.error) logger.warn('Planner profile load warning', profResult.error);
 
       const prof = (profData as any) || { target_exam: cachedGoal || 'JEE' };
       const gradeNum = Number(prof?.grade);
