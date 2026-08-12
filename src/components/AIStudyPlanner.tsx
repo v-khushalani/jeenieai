@@ -643,39 +643,16 @@ export default function AIStudyPlanner() {
 
       <CoachMissionPanel />
 
-      <div className="grid grid-cols-4 gap-2 text-center rounded-xl border border-border/60 bg-card p-3">
-        <div>
-          <Calendar className="mx-auto mb-0.5 h-4 w-4 text-primary" />
-          <p className="text-sm font-bold">{daysToExam}</p>
-          <p className="text-[9px] text-muted-foreground">Days</p>
-        </div>
-        <div>
-          <Target className="mx-auto mb-0.5 h-4 w-4 text-primary" />
-          <p className="text-sm font-bold">{planner.overallAccuracy}%</p>
-          <p className="text-[9px] text-muted-foreground">Accuracy</p>
-        </div>
-        <div>
-          <Flame className="mx-auto mb-0.5 h-4 w-4 text-primary" />
-          <p className="text-sm font-bold">{planner.coveragePct}%</p>
-          <p className="text-[9px] text-muted-foreground">Coverage</p>
-        </div>
-        <div>
-          <Trophy className="mx-auto mb-0.5 h-4 w-4 text-primary" />
-          <p className="text-sm font-bold">{adherence}%</p>
-          <p className="text-[9px] text-muted-foreground">Today</p>
-        </div>
-      </div>
-
-      <details className="group rounded-xl border border-border/60 bg-card/50 open:bg-card">
-        <summary className="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between gap-2 select-none">
+      <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+        <div className="px-3 py-2.5 flex items-center justify-between gap-2 bg-muted/30">
           <span className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-primary" />
-            <span className="text-sm font-bold">Full Roadmap</span>
-            <span className="text-[10px] text-muted-foreground">Chapter ladder · This Week · Insights</span>
+            <span className="text-sm font-bold tracking-tight">MASTERY LADDER</span>
           </span>
-          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
-        </summary>
-        <div className="px-2 pb-3 pt-1">
+          <Badge variant="outline" className="text-[9px] font-black tracking-widest px-1.5 h-4">ROADMAP</Badge>
+        </div>
+        <div className="px-3 pb-3 pt-1">
+
 
 
       <Tabs defaultValue="roadmap" className="w-full">
