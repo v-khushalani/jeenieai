@@ -203,7 +203,7 @@ const PracticePage: React.FC = () => {
   useEffect(() => {
     setMultiSelected(new Set());
     setNumericalInput('');
-    // setShowAIButton(true); // Always true now
+    setShowAIButton(true);
     questionStartTime.current = Date.now();
 
     // Auto-show AI button after 45 seconds if not answered
@@ -1188,7 +1188,7 @@ const PracticePage: React.FC = () => {
           >
             <Button
               onClick={() => setAiSolverOpen(true)}
-              className={`w-14 h-14 rounded-full bg-[#013062] hover:bg-[#024080] shadow-[0_8px_25px_rgba(1,48,98,0.4)] flex items-center justify-center p-0 group overflow-visible transition-opacity duration-500 ${!isCurrentAnswered ? 'opacity-40 hover:opacity-100' : 'opacity-100'}`}
+              className={`w-14 h-14 rounded-full bg-[#013062] hover:bg-[#024080] shadow-[0_8px_25px_rgba(1,48,98,0.4)] flex items-center justify-center p-0 group overflow-visible transition-all duration-500 ${!isCurrentAnswered ? 'opacity-30 hover:opacity-100 scale-90 hover:scale-100' : 'opacity-100'}`}
             >
               <Zap className="w-6 h-6 text-white group-hover:scale-125 transition-transform duration-300" />
               
