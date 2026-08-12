@@ -47,6 +47,9 @@ const HuggingFaceImporter = lazy(() => import('@/components/admin/HuggingFaceImp
 const NotesManager = lazy(() => import('@/components/admin/NotesManager'));
 const SubscriptionManager = lazy(() => import('@/components/admin/SubscriptionManager'));
 const JeenieCostPanel = lazy(() => import('@/components/admin/JeenieCostPanel').then(m => ({ default: m.JeenieCostPanel })));
+const SystemHealthBanner = lazy(() => import('@/components/admin/SystemHealthBanner').then(m => ({ default: m.SystemHealthBanner })));
+const AuditReportTab = lazy(() => import('@/components/admin/AuditReportTab'));
+
 
 // ─── Nav Config ────────────────────────────────────────────
 
