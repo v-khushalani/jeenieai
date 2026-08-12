@@ -151,7 +151,7 @@ const PendingTestSyncWorker = () => {
 };
 
 // Mobile bottom nav - only renders on mobile for authenticated users, hidden on admin/educator routes
-const MobileBottomNav = () => {
+const MobileZaptomNav = () => {
   const isMobile = useIsMobile();
   const location = useLocation();
   const { isAuthenticated } = useAuth();
@@ -409,7 +409,7 @@ function App() {
                 <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
-              <MobileBottomNav />
+              <MobileZaptomNav />
               <BadgeUnlockCelebration />
             </GlobalErrorBoundary>
           </TooltipProvider>
