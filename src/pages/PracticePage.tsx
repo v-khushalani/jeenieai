@@ -823,21 +823,25 @@ const PracticePage: React.FC = () => {
   return (
     <div className="mobile-app-shell-bottom-nav bg-background flex flex-col overflow-hidden">
       {/* Top Bar */}
-      <div className="shrink-0 z-20 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3">
+      <div className="shrink-0 z-20 bg-background/90 backdrop-blur-2xl border-b-2 border-primary/10 px-4 py-3 shadow-lg">
         <div className="container mx-auto max-w-3xl flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/study-now')}>
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back
+          <Button variant="ghost" size="sm" onClick={() => navigate('/study-now')} className="font-black italic uppercase tracking-tighter text-xs">
+            <ArrowLeft className="w-4 h-4 mr-1" /> EXIT
           </Button>
           <div className="text-center">
-            <h1 className="text-sm font-bold text-primary truncate max-w-[200px]">{title}</h1>
-            <p className="text-xs text-muted-foreground">Q {currentIndex + 1}/{questions.length}</p>
+            <h1 className="text-xs font-black uppercase italic tracking-[0.2em] text-primary truncate max-w-[180px]">{title}</h1>
+            <div className="flex items-center justify-center gap-1.5 mt-0.5">
+               <div className="h-1.5 w-24 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-primary transition-all duration-500" style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }} />
+               </div>
+               <p className="text-[10px] font-bold text-muted-foreground uppercase italic">{currentIndex + 1}/{questions.length}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
+            <Badge className="text-[10px] font-black italic uppercase bg-primary/10 text-primary border-0 shadow-sm">
               <Target className="w-3 h-3 mr-1" />{accuracy}%
             </Badge>
           </div>
-
         </div>
       </div>
 
