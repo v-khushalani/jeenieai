@@ -715,50 +715,6 @@ export default function AIStudyPlanner() {
         </TabsContent>
 
 
-        <TabsContent value="insights" className="mt-3 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <Card className="border-red-200 bg-red-50/40 dark:bg-red-950/20">
-              <CardContent className="p-3">
-                <div className="mb-1 flex items-center gap-1.5 text-red-700">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  <p className="text-[10px] font-bold uppercase">Weak now</p>
-                </div>
-                <p className="text-xl font-extrabold text-red-700">{planner.weak.length}</p>
-                <p className="truncate text-[10px] text-muted-foreground">{planner.weak[0]?.title || 'No critical weakness'}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-amber-200 bg-amber-50/40 dark:bg-amber-950/20">
-              <CardContent className="p-3">
-                <div className="mb-1 flex items-center gap-1.5 text-amber-700">
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  <p className="text-[10px] font-bold uppercase">Mistakes</p>
-                </div>
-                <p className="text-xl font-extrabold text-amber-700">{planner.pendingMistakes}</p>
-                <p className="truncate text-[10px] text-muted-foreground">Pending wrong-question repair</p>
-              </CardContent>
-            </Card>
-            <Card className="border-blue-200 bg-blue-50/40 dark:bg-blue-950/20">
-              <CardContent className="p-3">
-                <div className="mb-1 flex items-center gap-1.5 text-blue-700">
-                  <Zap className="h-3.5 w-3.5" />
-                  <p className="text-[10px] font-bold uppercase">Pending</p>
-                </div>
-                <p className="text-xl font-extrabold text-blue-700">{planner.pending.length}</p>
-                <p className="truncate text-[10px] text-muted-foreground">Untouched chapters</p>
-              </CardContent>
-            </Card>
-            <Card className="border-emerald-200 bg-emerald-50/40 dark:bg-emerald-950/20">
-              <CardContent className="p-3">
-                <div className="mb-1 flex items-center gap-1.5 text-emerald-700">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  <p className="text-[10px] font-bold uppercase">Strong</p>
-                </div>
-                <p className="text-xl font-extrabold text-emerald-700">{planner.strong.length}</p>
-                <p className="truncate text-[10px] text-muted-foreground">80%+ accuracy chapters</p>
-              </CardContent>
-            </Card>
-          </div>
-
         <TabsContent value="insights" className="mt-3">
           <Card className="bg-muted/30 border-dashed">
             <CardContent className="p-8 text-center space-y-3">
@@ -768,8 +724,8 @@ export default function AIStudyPlanner() {
             </CardContent>
           </Card>
         </TabsContent>
-
       </Tabs>
+
         </div>
       </details>
     </div>
