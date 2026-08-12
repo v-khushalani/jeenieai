@@ -360,130 +360,94 @@ const EnhancedDashboard = () => {
                 >
                   <div className="w-full flex-none snap-start p-1 min-h-0">
                     <div className="h-full space-y-2 overflow-y-auto p-1">
-                      <div className="grid grid-cols-2 gap-2 auto-rows-fr items-stretch">
-                        <Card className={`h-full rounded-xl shadow-xs border-l-4 ${streakColors.border} ${streakColors.bg}`}> 
-                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
-                            <div className="flex items-start gap-2 mb-1">
-                              <div className={`p-1.5 ${streakColors.iconBg} rounded-lg shrink-0`}>
-                                <Flame className="h-3 w-3 text-white" />
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <Card className={`h-full rounded-2xl shadow-lg border-2 ${streakColors.border} ${streakColors.bg} relative overflow-hidden group`}> 
+                          <CardContent className="p-4 h-full flex flex-col justify-between">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className={`p-2 ${streakColors.iconBg} rounded-xl shadow-md group-hover:scale-110 transition-transform`}>
+                                <Flame className="h-4 w-4 text-white" />
                               </div>
-                              <p className="text-[11px] font-medium text-muted-foreground">Day Streak</p>
+                              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Streak</p>
                             </div>
-                            <h3 className={`text-xl font-bold ${streakColors.text}`}>{streak ?? 0}</h3>
-                            <p className="text-[10px] text-muted-foreground mt-1">{streak > 0 ? 'Keep going!' : 'Start streak today'}</p>
+                            <h3 className={`text-3xl font-black ${streakColors.text} tracking-tighter`}>{streak ?? 0} <span className="text-xs font-bold opacity-60">Days</span></h3>
                           </CardContent>
                         </Card>
 
-                        <Card className={`h-full rounded-xl shadow-xs border-l-4 ${accuracyColors.border} ${accuracyColors.bg}`}> 
-                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
-                            <div className="flex items-start gap-2 mb-1">
-                              <div className={`p-1.5 ${accuracyColors.iconBg} rounded-lg shrink-0`}>
-                                <Target className="h-3 w-3 text-white" />
-                              </div>
-                              <p className="text-[11px] font-medium text-muted-foreground">Today's Accuracy</p>
-                            </div>
-                            <h3 className={`text-xl font-bold ${accuracyColors.text}`}>{stats?.todayAccuracy ?? 0}%</h3>
-                            <p className="text-[10px] text-muted-foreground mt-1">Overall: {stats?.accuracy ?? 0}%</p>
-                          </CardContent>
-                        </Card>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 auto-rows-fr items-stretch">
-                        <Card className={`h-full rounded-xl shadow-xs border-l-4 ${goalColors.border} ${goalColors.bg}`}> 
-                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <div className="flex items-start gap-2 min-w-0">
-                                <div className={`p-1.5 ${goalColors.iconBg} rounded-lg shrink-0`}>
-                                  <Calendar className="h-3 w-3 text-white" />
+                        <Card className={`h-full rounded-2xl shadow-lg border-2 ${goalColors.border} ${goalColors.bg} relative overflow-hidden group`}> 
+                          <CardContent className="p-4 h-full flex flex-col justify-between">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className={`p-2 ${goalColors.iconBg} rounded-xl shadow-md group-hover:scale-110 transition-transform`}>
+                                  <Calendar className="h-4 w-4 text-white" />
                                 </div>
-                                <p className="text-[11px] font-medium text-muted-foreground">Today's Goal</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Goal</p>
                               </div>
-                              <Badge className="text-[10px] px-2 py-0.5 bg-white/70 text-foreground border-0">
-                                {(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'Done' : 'Go'}
-                              </Badge>
                             </div>
-                            <h3 className={`text-xl font-bold ${goalColors.text}`}>{stats?.todayProgress ?? 0}/{stats?.todayGoal ?? 30}</h3>
-                            <div className="w-full bg-muted rounded-full h-2 mt-2 mb-1.5">
-                              <div className={`h-2 rounded-full ${(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500' : 'bg-orange-500'}`} style={{ width: `${Math.min(100, ((stats?.todayProgress ?? 0) / (stats?.todayGoal ?? 30)) * 100)}%` }} />
+                            <h3 className={`text-3xl font-black ${goalColors.text} tracking-tighter`}>{stats?.todayProgress ?? 0}<span className="text-xs opacity-60">/{stats?.todayGoal ?? 30}</span></h3>
+                            <div className="w-full bg-black/5 dark:bg-white/10 rounded-full h-2 mt-2">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${Math.min(100, ((stats?.todayProgress ?? 0) / (stats?.todayGoal ?? 30)) * 100)}%` }}
+                                className={`h-full rounded-full ${(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500' : 'bg-orange-500'}`} 
+                              />
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
-                              {(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0) > 0
-                                ? `${(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0)} questions left`
-                                : 'Goal achieved!'}
-                            </p>
                           </CardContent>
                         </Card>
 
-                        <Card className="h-full rounded-xl shadow-xs border-l-4 border-purple-500 bg-linear-to-br from-purple-50/80 via-pink-50/80 to-indigo-50/80"> 
-                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
-                            <div className="flex items-start gap-2 mb-1">
-                              <div className="p-1.5 bg-linear-to-r from-purple-600 to-pink-600 rounded-lg shrink-0">
-                                <Trophy className="h-3 w-3 text-white" />
+                        <Card className="h-full rounded-2xl shadow-lg border-2 border-purple-200 bg-linear-to-br from-purple-50 via-white to-pink-50 dark:from-purple-900/20 dark:to-pink-950/20 relative overflow-hidden group col-span-2"> 
+                          <CardContent className="p-4 h-full flex flex-col justify-between">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="p-2 bg-linear-to-r from-purple-600 to-pink-600 rounded-xl shadow-md group-hover:scale-110 transition-transform">
+                                <Trophy className="h-4 w-4 text-white" />
                               </div>
-                              <p className="text-[11px] font-medium text-muted-foreground">JEEnie Points</p>
+                              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Mastery XP</p>
                             </div>
-                            <h3 className="text-xl font-bold bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">{stats?.totalPoints ?? 0}</h3>
-                            <div className="flex items-center gap-2 mt-1.5">
-                              <Badge className="text-[10px] font-bold px-2 py-0.5 bg-linear-to-r from-purple-600 to-pink-600 text-white">{pointsLevel.name}</Badge>
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-4xl font-black bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent tracking-tighter">{stats?.totalPoints ?? 0}</h3>
+                              <Badge className="text-[10px] font-black px-2 py-1 bg-linear-to-r from-purple-600 to-pink-600 text-white border-0">{pointsLevel.name}</Badge>
                             </div>
                           </CardContent>
                         </Card>
                       </div>
 
-                      <Card className="rounded-xl shadow-xs border border-border bg-card/95 overflow-hidden">
-                        <CardHeader className="p-3 pb-2 border-b border-border/60">
+                      <Card className="rounded-2xl shadow-lg border-2 border-slate-100 dark:border-slate-800 bg-card/95 overflow-hidden">
+                        <CardHeader className="p-4 pb-2 border-b border-border/60">
                           <CardTitle className="flex items-center gap-2 text-sm">
-                            <div className="p-1.5 rounded-lg bg-linear-to-br from-indigo-500 to-purple-600 text-white">
+                            <div className="p-2 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 text-white shadow-md">
                               <TrendingUp className="h-3 w-3" />
                             </div>
-                            <span className="font-bold text-foreground">Your Progress</span>
-                            <Badge className="ml-auto text-[10px] bg-primary/10 text-primary border-0">This Week</Badge>
+                            <span className="font-black uppercase tracking-widest text-xs">Mastery Levels</span>
                           </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-3">
+                        <CardContent className="p-4">
                           {stats?.subjectStats ? (
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-4">
                               {Object.entries(stats.subjectStats).slice(0, 3).map(([subject, data]: any) => {
                                 const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
-                                const circumference = 2 * Math.PI * 32;
-                                const strokeDashoffset = circumference - (accuracy / 100) * circumference;
-                                const strokeColor = accuracy >= 80 ? '#10b981' : accuracy >= 60 ? '#f59e0b' : '#ef4444';
-                                const bgColor = accuracy >= 80 ? '#d1fae5' : accuracy >= 60 ? '#fef3c7' : '#fee2e2';
-
+                                const isHigh = accuracy >= 80;
+                                const isMid = accuracy >= 60;
+                                
                                 return (
-                                  <div key={subject} className="flex flex-col items-center gap-1">
-                                    <div className="relative w-20 h-20">
-                                      <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                                        <circle cx="40" cy="40" r="32" fill="none" stroke={bgColor} strokeWidth="6" />
-                                        <circle
-                                          cx="40"
-                                          cy="40"
-                                          r="32"
-                                          fill="none"
-                                          stroke={strokeColor}
-                                          strokeWidth="6"
-                                          strokeLinecap="round"
-                                          strokeDasharray={circumference}
-                                          strokeDashoffset={strokeDashoffset}
-                                          className="transition-all duration-700"
-                                        />
-                                      </svg>
-                                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span className="text-sm font-bold" style={{ color: strokeColor }}>{accuracy}%</span>
-                                        <span className="text-[8px] text-muted-foreground">{data.correct}/{data.total}</span>
-                                      </div>
+                                  <div key={subject} className="space-y-1.5">
+                                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                                      <span className="opacity-70">{subject}</span>
+                                      <span className={isHigh ? 'text-emerald-500' : isMid ? 'text-amber-500' : 'text-red-500'}>{accuracy}%</span>
                                     </div>
-                                    <span className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">
-                                      {subject}
-                                    </span>
+                                    <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                      <motion.div 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${accuracy}%` }}
+                                        className={`h-full rounded-full ${isHigh ? 'bg-emerald-500' : isMid ? 'bg-amber-500' : 'bg-red-500'}`}
+                                      />
+                                    </div>
                                   </div>
                                 );
                               })}
                             </div>
                           ) : (
-                            <div className="text-center py-4 text-muted-foreground">
-                              <BookOpen className="h-6 w-6 mx-auto mb-2 opacity-40" />
-                              <p className="text-xs font-medium">Start practicing to see progress</p>
+                            <div className="text-center py-6 text-muted-foreground opacity-50">
+                              <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                              <p className="text-[10px] font-bold uppercase tracking-widest">No Practice Data</p>
                             </div>
                           )}
                         </CardContent>
