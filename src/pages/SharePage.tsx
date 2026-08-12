@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { ArrowLeft, Download, Copy, Check, Share2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Check, Share2,  } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { generateQRCodeSVG } from '@/utils/qrCode';
 import { toast } from '@/hooks/use-toast';

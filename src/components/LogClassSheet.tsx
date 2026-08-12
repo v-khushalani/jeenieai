@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, BookOpen, ChevronLeft, Search, Sparkles } from 'lucide-react';
+import { Loader2, BookOpen, ChevronLeft, Search,  } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Chapter { id: string; name: string; subject: string; class_level: number | null; }

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bot, Sparkles } from 'lucide-react';
+import { Bot,  } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AIDoubtSolver from './AIDoubtSolver';
 import { useAuth } from '@/contexts/AuthContext';

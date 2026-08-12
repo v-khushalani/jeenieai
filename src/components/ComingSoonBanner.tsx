@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
+import {  } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface ComingSoonBannerProps {

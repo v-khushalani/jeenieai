@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { X, Share2, Sparkles } from 'lucide-react';
+import { X, Share2,  } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureFlag } from '@/contexts/FeatureFlagContext';

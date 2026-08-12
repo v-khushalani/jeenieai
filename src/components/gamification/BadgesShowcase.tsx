@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Lock, Trophy, Share2, Sparkles } from 'lucide-react';
+import { Lock, Trophy, Share2,  } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ReferralService from '@/services/referralService';
 import ShareCardDialog from '@/components/ShareCardDialog';

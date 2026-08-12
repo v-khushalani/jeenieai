@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Download, SendHorizonal, Sparkles } from 'lucide-react';
+import { ArrowRight, Download, SendHorizonal,  } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 

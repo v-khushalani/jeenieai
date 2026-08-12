@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Download, Minus, Plus, FileText, BookOpen, Sparkles } from 'lucide-react';
+import { Download, Minus, Plus, FileText, BookOpen,  } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Document as PdfDoc, Page as PdfPage, pdfjs } from 'react-pdf';
