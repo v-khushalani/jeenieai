@@ -499,129 +499,107 @@ const EnhancedDashboard = () => {
                 </div>
               </div>
 
-              {/* 4 Dynamic Stats Cards */}
-              <div className="hidden lg:grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2 md:gap-3 shrink-0 auto-rows-fr items-stretch">
+              {/* High-Engagement Stats Cards */}
+              <div className="hidden lg:grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 shrink-0 auto-rows-fr items-stretch pt-4">
                 
                 {/* 1st Card: Day Streak */}
-                <Card className={`rounded-lg sm:rounded-xl shadow-xs hover:shadow-md transition-all border-l-4 ${streakColors.border} ${streakColors.bg} backdrop-blur-xs`}> 
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-start gap-2 mb-2">
-                      <div className={`p-1.5 sm:p-2 ${streakColors.iconBg} rounded-lg shrink-0 animate-pulse`}>
-                        <Flame className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
-                      </div>
-                      <p className="text-xs font-medium text-muted-foreground">Day Streak</p>
+                <Card className={`rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 ${streakColors.border} ${streakColors.bg} group overflow-hidden`}> 
+                  <CardContent className="p-6 relative">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-500">
+                      <Flame className="h-16 w-16" />
                     </div>
-                    <h3 className={`text-2xl sm:text-3xl font-bold ${streakColors.text}`}>
-                      {streak ?? 0}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className={`p-2.5 ${streakColors.iconBg} rounded-xl shadow-lg`}>
+                        <Flame className="h-5 w-5 text-white" />
+                      </div>
+                      <p className="text-sm font-black uppercase tracking-widest opacity-70">Streak</p>
+                    </div>
+                    <h3 className={`text-5xl font-black ${streakColors.text} mb-2 tracking-tighter`}>
+                      {streak ?? 0} <span className="text-lg font-bold opacity-60 italic">Days</span>
                     </h3>
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <Flame className="h-3 w-3 text-orange-500" />
-                      {streak > 0 ? 'Keep going!' : 'Start your streak today!'}
+                    <p className="text-xs font-bold flex items-center gap-1.5 opacity-80">
+                      {streak > 0 ? "You're on fire! 🔥" : "Start your streak today!"}
                     </p>
                   </CardContent>
                 </Card>
 
                 {/* 2nd Card: Today's Accuracy */}
-                <Card className={`rounded-lg sm:rounded-xl shadow-xs hover:shadow-md transition-all border-l-4 ${accuracyColors.border} ${accuracyColors.bg} backdrop-blur-xs`}> 
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-start gap-2">
-                        <div className={`p-1.5 sm:p-2 ${accuracyColors.iconBg} rounded-lg shrink-0`}>
-                          <Target className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
-                        </div>
-                        <p className="text-xs font-medium text-muted-foreground">Today's Accuracy</p>
-                      </div>
+                <Card className={`rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 ${accuracyColors.border} ${accuracyColors.bg} group overflow-hidden`}> 
+                  <CardContent className="p-6 relative">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-500">
+                      <Target className="h-16 w-16" />
                     </div>
-                    <div className="flex items-end justify-between mb-2">
-                      <h3 className={`text-2xl sm:text-3xl font-bold ${accuracyColors.text}`}>
-                        {stats?.todayAccuracy ?? 0}%
-                      </h3>
-                      <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1">
-                        {stats?.accuracyChange == null ? (
-                          <span className="hidden sm:inline text-xs text-muted-foreground font-semibold">— new</span>
-                        ) : stats.accuracyChange > 0 ? (
-                          <span className="hidden sm:inline text-xs text-green-600 dark:text-green-400 font-semibold">↑ {Math.abs(stats.accuracyChange)}% week</span>
-                        ) : stats.accuracyChange < 0 ? (
-                          <span className="hidden sm:inline text-xs text-red-600 dark:text-red-400 font-semibold">↓ {Math.abs(stats.accuracyChange)}% week</span>
-                        ) : (
-                          <span className="hidden sm:inline text-xs text-muted-foreground font-semibold">→ same as last week</span>
-                        )}
-                        <Badge className={`text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 ${
-                          (stats?.todayAccuracy ?? 0) >= 80 ? 'bg-emerald-500 text-white' :
-                          (stats?.todayAccuracy ?? 0) >= 60 ? 'bg-orange-500 text-white' :
-                          'bg-red-500 text-white'
-                        }`}>
-                          {(stats?.todayAccuracy ?? 0) >= 80 ? 'Great!' : (stats?.todayAccuracy ?? 0) >= 60 ? 'Focus!' : 'Practice!'}
-                        </Badge>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className={`p-2.5 ${accuracyColors.iconBg} rounded-xl shadow-lg`}>
+                        <Target className="h-5 w-5 text-white" />
                       </div>
+                      <p className="text-sm font-black uppercase tracking-widest opacity-70">Accuracy</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Overall: {stats?.accuracy ?? 0}%
-                    </p>
+                    <h3 className={`text-5xl font-black ${accuracyColors.text} mb-2 tracking-tighter`}>
+                      {stats?.todayAccuracy ?? 0}<span className="text-2xl font-bold">%</span>
+                    </h3>
+                    <div className="flex items-center gap-2">
+                       <Badge className={`text-[10px] font-black px-2 py-0.5 border-0 ${
+                        (stats?.todayAccuracy ?? 0) >= 80 ? 'bg-emerald-500' :
+                        (stats?.todayAccuracy ?? 0) >= 60 ? 'bg-orange-500' :
+                        'bg-red-500'
+                      }`}>
+                        {(stats?.todayAccuracy ?? 0) >= 80 ? 'ELITE' : (stats?.todayAccuracy ?? 0) >= 60 ? 'STABLE' : 'WEAK'}
+                      </Badge>
+                      <p className="text-[10px] font-bold opacity-60">Overall: {stats?.accuracy ?? 0}%</p>
+                    </div>
                   </CardContent>
                 </Card>
 
                 {/* 3rd Card: Today's Goal */}
-                <Card className={`rounded-lg sm:rounded-xl shadow-xs hover:shadow-md transition-all border-l-4 ${goalColors.border} ${goalColors.bg} backdrop-blur-xs`}> 
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-start gap-2">
-                        <div className={`p-1.5 sm:p-2 ${goalColors.iconBg} rounded-lg shrink-0`}>
-                          <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
-                        </div>
-                        <p className="text-xs font-medium text-muted-foreground">Today's Goal</p>
+                <Card className={`rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 ${goalColors.border} ${goalColors.bg} group overflow-hidden`}> 
+                  <CardContent className="p-6 relative">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-500">
+                      <Rocket className="h-16 w-16" />
+                    </div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className={`p-2.5 ${goalColors.iconBg} rounded-xl shadow-lg`}>
+                        <Calendar className="h-5 w-5 text-white" />
                       </div>
+                      <p className="text-sm font-black uppercase tracking-widest opacity-70">Daily Goal</p>
                     </div>
-                    <div className="flex items-end justify-between mb-2">
-                      <h3 className={`text-2xl sm:text-3xl font-bold ${goalColors.text}`}>
-                        {stats?.todayProgress ?? 0}/{stats?.todayGoal ?? 30}
-                      </h3>
-                      <Badge className={`text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 ${
-                        (stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500 text-white' :
-                        (stats?.todayProgress ?? 0) >= ((stats?.todayGoal ?? 30) * 0.5) ? 'bg-yellow-500 text-white' :
-                        'bg-orange-500 text-white'
-                      }`}>
-                        {(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? '🔥 Done!' : 
-                         (stats?.todayProgress ?? 0) >= ((stats?.todayGoal ?? 30) * 0.5) ? '💪 Push!' : 
-                         '🎯 Go!'}
-                      </Badge>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2 mb-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all ${
+                    <h3 className={`text-5xl font-black ${goalColors.text} mb-3 tracking-tighter`}>
+                      {stats?.todayProgress ?? 0}<span className="text-2xl font-bold opacity-60">/{stats?.todayGoal ?? 30}</span>
+                    </h3>
+                    <div className="w-full bg-black/5 dark:bg-white/10 rounded-full h-3 mb-1 overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, ((stats?.todayProgress ?? 0) / (stats?.todayGoal ?? 30)) * 100)}%` }}
+                        className={`h-full rounded-full transition-all ${
                           (stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500' :
                           (stats?.todayProgress ?? 0) >= ((stats?.todayGoal ?? 30) * 0.5) ? 'bg-yellow-500' :
                           'bg-orange-500'
                         }`}
-                        style={{ width: `${Math.min(100, ((stats?.todayProgress ?? 0) / (stats?.todayGoal ?? 30)) * 100)}%` }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0) > 0 
-                        ? `${(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0)} questions left - Let's go! 🚀`
-                        : `Goal achieved! 🎉`
-                      }
-                    </p>
                   </CardContent>
                 </Card>
 
                 {/* 4th Card: JEEnie Points */}
-                <Card className="rounded-lg sm:rounded-xl shadow-xs hover:shadow-md transition-all border-l-4 border-purple-500 bg-linear-to-br from-purple-50/80 via-pink-50/80 to-indigo-50/80 dark:from-purple-950/50 dark:via-pink-950/50 dark:to-indigo-950/50 backdrop-blur-xs"> 
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-start gap-2 mb-2">
-                      <div className="p-1.5 sm:p-2 bg-linear-to-r from-purple-600 to-pink-600 rounded-lg shrink-0">
-                        <Trophy className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
-                      </div>
-                      <p className="text-xs font-medium text-muted-foreground">JEEnie Points</p>
+                <Card className="rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-purple-200 bg-linear-to-br from-purple-50 via-white to-pink-50 dark:from-purple-950/20 dark:via-slate-900/50 dark:to-pink-950/20 group overflow-hidden"> 
+                  <CardContent className="p-6 relative">
+                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-500">
+                      <Sparkles className="h-16 w-16" />
                     </div>
-                    <h3 className="text-2xl sm:text-3xl font-bold bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2.5 bg-linear-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg">
+                        <Trophy className="h-5 w-5 text-white" />
+                      </div>
+                      <p className="text-sm font-black uppercase tracking-widest opacity-70">Mastery XP</p>
+                    </div>
+                    <h3 className="text-5xl font-black bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2 tracking-tighter">
                       {stats?.totalPoints ?? 0}
                     </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge className="text-xs font-bold px-2 py-0.5 bg-linear-to-r from-purple-600 to-pink-600 text-white">
+                    <div className="flex items-center gap-2">
+                      <Badge className="text-[10px] font-black px-2 py-0.5 bg-linear-to-r from-purple-600 to-pink-600 text-white border-0">
                         {pointsLevel.name}
                       </Badge>
-                      <Sparkles className="h-3 w-3 text-pink-500" />
+                      <p className="text-[10px] font-bold opacity-60">Level {stats?.currentLevel || 1}</p>
                     </div>
                   </CardContent>
                 </Card>
