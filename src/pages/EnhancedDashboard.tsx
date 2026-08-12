@@ -53,6 +53,7 @@ const EnhancedDashboard = () => {
   const studyNowEnabled = useFeatureFlag('study_now');
   const testsEnabled = useFeatureFlag('test_mode');
   const analyticsEnabled = useFeatureFlag('analytics');
+  const aiPlannerEnabled = useFeatureFlag('study_planner');
   const snapshotEnabled = useFeatureFlag('snapshot');
   const testHistoryEnabled = useFeatureFlag('test_history');
   const leaderboardEnabled = useFeatureFlag('leaderboard');
@@ -296,26 +297,25 @@ const EnhancedDashboard = () => {
                         </div>
                       </div>
 
-                      <div className="hidden sm:flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2">
                         {studyNowEnabled && (
                           <Button 
                             size="sm"
                             onClick={() => navigate("/study-now")} 
-                            className="bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl transition-all flex-1 sm:flex-none text-xs sm:text-sm"
+                            className="bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl transition-all flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10"
                           >
-                            <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                            <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                             {timeMessage.action}
                           </Button>
                         )}
-                        {testsEnabled && (
+                        {isPremium && aiPlannerEnabled && (
                           <Button 
                             size="sm"
-                            onClick={() => navigate("/tests")} 
-                            variant="outline"
-                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm"
+                            onClick={() => navigate("/ai-planner")} 
+                            className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10"
                           >
-                            <Target className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                            Take Test
+                            <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                            AI Planner
                           </Button>
                         )}
                         {isPremium && analyticsEnabled && (
@@ -323,10 +323,31 @@ const EnhancedDashboard = () => {
                             size="sm"
                             onClick={() => navigate("/analytics")} 
                             variant="outline"
-                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm"
+                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10"
                           >
-                            <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                            <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                             Analytics
+                          </Button>
+                        )}
+                        {isProPlus && battleEnabled && (
+                          <Button
+                            size="sm"
+                            onClick={() => navigate("/battle")}
+                            className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10 font-bold"
+                          >
+                            <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 text-white" />
+                            Battle
+                          </Button>
+                        )}
+                        {testsEnabled && (
+                          <Button 
+                            size="sm"
+                            onClick={() => navigate("/tests")} 
+                            variant="outline"
+                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10"
+                          >
+                            <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                            Take Test
                           </Button>
                         )}
                         {snapshotEnabled && (
@@ -334,9 +355,9 @@ const EnhancedDashboard = () => {
                             size="sm"
                             onClick={() => navigate("/snapshot")} 
                             variant="outline"
-                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm"
+                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10"
                           >
-                            <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                            <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                             Yearbook
                           </Button>
                         )}
@@ -345,20 +366,10 @@ const EnhancedDashboard = () => {
                             size="sm"
                             onClick={() => navigate("/test-history")} 
                             variant="outline"
-                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm"
+                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10"
                           >
-                            <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                            <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                             Test History
-                          </Button>
-                        )}
-                        {isProPlus && battleEnabled && (
-                          <Button
-                            size="sm"
-                            onClick={() => navigate("/battle")}
-                            className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:from-pink-700 hover:to-indigo-700 text-white shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm font-bold"
-                          >
-                            <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                            Battle
                           </Button>
                         )}
                       </div>
