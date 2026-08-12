@@ -352,7 +352,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
         {/* Header */}
         <div className="p-3 sm:p-4 border-b border-[#0b2536]/8 bg-white/60 sm:rounded-t-[28px] flex justify-between items-center">
           <div className="flex items-center gap-2 sm:gap-3">
-            <Bot className="text-[#013062]" size={18} />
+            <Zap className="w-4 h-4 text-primary" />
             <div>
               <h3 className="font-extrabold text-[#013062] text-lg sm:text-xl tracking-tight">
                   JEEnie
@@ -389,7 +389,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             >
               {msg.role === "assistant" && (
                 <div className={`bg-secondary p-1.5 sm:p-2 rounded-full mr-1.5 sm:mr-2 shrink-0 ${isInitialAssistantMessage(msg, i) ? 'ring-2 ring-primary/15 bg-primary/5' : ''}`}>
-                  <Bot className={isInitialAssistantMessage(msg, i) ? 'text-primary' : 'text-accent-foreground'} size={14} />
+                  <Zap className="w-4 h-4 text-primary" />
                 </div>
               )}
               <div
