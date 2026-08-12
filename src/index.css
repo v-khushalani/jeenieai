@@ -452,38 +452,11 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.01em;
-    -webkit-tap-highlight-color: transparent;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply tracking-tighter font-black uppercase italic;
-  }
-
-  /* Interactive AF Mobile specific overrides */
-  @media (max-width: 768px) {
-    .card, [role="button"], button {
-      @apply transition-transform active:scale-95 duration-200;
-    }
-    
-    .container {
-      @apply px-4;
-    }
-
-    /* High intensity mobile typography */
-    h1 { @apply text-2xl; }
-    h2 { @apply text-xl; }
-    h3 { @apply text-lg; }
-  }
-
-  /* Interactive feedback for all clickable elements */
-  .interactive-tap {
-    @apply cursor-pointer transition-all active:scale-[0.97] hover:brightness-110 duration-200;
-  }
-
-  /* Smooth scroll for mobile shells */
-  .mobile-app-shell-content {
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
+    font-weight: 600;
+    letter-spacing: -0.02em;
   }
 }
 
@@ -605,9 +578,8 @@
 
   /* Comfortable readable base on mobile (also avoids iOS zoom on focus for inputs ≥16px) */
   html {
-    font-size: 14px;
+    font-size: 15px;
   }
-
 
   /* Prevent iOS auto-zoom when focusing form fields */
   input,
@@ -634,17 +606,9 @@
   }
 }
 
-/* High-Energy Gradients */
+/* Apple-inspired gradients */
 .gradient-primary {
   background: linear-gradient(135deg, #0b5ed7 0%, #1f8bff 100%);
-  background-size: 200% 200%;
-  animation: gradient-shift 4s ease infinite;
-}
-
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
 }
 
 .gradient-surface {

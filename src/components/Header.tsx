@@ -109,23 +109,20 @@ const Header = () => {
     : navItems;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b-2 border-primary/5 shadow-lg">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b border-border shadow-xs">
       <div className="container mx-auto px-4 sm:px-6 lg:px-10 xl:px-12 2xl:px-16">
         <div className="flex items-center justify-between h-(--app-header-height)">
           {/* Logo */}
           <div 
-            className="flex items-center gap-2 cursor-pointer group"
+            className="flex items-center gap-3 cursor-pointer group"
             onClick={() => navigate(isAuthenticated ? '/dashboard' : '/')}
           >
-            <div className="relative">
-              <img 
-                src="/logo.png" 
-                alt="JEEnie" 
-                className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl object-contain transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6 z-10 relative"
-              />
-              <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full scale-0 group-hover:scale-125 transition-transform duration-500" />
-            </div>
-            <span className="font-black text-2xl lg:text-3xl text-foreground leading-none tracking-tighter uppercase italic">
+            <img 
+              src="/logo.png" 
+              alt="JEEnie" 
+              className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg object-contain transition-transform duration-300 group-hover:scale-110"
+            />
+            <span className="font-bold text-xl lg:text-2xl text-foreground leading-none">
               JEEnie
             </span>
           </div>

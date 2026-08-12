@@ -368,25 +368,25 @@ const EnhancedDashboard = () => {
               )}
 
               <div className="lg:hidden flex-1 min-h-0 flex flex-col gap-2 pb-2">
-                <div className="flex items-center justify-between px-1">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.25em] text-primary font-black italic">MISSION CONTROL</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground font-semibold">Dashboard</p>
                   </div>
                   {leaderboardEnabled ? (
-                    <div className="flex items-center gap-1 rounded-xl bg-muted/80 p-1 text-[10px] font-black italic shadow-inner border border-border/40 backdrop-blur-md">
+                    <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 text-xs font-semibold shadow-xs border border-border/60">
                       <button
                         type="button"
                         onClick={() => switchMobilePanel("overview")}
-                        className={`px-3 py-1.5 rounded-lg transition-all uppercase ${mobilePanel === "overview" ? "bg-primary text-white shadow-lg shadow-primary/30 scale-105" : "text-muted-foreground"}`}
+                        className={`px-2.5 py-1 rounded-md transition-all ${mobilePanel === "overview" ? "bg-background shadow-xs text-foreground" : "text-muted-foreground"}`}
                       >
-                        STATS
+                        Overview
                       </button>
                       <button
                         type="button"
                         onClick={() => switchMobilePanel("leaderboard")}
-                        className={`px-3 py-1.5 rounded-lg transition-all uppercase ${mobilePanel === "leaderboard" ? "bg-primary text-white shadow-lg shadow-primary/30 scale-105" : "text-muted-foreground"}`}
+                        className={`px-2.5 py-1 rounded-md transition-all ${mobilePanel === "leaderboard" ? "bg-background shadow-xs text-foreground" : "text-muted-foreground"}`}
                       >
-                        RANKS
+                        Leaderboard
                       </button>
                     </div>
                   ) : null}
@@ -394,7 +394,7 @@ const EnhancedDashboard = () => {
 
                 <div
                   ref={mobileSwipeRef}
-                  className="flex flex-1 min-h-0 overflow-x-auto scrollbar-hide overscroll-x-contain scroll-smooth snap-x snap-mandatory touch-pan-x rounded-3xl border-2 border-primary/5 bg-card/40 backdrop-blur-sm shadow-xl"
+                  className="flex flex-1 min-h-0 overflow-x-auto scrollbar-hide overscroll-x-contain scroll-smooth snap-x snap-mandatory touch-pan-x rounded-2xl border border-border bg-card/50"
                   onScroll={(e) => {
                     const target = e.currentTarget;
                     const nextPanel = target.scrollLeft > target.clientWidth / 2 ? "leaderboard" : "overview";
@@ -404,79 +404,70 @@ const EnhancedDashboard = () => {
                   <div className="w-full flex-none snap-start p-1 min-h-0">
                     <div className="h-full space-y-2 overflow-y-auto p-1">
                       <div className="grid grid-cols-2 gap-2 auto-rows-fr items-stretch">
-                        <Card className={`h-full rounded-2xl shadow-lg border-l-4 transition-transform active:scale-95 ${streakColors.border} ${streakColors.bg}`}> 
-                          <CardContent className="p-3.5 h-full flex flex-col justify-between relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-1 opacity-10">
-                              <Flame className="h-12 w-12" />
-                            </div>
-                            <div className="flex items-start gap-2 mb-1 relative z-10">
-                              <div className={`p-1.5 ${streakColors.iconBg} rounded-lg shrink-0 shadow-md animate-pulse`}>
-                                <Flame className="h-3.5 w-3.5 text-white" />
+                        <Card className={`h-full rounded-xl shadow-xs border-l-4 ${streakColors.border} ${streakColors.bg}`}> 
+                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
+                            <div className="flex items-start gap-2 mb-1">
+                              <div className={`p-1.5 ${streakColors.iconBg} rounded-lg shrink-0`}>
+                                <Flame className="h-3 w-3 text-white" />
                               </div>
-                              <p className="text-[10px] font-black uppercase tracking-tighter italic text-muted-foreground">DAY STREAK</p>
+                              <p className="text-[11px] font-medium text-muted-foreground">Day Streak</p>
                             </div>
-                            <h3 className={`text-2xl font-black italic ${streakColors.text} relative z-10`}>{streak ?? 0}</h3>
-                            <p className="text-[10px] font-bold italic opacity-70 mt-1 relative z-10">{streak > 0 ? 'KEEP IT UP! 🔥' : 'START NOW!'}</p>
+                            <h3 className={`text-xl font-bold ${streakColors.text}`}>{streak ?? 0}</h3>
+                            <p className="text-[10px] text-muted-foreground mt-1">{streak > 0 ? 'Keep going!' : 'Start streak today'}</p>
                           </CardContent>
                         </Card>
 
-                        <Card className={`h-full rounded-2xl shadow-lg border-l-4 transition-transform active:scale-95 ${accuracyColors.border} ${accuracyColors.bg}`}> 
-                          <CardContent className="p-3.5 h-full flex flex-col justify-between relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-1 opacity-10">
-                              <Target className="h-12 w-12" />
-                            </div>
-                            <div className="flex items-start gap-2 mb-1 relative z-10">
-                              <div className={`p-1.5 ${accuracyColors.iconBg} rounded-lg shrink-0 shadow-md`}>
-                                <Target className="h-3.5 w-3.5 text-white" />
+                        <Card className={`h-full rounded-xl shadow-xs border-l-4 ${accuracyColors.border} ${accuracyColors.bg}`}> 
+                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
+                            <div className="flex items-start gap-2 mb-1">
+                              <div className={`p-1.5 ${accuracyColors.iconBg} rounded-lg shrink-0`}>
+                                <Target className="h-3 w-3 text-white" />
                               </div>
-                              <p className="text-[10px] font-black uppercase tracking-tighter italic text-muted-foreground">ACCURACY</p>
+                              <p className="text-[11px] font-medium text-muted-foreground">Today's Accuracy</p>
                             </div>
-                            <h3 className={`text-2xl font-black italic ${accuracyColors.text} relative z-10`}>{stats?.todayAccuracy ?? 0}%</h3>
-                            <p className="text-[10px] font-bold italic opacity-70 mt-1 relative z-10">AVG: {stats?.accuracy ?? 0}%</p>
+                            <h3 className={`text-xl font-bold ${accuracyColors.text}`}>{stats?.todayAccuracy ?? 0}%</h3>
+                            <p className="text-[10px] text-muted-foreground mt-1">Overall: {stats?.accuracy ?? 0}%</p>
                           </CardContent>
                         </Card>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 auto-rows-fr items-stretch">
-                        <Card className={`h-full rounded-2xl shadow-lg border-l-4 transition-transform active:scale-95 ${goalColors.border} ${goalColors.bg}`}> 
-                          <CardContent className="p-3.5 h-full flex flex-col justify-between">
+                        <Card className={`h-full rounded-xl shadow-xs border-l-4 ${goalColors.border} ${goalColors.bg}`}> 
+                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <div className="flex items-start gap-2 min-w-0">
-                                <div className={`p-1.5 ${goalColors.iconBg} rounded-lg shrink-0 shadow-md`}>
-                                  <Calendar className="h-3.5 w-3.5 text-white" />
+                                <div className={`p-1.5 ${goalColors.iconBg} rounded-lg shrink-0`}>
+                                  <Calendar className="h-3 w-3 text-white" />
                                 </div>
-                                <p className="text-[10px] font-black uppercase tracking-tighter italic text-muted-foreground">MISSION</p>
+                                <p className="text-[11px] font-medium text-muted-foreground">Today's Goal</p>
                               </div>
-                              <Badge className="text-[9px] font-black italic px-2 py-0.5 bg-white/70 text-primary border-0 shadow-sm uppercase">
-                                {(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? '🏆 DONE' : '🚀 GO'}
+                              <Badge className="text-[10px] px-2 py-0.5 bg-white/70 text-foreground border-0">
+                                {(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'Done' : 'Go'}
                               </Badge>
                             </div>
-                            <h3 className={`text-2xl font-black italic ${goalColors.text}`}>{stats?.todayProgress ?? 0}/{stats?.todayGoal ?? 30}</h3>
-                            <div className="w-full bg-muted/50 rounded-full h-2.5 mt-2 mb-1.5 p-0.5">
-                              <div className={`h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(37,99,235,0.4)] ${(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500' : 'bg-primary'}`} style={{ width: `${Math.min(100, ((stats?.todayProgress ?? 0) / (stats?.todayGoal ?? 30)) * 100)}%` }} />
+                            <h3 className={`text-xl font-bold ${goalColors.text}`}>{stats?.todayProgress ?? 0}/{stats?.todayGoal ?? 30}</h3>
+                            <div className="w-full bg-muted rounded-full h-2 mt-2 mb-1.5">
+                              <div className={`h-2 rounded-full ${(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500' : 'bg-orange-500'}`} style={{ width: `${Math.min(100, ((stats?.todayProgress ?? 0) / (stats?.todayGoal ?? 30)) * 100)}%` }} />
                             </div>
-                            <p className="text-[10px] font-bold italic text-muted-foreground">
+                            <p className="text-[10px] text-muted-foreground">
                               {(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0) > 0
-                                ? `${(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0)} TO GO`
-                                : 'TARGET SMASHED!'}
+                                ? `${(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0)} questions left`
+                                : 'Goal achieved!'}
                             </p>
                           </CardContent>
                         </Card>
 
-                        <Card className="h-full rounded-2xl shadow-lg border-l-4 border-purple-600 bg-linear-to-br from-purple-600/10 via-pink-600/10 to-indigo-600/10 transition-transform active:scale-95 overflow-hidden relative"> 
-                          <div className="absolute -right-4 -top-4 opacity-5 rotate-12">
-                            <Trophy className="h-24 w-24" />
-                          </div>
-                          <CardContent className="p-3.5 h-full flex flex-col justify-between relative z-10">
+                        <Card className="h-full rounded-xl shadow-xs border-l-4 border-purple-500 bg-linear-to-br from-purple-50/80 via-pink-50/80 to-indigo-50/80"> 
+                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
                             <div className="flex items-start gap-2 mb-1">
-                              <div className="p-1.5 bg-linear-to-r from-purple-600 to-pink-600 rounded-lg shrink-0 shadow-lg">
-                                <Trophy className="h-3.5 w-3.5 text-white" />
+                              <div className="p-1.5 bg-linear-to-r from-purple-600 to-pink-600 rounded-lg shrink-0">
+                                <Trophy className="h-3 w-3 text-white" />
                               </div>
-                              <p className="text-[10px] font-black uppercase tracking-tighter italic text-muted-foreground">POINTS</p>
+                              <p className="text-[11px] font-medium text-muted-foreground">JEEnie Points</p>
                             </div>
-                            <h3 className="text-2xl font-black italic bg-linear-to-r from-purple-600 via-pink-600 to-indigo-600 bg-clip-text text-transparent">{stats?.totalPoints ?? 0}</h3>
+                            <h3 className="text-xl font-bold bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">{stats?.totalPoints ?? 0}</h3>
                             <div className="flex items-center gap-2 mt-1.5">
-                              <Badge className="text-[9px] font-black italic px-2 py-0.5 bg-linear-to-r from-purple-600 to-pink-600 text-white shadow-md border-0 uppercase">{pointsLevel.name}</Badge>
+                              <Badge className="text-[10px] font-bold px-2 py-0.5 bg-linear-to-r from-purple-600 to-pink-600 text-white">{pointsLevel.name}</Badge>
                             </div>
                           </CardContent>
                         </Card>

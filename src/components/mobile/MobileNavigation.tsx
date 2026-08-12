@@ -31,8 +31,8 @@ const MobileNavigation = () => {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-2xl border-t-2 border-primary/5 px-2 z-50 h-[calc(4.5rem+env(safe-area-inset-bottom,0))] shadow-[0_-8px_30px_rgba(15,23,42,0.12)]">
-      <div className="flex h-full items-center justify-around max-w-md mx-auto pb-[env(safe-area-inset-bottom,0px)]">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl border-t border-border/80 px-1 z-50 h-[calc(4.5rem+env(safe-area-inset-bottom,0))] shadow-[0_-4px_20px_rgba(15,23,42,0.06)]">
+      <div className="flex h-full items-stretch justify-around max-w-md mx-auto pb-[env(safe-area-inset-bottom,0px)]">
         {baseItems.map((item, index) => {
           const isActive = location.pathname === item.path;
           return (
@@ -41,24 +41,19 @@ const MobileNavigation = () => {
               onClick={() => navigate(item.path)}
               aria-label={item.label}
               aria-current={isActive ? 'page' : undefined}
-              className={`relative flex flex-col items-center justify-center gap-1.5 px-3 py-2 rounded-2xl transition-all duration-300 min-w-0 flex-1 tap-target group ${
+              className={`relative flex flex-col items-center justify-center gap-1 px-2 pt-1.5 rounded-xl transition-all duration-200 min-w-0 flex-1 active:scale-95 ${
                 isActive
                   ? 'text-primary'
-                  : 'text-muted-foreground/80 hover:text-primary/60'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <div className={`relative transition-all duration-500 ${isActive ? 'scale-110 -translate-y-1' : 'group-active:scale-90'}`}>
-                {isActive && (
-                  <span className="absolute inset-0 -m-2 rounded-full bg-primary/10 blur-md animate-pulse" />
-                )}
-                <item.icon className={`w-[24px] h-[24px] relative z-10 transition-all ${isActive ? 'stroke-[2.5px] drop-shadow-[0_0_8px_rgba(37,99,235,0.3)]' : 'stroke-[2px]'}`} />
-              </div>
-              <span className={`text-[10px] uppercase tracking-widest leading-none truncate max-w-full italic transition-all ${isActive ? 'font-black opacity-100' : 'font-bold opacity-70'}`}>
+              {isActive && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-primary" />
+              )}
+              <item.icon className={`w-[22px] h-[22px] transition-transform ${isActive ? 'scale-110' : ''}`} strokeWidth={isActive ? 2.4 : 2} />
+              <span className={`text-[11px] leading-none truncate max-w-full ${isActive ? 'font-semibold' : 'font-medium'}`}>
                 {item.label}
               </span>
-              {isActive && (
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_10px_rgba(37,99,235,0.8)]" />
-              )}
             </button>
           );
         })}

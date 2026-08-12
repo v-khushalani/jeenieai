@@ -28,8 +28,8 @@ const LandingHero = () => {
                 <Sparkles className="mr-1 sm:mr-1.5 h-3 w-3 sm:h-3.5 sm:w-3.5" /> AI-Powered JEE Preparation
               </Badge>
 
-              <h1 className="text-[2.25rem] font-black leading-[1] tracking-[-0.04em] text-foreground sm:text-6xl lg:text-7xl">
-                Where <span className="text-primary italic">AI</span> Learns You
+              <h1 className="text-[2rem] font-black leading-[1.05] tracking-[-0.035em] text-foreground sm:text-5xl lg:text-6xl">
+                Where <span className="text-primary">AI</span> Learns You
               </h1>
 
               <p className="mt-3 sm:mt-4 max-w-md mx-auto lg:mx-0 text-[15px] leading-6 text-muted-foreground sm:text-lg sm:leading-7">
