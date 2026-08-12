@@ -1,5 +1,5 @@
 import React from 'react';
-import {  } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface ComingSoonBannerProps {

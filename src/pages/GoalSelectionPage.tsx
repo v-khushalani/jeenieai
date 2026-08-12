@@ -7,7 +7,7 @@ import LoadingScreen from '@/components/ui/LoadingScreen';
 import safeLocalStorage from '@/utils/safeStorage';
 import { 
   ChevronRight, ChevronLeft, Calendar, BookOpen, Stethoscope, Calculator, 
-  Clock, Rocket, Trophy, Target,  Lock,
+  Clock, Rocket, Trophy, Target, Star, Lock,
   GraduationCap, Atom, FlaskConical, Loader2
 } from 'lucide-react';
 import { logger } from '@/utils/logger';
