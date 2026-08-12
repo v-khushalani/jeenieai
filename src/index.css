@@ -456,22 +456,34 @@
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply tracking-tight font-black uppercase italic;
+    @apply tracking-tighter font-black uppercase italic;
   }
 
   /* Interactive AF Mobile specific overrides */
   @media (max-width: 768px) {
-    .card {
-      @apply border-2 transition-transform active:scale-[0.98];
+    .card, [role="button"], button {
+      @apply transition-transform active:scale-95 duration-200;
     }
     
-    button:active {
-      @apply scale-95;
-    }
-
     .container {
       @apply px-4;
     }
+
+    /* High intensity mobile typography */
+    h1 { @apply text-2xl; }
+    h2 { @apply text-xl; }
+    h3 { @apply text-lg; }
+  }
+
+  /* Interactive feedback for all clickable elements */
+  .interactive-tap {
+    @apply cursor-pointer transition-all active:scale-[0.97] hover:brightness-110 duration-200;
+  }
+
+  /* Smooth scroll for mobile shells */
+  .mobile-app-shell-content {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
