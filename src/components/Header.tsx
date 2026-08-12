@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, LogOut, ChevronDown, Shield, Trophy, Award, LayoutDashboard, BookOpen,  BarChart3, Home, HelpCircle, FileText, Settings, User as UserIcon, Sun, Moon } from 'lucide-react';
+import { Menu, X, LogOut, ChevronDown, Shield, Trophy, Award, LayoutDashboard, BookOpen, BarChart3, Home, HelpCircle, FileText, Settings, User as UserIcon, Sun, Moon, Target } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';

@@ -7,7 +7,7 @@ import LoadingScreen from '@/components/ui/LoadingScreen';
 import safeLocalStorage from '@/utils/safeStorage';
 import { 
   ChevronRight, ChevronLeft, Calendar, BookOpen, Stethoscope, Calculator, 
-  Clock, Rocket, Trophy, Target,  Lock,
+  Clock, Rocket, Trophy, Target, Star, Lock,
   GraduationCap, Atom, FlaskConical, Loader2
 } from 'lucide-react';
 import { logger } from '@/utils/logger';
@@ -676,8 +676,8 @@ const GoalSelectionPage = () => {
             <div className="space-y-2.5 mb-6 text-left">
               {[
                 { icon: <Target className="w-4 h-4 text-green-500" />, title: 'Personalized Study Plans', desc: 'Built for your grade & goals' },
-                { icon: Star, title: 'Adaptive Learning', desc: 'Questions match your level' },
-                { icon: Star, title: 'AI-Powered Insights', desc: 'Get smarter every day' },
+                { icon: <Star className="w-4 h-4 text-yellow-500" />, title: 'Adaptive Learning', desc: 'Questions match your level' },
+                { icon: <Star className="w-4 h-4 text-primary" />, title: 'AI-Powered Insights', desc: 'Get smarter every day' },
               ].map((feature, idx) => (
                 <div key={idx} className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/50">
                   <div className="w-8 h-8 rounded-lg bg-background flex items-center justify-center shrink-0 border border-border">

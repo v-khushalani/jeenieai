@@ -5,7 +5,7 @@ import SEOHead from '@/components/SEOHead';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { Button } from '@/components/ui/button';
 import {
-  Share2, X, ChevronLeft, ChevronRight,  Flame, Target,
+  Share2, X, ChevronLeft, ChevronRight, Flame, Target, Zap, Star,
   TrendingUp, Award, BookOpen, Clock, Trophy, Moon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -176,7 +176,7 @@ const WrappedPage = () => {
         key: 'cover',
         bg: 'from-[#0f0524] via-[#1e0b3a] to-[#3d1163]',
         accent: '#ec4899',
-        icon: 
+        icon: Zap,
         kicker: 'JEENIE WRAPPED',
         bigStat: data.fullName.split(' ')[0] || 'You',
         heading: `Your ${suffix}, wrapped.`,
@@ -275,7 +275,7 @@ const WrappedPage = () => {
         key: 'finale',
         bg: 'from-[#020617] via-[#0f172a] to-[#1e293b]',
         accent: '#f472b6',
-        icon: 
+        icon: Star,
         kicker: 'THAT WAS YOU',
         bigStat: '🧞‍♂️',
         heading: 'Share your wrapped',
@@ -381,7 +381,7 @@ const WrappedPage = () => {
           onMouseUp={() => setPaused(false)}
           onMouseLeave={() => setPaused(false)}
           className={`absolute inset-0 bg-gradient-to-br ${slide.bg} flex flex-col select-none cursor-pointer`}
-          style={{ paddingTop: 'max(20px, env(safe-area-inset-top))', paddingZaptom: 'max(24px, env(safe-area-inset-bottom))' }}
+          style={{ paddingTop: 'max(20px, env(safe-area-inset-top))', paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
         >
           {/* Ambient glow */}
           <div className="pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full blur-3xl opacity-30" style={{ background: slide.accent }} />

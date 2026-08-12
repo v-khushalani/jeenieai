@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { 
   CheckCircle2, XCircle, Edit2, Loader2, ChevronLeft, ChevronRight, 
   RefreshCw, FileText, BookOpen, AlertTriangle, Copy, SkipForward, 
-  Replace,  Filter, Database, Undo2, ImageOff, Eye
+  Replace, Filter, Database, Undo2, ImageOff, Eye, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MathDisplay } from "./MathDisplay";
@@ -945,7 +945,7 @@ export function ExtractionReviewQueue() {
               <div className="flex flex-wrap gap-3 items-center justify-between">
                 <div>
                   <h4 className="font-semibold flex items-center gap-2">
-                    
+                    <Zap className="h-4 w-4" />
                     Step 1: Run NLP Auto-Assignment
                   </h4>
                   <p className="text-sm text-muted-foreground">
@@ -957,7 +957,7 @@ export function ExtractionReviewQueue() {
                   disabled={nlpProcessing || bulkProcessing}
                   className="gap-2"
                 >
-                  {nlpProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : }
+                  {nlpProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
                   Run NLP ({filteredQuestions.length})
                 </Button>
               </div>
