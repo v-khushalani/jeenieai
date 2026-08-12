@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Sparkles, Target } from 'lucide-react';
+import { Loader2, Sparkles, Target, Zap, Rocket } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { formatSubjectDisplay } from '@/utils/subjectDisplay';
@@ -82,19 +82,20 @@ export default function RoadmapView({
   return (
     <div className="space-y-4">
       {/* Subject switcher */}
-      <Tabs value={subject} onValueChange={setSubject}>
-        <TabsList className="grid w-full h-11 p-1 bg-muted/50 rounded-xl" style={{ gridTemplateColumns: `repeat(${subjects.length}, minmax(0, 1fr))` }}>
+      <Tabs value={subject} onValueChange={setSubject} className="w-full">
+        <TabsList className="grid w-full h-12 p-1.5 bg-muted/50 rounded-2xl border-2 border-border/50" style={{ gridTemplateColumns: `repeat(${subjects.length}, minmax(0, 1fr))` }}>
           {subjects.map((s) => (
             <TabsTrigger 
               key={s} 
               value={s} 
-              className="text-xs font-bold rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+              className="text-[10px] font-black uppercase tracking-widest rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all duration-300"
             >
               {formatSubjectDisplay(s)}
             </TabsTrigger>
           ))}
         </TabsList>
       </Tabs>
+
 
       {/* Loading */}
       {loading && (

@@ -21,7 +21,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { toast } from 'sonner';
 import {
   Play, CheckCircle2, RefreshCw, Sparkles, Loader2, BookOpen, PlusCircle,
-  Flame, Trophy, Circle, Info,
+  Flame, Trophy, Circle, Info, Zap,
 } from 'lucide-react';
 import LogClassSheet from '@/components/LogClassSheet';
 import { CelebrationCard } from './CelebrationCard';
