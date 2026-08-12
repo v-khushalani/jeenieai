@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { logger } from '@/utils/logger';
-import { Shield, Clock, Activity, AlertTriangle, PlayCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Shield, Clock, Activity, AlertTriangle, PlayCircle, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { runSmokeTests } from '@/utils/smokeTests';
 import { Button } from '@/components/ui/button';
 
@@ -18,6 +18,16 @@ interface AuditData {
 const AuditReportTab = () => {
   const [auditData, setAuditData] = useState<AuditData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [smokeResults, setSmokeResults] = useState<any>(null);
+  const [testing, setTesting] = useState(false);
+
+  const handleRunSmokeTests = async () => {
+    setTesting(true);
+    const results = await runSmokeTests();
+    setSmokeResults(results);
+    setTesting(false);
+  };
+
 
   useEffect(() => {
     const fetchAuditData = async () => {
@@ -105,21 +115,72 @@ const AuditReportTab = () => {
         </CardContent>
       </Card>
 
-      <Card className="border-yellow-500/20 bg-yellow-500/5">
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2 text-yellow-600">
-            <AlertTriangle className="w-4 h-4" />
-            Connectivity Notes
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="text-xs space-y-2 text-muted-foreground list-disc pl-4">
-            <li>Supabase RLS policies verified for all production tables.</li>
-            <li>Edge functions reachable (repair-question-latex, jeenie).</li>
-            <li>Realtime sync enabled for streak and mission progress.</li>
-          </ul>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Automated Smoke Tests
+            </CardTitle>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={handleRunSmokeTests} 
+              disabled={testing}
+              className="h-7 px-2"
+            >
+              {testing ? <RefreshCw className="w-3 h-3 animate-spin mr-1" /> : <PlayCircle className="w-3 h-3 mr-1" />}
+              Run Tests
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {smokeResults ? (
+              <div className="space-y-3">
+                {Object.entries(smokeResults).map(([key, value]) => (
+                  key !== 'timestamp' && (
+                    <div key={key} className="flex items-center justify-between text-xs">
+                      <span className="capitalize">{key.replace('_', ' ')}</span>
+                      {value ? (
+                        <Badge variant="outline" className="text-green-500 border-green-500/20 bg-green-500/10 gap-1">
+                          <CheckCircle className="w-3 h-3" /> Pass
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-red-500 border-red-500/20 bg-red-500/10 gap-1">
+                          <XCircle className="w-3 h-3" /> Fail
+                        </Badge>
+                      )}
+                    </div>
+                  )
+                ))}
+                <p className="text-[10px] text-muted-foreground pt-2 border-t">
+                  Last run: {new Date(smokeResults.timestamp).toLocaleTimeString()}
+                </p>
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground flex items-center justify-center py-8 border-2 border-dashed rounded-lg">
+                No tests run yet
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-yellow-500/20 bg-yellow-500/5">
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2 text-yellow-600">
+              <AlertTriangle className="w-4 h-4" />
+              System Integrity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="text-[11px] space-y-2 text-muted-foreground list-disc pl-4">
+              <li>Supabase RLS policies verified for all production tables.</li>
+              <li>Edge functions reachable (repair-question-latex, jeenie).</li>
+              <li>Realtime sync enabled for streak and mission progress.</li>
+              <li>Question bank text quality index added.</li>
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
