@@ -303,7 +303,7 @@ const AnalyticsPage = () => {
   // ─── KPI Strip ──────────────────────────────────────────────────
   const kpis = [
     { label: "Accuracy", value: `${overview.accuracy.toFixed(0)}%`, icon: Target, color: "text-emerald-600" },
-    { label: "Questions", value: overview.total, icon:  color: "text-blue-600" },
+    { label: "Questions", value: overview.total, icon: BookOpen, color: "text-blue-600" },
     { label: "Streak", value: profile?.current_streak || 0, icon: Flame, color: "text-orange-600" },
     { label: "Topics", value: overview.topicsAttempted, icon: BookOpen, color: "text-pink-600" },
     { label: "Points", value: profile?.total_points || 0, icon: Trophy, color: "text-amber-600" },

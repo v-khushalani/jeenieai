@@ -87,7 +87,7 @@ const Header = () => {
     Dashboard: <LayoutDashboard className="w-4 h-4" />,
     Study: <BookOpen className="w-4 h-4" />,
     'Study Now': <BookOpen className="w-4 h-4" />,
-    'AI Planner': ,
+    'AI Planner': <Target className="w-4 h-4" />,
     Tests: <FileText className="w-4 h-4" />,
     Analytics: <BarChart3 className="w-4 h-4" />,
     'Pro+ Library': <BookOpen className="w-4 h-4" />,
