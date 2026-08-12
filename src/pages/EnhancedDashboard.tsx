@@ -53,6 +53,7 @@ const EnhancedDashboard = () => {
   const studyNowEnabled = useFeatureFlag('study_now');
   const testsEnabled = useFeatureFlag('test_mode');
   const analyticsEnabled = useFeatureFlag('analytics');
+  const aiPlannerEnabled = useFeatureFlag('study_planner');
   const snapshotEnabled = useFeatureFlag('snapshot');
   const testHistoryEnabled = useFeatureFlag('test_history');
   const leaderboardEnabled = useFeatureFlag('leaderboard');
