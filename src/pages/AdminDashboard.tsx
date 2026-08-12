@@ -108,7 +108,7 @@ const AdminDashboard = () => {
     // Main
     { id: 'overview', label: 'Overview', icon: Home, group: 'main' },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, group: 'main' },
-    { id: 'jeenie-ai', label: 'JEEnie AI', icon:  group: 'main' },
+    { id: 'jeenie-ai', label: 'JEEnie AI', icon: Zap, group: 'main' },
     { id: 'users', label: 'Users', icon: Users, group: 'main' },
     { id: 'reports', label: 'Reports', icon: FileText, group: 'main' },
     { id: 'subscriptions', label: 'Subscriptions', icon: CreditCard, group: 'main' },

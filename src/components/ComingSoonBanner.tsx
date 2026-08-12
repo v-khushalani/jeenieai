@@ -23,7 +23,7 @@ const ComingSoonBanner: React.FC<ComingSoonBannerProps> = ({
     <Card className={`border-dashed border-2 border-primary/30 bg-primary/5 ${className}`}>
       <CardContent className="flex flex-col items-center justify-center py-14 gap-3 text-center">
         <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-          {icon ?? }
+          {icon ?? <Zap className="h-7 w-7" />}
         </div>
         <p className="text-lg font-bold text-foreground">{title}</p>
         <p className="text-sm text-muted-foreground max-w-sm">{subtitle}</p>

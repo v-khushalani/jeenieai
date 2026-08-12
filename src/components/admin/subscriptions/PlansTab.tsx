@@ -175,7 +175,7 @@ const TierCard: React.FC<{
 }> = ({ tier, plans, saving, onChange, onSave, onDelete }) => {
   const monthly = plans.find(p => !isYearly(p));
   const yearly = plans.find(p => isYearly(p));
-  const Icon = tier === 'pro_plus' ? Crown : ;
+  const Icon = tier === 'pro_plus' ? Crown : Zap;
 
   return (
     <Card className={tier === 'pro_plus' ? 'border-primary/40' : ''}>

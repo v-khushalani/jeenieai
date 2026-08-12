@@ -176,7 +176,7 @@ const WrappedPage = () => {
         key: 'cover',
         bg: 'from-[#0f0524] via-[#1e0b3a] to-[#3d1163]',
         accent: '#ec4899',
-        icon: 
+        icon: Zap,
         kicker: 'JEENIE WRAPPED',
         bigStat: data.fullName.split(' ')[0] || 'You',
         heading: `Your ${suffix}, wrapped.`,
@@ -275,7 +275,7 @@ const WrappedPage = () => {
         key: 'finale',
         bg: 'from-[#020617] via-[#0f172a] to-[#1e293b]',
         accent: '#f472b6',
-        icon: 
+        icon: Star,
         kicker: 'THAT WAS YOU',
         bigStat: '🧞‍♂️',
         heading: 'Share your wrapped',

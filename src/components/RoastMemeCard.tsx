@@ -171,7 +171,7 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
             disabled={loading}
             className="bg-[#013062] text-white hover:bg-[#013062]/90 text-xs"
           >
-            {loading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : }
+            {loading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1" />}
             {roast ? 'Re-roast' : 'Roast me'}
           </Button>
           {shareCardEnabled && (

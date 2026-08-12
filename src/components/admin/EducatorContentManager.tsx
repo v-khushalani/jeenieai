@@ -418,7 +418,7 @@ const ContentGrid: React.FC<{
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12 gap-2">
-          {type === 'presentation' ? <FileText className="h-10 w-10 text-muted-foreground" /> : }
+          {type === 'presentation' ? <FileText className="h-10 w-10 text-muted-foreground" /> : <Zap className="h-10 w-10 text-muted-foreground" />}
           <p className="text-muted-foreground text-sm">No {type === 'presentation' ? 'presentations' : type === 'game' ? 'games' : 'virtual lab items'} found.</p>
         </CardContent>
       </Card>

@@ -11,6 +11,7 @@ import {
   ArrowRight,
   BarChart3,
   BookOpen,
+  MessageSquare,
   
   CheckCircle2,
   CircleAlert,
@@ -22,7 +23,7 @@ import {
 
 const coreFeatures = [
   {
-    icon: 
+    icon: MessageSquare,
     title: 'AI Doubt Solver',
     desc: 'Step-by-step explanation in simple Hinglish, instantly.',
   },

@@ -642,7 +642,7 @@ export default function CoachMissionPanel() {
           </div>
           <DialogFooter>
             <Button onClick={saveSetup} className="w-full" disabled={generating}>
-              {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : }
+              {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
               Build my hit-list
             </Button>
           </DialogFooter>
