@@ -31,7 +31,7 @@ export const CelebrationCard: React.FC<CelebrationCardProps> = ({
         <div className="space-y-1">
           <h2 className="text-2xl font-black tracking-tight">MISSION ACCOMPLISHED!</h2>
           <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
-            Bhai tu aag hai! 🔥
+            Bhai tu aag hai! 🔥 Aaj ka streak set hai.
           </p>
         </div>
 
