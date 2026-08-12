@@ -1178,37 +1178,26 @@ const PracticePage: React.FC = () => {
       )}
 
       {/* Interactive AI Doubt Solver Button */}
-      <AnimatePresence>
-        {showAIButton && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.5, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.5, y: 20 }}
-            className="fixed bottom-24 right-6 z-40"
+      {showAIButton && (
+        <div className="fixed bottom-24 right-6 z-[60]">
+          <Button
+            onClick={() => setAiSolverOpen(true)}
+            className={`w-14 h-14 rounded-full bg-[#013062] hover:bg-[#024080] shadow-[0_8px_25px_rgba(1,48,98,0.4)] flex items-center justify-center p-0 group overflow-visible transition-all duration-300 ${!isCurrentAnswered ? 'opacity-30 hover:opacity-100 scale-95 hover:scale-100' : 'opacity-100'}`}
           >
-            <Button
-              onClick={() => setAiSolverOpen(true)}
-              className={`w-14 h-14 rounded-full bg-[#013062] hover:bg-[#024080] shadow-[0_8px_25px_rgba(1,48,98,0.4)] flex items-center justify-center p-0 group overflow-visible transition-all duration-500 ${!isCurrentAnswered ? 'opacity-30 hover:opacity-100 scale-90 hover:scale-100' : 'opacity-100'}`}
-            >
-              <Zap className="w-6 h-6 text-white group-hover:scale-125 transition-transform duration-300" />
-              
-              {/* Addictive Pulse Effect */}
-              <span className="absolute inset-0 rounded-full bg-[#013062] animate-ping opacity-20 group-hover:opacity-40" />
-              
-              {!isCurrentAnswered && (
-                <motion.div 
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="absolute right-16 bg-white dark:bg-slate-900 border border-border shadow-md px-3 py-1.5 rounded-xl whitespace-nowrap text-xs font-bold text-primary flex items-center gap-2"
-                >
-                  <MessageSquare className="w-3 h-3" />
-                  Stuck?
-                </motion.div>
-              )}
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <Zap className="w-6 h-6 text-white group-hover:scale-125 transition-transform duration-300" />
+            
+            {/* Addictive Pulse Effect */}
+            <span className="absolute inset-0 rounded-full bg-[#013062] animate-ping opacity-20 group-hover:opacity-40" />
+            
+            {!isCurrentAnswered && (
+              <div className="absolute right-16 bg-white dark:bg-slate-900 border border-border shadow-md px-3 py-1.5 rounded-xl whitespace-nowrap text-xs font-bold text-primary flex items-center gap-2 animate-in fade-in slide-in-from-right-2">
+                <MessageSquare className="w-3 h-3" />
+                Stuck?
+              </div>
+            )}
+          </Button>
+        </div>
+      )}
 
       <AIDoubtSolver
         isOpen={aiSolverOpen}
