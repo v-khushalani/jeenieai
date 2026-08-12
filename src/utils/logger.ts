@@ -4,23 +4,44 @@ type LogLevel = 'info' | 'warning' | 'error' | 'critical';
 
 export const logger = {
   async log(
-    level: LogLevel,
-    category: string,
-    message: string,
-    metadata: Record<string, any> = {}
+    levelOrMessage: LogLevel | string,
+    messageOrMetadata?: any,
+    metadataOrUndefined?: any,
+    ...extra: any[]
   ) {
     try {
+      let level: LogLevel = 'info';
+      let category = 'general';
+      let message = '';
+      let metadata: any = {};
+
+      // Handle logger.log('level', 'message', ...)
+      if (['info', 'warning', 'error', 'critical'].includes(levelOrMessage)) {
+        level = levelOrMessage as LogLevel;
+        if (typeof messageOrMetadata === 'string') {
+          message = messageOrMetadata;
+          metadata = metadataOrUndefined || {};
+        } else {
+          message = 'Logged object';
+          metadata = messageOrMetadata || {};
+        }
+      } else {
+        // Handle logger.log('message', metadata)
+        message = levelOrMessage;
+        metadata = messageOrMetadata || {};
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       
-      // In development, we also log to console
       const consoleMethod = level === 'critical' || level === 'error' ? 'error' : level === 'warning' ? 'warn' : 'log';
       console[consoleMethod](`[${category.toUpperCase()}] ${message}`, metadata);
 
+      // We only insert into DB if we have a valid level string
       await supabase.from('system_logs').insert({
-        level,
+        level: level === 'warning' ? 'warning' : level, // enum mapping
         category,
         message,
-        metadata,
+        metadata: typeof metadata === 'object' ? metadata : { value: metadata },
         user_id: user?.id,
         route: window.location.pathname,
         user_agent: navigator.userAgent
@@ -30,32 +51,19 @@ export const logger = {
     }
   },
 
-  // Compatibility method for existing logger.log(msg, ...) calls
-  async info(categoryOrMessage: string, messageOrMetadata?: string | Record<string, any>, metadata?: Record<string, any>) {
-    if (typeof messageOrMetadata === 'string') {
-      return this.log('info', categoryOrMessage, messageOrMetadata, metadata);
-    }
-    return this.log('info', 'general', categoryOrMessage, messageOrMetadata as Record<string, any>);
+  info(msg: string, meta?: any, ...extra: any[]) {
+    return this.log('info', msg, meta);
   },
 
-  async warn(categoryOrMessage: string, messageOrMetadata?: string | Record<string, any>, metadata?: Record<string, any>) {
-    if (typeof messageOrMetadata === 'string') {
-      return this.log('warning', categoryOrMessage, messageOrMetadata, metadata);
-    }
-    return this.log('warning', 'general', categoryOrMessage, messageOrMetadata as Record<string, any>);
+  warn(msg: string, meta?: any, ...extra: any[]) {
+    return this.log('warning', msg, meta);
   },
 
-  async error(categoryOrMessage: string, messageOrMetadata?: string | Record<string, any>, metadata?: Record<string, any>) {
-    if (typeof messageOrMetadata === 'string') {
-      return this.log('error', categoryOrMessage, messageOrMetadata, metadata);
-    }
-    return this.log('error', 'general', categoryOrMessage, messageOrMetadata as Record<string, any>);
+  error(msg: string, meta?: any, ...extra: any[]) {
+    return this.log('error', msg, meta);
   },
 
-  async critical(categoryOrMessage: string, messageOrMetadata?: string | Record<string, any>, metadata?: Record<string, any>) {
-    if (typeof messageOrMetadata === 'string') {
-      return this.log('critical', categoryOrMessage, messageOrMetadata, metadata);
-    }
-    return this.log('critical', 'general', categoryOrMessage, messageOrMetadata as Record<string, any>);
+  critical(msg: string, meta?: any, ...extra: any[]) {
+    return this.log('critical', msg, meta);
   }
 };
