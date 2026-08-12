@@ -687,9 +687,12 @@ export default function AIStudyPlanner() {
                 return Number.isFinite(g) && g >= 6 && g <= 12 ? g : null;
               })()}
               initialRoadmaps={planner.roadmaps}
+              xpPoints={planner.totalAttempts * 10 + planner.coveragePct * 5}
+              streak={signal?.streak?.current || 0}
               onRefresh={loadAll}
             />
           )}
+
 
         </TabsContent>
 
