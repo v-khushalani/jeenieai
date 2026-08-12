@@ -43,7 +43,7 @@ const MIN_INTERVAL_SECONDS_BY_TIER: Record<string, number> = {
   pro: 8,
   pro_plus: 4,
 };
-const MAX_INPUT_CHARS = 800;
+const MAX_INPUT_CHARS = 2500;
 // In-memory de-dupe: identical question from same user within 60s is blocked.
 const RECENT_PROMPTS = new Map<string, number>(); // key: `${userId}|${hash}` → ts
 const DEDUPE_WINDOW_MS = 60_000;
@@ -344,7 +344,7 @@ serve(async (req) => {
     if (!contextPrompt || contextPrompt.length > MAX_INPUT_CHARS) {
       return new Response(
         JSON.stringify({
-          response: `**Hello Puttar!** 🧞‍♂️\n\nItna lamba question?! 😅 Thoda chhota karke puch — **${MAX_INPUT_CHARS} characters max**.\n\n✂️ Short & sweet question = fast & accurate answer!`,
+          response: `**Hello Bhai!** 🧞‍♂️\n\nAbbe yaar, pura chapter hi paste kar diya kya? 😂 Itna lamba doubt mat bhej, break it down — **${MAX_INPUT_CHARS} characters max** hi JEEnie handle kar payega.`,
           suggestions: [], content: "",
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

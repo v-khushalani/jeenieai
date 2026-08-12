@@ -25,7 +25,7 @@ export const AI_DOUBT_MIN_INTERVAL_SECONDS = {
 } as const;
 
 // Max characters accepted in a single user prompt.
-export const AI_DOUBT_MAX_INPUT_CHARS = 800;
+export const AI_DOUBT_MAX_INPUT_CHARS = 2500;
 
 export type AiTier = keyof typeof AI_DOUBT_DAILY_LIMITS;
 
