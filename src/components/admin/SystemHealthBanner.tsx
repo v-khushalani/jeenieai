@@ -22,7 +22,7 @@ export const SystemHealthBanner = () => {
     try {
       const { data, error } = await supabase.rpc('get_system_health_status');
       if (error) throw error;
-      setStatus(data as HealthStatus);
+      setStatus(data as unknown as HealthStatus);
       setLastCheck(new Date());
     } catch (err) {
       logger.error('Health check failed:', err);
