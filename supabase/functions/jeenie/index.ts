@@ -344,7 +344,7 @@ serve(async (req) => {
     if (!contextPrompt || contextPrompt.length > MAX_INPUT_CHARS) {
       return new Response(
         JSON.stringify({
-          response: `**Hello Puttar!** 🧞‍♂️\n\nItna lamba question?! 😅 Thoda chhota karke puch — **${MAX_INPUT_CHARS} characters max**.\n\n✂️ Short & sweet question = fast & accurate answer!`,
+          response: `**Hello Bhai!** 🧞‍♂️\n\nAbbe yaar, pura chapter hi paste kar diya kya? 😂 Itna lamba doubt mat bhej, break it down — **${MAX_INPUT_CHARS} characters max** hi JEEnie handle kar payega.`,
           suggestions: [], content: "",
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
