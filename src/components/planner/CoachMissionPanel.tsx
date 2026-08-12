@@ -375,9 +375,12 @@ export default function CoachMissionPanel() {
             </div>
           </div>
           <div className="relative">
-            <Progress value={overallPct} className="h-3 rounded-full bg-muted border-2 border-border/50" />
+            <Progress value={overallPct} className="h-3 rounded-full bg-muted border-2 border-border/50 relative overflow-visible" />
             {overallPct > 0 && overallPct < 100 && (
-              <Zap className="absolute top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500 fill-amber-500 animate-pulse" style={{ left: `calc(${overallPct}% - 8px)` }} />
+              <Zap 
+                className="absolute top-1/2 -translate-y-1/2 w-6 h-6 text-amber-500 fill-amber-500 animate-pulse z-10" 
+                style={{ left: `calc(${overallPct}% - 12px)` }} 
+              />
             )}
           </div>
 
