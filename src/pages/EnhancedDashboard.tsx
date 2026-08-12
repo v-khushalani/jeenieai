@@ -558,98 +558,65 @@ const EnhancedDashboard = () => {
               {/* Main Content Area */}
               <div className="hidden lg:grid grid-cols-1 lg:grid-cols-3 gap-3 flex-1 min-h-0">
 
-                {/* Progress Section */}
-                <div className="lg:col-span-2 min-h-0 flex flex-col">
-                  <Card className="rounded-xl shadow-md border border-border bg-card flex-1 min-h-0 flex flex-col">
-                    <CardHeader className="p-3 sm:p-4 border-b border-border">
+                {/* Mobile: Progress Section (Hidden on Desktop) */}
+                <div className="lg:hidden flex flex-col min-h-0 pt-2 pb-6">
+                  <Card className="rounded-3xl border-2 border-slate-100 dark:border-slate-800 bg-card shadow-xl overflow-hidden flex flex-col">
+                    <CardHeader className="p-4 border-b border-border/60">
                       <CardTitle className="flex justify-between items-center">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <div className="p-2 bg-linear-to-br from-indigo-500 to-purple-600 text-white rounded-lg shadow-md">
-                            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-linear-to-br from-indigo-500 to-purple-600 text-white rounded-xl shadow-md">
+                            <TrendingUp className="h-4 w-4" />
                           </div>
-                          <span className="text-sm sm:text-base font-bold text-foreground">Your Progress</span>
+                          <span className="text-sm font-black uppercase tracking-widest">Mastery</span>
                         </div>
-                        <Badge className="bg-primary/10 text-primary text-xs font-semibold px-2 sm:px-3">This Week</Badge>
+                        <Badge className="bg-primary/10 text-primary text-[10px] font-black px-2 py-1 uppercase tracking-widest border-0">Weekly</Badge>
                       </CardTitle>
                     </CardHeader>
 
-                    <CardContent className="p-3 sm:p-4 flex-1 min-h-0 overflow-auto">
-
+                    <CardContent className="p-4 flex-1">
                       {stats?.subjectStats && Object.keys(stats.subjectStats).length > 0 ? (
                         <div className="space-y-4">
-                          {/* Subject Mastery Overview */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {Object.entries(stats.subjectStats).map(([subject, data]: any) => {
-                              const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
-                              const badge = getProgressBadge(accuracy);
-                              const isHigh = accuracy >= 80;
-                              const isMid = accuracy >= 60;
+                          {Object.entries(stats.subjectStats).map(([subject, data]: any) => {
+                            const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
+                            const isHigh = accuracy >= 80;
+                            const isMid = accuracy >= 60;
 
-                              return (
-                                <motion.div 
-                                  key={subject}
-                                  whileHover={{ y: -4 }}
-                                  className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-5 transition-all duration-300 shadow-sm hover:shadow-xl"
-                                >
-                                  <div className="flex justify-between items-center mb-4">
-                                    <div className="flex items-center gap-3">
-                                      <div className={`p-2 rounded-xl ${
-                                        isHigh ? 'bg-emerald-500/10 text-emerald-600' : 
-                                        isMid ? 'bg-amber-500/10 text-amber-600' : 
-                                        'bg-red-500/10 text-red-600'
-                                      }`}>
-                                        <BookOpen className="h-4 w-4" />
-                                      </div>
-                                      <h4 className="font-black text-sm uppercase tracking-wider">{subject}</h4>
-                                    </div>
-                                    <div className="text-right">
-                                      <span className={`text-2xl font-black ${
-                                        isHigh ? 'text-emerald-500' : 
-                                        isMid ? 'text-amber-500' : 
-                                        'text-red-500'
-                                      }`}>{accuracy}%</span>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="space-y-2">
-                                    <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest opacity-60">
-                                      <span>Accuracy</span>
-                                      <span>{data.correct}/{data.total} Solved</span>
-                                    </div>
-                                    <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                      <motion.div 
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${accuracy}%` }}
-                                        className={`h-full rounded-full ${
-                                          isHigh ? 'bg-emerald-500' : 
-                                          isMid ? 'bg-amber-500' : 
-                                          'bg-red-500'
-                                        }`}
-                                      />
-                                    </div>
-                                  </div>
-                                </motion.div>
-                              );
-                            })}
-                          </div>
+                            return (
+                              <motion.div 
+                                key={subject}
+                                whileTap={{ scale: 0.98 }}
+                                className="bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 transition-all duration-300"
+                              >
+                                <div className="flex justify-between items-center mb-3">
+                                  <h4 className="font-black text-xs uppercase tracking-wider opacity-70">{subject}</h4>
+                                  <span className={`text-lg font-black ${
+                                    isHigh ? 'text-emerald-500' : 
+                                    isMid ? 'text-amber-500' : 
+                                    'text-red-500'
+                                  }`}>{accuracy}%</span>
+                                </div>
+                                
+                                <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${accuracy}%` }}
+                                    className={`h-full rounded-full ${
+                                      isHigh ? 'bg-emerald-500' : 
+                                      isMid ? 'bg-amber-500' : 
+                                      'bg-red-500'
+                                    }`}
+                                  />
+                                </div>
+                              </motion.div>
+                            );
+                          })}
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                          <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 text-slate-400">
-                            <BookOpen className="h-10 w-10 opacity-20" />
-                          </div>
-                          <h3 className="text-lg font-bold mb-1">Your journey starts here</h3>
-                          <p className="text-sm text-muted-foreground max-w-[200px] mx-auto">Solve some questions to see your mastery analysis!</p>
-                          <Button 
-                            variant="link" 
-                            onClick={() => navigate("/study-now")}
-                            className="mt-4 text-blue-600 font-bold uppercase tracking-widest text-xs"
-                          >
-                            Start Now →
-                          </Button>
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <BookOpen className="h-8 w-8 opacity-10 mb-2" />
+                          <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Practice to see stats</p>
                         </div>
                       )}
-
                     </CardContent>
                   </Card>
                 </div>
