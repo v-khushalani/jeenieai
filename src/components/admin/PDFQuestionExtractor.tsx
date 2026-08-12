@@ -388,10 +388,10 @@ export function PDFQuestionExtractor() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            PDF Question Extractor
+            PDF Question Extractor (MTG & Books)
           </CardTitle>
           <CardDescription>
-            Upload PDF books to automatically extract questions using AI. Questions will be added to review queue.
+            Smart Work: Upload MTG Foundation or other books. AI will extract questions, map them to your chapters, and send them to the review queue.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -435,8 +435,8 @@ export function PDFQuestionExtractor() {
                 Course Type <span className="text-red-500">*</span>
               </Label>
               <Select value={selectedExam} onValueChange={setSelectedExam}>
-                <SelectTrigger className={!selectedExam ? "border-red-300" : ""}>
-                  <SelectValue placeholder="Select course type" />
+                <SelectTrigger className={!selectedExam ? "border-amber-500 animate-pulse" : ""}>
+                  <SelectValue placeholder="Select course (e.g. Foundation-8)" />
                 </SelectTrigger>
                 <SelectContent>
                   {/* Higher Education */}
