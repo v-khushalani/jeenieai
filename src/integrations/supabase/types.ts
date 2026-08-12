@@ -3171,18 +3171,6 @@ export type Database = {
       fix_mojibake: { Args: { t: string }; Returns: string }
       fn_expire_batch_subscriptions: { Args: never; Returns: undefined }
       generate_referral_code: { Args: never; Returns: string }
-      get_all_subject_question_counts: {
-        Args: {
-          p_batch_ids?: string[]
-          p_class_level?: number
-          p_exam?: string
-        }
-        Returns: {
-          chapter_count: number
-          question_count: number
-          subject: string
-        }[]
-      }
       get_chapter_difficulty_distribution: {
         Args: { p_chapter_id: string }
         Returns: {

@@ -175,6 +175,7 @@ const FloatingAIButton = () => {
             <div className="absolute bottom-full right-0 mb-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
               <div className="bg-linear-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg shadow-xl whitespace-nowrap">
                 <p className="text-sm font-semibold">🤖 Ask JEEnie Anything!</p>
+                <p className="text-xs opacity-90">AI Tutor — Doubts, Life, Motivation 💡</p>
               </div>
               <div className="absolute top-full right-4 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-purple-600" />
             </div>

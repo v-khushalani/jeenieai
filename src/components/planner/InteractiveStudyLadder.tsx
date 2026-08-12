@@ -32,11 +32,11 @@ interface InteractiveStudyLadderProps {
 const getMasteryColor = (status: RoadmapChapter['status'], accuracy: number) => {
   if (status === 'done') return 'bg-amber-400 border-amber-500 shadow-amber-200';
   if (status === 'active') {
-    if (accuracy >= 0.7) return 'bg-emerald-500 border-emerald-600 shadow-emerald-200';
-    if (accuracy > 0) return 'bg-blue-500 border-blue-600 shadow-blue-200';
+    if (accuracy >= 0.7) return 'bg-blue-500 border-blue-600 shadow-blue-200';
+    if (accuracy > 0) return 'bg-yellow-400 border-yellow-500 shadow-yellow-200';
     return 'bg-primary border-primary-foreground/20';
   }
-  return 'bg-slate-200 border-slate-300 dark:bg-slate-800 dark:border-slate-700';
+  return 'bg-muted border-muted-foreground/20';
 };
 
 export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({ 
@@ -54,7 +54,7 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
   return (
     <div className="flex flex-col gap-6 py-4">
       {/* Dynamic Header Stats */}
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-100 overflow-hidden relative group hover:shadow-lg transition-all">
           <div className="absolute top-0 right-0 p-1 opacity-20 group-hover:scale-110 transition-transform">
             <Trophy className="w-12 h-12" />
@@ -65,8 +65,25 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
                 <TrendingUp className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Jeenie Points</p>
+                <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Level XP</p>
                 <p className="text-lg font-black text-amber-900 leading-none">{xpPoints}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-rose-50 to-red-50 border-rose-100 overflow-hidden relative group hover:shadow-lg transition-all">
+          <div className="absolute top-0 right-0 p-1 opacity-20 group-hover:scale-110 transition-transform">
+            <Flame className="w-12 h-12" />
+          </div>
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-full bg-rose-100 text-rose-600">
+                <Flame className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-rose-700 uppercase tracking-wider">Streak</p>
+                <p className="text-lg font-black text-rose-900 leading-none">{streak} Days</p>
               </div>
             </div>
           </CardContent>
@@ -87,33 +104,29 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
             return (
               <div key={chapter.id} className="relative z-10 py-6">
                 <motion.button
-                  whileHover={{ scale: 1.3, y: -4, rotate: [0, -5, 5, 0] }}
+                  whileHover={{ scale: 1.3, y: -4 }}
                   whileTap={{ scale: 0.9 }}
                   animate={{ 
                     scale: isSelected ? 1.25 : isActive ? 1.15 : 1,
-                    y: isSelected ? -2 : 0,
-                    boxShadow: isSelected ? "0 0 20px rgba(59, 130, 246, 0.4)" : "0 4px 6px rgba(0,0,0,0.1)"
+                    y: isSelected ? -2 : 0
                   }}
                   onClick={() => setSelectedChapterId(chapter.id)}
-                  className={`w-12 h-12 rounded-2xl border-4 flex items-center justify-center transition-all ${masteryColor} ${isSelected ? 'ring-4 ring-primary/20 scale-110' : ''}`}
+                  className={`w-10 h-10 rounded-full border-4 flex items-center justify-center transition-all ${masteryColor} shadow-lg ${isSelected ? 'ring-4 ring-primary/20' : ''}`}
                 >
                   {isDone ? (
-                    <Trophy className="w-6 h-6 text-white drop-shadow-sm" />
+                    <Trophy className="w-5 h-5 text-white drop-shadow-sm" />
                   ) : isActive ? (
-                    <div className="relative">
-                      <Rocket className="w-6 h-6 text-white animate-bounce" />
-                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping" />
-                    </div>
+                    <Rocket className="w-5 h-5 text-white animate-pulse" />
                   ) : chapter.status === 'locked' ? (
-                    <Lock className="w-5 h-5 text-white/40" />
+                    <Lock className="w-4 h-4 text-white/40" />
                   ) : (
-                    <Star className="w-6 h-6 text-white/80" />
+                    <Star className="w-5 h-5 text-white/80" />
                   )}
                 </motion.button>
                 {isSelected && (
                   <motion.div 
                     layoutId="active-indicator"
-                    className="absolute -inset-2.5 rounded-3xl border-2 border-primary border-dashed animate-spin-slow opacity-40"
+                    className="absolute -inset-2 rounded-full border-2 border-primary border-dashed animate-spin-slow"
                   />
                 )}
               </div>

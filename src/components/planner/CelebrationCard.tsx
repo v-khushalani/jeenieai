@@ -59,9 +59,9 @@ export const CelebrationCard: React.FC<CelebrationCardProps> = ({
               </p>
             </div>
             <div className="bg-background/80 backdrop-blur-sm rounded-2xl p-4 border-2 border-primary/20 shadow-sm">
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Jeenie Points</p>
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">XP Earned</p>
               <p className="text-2xl font-black text-amber-600 flex items-center justify-center gap-1">
-                +{xpEarned} <span className="text-xs font-bold text-muted-foreground">Points</span>
+                +{xpEarned} <span className="text-xs font-bold text-muted-foreground">XP</span>
               </p>
             </div>
           </div>

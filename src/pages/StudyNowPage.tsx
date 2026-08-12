@@ -306,47 +306,40 @@ const StudyNowPage: React.FC = () => {
   useEffect(() => {
     const fetchSubjectTotals = async () => {
       if (availableSubjects.length === 0) {
+        // Nothing to count yet — stay in "loading" until the profile resolves.
         if (!profileLoading) setCountsLoading(false);
         return;
       }
       setCountsLoading(true);
       try {
-        const examFilter = getExamFilter(userExam, userGrade);
-        const { data: allCounts, error: rpcError } = await supabase.rpc('get_all_subject_question_counts', {
-          p_batch_ids: userBatchIds.length > 0 ? userBatchIds : null,
-          p_exam: examFilter,
-          p_class_level: userGrade
-        });
-
-        if (rpcError) throw rpcError;
-
         const map: Record<string, number> = {};
-        const chapMap: Record<string, number> = {};
-        
-        let hasQuestions = false;
-        (allCounts || []).forEach((row: any) => {
-          const key = String(row.subject || '').trim().toUpperCase();
-          const qCount = Number(row.question_count) || 0;
-          map[key] = qCount;
-          chapMap[key] = Number(row.chapter_count) || 0;
-          if (qCount > 0) hasQuestions = true;
-        });
 
-        setSubjectQuestionCounts(map);
-        setSubjectChapterCounts(chapMap);
-        
-        // If we found questions, we can stop loading. 
-        // If no questions found via RPC for the user's specific grade/exam, 
-        // we keep countsLoading true for a bit longer or rely on the UI to show Coming Soon correctly.
-        setCountsLoading(false);
+        await Promise.all(availableSubjects.map(async (subject) => {
+          // Fetch chapter rows ONCE per subject, then count via RPC (no duplicate query).
+          const scopedChapterRows = await loadChapterRowsForSubject(subject, false);
+          const chapterCounts = await fetchChapterCountsForRows(scopedChapterRows);
+          const chapterCount = (scopedChapterRows || []).length;
+
+          const key = String(subject || '').trim().toUpperCase();
+
+          const questionCount = (scopedChapterRows || []).reduce((sum, ch) => sum + (chapterCounts.get(ch.id) || 0), 0);
+          map[key] = questionCount;
+          setSubjectChapterCounts((prev) => ({ ...prev, [key]: chapterCount }));
+        }));
+
+        // Always publish counts for every subject (including 0) so the UI shows
+        // a stable value instead of falling back to "0 Questions" for unresolved keys.
+        setSubjectQuestionCounts((prev) => ({ ...prev, ...map }));
       } catch (err) {
         logger.error('Error fetching subject totals:', err);
+        // Do NOT wipe existing counts on transient errors — keep last-good values.
+      } finally {
         setCountsLoading(false);
       }
     };
 
     fetchSubjectTotals();
-  }, [availableSubjects, userBatchIds, userExam, userGrade, profileLoading]);
+  }, [availableSubjects, fetchChapterCountsForRows, loadChapterRowsForSubject, summarizeChapterCounts, userBatchIds, userExam, userGrade, profileLoading]);
 
 
   const fetchChapters = async (subject: string) => {
@@ -540,11 +533,11 @@ const StudyNowPage: React.FC = () => {
             <>
               {isLoading ? (
                 <LoadingScreen pageName="Study Now" message="Loading study subjects..." />
-              ) : availableSubjects.length === 0 ? (
+              ) : availableSubjects.length === 0 || availableSubjects.every((s) => (subjectQuestionCounts[String(s || '').trim().toUpperCase()] ?? 0) === 0) ? (
                 <div className="flex-1 min-h-0 flex items-center justify-center pb-4">
                   <ComingSoonBanner
                     className="w-full max-w-xl"
-                    subtitle="Is class ke liye subjects abhi taiyaar ho rahe hain. Bahut jaldi live honge!"
+                    subtitle="Is class ke liye questions abhi taiyaar ho rahe hain. Bahut jaldi live honge!"
                   />
                 </div>
               ) : (
@@ -566,13 +559,8 @@ const StudyNowPage: React.FC = () => {
                               </div>
 
                               <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
-                                {countsLoading ? (
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <div className="w-3 h-3 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                                    <span className="text-[10px] font-bold uppercase tracking-wider">Loading...</span>
-                                  </div>
-                                ) : subjectEmpty ? (
-                                  <Badge variant="secondary" className="text-[10px] sm:text-xs font-black bg-amber-100 text-amber-700 border-amber-200 uppercase tracking-widest">
+                                {subjectEmpty ? (
+                                  <Badge variant="secondary" className="text-[10px] sm:text-xs font-semibold bg-amber-100 text-amber-700 border-amber-200">
                                     Coming Soon
                                   </Badge>
                                 ) : (
