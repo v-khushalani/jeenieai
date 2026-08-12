@@ -125,6 +125,7 @@ const AdminDashboard = () => {
       { id: 'review-queue', label: 'Review Queue', icon: Eye, badge: pendingReviewCount, group: 'tools' },
     
     { id: 'feature-flags', label: 'Feature Flags', icon: ToggleLeft, group: 'tools' },
+    { id: 'audit-report', label: 'Audit Report', icon: Shield, group: 'tools' },
   ];
 
   const getCurrentSection = (): string => {
@@ -161,6 +162,7 @@ const AdminDashboard = () => {
     'csv-upload': 'Bulk CSV Upload',
     'hf-importer': 'Hugging Face Importer',
     'feature-flags': 'Feature Flags',
+    'audit-report': 'System Audit Report',
   };
 
   const renderContent = () => {
@@ -181,6 +183,7 @@ const AdminDashboard = () => {
       case 'csv-upload': return <BulkCsvUploader />;
       case 'hf-importer': return <HuggingFaceImporter />;
       case 'feature-flags': return <FeatureFlagManager />;
+      case 'audit-report': return <AuditReportTab />;
       default: return <DashboardOverview />;
     }
   };
@@ -309,7 +312,10 @@ const AdminDashboard = () => {
                   <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
                 </div>
               }>
-                {renderContent()}
+                <div className="space-y-6">
+                  <SystemHealthBanner />
+                  {renderContent()}
+                </div>
               </Suspense>
             </div>
           </main>
