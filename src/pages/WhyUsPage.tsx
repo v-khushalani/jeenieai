@@ -110,23 +110,58 @@ const WhyUsPage = () => {
           </p>
         </section>
 
-        {/* Mission */}
-        <section className="mb-14">
-          <Card className="border-primary/20 bg-linear-to-br from-primary/5 via-card to-secondary/40">
-            <CardContent className="p-6 sm:p-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <h2 className="text-2xl font-bold text-primary mb-2">Our Mission</h2>
-                  <p className="text-sm sm:text-base text-muted-foreground">
-                    Give every JEE/NEET aspirant a focused preparation engine that feels
-                    like a personal coach: clear next steps, fast doubt solving, and daily
-                    momentum tracking that actually changes results.
+        {/* The Brutal Honesty Section */}
+        <section className="mb-16">
+          <Card className="border-red-500/20 bg-linear-to-br from-red-500/5 via-card to-orange-500/5 overflow-hidden">
+            <CardContent className="p-8 sm:p-10">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <CircleAlert className="w-6 h-6 text-red-500" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground">A Message from the Co-Founders</h2>
+                  <p className="text-sm text-muted-foreground uppercase tracking-widest">Brutally Honest</p>
+                </div>
+              </div>
+              
+              <div className="space-y-6 text-foreground leading-relaxed">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-yellow-500" /> 1. Stop solving, start learning.
+                  </h3>
+                  <p className="text-muted-foreground pl-7">
+                    Most apps just dump 100k questions on you and call it "practice." That's not learning; that's data entry. 
+                    JEEnie tracks <strong>why</strong> you got it wrong. If you're solving 100 questions but repeating the same mistake, 
+                    you're wasting time. We force you to face your gaps.
                   </p>
                 </div>
-                <div className="rounded-xl border bg-card p-4">
-                  <p className="text-xs text-muted-foreground mb-1">Promise</p>
-                  <p className="text-lg font-bold text-foreground">Study Less Randomly.</p>
-                  <p className="text-sm font-semibold text-primary">Improve More Predictably.</p>
+
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-blue-500" /> 2. Doubt solvers aren't meant to be "Formal."
+                  </h3>
+                  <p className="text-muted-foreground pl-7">
+                    Traditional solutions read like a textbook. If you understood the textbook, you wouldn't have a doubt. 
+                    Our AI (JEEnie) explains concepts like a <strong>Bada Bhai</strong> (Big Brother). We use intuition, analogies, 
+                    and warn you about common traps before you fall into them.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Target className="w-5 h-5 text-red-500" /> 3. Direction > Hard Work.
+                  </h3>
+                  <p className="text-muted-foreground pl-7">
+                    A student studying 12 hours without a plan will lose to a student studying 6 hours with a JEEnie Roadmap. 
+                    We tell you <strong>exactly</strong> what to solve today to move your rank. No guesswork, no doom-scrolling through chapters.
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-border">
+                  <p className="italic text-primary font-medium">
+                    "JEEnie isn't for those who want a fancy library. It's for those who are tired of being average and want a 
+                    system that pushes them to be elite. We're not here to be your friend; we're here to be your mentor."
+                  </p>
                 </div>
               </div>
             </CardContent>
