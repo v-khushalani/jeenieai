@@ -484,7 +484,17 @@ export default function AIStudyPlanner() {
     const silent = !!opts?.silent;
     if (silent) setRefreshing(true);
     else setLoading(true);
+    
     try {
+      // Parallelize profile and data loading
+      const loadProfileTask = supabase
+        .from('my_profile' as any)
+        .select('*')
+        .maybeSingle();
+
+      const [profResult] = await Promise.all([loadProfileTask]);
+      if (profResult.data) setProfile(profResult.data);
+      
       const cachedGoal = (() => {
         try {
           const raw = safeLocalStorage.getItem('userGoals');
@@ -494,11 +504,8 @@ export default function AIStudyPlanner() {
         }
       })();
 
-      const { data: profData, error: profError } = await supabase
-        .from('my_profile' as any)
-        .select('*')
-        .maybeSingle();
-      if (profError) logger.warn('Planner profile load warning', profError);
+      const profData = profResult.data;
+      if (profResult.error) logger.warn('Planner profile load warning', profResult.error);
 
       const prof = (profData as any) || { target_exam: cachedGoal || 'JEE' };
       const gradeNum = Number(prof?.grade);
