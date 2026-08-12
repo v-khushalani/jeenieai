@@ -17,6 +17,7 @@ import {
   X,
   Sparkles,
   Rocket,
+  CheckCircle2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
