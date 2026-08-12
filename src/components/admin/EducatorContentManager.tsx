@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
-  Upload, Loader2, FileText, Trash2, Plus,  Search, CheckCircle2, XCircle,
+  Upload, Loader2, FileText, Trash2, Plus, Search, CheckCircle2, XCircle, Zap,
 } from 'lucide-react';
 import { useEducatorContent, EducatorContentItem } from '@/hooks/useEducatorContent';
 import { supabase } from '@/integrations/supabase/client';
