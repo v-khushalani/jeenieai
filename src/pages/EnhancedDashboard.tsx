@@ -404,16 +404,19 @@ const EnhancedDashboard = () => {
                   <div className="w-full flex-none snap-start p-1 min-h-0">
                     <div className="h-full space-y-2 overflow-y-auto p-1">
                       <div className="grid grid-cols-2 gap-2 auto-rows-fr items-stretch">
-                        <Card className={`h-full rounded-xl shadow-xs border-l-4 ${streakColors.border} ${streakColors.bg}`}> 
-                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
-                            <div className="flex items-start gap-2 mb-1">
-                              <div className={`p-1.5 ${streakColors.iconBg} rounded-lg shrink-0`}>
-                                <Flame className="h-3 w-3 text-white" />
-                              </div>
-                              <p className="text-[11px] font-medium text-muted-foreground">Day Streak</p>
+                        <Card className={`h-full rounded-2xl shadow-lg border-l-4 transition-transform active:scale-95 ${streakColors.border} ${streakColors.bg}`}> 
+                          <CardContent className="p-3.5 h-full flex flex-col justify-between relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-1 opacity-10">
+                              <Flame className="h-12 w-12" />
                             </div>
-                            <h3 className={`text-xl font-bold ${streakColors.text}`}>{streak ?? 0}</h3>
-                            <p className="text-[10px] text-muted-foreground mt-1">{streak > 0 ? 'Keep going!' : 'Start streak today'}</p>
+                            <div className="flex items-start gap-2 mb-1 relative z-10">
+                              <div className={`p-1.5 ${streakColors.iconBg} rounded-lg shrink-0 shadow-md animate-pulse`}>
+                                <Flame className="h-3.5 w-3.5 text-white" />
+                              </div>
+                              <p className="text-[10px] font-black uppercase tracking-tighter italic text-muted-foreground">DAY STREAK</p>
+                            </div>
+                            <h3 className={`text-2xl font-black italic ${streakColors.text} relative z-10`}>{streak ?? 0}</h3>
+                            <p className="text-[10px] font-bold italic opacity-70 mt-1 relative z-10">{streak > 0 ? 'KEEP IT UP! 🔥' : 'START NOW!'}</p>
                           </CardContent>
                         </Card>
 
