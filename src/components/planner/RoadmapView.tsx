@@ -25,7 +25,9 @@ interface Props {
   initialRoadmaps?: SubjectRoadmap[];
   xpPoints?: number;
   streak?: number;
+  onRefresh?: () => void;
 }
+
 
 export default function RoadmapView({ 
   userId, 
@@ -34,8 +36,10 @@ export default function RoadmapView({
   initialSubject, 
   initialRoadmaps,
   xpPoints,
-  streak
+  streak,
+  onRefresh
 }: Props) {
+
   const subjects = useMemo(() => subjectsForExam(exam), [exam]);
   const roadmapBySubject = useMemo(() => {
     const map = new Map<string, SubjectRoadmap>();
