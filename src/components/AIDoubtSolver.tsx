@@ -9,6 +9,7 @@ import {
   User,
   Clock,
   Camera,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -355,7 +356,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             <Zap className="w-4 h-4 text-primary" />
             <div>
               <h3 className="font-extrabold text-[#013062] text-lg sm:text-xl tracking-tight">
-                  JEEnie
+                  JEEnie <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full ml-1 font-bold animate-pulse">BHAI</span>
                 </h3>
                 <p className="text-xs text-[#013062]/70 font-medium hidden sm:block">
                 {!isAIAvailable ? (
@@ -379,7 +380,18 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
         </div>
 
         {/* Chat Body */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-secondary/30 text-primary">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-secondary/30 text-primary scroll-smooth custom-scrollbar">
+          {!messages.some(m => m.role === 'user') && (
+            <div className="bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-3 rounded-2xl mb-2 animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Star className="w-4 h-4 text-amber-500 fill-amber-500 animate-pulse" />
+                <span className="text-[11px] font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider">Bhai Ki Pro-Tip</span>
+              </div>
+              <p className="text-xs text-blue-700/80 dark:text-blue-400/80 leading-relaxed font-medium">
+                "Bas solution mat ratna, logic samjhna. JEE/NEET mein logic hi kaam aata hai, calculation toh calculator bhi kar lega!" 😉
+              </p>
+            </div>
+          )}
           {messages.map((msg, i) => (
             <div
               key={i}
