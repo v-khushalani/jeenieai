@@ -15,7 +15,8 @@ import {
   Target,
   Zap,
   Sword,
-  Shield
+  Shield,
+  Rocket
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RoadmapChapter, SubjectRoadmap, MilestoneInfo, milestoneHref } from '@/lib/roadmapEngine';
