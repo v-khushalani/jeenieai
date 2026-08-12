@@ -657,20 +657,20 @@ const PracticePage: React.FC = () => {
 
   const getOptionStyle = (option: string) => {
     const answer = currentAnswer;
-    if (!answer) return 'border-border hover:border-primary/50 hover:bg-primary/5 cursor-pointer';
+    if (!answer) return 'border-2 border-border/60 hover:border-primary hover:bg-primary/5 cursor-pointer shadow-sm active:scale-[0.98] transition-all duration-200';
     const normalizedCorrect = answer.correctOption?.toUpperCase().replace('OPTION_', '') || '';
-    if (option === normalizedCorrect) return 'border-green-500 bg-green-50 dark:bg-green-950/30 ring-2 ring-green-500/30';
-    if (option === answer.selectedOption && !answer.isCorrect) return 'border-red-500 bg-red-50 dark:bg-red-950/30 ring-2 ring-red-500/30';
-    return 'border-border opacity-50';
+    if (option === normalizedCorrect) return 'border-2 border-green-500 bg-green-500/10 dark:bg-green-950/30 shadow-[0_0_15px_rgba(34,197,94,0.3)] scale-[1.02] z-10';
+    if (option === answer.selectedOption && !answer.isCorrect) return 'border-2 border-red-500 bg-red-500/10 dark:bg-red-950/30 shadow-[0_0_15px_rgba(239,68,68,0.3)]';
+    return 'border-2 border-border/40 opacity-40 grayscale-[0.5]';
   };
 
   const getOptionCircleStyle = (option: string) => {
     const answer = currentAnswer;
-    if (!answer) return 'border-muted-foreground/40';
+    if (!answer) return 'border-2 border-muted-foreground/30 bg-muted/20 font-black italic';
     const normalizedCorrect = answer.correctOption?.toUpperCase().replace('OPTION_', '') || '';
-    if (option === normalizedCorrect) return 'border-green-500 bg-green-500 text-white';
-    if (option === answer.selectedOption && !answer.isCorrect) return 'border-red-500 bg-red-500 text-white';
-    return 'border-muted-foreground/40';
+    if (option === normalizedCorrect) return 'border-2 border-green-600 bg-green-600 text-white font-black italic shadow-md';
+    if (option === answer.selectedOption && !answer.isCorrect) return 'border-2 border-red-600 bg-red-600 text-white font-black italic shadow-md';
+    return 'border-2 border-muted-foreground/20 bg-muted/10 font-black italic opacity-50';
   };
 
   const getOptionIcon = (option: string) => {
