@@ -359,14 +359,28 @@ export default function CoachMissionPanel() {
 
       {/* HIT-LIST */}
       {!loading && mission && !allDone && (
-        <div className="space-y-2">
+        <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
-              Aaj ki Hit-List
-            </p>
-            <span className="text-[10px] text-muted-foreground tabular-nums">{overallPct}%</span>
+            <div className="space-y-0.5">
+              <p className="text-[10px] uppercase tracking-widest font-black text-primary">
+                Aaj ki Hit-List
+              </p>
+              <p className="text-[10px] text-muted-foreground font-bold">
+                Daily Mission Progress
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="text-sm font-black text-primary tabular-nums">{overallPct}%</span>
+              <p className="text-[9px] uppercase font-bold text-muted-foreground">Complete</p>
+            </div>
           </div>
-          <Progress value={overallPct} className="h-1.5" />
+          <div className="relative">
+            <Progress value={overallPct} className="h-3 rounded-full bg-muted border-2 border-border/50" />
+            {overallPct > 0 && overallPct < 100 && (
+              <Zap className="absolute top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500 fill-amber-500 animate-pulse" style={{ left: `calc(${overallPct}% - 8px)` }} />
+            )}
+          </div>
+
 
           <ul className="space-y-2 pt-1">
             {mission.blocks.map((b) => {
