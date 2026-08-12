@@ -21,7 +21,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { toast } from 'sonner';
 import {
   Play, CheckCircle2, RefreshCw, Sparkles, Loader2, BookOpen, PlusCircle,
-  Flame, Trophy, Circle, Info,
+  Flame, Trophy, Circle, Info, Zap,
 } from 'lucide-react';
 import LogClassSheet from '@/components/LogClassSheet';
 import { CelebrationCard } from './CelebrationCard';
@@ -359,14 +359,31 @@ export default function CoachMissionPanel() {
 
       {/* HIT-LIST */}
       {!loading && mission && !allDone && (
-        <div className="space-y-2">
+        <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
-              Aaj ki Hit-List
-            </p>
-            <span className="text-[10px] text-muted-foreground tabular-nums">{overallPct}%</span>
+            <div className="space-y-0.5">
+              <p className="text-[10px] uppercase tracking-widest font-black text-primary">
+                Aaj ki Hit-List
+              </p>
+              <p className="text-[10px] text-muted-foreground font-bold">
+                Daily Mission Progress
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="text-sm font-black text-primary tabular-nums">{overallPct}%</span>
+              <p className="text-[9px] uppercase font-bold text-muted-foreground">Complete</p>
+            </div>
           </div>
-          <Progress value={overallPct} className="h-1.5" />
+          <div className="relative">
+            <Progress value={overallPct} className="h-3 rounded-full bg-muted border-2 border-border/50 relative overflow-visible" />
+            {overallPct > 0 && overallPct < 100 && (
+              <Zap 
+                className="absolute top-1/2 -translate-y-1/2 w-6 h-6 text-amber-500 fill-amber-500 animate-pulse z-10" 
+                style={{ left: `calc(${overallPct}% - 12px)` }} 
+              />
+            )}
+          </div>
+
 
           <ul className="space-y-2 pt-1">
             {mission.blocks.map((b) => {
@@ -422,23 +439,22 @@ export default function CoachMissionPanel() {
                       }`}>
                         {b.title}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <span className={`text-[10px] font-semibold ${typeAccent[b.type]}`}>{typeShort[b.type]}</span>
-                        <span className="text-[10px] text-muted-foreground">·</span>
-                        <span className="text-[10px] text-muted-foreground tabular-nums">
-                          {isDone ? `${target}/${target}` : `${prog.attempted}/${target} Q`}
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${typeAccent[b.type]}`}>
+                          {typeShort[b.type]}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-bold tabular-nums bg-muted/50 px-1.5 rounded-md">
+                          {isDone ? `${target}/${target}` : `${prog.attempted}/${target}`} Q
                         </span>
                         {!isDone && (
-                          <>
-                            <span className="text-[10px] text-muted-foreground">·</span>
-                            <span className="text-[10px] text-muted-foreground">{b.minutes}m</span>
-                          </>
+                          <span className="text-[10px] text-muted-foreground font-bold bg-muted/50 px-1.5 rounded-md">
+                            {b.minutes}m
+                          </span>
                         )}
                         {!!b.xp_reward && (
-                          <>
-                            <span className="text-[10px] text-muted-foreground">·</span>
-                            <span className="text-[10px] font-bold text-amber-600">+{b.xp_reward} XP</span>
-                          </>
+                          <span className="text-[10px] font-black text-amber-600 bg-amber-500/10 px-1.5 rounded-md flex items-center gap-0.5">
+                            <Zap className="w-2.5 h-2.5 fill-amber-600" /> +{b.xp_reward} XP
+                          </span>
                         )}
                       </div>
                       {isCurrent && prog.attempted > 0 && (

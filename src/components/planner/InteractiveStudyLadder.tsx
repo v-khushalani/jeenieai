@@ -12,7 +12,11 @@ import {
   CheckCircle2, 
   ChevronRight,
   TrendingUp,
-  Target
+  Target,
+  Zap,
+  Sword,
+  Shield,
+  Rocket
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RoadmapChapter, SubjectRoadmap, MilestoneInfo, milestoneHref } from '@/lib/roadmapEngine';
@@ -51,8 +55,8 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
     <div className="flex flex-col gap-6 py-4">
       {/* Dynamic Header Stats */}
       <div className="grid grid-cols-2 gap-3">
-        <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-100 overflow-hidden relative">
-          <div className="absolute top-0 right-0 p-1 opacity-10">
+        <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-100 overflow-hidden relative group hover:shadow-lg transition-all">
+          <div className="absolute top-0 right-0 p-1 opacity-20 group-hover:scale-110 transition-transform">
             <Trophy className="w-12 h-12" />
           </div>
           <CardContent className="p-3">
@@ -68,8 +72,8 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-rose-50 to-red-50 border-rose-100 overflow-hidden relative">
-          <div className="absolute top-0 right-0 p-1 opacity-10">
+        <Card className="bg-gradient-to-br from-rose-50 to-red-50 border-rose-100 overflow-hidden relative group hover:shadow-lg transition-all">
+          <div className="absolute top-0 right-0 p-1 opacity-20 group-hover:scale-110 transition-transform">
             <Flame className="w-12 h-12" />
           </div>
           <CardContent className="p-3">
@@ -100,23 +104,29 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
             return (
               <div key={chapter.id} className="relative z-10 py-6">
                 <motion.button
-                  whileHover={{ scale: 1.1 }}
+                  whileHover={{ scale: 1.3, y: -4 }}
                   whileTap={{ scale: 0.9 }}
+                  animate={{ 
+                    scale: isSelected ? 1.25 : isActive ? 1.15 : 1,
+                    y: isSelected ? -2 : 0
+                  }}
                   onClick={() => setSelectedChapterId(chapter.id)}
-                  className={`w-10 h-10 rounded-full border-4 flex items-center justify-center transition-all ${masteryColor} shadow-lg`}
+                  className={`w-10 h-10 rounded-full border-4 flex items-center justify-center transition-all ${masteryColor} shadow-lg ${isSelected ? 'ring-4 ring-primary/20' : ''}`}
                 >
                   {isDone ? (
-                    <CheckCircle2 className="w-5 h-5 text-white" />
+                    <Trophy className="w-5 h-5 text-white drop-shadow-sm" />
+                  ) : isActive ? (
+                    <Rocket className="w-5 h-5 text-white animate-pulse" />
                   ) : chapter.status === 'locked' ? (
-                    <Lock className="w-4 h-4 text-muted-foreground" />
+                    <Lock className="w-4 h-4 text-white/40" />
                   ) : (
-                    <span className="text-xs font-bold text-white">{idx + 1}</span>
+                    <Star className="w-5 h-5 text-white/80" />
                   )}
                 </motion.button>
                 {isSelected && (
                   <motion.div 
                     layoutId="active-indicator"
-                    className="absolute -inset-2 rounded-full border-2 border-primary/30 animate-pulse"
+                    className="absolute -inset-2 rounded-full border-2 border-primary border-dashed animate-spin-slow"
                   />
                 )}
               </div>
@@ -141,7 +151,9 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
                       {formatSubjectDisplay(activeChapter.subject)}
                     </Badge>
                     {activeChapter.status === 'active' && (
-                      <Badge className="bg-primary text-[9px] px-1.5 h-4">IN FOCUS</Badge>
+                      <Badge className="bg-primary text-[9px] px-1.5 h-4 flex items-center gap-1 animate-pulse">
+                        <Zap className="w-2 h-2" /> IN FOCUS
+                      </Badge>
                     )}
                   </div>
                   <h3 className="text-lg font-black leading-tight tracking-tight">
@@ -156,7 +168,7 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
                       />
                     </div>
                     <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
-                      {activeChapter.progressPct}% Done
+                      {activeChapter.progressPct}%
                     </span>
                   </div>
                 </div>
@@ -170,12 +182,12 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
                     return (
                       <Card 
                         key={m.key} 
-                        className={`transition-all ${isLocked ? 'opacity-50' : isDone ? 'bg-emerald-50/50 border-emerald-100' : 'hover:border-primary/50 cursor-pointer'}`}
+                        className={`transition-all ${isLocked ? 'opacity-50 grayscale' : isDone ? 'bg-emerald-50/50 border-emerald-100' : 'hover:border-primary/50 cursor-pointer hover:shadow-md'} border-2`}
                         onClick={() => !isLocked && !isDone && navigate(milestoneHref(activeChapter, m.key))}
                       >
                         <CardContent className="p-3 flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${isDone ? 'bg-emerald-100 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
-                            {isDone ? <CheckCircle2 className="w-4 h-4" /> : <Target className="w-4 h-4" />}
+                          <div className={`p-2 rounded-lg ${isDone ? 'bg-emerald-100 text-emerald-600' : isLocked ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground'}`}>
+                            {isDone ? <CheckCircle2 className="w-4 h-4" /> : isLocked ? <Lock className="w-4 h-4" /> : <Target className="w-4 h-4" />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-bold leading-none ${isDone ? 'line-through text-muted-foreground' : ''}`}>
@@ -185,7 +197,7 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
                               {m.hint}
                             </p>
                           </div>
-                          {!isLocked && !isDone && <Play className="w-4 h-4 text-primary" />}
+                          {!isLocked && !isDone && <Play className="w-4 h-4 text-primary animate-pulse" />}
                         </CardContent>
                       </Card>
                     );
@@ -194,13 +206,13 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
 
                 {activeChapter.status === 'active' && (
                   <Button 
-                    className="w-full h-12 text-sm font-black uppercase tracking-widest shadow-lg shadow-primary/20"
+                    className="w-full h-12 text-sm font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-transform"
                     onClick={() => {
                       const next = activeChapter.milestones.find(m => m.state !== 'done');
                       if (next) navigate(milestoneHref(activeChapter, next.key));
                     }}
                   >
-                    Next Step <ChevronRight className="ml-2 w-4 h-4" />
+                    Start Mission <ChevronRight className="ml-2 w-4 h-4" />
                   </Button>
                 )}
               </motion.div>

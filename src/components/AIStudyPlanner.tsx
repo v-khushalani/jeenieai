@@ -19,6 +19,7 @@ import {
   Target,
   Trophy,
   Zap,
+  Rocket,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -560,21 +561,6 @@ export default function AIStudyPlanner() {
     }
   }, [user?.id, loadAll]);
 
-  const examDate = profile?.target_exam_date || getExamDateForGrade(getExamDate(targetExam as any), profile?.grade);
-  const daysToExam = getDaysUntilDate(examDate) ?? 365;
-  const todayTasks = planner.weekly[0]?.tasks || [];
-  const todayDone = todayTasks.filter((task) => completedHashes.has(taskHash(task))).length;
-  const adherence = todayTasks.length > 0 ? Math.round((todayDone / todayTasks.length) * 100) : 0;
-  const currentDay = planner.weekly[selectedDay] || planner.weekly[0];
-
-  const subjectCoverage = useMemo(() => {
-    return subjectsForExam(targetExam).map((subject) => {
-      const list = planner.bySubject[subject] || [];
-      const touched = list.filter((chapter) => chapter.attempts > 0).length;
-      return { subject, total: list.length, touched, pct: list.length ? Math.round((touched / list.length) * 100) : 0 };
-    });
-  }, [planner.bySubject, targetExam]);
-
   const toggleDone = async (task: PlannerTask) => {
     if (!user?.id) return;
     const hash = taskHash(task);
@@ -619,93 +605,70 @@ export default function AIStudyPlanner() {
   }
 
   return (
-    <div className="space-y-3 py-3 pb-24">
-      <div className="flex items-start justify-between gap-2">
+    <div className="space-y-4 py-3 pb-24">
+      {/* Dynamic Header */}
+      <div className="flex items-start justify-between gap-2 px-1">
         <div className="min-w-0">
-          <h1 className="flex items-center gap-2 text-lg font-bold sm:text-xl">
-            <Sparkles className="h-5 w-5 text-primary" /> AI Study Planner
+          <h1 className="flex items-center gap-2 text-xl font-black sm:text-2xl tracking-tighter uppercase italic text-primary">
+            <Rocket className="h-6 w-6" /> JEEnie AI Planner
           </h1>
-          <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground sm:text-xs">
+          <p className="mt-0.5 line-clamp-2 text-[11px] font-bold text-muted-foreground sm:text-xs">
             Scratch se syllabus cover karwaunga — weakness bhi strength banegi.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {refreshing && (
-            <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-              <Loader2 className="h-3 w-3 animate-spin" /> Refreshing
-            </span>
-          )}
-          <Button variant="outline" size="sm" onClick={() => void loadAll()}>
-            <RefreshCw className="h-3.5 w-3.5" />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`h-9 w-9 rounded-xl border-2 transition-all ${refreshing ? 'animate-spin' : 'hover:scale-110'}`} 
+            onClick={() => void loadAll()}
+          >
+            <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <CoachMissionPanel />
+      <div className="flex-1 overflow-hidden flex flex-col pt-2">
+        <Tabs defaultValue="ladder" className="w-full flex-1 flex flex-col">
+          <TabsList className="grid w-full grid-cols-2 h-14 p-1.5 bg-muted/50 rounded-2xl border-2 border-border/50">
+            <TabsTrigger 
+              value="ladder" 
+              className="text-xs font-black uppercase tracking-tighter rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:border-2 data-[state=active]:border-primary/20 transition-all flex items-center justify-center gap-2 py-2"
+            >
+              <Rocket className="w-4 h-4" /> Mastery Ladder
+            </TabsTrigger>
+            <TabsTrigger 
+              value="mission" 
+              className="text-xs font-black uppercase tracking-tighter rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:border-2 data-[state=active]:border-primary/20 transition-all flex items-center justify-center gap-2 py-2"
+            >
+              <Zap className="w-4 h-4" /> Aaj ki Hit-List
+            </TabsTrigger>
+          </TabsList>
 
-      <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-        <div className="px-3 py-2.5 flex items-center justify-between gap-2 bg-muted/30">
-          <span className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-primary" />
-            <span className="text-sm font-bold tracking-tight">MASTERY LADDER</span>
-          </span>
-          <Badge variant="outline" className="text-[9px] font-black tracking-widest px-1.5 h-4">ROADMAP</Badge>
-        </div>
-        <div className="px-3 pb-3 pt-1">
-
-
-
-      <Tabs defaultValue="roadmap" className="w-full">
-        <TabsList className="grid h-9 w-full grid-cols-3">
-          <TabsTrigger value="roadmap" className="text-xs">Roadmap</TabsTrigger>
-          <TabsTrigger value="week" className="text-xs">This Week</TabsTrigger>
-          <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="roadmap" className="mt-3 space-y-3">
-          {user?.id && (
-            <RoadmapView
-              userId={user.id}
-              exam={targetExam}
-              classLevel={(() => {
-                const g = Number((profile as any)?.grade);
-                return Number.isFinite(g) && g >= 6 && g <= 12 ? g : null;
-              })()}
-              initialRoadmaps={planner.roadmaps}
-              xpPoints={planner.totalAttempts * 10 + planner.coveragePct * 5}
-              streak={signal?.streak?.current || 0}
-              onRefresh={loadAll}
-            />
-          )}
-
-
-        </TabsContent>
-
-        <TabsContent value="week" className="mt-3">
-          <Card className="bg-muted/30 border-dashed">
-            <CardContent className="p-8 text-center space-y-3">
-              <Sparkles className="w-10 h-10 text-primary/40 mx-auto" />
-              <p className="text-base font-black tracking-tight">Weekly View Integrated</p>
-              <p className="text-sm text-muted-foreground font-medium">Weekly plans abhi automatic ladder mein merge ho gaye hain! Mastery Ladder check karo.</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-
-        <TabsContent value="insights" className="mt-3">
-          <Card className="bg-muted/30 border-dashed">
-            <CardContent className="p-8 text-center space-y-3">
-              <Trophy className="w-10 h-10 text-primary/40 mx-auto" />
-              <p className="text-base font-black tracking-tight">Insights Integrated</p>
-              <p className="text-sm text-muted-foreground font-medium">Saare data insights ab Mastery Ladder ke dynamic stats mein milenge!</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-        </div>
+          <div className="mt-4 outline-none">
+            <TabsContent value="ladder" className="mt-0 focus-visible:ring-0">
+              {user?.id && (
+                <RoadmapView
+                  userId={user.id}
+                  exam={targetExam}
+                  classLevel={(() => {
+                    const g = Number((profile as any)?.grade);
+                    return Number.isFinite(g) && g >= 6 && g <= 12 ? g : null;
+                  })()}
+                  initialRoadmaps={planner.roadmaps}
+                  xpPoints={planner.totalAttempts * 10 + planner.coveragePct * 5}
+                  streak={signal?.streak?.current || 0}
+                  onRefresh={loadAll}
+                />
+              )}
+            </TabsContent>
+            
+            <TabsContent value="mission" className="mt-0 focus-visible:ring-0">
+              <CoachMissionPanel />
+            </TabsContent>
+          </div>
+        </Tabs>
       </div>
-
     </div>
   );
 }
