@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { logger } from '@/utils/logger';
-import { Shield, Clock, Activity, AlertTriangle } from 'lucide-react';
+import { Shield, Clock, Activity, AlertTriangle, PlayCircle, CheckCircle, XCircle } from 'lucide-react';
+import { runSmokeTests } from '@/utils/smokeTests';
+import { Button } from '@/components/ui/button';
 
 interface AuditData {
   role: string;
