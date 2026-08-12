@@ -43,7 +43,7 @@ const MIN_INTERVAL_SECONDS_BY_TIER: Record<string, number> = {
   pro: 8,
   pro_plus: 4,
 };
-const MAX_INPUT_CHARS = 800;
+const MAX_INPUT_CHARS = 2500;
 // In-memory de-dupe: identical question from same user within 60s is blocked.
 const RECENT_PROMPTS = new Map<string, number>(); // key: `${userId}|${hash}` → ts
 const DEDUPE_WINDOW_MS = 60_000;
