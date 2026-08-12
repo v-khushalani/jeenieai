@@ -401,7 +401,7 @@ const EnhancedDashboard = () => {
                               <div className="p-2 bg-linear-to-r from-purple-600 to-pink-600 rounded-xl shadow-md group-hover:scale-110 transition-transform">
                                 <Trophy className="h-4 w-4 text-white" />
                               </div>
-                              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Mastery Points</p>
+                              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Jeenie Points</p>
                             </div>
                             <div className="flex items-center justify-between">
                               <h3 className="text-4xl font-black bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent tracking-tighter">{stats?.totalPoints ?? 0}</h3>
