@@ -368,25 +368,25 @@ const EnhancedDashboard = () => {
               )}
 
               <div className="lg:hidden flex-1 min-h-0 flex flex-col gap-2 pb-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between px-1">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground font-semibold">Dashboard</p>
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-primary font-black italic">MISSION CONTROL</p>
                   </div>
                   {leaderboardEnabled ? (
-                    <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 text-xs font-semibold shadow-xs border border-border/60">
+                    <div className="flex items-center gap-1 rounded-xl bg-muted/80 p-1 text-[10px] font-black italic shadow-inner border border-border/40 backdrop-blur-md">
                       <button
                         type="button"
                         onClick={() => switchMobilePanel("overview")}
-                        className={`px-2.5 py-1 rounded-md transition-all ${mobilePanel === "overview" ? "bg-background shadow-xs text-foreground" : "text-muted-foreground"}`}
+                        className={`px-3 py-1.5 rounded-lg transition-all uppercase ${mobilePanel === "overview" ? "bg-primary text-white shadow-lg shadow-primary/30 scale-105" : "text-muted-foreground"}`}
                       >
-                        Overview
+                        STATS
                       </button>
                       <button
                         type="button"
                         onClick={() => switchMobilePanel("leaderboard")}
-                        className={`px-2.5 py-1 rounded-md transition-all ${mobilePanel === "leaderboard" ? "bg-background shadow-xs text-foreground" : "text-muted-foreground"}`}
+                        className={`px-3 py-1.5 rounded-lg transition-all uppercase ${mobilePanel === "leaderboard" ? "bg-primary text-white shadow-lg shadow-primary/30 scale-105" : "text-muted-foreground"}`}
                       >
-                        Leaderboard
+                        RANKS
                       </button>
                     </div>
                   ) : null}
@@ -394,7 +394,7 @@ const EnhancedDashboard = () => {
 
                 <div
                   ref={mobileSwipeRef}
-                  className="flex flex-1 min-h-0 overflow-x-auto scrollbar-hide overscroll-x-contain scroll-smooth snap-x snap-mandatory touch-pan-x rounded-2xl border border-border bg-card/50"
+                  className="flex flex-1 min-h-0 overflow-x-auto scrollbar-hide overscroll-x-contain scroll-smooth snap-x snap-mandatory touch-pan-x rounded-3xl border-2 border-primary/5 bg-card/40 backdrop-blur-sm shadow-xl"
                   onScroll={(e) => {
                     const target = e.currentTarget;
                     const nextPanel = target.scrollLeft > target.clientWidth / 2 ? "leaderboard" : "overview";
