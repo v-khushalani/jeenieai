@@ -25,7 +25,7 @@ const LandingHero = () => {
           <div className="grid w-full grid-cols-1 items-center gap-10 sm:gap-12 lg:grid-cols-[1.02fr_0.98fr] xl:gap-16">
             <div className="mx-auto max-w-xl text-center lg:mx-0 lg:text-left">
               <Badge className="mb-3 sm:mb-5 rounded-full border border-primary/10 bg-primary/5 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-primary">
-                <Sparkles className="mr-1 sm:mr-1.5 h-3 w-3 sm:h-3.5 sm:w-3.5" /> AI-Powered JEE Preparation
+                 AI-Powered JEE Preparation
               </Badge>
 
               <h1 className="text-[2rem] font-black leading-[1.05] tracking-[-0.035em] text-foreground sm:text-5xl lg:text-6xl">

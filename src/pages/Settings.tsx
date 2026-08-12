@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import safeLocalStorage from '@/utils/safeStorage';
 import { 
   User, Bell, Shield, Palette, LogOut, Save, Loader2, AlertCircle, CheckCircle,
-  Heart, Sparkles, Download, Lock, Eye, EyeOff, AlertTriangle
+  Heart,  Download, Lock, Eye, EyeOff, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -630,7 +630,7 @@ const Settings = () => {
                 <div className="flex items-center justify-between gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200 dark:bg-blue-950/25 dark:border-blue-800/60">
                   <div className="flex-1 min-w-0">
                     <Label className="flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-300" />
+                      
                       Smart Goal
                     </Label>
                     <p className="text-xs text-muted-foreground mt-0.5">

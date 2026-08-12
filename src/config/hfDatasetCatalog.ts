@@ -19,7 +19,7 @@ export interface HFDatasetCatalogEntry {
   estimatedRows: number;
   /** Default subject + chapter strategy used by the importer. */
   importStrategy: {
-    /** "fixed" -> use subjects[0]. "ai" -> classify with Lovable AI (SciQ). */
+    /** "fixed" -> use subjects[0]. "ai" -> classify with  AI (SciQ). */
     subjectStrategy: 'fixed' | 'ai';
     /** "field" -> dataset has category/chapter field. "ai" -> 1-token AI tag. "constant" -> single bucket. */
     chapterStrategy: 'field' | 'ai' | 'constant';
@@ -68,7 +68,7 @@ export const HF_DATASET_CATALOG: HFDatasetCatalogEntry[] = [
       defaultGrade: 8,
       defaultDifficulty: 'Medium',
     },
-    notes: 'Subject + chapter are inferred via Lovable AI (~140 batched calls for the full dataset).',
+    notes: 'Subject + chapter are inferred via  AI (~140 batched calls for the full dataset).',
   },
   {
     id: 'openbookqa-main',

@@ -237,7 +237,7 @@ export const BadgeUnlockCelebration = () => {
 
               <div className="relative p-6 pt-8 text-center text-white">
                 <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.35em] font-black text-white/70">
-                  <Sparkles className="w-3 h-3" /> Badge Unlocked
+                   Badge Unlocked
                 </div>
 
                 {/* Medallion */}

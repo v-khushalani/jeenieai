@@ -167,7 +167,7 @@ const FloatingAIButton = () => {
           </div>
           <div className="relative w-16 h-16 bg-linear-to-br from-purple-600 via-pink-600 to-indigo-600 rounded-full shadow-2xl flex items-center justify-center transform transition-all duration-300 hover:scale-110 hover:shadow-purple-500/50">
             <div className="absolute -top-1 -right-1 animate-bounce">
-              <Sparkles className="w-4 h-4 text-yellow-300" fill="currentColor" />
+              
             </div>
             <Bot className="w-8 h-8 text-white" />
           </div>

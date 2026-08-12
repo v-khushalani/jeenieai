@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   Clock3,
   ArrowRight,
-  Sparkles,
+  
   Upload,
   ShieldCheck,
 } from 'lucide-react';
@@ -199,7 +199,7 @@ const DashboardOverview: React.FC = () => {
               </p>
             </div>
             <Badge className="bg-primary/10 text-primary border border-primary/20">
-              <Sparkles className="w-3.5 h-3.5 mr-1" /> Live Snapshot
+               Live Snapshot
             </Badge>
           </div>
         </CardHeader>

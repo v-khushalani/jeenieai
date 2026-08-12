@@ -15,7 +15,7 @@ import {
   Loader2,
   RefreshCw,
   RotateCcw,
-  Sparkles,
+  
   Target,
   Trophy,
   Zap,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Sparkles, Trophy, Target, Zap, ArrowRight } from 'lucide-react';
+import {  Trophy, Target, Zap, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -38,7 +38,7 @@ export const CelebrationCard: React.FC<CelebrationCardProps> = ({
             transition={{ duration: 2, repeat: Infinity }}
             className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center relative"
           >
-            <Sparkles className="w-10 h-10 text-primary" />
+            
             <div className="absolute -top-1 -right-1">
               <Zap className="w-6 h-6 text-amber-500 fill-amber-500 animate-pulse" />
             </div>

@@ -20,7 +20,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import {
-  Play, CheckCircle2, RefreshCw, Sparkles, Loader2, BookOpen, PlusCircle,
+  Play, CheckCircle2, RefreshCw,  Loader2, BookOpen, PlusCircle,
   Flame, Trophy, Circle, Info, Zap,
 } from 'lucide-react';
 import LogClassSheet from '@/components/LogClassSheet';
@@ -497,7 +497,7 @@ export default function CoachMissionPanel() {
       {!loading && !needsSetup && !mission && (
         <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-6 text-center space-y-3">
           <div className="w-12 h-12 mx-auto rounded-full bg-primary/15 flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-primary" />
+            
           </div>
           <div className="space-y-1">
             <p className="text-sm font-bold">Aaj ki Hit-List ready nahi hai</p>
@@ -642,7 +642,7 @@ export default function CoachMissionPanel() {
           </div>
           <DialogFooter>
             <Button onClick={saveSetup} className="w-full" disabled={generating}>
-              {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+              {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : }
               Build my hit-list
             </Button>
           </DialogFooter>

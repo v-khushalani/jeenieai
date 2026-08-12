@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
-  Upload, Loader2, FileText, Trash2, Plus, Sparkles, Search, CheckCircle2, XCircle,
+  Upload, Loader2, FileText, Trash2, Plus,  Search, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { useEducatorContent, EducatorContentItem } from '@/hooks/useEducatorContent';
 import { supabase } from '@/integrations/supabase/client';
@@ -418,7 +418,7 @@ const ContentGrid: React.FC<{
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12 gap-2">
-          {type === 'presentation' ? <FileText className="h-10 w-10 text-muted-foreground" /> : <Sparkles className="h-10 w-10 text-muted-foreground" />}
+          {type === 'presentation' ? <FileText className="h-10 w-10 text-muted-foreground" /> : }
           <p className="text-muted-foreground text-sm">No {type === 'presentation' ? 'presentations' : type === 'game' ? 'games' : 'virtual lab items'} found.</p>
         </CardContent>
       </Card>

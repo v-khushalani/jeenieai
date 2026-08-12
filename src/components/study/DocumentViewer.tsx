@@ -186,7 +186,7 @@ export function DocumentViewer({ note, trackProgress = true, onComplete }: Props
         <article className="max-w-3xl mx-auto my-6 bg-background shadow-lg rounded-md border">
           <div className="px-6 sm:px-8 pt-8 pb-4 border-b">
             <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
-              <span className="flex items-center gap-1"><Sparkles className="w-3 h-3" /> JEEnie Study Notes</span>
+              <span className="flex items-center gap-1"> JEEnie Study Notes</span>
               <Badge variant="secondary" className="h-4 px-1.5 text-[10px] uppercase">{type}</Badge>
             </div>
             <h1 className="mt-3 text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -241,7 +241,7 @@ export function DocumentViewer({ note, trackProgress = true, onComplete }: Props
 
           <div className="px-6 sm:px-8 py-4 border-t flex items-center justify-between text-[10px] text-muted-foreground">
             <span>© JEEnie · Curated theory</span>
-            <span className="flex items-center gap-1"><Sparkles className="w-3 h-3" /> Learn smart, solve faster</span>
+            <span className="flex items-center gap-1"> Learn smart, solve faster</span>
           </div>
         </article>
       </div>

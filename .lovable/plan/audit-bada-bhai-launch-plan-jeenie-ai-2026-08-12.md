@@ -35,7 +35,7 @@ To make this "Addictive AF", we are applying these high-energy connections:
 
 - [x] Wipe all non-system test data (Fresh Start).
 - [x] verify all `@jeenie.website` test accounts.
-- [x] Hide all "Lovable" traces from console and metadata.
+- [x] Hide all "" traces from console and metadata.
 - [x] Production-grade KaTeX/MathJax rendering for all 69,000 questions.
 
 **Bappa Morya! System is primed for SCRATCH reset and Production Live.**

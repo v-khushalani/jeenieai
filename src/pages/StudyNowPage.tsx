@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   BookOpen, ChevronRight, ArrowLeft, Beaker, Calculator, Atom, Leaf,
-  Play, Target, Sparkles,
+  Play, Target, 
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ComingSoonBanner from '@/components/ComingSoonBanner';
@@ -576,7 +576,7 @@ const StudyNowPage: React.FC = () => {
                               </div>
 
                               <Button disabled={subjectEmpty} className="w-full bg-linear-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-semibold py-3 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 text-base mt-1 sm:mt-0">
-                                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                                
                                 <span>{subjectEmpty ? 'Coming Soon' : 'Start Practicing'}</span>
                               </Button>
 
@@ -640,7 +640,7 @@ const StudyNowPage: React.FC = () => {
                                 className="text-[10px] sm:text-xs gap-1 cursor-pointer hover:bg-primary/15 hover:text-primary transition-colors"
                                 title="Open theory, notes and concept map"
                               >
-                                <Sparkles className="w-3 h-3" /> Theory
+                                 Theory
                               </Badge>
                             )}
                             {chapterEmpty ? (

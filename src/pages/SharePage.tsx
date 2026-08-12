@@ -344,7 +344,7 @@ const SharePage: React.FC = () => {
           {/* Ready-to-post posters */}
           <div className="space-y-2.5">
             <div className="flex items-center gap-2 pt-2">
-              <Sparkles className="w-4 h-4 text-primary" />
+              
               <h2 className="text-sm font-semibold text-foreground">Ready-to-post posters</h2>
             </div>
             <div className="grid grid-cols-2 gap-2.5">

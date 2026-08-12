@@ -4,7 +4,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ArrowRight, Clock, Crown, X, Lock } from 'lucide-react';
+import {  ArrowRight, Clock, Crown, X, Lock } from 'lucide-react';
 import { safeLocalStorage } from '@/utils/safeStorage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -75,7 +75,7 @@ export function StudyNotesIntro({ chapterId, topicId }: Props) {
         {/* Header */}
         <div className="bg-gradient-to-r from-primary via-primary/95 to-primary/80 text-primary-foreground px-5 py-4 flex items-center gap-3 shrink-0 border-b border-primary-foreground/10">
           <div className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center shrink-0">
-            <Sparkles className="w-5 h-5" />
+            
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">

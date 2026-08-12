@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // ====================================================================
 //  📄 PDF QUESTION EXTRACTION v3.0
-//  Chain: Lovable AI Gateway → Gemini Vision → Claude Vision → OpenAI Vision
+//  Chain:  AI Gateway → Gemini Vision → Claude Vision → OpenAI Vision
 // ====================================================================
 
 interface ExtractedQuestion {
@@ -80,13 +80,13 @@ function determineDifficulty(question: string, options: string[]): string {
 
 // --- Vision API calls ---
 
-async function callLovableAIVision(imageBase64: string, prompt: string, mimeType: string): Promise<string | null> {
+async function callAIVision(imageBase64: string, prompt: string, mimeType: string): Promise<string | null> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) return null;
   try {
-    console.log("[ADMIN] 🔄 PDF: Trying Lovable AI Gateway (google/gemini-2.5-flash)...");
+    console.log("[ADMIN] 🔄 PDF: Trying  AI Gateway (google/gemini-2.5-flash)...");
     const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await fetch("https://ai.gateway..dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -107,14 +107,14 @@ async function callLovableAIVision(imageBase64: string, prompt: string, mimeType
     });
     if (!res.ok) {
       const errText = (await res.text()).substring(0, 300);
-      console.error("[ADMIN] ❌ Lovable AI Vision:", res.status, errText);
+      console.error("[ADMIN] ❌  AI Vision:", res.status, errText);
       return null;
     }
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content;
-    if (text) { console.log("[ADMIN] ✅ Lovable AI Vision success"); return text; }
+    if (text) { console.log("[ADMIN] ✅  AI Vision success"); return text; }
     return null;
-  } catch (e) { console.error("[ADMIN] ❌ Lovable AI Vision error:", e); return null; }
+  } catch (e) { console.error("[ADMIN] ❌  AI Vision error:", e); return null; }
 }
 
 async function callGeminiVision(imageBase64: string, prompt: string, apiKey: string, mimeType: string): Promise<string | null> {
@@ -265,8 +265,8 @@ If no questions: {"questions": [], "page_type": "non-question", "total_questions
     const detectedMime = imageBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
     let responseText: string | null = null;
 
-    // 1️⃣ Lovable AI Gateway (PRIMARY - no quota issues)
-    responseText = await callLovableAIVision(imageBase64, extractionPrompt, detectedMime);
+    // 1️⃣  AI Gateway (PRIMARY - no quota issues)
+    responseText = await callAIVision(imageBase64, extractionPrompt, detectedMime);
 
     // 2️⃣ Gemini Vision (fallback)
     const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY");

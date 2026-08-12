@@ -335,7 +335,7 @@ Inputs:
 ${numbered}`;
 
   try {
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const r = await fetch("https://ai.gateway..dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -155,7 +155,7 @@ export default function LogClassSheet({ open, onOpenChange, onLogged, defaultSub
                   <p className="text-xs text-muted-foreground">Koi match nahi mila</p>
                   {query.trim() && (
                     <Button size="sm" variant="outline" onClick={() => saveLog(null, query.trim())} disabled={saving}>
-                      <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                      
                       Log as "{query.trim()}"
                     </Button>
                   )}

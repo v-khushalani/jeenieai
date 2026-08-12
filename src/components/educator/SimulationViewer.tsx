@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Maximize2, Minimize2, X, Loader2, AlertTriangle, Sparkles, ShieldAlert } from 'lucide-react';
+import { Maximize2, Minimize2, X, Loader2, AlertTriangle,  ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AnnotationOverlay from './AnnotationOverlay';
 import { useAuth } from '@/contexts/AuthContext';
@@ -220,7 +220,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
-  // DevTools detection (size-diff heuristic). Disable inside Lovable/embedded
+  // DevTools detection (size-diff heuristic). Disable inside /embedded
   // previews because outerWidth/innerWidth compares the host browser to the
   // iframe viewport there, causing false positives that block simulations.
   useEffect(() => {
@@ -347,7 +347,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
         {!hideHeader && (
           <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border shrink-0">
             <div className="flex items-center gap-2 min-w-0">
-              <Sparkles className="h-4 w-4 text-primary" />
+              
               <span className="text-sm font-semibold text-foreground truncate">{title}</span>
             </div>
             <div className="flex items-center gap-1">

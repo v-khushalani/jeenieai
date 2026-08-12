@@ -15,7 +15,7 @@ import {
   Flame,
   AlertCircle,
   X,
-  Sparkles,
+  
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -142,7 +142,7 @@ const EnhancedDashboard = () => {
     if (stats.todayProgress >= stats.todayGoal && stats.todayAccuracy >= 80)
       return { message: "🎉 Daily goal smashed!", color: "green", icon: Trophy, route: "/analytics" };
     if (stats.questionsToday >= 50 && stats.todayAccuracy >= 85)
-      return { message: "⭐ Outstanding performance!", color: "green", icon: Sparkles, route: "/analytics" };
+      return { message: "⭐ Outstanding performance!", color: "green", icon:  route: "/analytics" };
     if (stats.rankChange && stats.rankChange >= 3)
       return { message: `📈 Climbed ${stats.rankChange} ranks!`, color: "blue", icon: TrendingUp, route: "/analytics" };
     return null;
@@ -336,7 +336,7 @@ const EnhancedDashboard = () => {
                             variant="outline"
                             className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm"
                           >
-                            <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                            
                             Yearbook
                           </Button>
                         )}
@@ -357,7 +357,7 @@ const EnhancedDashboard = () => {
                             onClick={() => navigate("/battle")}
                             className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:from-pink-700 hover:to-indigo-700 text-white shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm font-bold"
                           >
-                            <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                            
                             Battle
                           </Button>
                         )}
@@ -666,7 +666,7 @@ const EnhancedDashboard = () => {
                       <Badge className="text-xs font-bold px-2 py-0.5 bg-linear-to-r from-purple-600 to-pink-600 text-white">
                         {pointsLevel.name}
                       </Badge>
-                      <Sparkles className="h-3 w-3 text-pink-500" />
+                      
                     </div>
                   </CardContent>
                 </Card>

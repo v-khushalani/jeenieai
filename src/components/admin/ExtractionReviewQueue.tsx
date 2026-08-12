@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { 
   CheckCircle2, XCircle, Edit2, Loader2, ChevronLeft, ChevronRight, 
   RefreshCw, FileText, BookOpen, AlertTriangle, Copy, SkipForward, 
-  Replace, Sparkles, Filter, Database, Undo2, ImageOff, Eye
+  Replace,  Filter, Database, Undo2, ImageOff, Eye
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MathDisplay } from "./MathDisplay";
@@ -945,7 +945,7 @@ export function ExtractionReviewQueue() {
               <div className="flex flex-wrap gap-3 items-center justify-between">
                 <div>
                   <h4 className="font-semibold flex items-center gap-2">
-                    <Sparkles className="h-4 w-4" />
+                    
                     Step 1: Run NLP Auto-Assignment
                   </h4>
                   <p className="text-sm text-muted-foreground">
@@ -957,7 +957,7 @@ export function ExtractionReviewQueue() {
                   disabled={nlpProcessing || bulkProcessing}
                   className="gap-2"
                 >
-                  {nlpProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  {nlpProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : }
                   Run NLP ({filteredQuestions.length})
                 </Button>
               </div>
@@ -1089,7 +1089,7 @@ export function ExtractionReviewQueue() {
                         variant={currentQuestion.parsed_question.assignment_method === 'auto' ? 'default' : 'outline'}
                         className={currentQuestion.parsed_question.assignment_method === 'auto' ? 'bg-green-600' : 'border-yellow-500 text-yellow-600'}
                       >
-                        <Sparkles className="h-3 w-3 mr-1" />
+                        
                         {currentQuestion.parsed_question.assignment_method === 'auto' ? 'Auto' : 'Suggested'} 
                         ({Math.round(currentQuestion.parsed_question.confidence_score || 0)}%)
                       </Badge>
@@ -1104,7 +1104,7 @@ export function ExtractionReviewQueue() {
                   {/* NLP Assignment Info */}
                   {currentQuestion.parsed_question.auto_assigned_chapter_name && (
                     <Alert className="bg-primary/5 border-primary/30">
-                      <Sparkles className="h-4 w-4" />
+                      
                       <AlertDescription>
                         <span className="font-medium">NLP Assignment:</span>{" "}
                         {currentQuestion.parsed_question.auto_assigned_chapter_name}

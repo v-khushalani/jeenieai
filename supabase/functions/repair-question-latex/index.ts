@@ -31,7 +31,7 @@ async function repairOne(row: any, apiKey: string) {
     explanation: row.explanation ?? "",
   };
 
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const res = await fetch("https://ai.gateway..dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({

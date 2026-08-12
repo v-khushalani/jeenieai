@@ -5,7 +5,7 @@ import SEOHead from '@/components/SEOHead';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { Button } from '@/components/ui/button';
 import {
-  Share2, X, ChevronLeft, ChevronRight, Sparkles, Flame, Target,
+  Share2, X, ChevronLeft, ChevronRight,  Flame, Target,
   TrendingUp, Award, BookOpen, Clock, Trophy, Moon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -176,7 +176,7 @@ const WrappedPage = () => {
         key: 'cover',
         bg: 'from-[#0f0524] via-[#1e0b3a] to-[#3d1163]',
         accent: '#ec4899',
-        icon: Sparkles,
+        icon: 
         kicker: 'JEENIE WRAPPED',
         bigStat: data.fullName.split(' ')[0] || 'You',
         heading: `Your ${suffix}, wrapped.`,
@@ -275,7 +275,7 @@ const WrappedPage = () => {
         key: 'finale',
         bg: 'from-[#020617] via-[#0f172a] to-[#1e293b]',
         accent: '#f472b6',
-        icon: Sparkles,
+        icon: 
         kicker: 'THAT WAS YOU',
         bigStat: '🧞‍♂️',
         heading: 'Share your wrapped',
