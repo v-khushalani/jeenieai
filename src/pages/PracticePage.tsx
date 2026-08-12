@@ -1179,7 +1179,7 @@ const PracticePage: React.FC = () => {
 
       {/* Interactive AI Doubt Solver Button */}
       {showAIButton && (
-        <div className="fixed bottom-24 right-6 z-[60]">
+        <div className="fixed bottom-32 right-6 z-[100]">
           <Button
             onClick={() => setAiSolverOpen(true)}
             className={`w-14 h-14 rounded-full bg-[#013062] hover:bg-[#024080] shadow-[0_8px_25px_rgba(1,48,98,0.4)] flex items-center justify-center p-0 group overflow-visible transition-all duration-300 ${!isCurrentAnswered ? 'opacity-30 hover:opacity-100 scale-95 hover:scale-100' : 'opacity-100'}`}
