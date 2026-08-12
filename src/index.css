@@ -452,11 +452,26 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.01em;
+    -webkit-tap-highlight-color: transparent;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    @apply tracking-tight font-black uppercase italic;
+  }
+
+  /* Interactive AF Mobile specific overrides */
+  @media (max-width: 768px) {
+    .card {
+      @apply border-2 transition-transform active:scale-[0.98];
+    }
+    
+    button:active {
+      @apply scale-95;
+    }
+
+    .container {
+      @apply px-4;
+    }
   }
 }
 
