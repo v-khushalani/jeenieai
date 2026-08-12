@@ -465,108 +465,91 @@ const EnhancedDashboard = () => {
                 </div>
               </div>
 
-              {/* High-Engagement Stats Cards */}
-              <div className="hidden lg:grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 shrink-0 auto-rows-fr items-stretch pt-4">
-                
-                {/* 1st Card: Day Streak */}
-                <Card className={`rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 ${streakColors.border} ${streakColors.bg} group overflow-hidden`}> 
-                  <CardContent className="p-6 relative">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-500">
-                      <Flame className="h-16 w-16" />
-                    </div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className={`p-2.5 ${streakColors.iconBg} rounded-xl shadow-lg`}>
-                        <Flame className="h-5 w-5 text-white" />
+              {/* Desktop Progress Analysis (Hidden on Mobile) */}
+              <div className="hidden lg:flex flex-col gap-6 pt-4">
+                <Card className="rounded-3xl border-2 border-slate-100 dark:border-slate-800 bg-card/95 shadow-2xl overflow-hidden flex flex-col">
+                  <CardHeader className="p-6 border-b border-border/60">
+                    <CardTitle className="flex justify-between items-center">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-linear-to-br from-indigo-500 via-purple-600 to-violet-700 text-white rounded-2xl shadow-xl">
+                          <TrendingUp className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-black uppercase tracking-widest text-foreground leading-none mb-1">Mastery Analysis</h3>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Real-time performance metrics</p>
+                        </div>
                       </div>
-                      <p className="text-sm font-black uppercase tracking-widest opacity-70">Streak</p>
-                    </div>
-                    <h3 className={`text-5xl font-black ${streakColors.text} mb-2 tracking-tighter`}>
-                      {streak ?? 0} <span className="text-lg font-bold opacity-60 italic">Days</span>
-                    </h3>
-                    <p className="text-xs font-bold flex items-center gap-1.5 opacity-80">
-                      {streak > 0 ? "You're on fire! 🔥" : "Start your streak today!"}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* 2nd Card: Today's Accuracy */}
-                <Card className={`rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 ${accuracyColors.border} ${accuracyColors.bg} group overflow-hidden`}> 
-                  <CardContent className="p-6 relative">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-500">
-                      <Target className="h-16 w-16" />
-                    </div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className={`p-2.5 ${accuracyColors.iconBg} rounded-xl shadow-lg`}>
-                        <Target className="h-5 w-5 text-white" />
+                      <Badge className="bg-primary/10 text-primary text-xs font-black px-4 py-1.5 uppercase tracking-widest border-0">Global Stats</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    {stats?.subjectStats && Object.keys(stats.subjectStats).length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {Object.entries(stats.subjectStats).map(([subject, data]: any) => {
+                          const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
+                          const isHigh = accuracy >= 80;
+                          const isMid = accuracy >= 60;
+                          
+                          return (
+                            <motion.div 
+                              key={subject}
+                              whileHover={{ y: -8, scale: 1.02 }}
+                              className="bg-slate-50 dark:bg-slate-900/40 border-2 border-slate-100 dark:border-slate-800/50 rounded-3xl p-6 transition-all duration-300 shadow-lg hover:shadow-2xl group"
+                            >
+                              <div className="flex justify-between items-start mb-6">
+                                <div className="space-y-1">
+                                  <h4 className="font-black text-sm uppercase tracking-widest opacity-70 group-hover:opacity-100 transition-opacity">{subject}</h4>
+                                  <p className="text-[10px] font-bold opacity-40 uppercase tracking-tighter">Subject Proficiency</p>
+                                </div>
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg ${
+                                  isHigh ? 'bg-emerald-500/10 text-emerald-500' : 
+                                  isMid ? 'bg-amber-500/10 text-amber-500' : 
+                                  'bg-red-500/10 text-red-500'
+                                }`}>
+                                  {accuracy}%
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-4">
+                                <div className="h-4 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden p-1 shadow-inner">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${accuracy}%` }}
+                                    className={`h-full rounded-full shadow-lg ${
+                                      isHigh ? 'bg-linear-to-r from-emerald-400 to-emerald-600' : 
+                                      isMid ? 'bg-linear-to-r from-amber-400 to-amber-600' : 
+                                      'bg-linear-to-r from-red-400 to-red-600'
+                                    }`}
+                                  />
+                                </div>
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest opacity-60">
+                                  <div className="flex items-center gap-1.5">
+                                    <CheckCircle2 className={`h-3 w-3 ${isHigh ? 'text-emerald-500' : 'text-slate-400'}`} />
+                                    <span>{data.correct} Correct</span>
+                                  </div>
+                                  <span>{data.total} Total</span>
+                                </div>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
                       </div>
-                      <p className="text-sm font-black uppercase tracking-widest opacity-70">Accuracy</p>
-                    </div>
-                    <h3 className={`text-5xl font-black ${accuracyColors.text} mb-2 tracking-tighter`}>
-                      {stats?.todayAccuracy ?? 0}<span className="text-2xl font-bold">%</span>
-                    </h3>
-                    <div className="flex items-center gap-2">
-                       <Badge className={`text-[10px] font-black px-2 py-0.5 border-0 ${
-                        (stats?.todayAccuracy ?? 0) >= 80 ? 'bg-emerald-500' :
-                        (stats?.todayAccuracy ?? 0) >= 60 ? 'bg-orange-500' :
-                        'bg-red-500'
-                      }`}>
-                        {(stats?.todayAccuracy ?? 0) >= 80 ? 'ELITE' : (stats?.todayAccuracy ?? 0) >= 60 ? 'STABLE' : 'WEAK'}
-                      </Badge>
-                      <p className="text-[10px] font-bold opacity-60">Overall: {stats?.accuracy ?? 0}%</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* 3rd Card: Today's Goal */}
-                <Card className={`rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 ${goalColors.border} ${goalColors.bg} group overflow-hidden`}> 
-                  <CardContent className="p-6 relative">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-500">
-                      <Rocket className="h-16 w-16" />
-                    </div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className={`p-2.5 ${goalColors.iconBg} rounded-xl shadow-lg`}>
-                        <Calendar className="h-5 w-5 text-white" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                        <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800/50 rounded-full flex items-center justify-center mb-6 text-slate-300">
+                          <BookOpen className="h-12 w-12 opacity-10" />
+                        </div>
+                        <h3 className="text-xl font-black uppercase tracking-widest mb-2">Initialize Learning</h3>
+                        <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-8">Start your daily missions to unlock advanced mastery analytics and performance tracking.</p>
+                        <Button 
+                          size="lg"
+                          onClick={() => navigate("/study-now")}
+                          className="bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-500/20 px-10 h-14 rounded-2xl font-black uppercase tracking-widest"
+                        >
+                          Unlock Analytics →
+                        </Button>
                       </div>
-                      <p className="text-sm font-black uppercase tracking-widest opacity-70">Daily Goal</p>
-                    </div>
-                    <h3 className={`text-5xl font-black ${goalColors.text} mb-3 tracking-tighter`}>
-                      {stats?.todayProgress ?? 0}<span className="text-2xl font-bold opacity-60">/{stats?.todayGoal ?? 30}</span>
-                    </h3>
-                    <div className="w-full bg-black/5 dark:bg-white/10 rounded-full h-3 mb-1 overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(100, ((stats?.todayProgress ?? 0) / (stats?.todayGoal ?? 30)) * 100)}%` }}
-                        className={`h-full rounded-full transition-all ${
-                          (stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500' :
-                          (stats?.todayProgress ?? 0) >= ((stats?.todayGoal ?? 30) * 0.5) ? 'bg-yellow-500' :
-                          'bg-orange-500'
-                        }`}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* 4th Card: JEEnie Points */}
-                <Card className="rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-purple-200 bg-linear-to-br from-purple-50 via-white to-pink-50 dark:from-purple-950/20 dark:via-slate-900/50 dark:to-pink-950/20 group overflow-hidden"> 
-                  <CardContent className="p-6 relative">
-                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-500">
-                      <Sparkles className="h-16 w-16" />
-                    </div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="p-2.5 bg-linear-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg">
-                        <Trophy className="h-5 w-5 text-white" />
-                      </div>
-                      <p className="text-sm font-black uppercase tracking-widest opacity-70">Mastery XP</p>
-                    </div>
-                    <h3 className="text-5xl font-black bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2 tracking-tighter">
-                      {stats?.totalPoints ?? 0}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      <Badge className="text-[10px] font-black px-2 py-0.5 bg-linear-to-r from-purple-600 to-pink-600 text-white border-0">
-                        {pointsLevel.name}
-                      </Badge>
-                      <p className="text-[10px] font-bold opacity-60">Level {stats?.currentLevel || 1}</p>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
