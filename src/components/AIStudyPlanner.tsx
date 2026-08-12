@@ -523,6 +523,12 @@ export default function AIStudyPlanner() {
       setTargetExam(exam);
       setPlanner(data);
       setCompletedHashes(done);
+
+      // Fetch coach signal (streak, etc.)
+      supabase.functions.invoke('compute-coach-signal').then(({ data: sigData }) => {
+        if (sigData) setSignal(sigData);
+      }).catch(() => {});
+
       writePlannerCache(user.id, { profile: prof, targetExam: exam, planner: data, completedHashes: Array.from(done) });
     } catch (error) {
       logger.error('Planner load error', error);
