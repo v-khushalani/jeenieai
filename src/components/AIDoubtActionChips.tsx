@@ -92,7 +92,7 @@ export const AIDoubtActionChips: React.FC<Props> = ({ tier, onChip, onLocked, di
             type="button"
             disabled={disabled}
             onClick={() => (unlocked ? onChip(chip) : onLocked(chip))}
-            className={`shrink-0 snap-start min-h-[36px] px-3 py-1.5 rounded-full border text-[11px] sm:text-xs font-semibold transition-all whitespace-nowrap ${
+            className={`shrink-0 snap-start min-h-[36px] px-3 py-1.5 rounded-full border text-[11px] sm:text-xs font-semibold transition-all whitespace-nowrap active:scale-[0.95] hover:shadow-sm ${
               unlocked
                 ? 'bg-white border-primary/30 text-primary hover:bg-primary/5 active:scale-[0.97]'
                 : 'bg-muted/40 border-border text-muted-foreground hover:bg-muted/60'

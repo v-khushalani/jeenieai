@@ -92,7 +92,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     if (isGeneral) {
       return `
 <div style="padding: 2px 0 0 0;">
-  <div style="margin-top:4px;font-size:14px;font-weight:800;color:#0b2536;line-height:1.4;">Hello! Main hu JEEnie. Kya puchna chahte ho? 😉</div>
+  <div style="margin-top:4px;font-size:15px;font-weight:800;color:#0b2536;line-height:1.4;">Oye! 👋 Main hu tera Bada Bhai (JEEnie). Bol, kya dikkat aa rahi hai? Sharmayiye mat, khul ke puchiye! 😉</div>
 </div>`;
     } else {
       const options = [
@@ -109,7 +109,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     ${options || 'Tap below to ask for a full solution.'}
   </div>
   <div style="margin-top:8px;font-size:11px;line-height:1.4;color:rgba(11,37,54,0.68);font-weight:500;">
-    Tap below for a short worked solution — I’ll keep it snappy 😉
+    Bata, isme kya phas raha hai? Short worked solution chahiye toh tap kar, tera Bhai sab solve kar dega! 😉
   </div>
 </div>`;
     }
@@ -345,8 +345,8 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     <div className="fixed inset-0 bg-white/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
       <div className="bg-white rounded-[28px] shadow-[0_24px_80px_rgba(2,18,36,0.08)] max-w-lg w-full max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-[#0b2536]/6 relative">
         {/* Floating JEEnie Icon */}
-        <div className="absolute -top-6 sm:-top-8 left-1/2 -translate-x-1/2 bg-[#013062] p-2 sm:p-3 rounded-full shadow-lg animate-bounce">
-          <Wand2 className="text-white w-5 h-5 sm:w-6 sm:h-6" />
+        <div className={`absolute -top-6 sm:-top-8 left-1/2 -translate-x-1/2 bg-[#013062] p-2 sm:p-3 rounded-full shadow-lg ${loading || typing ? 'animate-pulse scale-110 shadow-blue-500/50 ring-4 ring-blue-500/20' : 'animate-bounce'}`}>
+          <Zap className={`text-white w-5 h-5 sm:w-6 sm:h-6 ${(loading || typing) ? 'animate-spin' : ''}`} />
         </div>
 
         {/* Header */}
@@ -393,7 +393,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                 </div>
               )}
               <div
-                className={`max-w-[85%] sm:max-w-[80%] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm leading-relaxed shadow-xs ${
+                className={`max-w-[85%] sm:max-w-[80%] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm leading-relaxed shadow-xs transition-all duration-300 hover:shadow-md animate-in slide-in-from-bottom-2 ${
                   msg.role === "user"
                     ? "bg-linear-to-r from-accent-foreground to-primary text-primary-foreground rounded-br-sm"
                     : isInitialAssistantMessage(msg, i)
