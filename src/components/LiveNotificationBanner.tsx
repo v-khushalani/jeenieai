@@ -186,7 +186,7 @@ export const LiveNotificationBanner: React.FC = () => {
               </button>
             </div>
 
-            {/* Bottom bar indicator */}
+            {/* Zaptom bar indicator */}
             <div className="mt-3 h-1 rounded-full bg-white/10 overflow-hidden">
               <div
                 className="h-full bg-white/40 rounded-full"

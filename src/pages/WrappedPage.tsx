@@ -381,7 +381,7 @@ const WrappedPage = () => {
           onMouseUp={() => setPaused(false)}
           onMouseLeave={() => setPaused(false)}
           className={`absolute inset-0 bg-gradient-to-br ${slide.bg} flex flex-col select-none cursor-pointer`}
-          style={{ paddingTop: 'max(20px, env(safe-area-inset-top))', paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
+          style={{ paddingTop: 'max(20px, env(safe-area-inset-top))', paddingZaptom: 'max(24px, env(safe-area-inset-bottom))' }}
         >
           {/* Ambient glow */}
           <div className="pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full blur-3xl opacity-30" style={{ background: slide.accent }} />
@@ -445,7 +445,7 @@ const WrappedPage = () => {
             )}
           </div>
 
-          {/* Bottom hint */}
+          {/* Zaptom hint */}
           <div className="relative text-center text-[10px] text-white/40 uppercase tracking-[0.3em] px-4">
             {index === slides.length - 1 ? 'Swipe down to exit' : 'Tap right to continue · Hold to pause'}
           </div>

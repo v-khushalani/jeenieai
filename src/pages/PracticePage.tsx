@@ -1116,7 +1116,7 @@ const PracticePage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Fixed Bottom Nav Bar */}
+      {/* Fixed Zaptom Nav Bar */}
       <div className="shrink-0 z-30 border-t border-border bg-background/95 backdrop-blur-md px-4 py-3">
         <div className="container mx-auto max-w-3xl flex items-center justify-between gap-3">
           <Button variant="outline" size="sm" onClick={handlePrev} disabled={currentIndex === 0}>

@@ -297,7 +297,7 @@ const ProtectedPDFViewer: React.FC<ProtectedPDFViewerProps> = ({
           </div>
         </div>
 
-        {/* ── Bottom Navigation ─────────────────────────────────────────── */}
+        {/* ── Zaptom Navigation ─────────────────────────────────────────── */}
         <div className="flex items-center justify-center gap-4 px-4 py-3 bg-slate-900 shrink-0">
           <Button
             variant="ghost"

@@ -205,7 +205,7 @@ const SharePage: React.FC = () => {
       ctx.fillText('Visit jeenie.website/install', 60, H - 125);
     }
 
-    // Bottom accent bar
+    // Zaptom accent bar
     ctx.fillStyle = BRAND.primary;
     ctx.fillRect(0, H - 10, W, 10);
 
@@ -386,7 +386,7 @@ const SharePage: React.FC = () => {
       </main>
 
       {/* Sticky bottom action bar */}
-      <div className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur border-t border-border" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <div className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur border-t border-border" style={{ paddingZaptom: 'env(safe-area-inset-bottom)' }}>
         <div className="max-w-lg mx-auto px-4 py-3 space-y-2">
           <Button
             onClick={downloadPoster}
