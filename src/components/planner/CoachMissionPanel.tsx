@@ -439,23 +439,22 @@ export default function CoachMissionPanel() {
                       }`}>
                         {b.title}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <span className={`text-[10px] font-semibold ${typeAccent[b.type]}`}>{typeShort[b.type]}</span>
-                        <span className="text-[10px] text-muted-foreground">·</span>
-                        <span className="text-[10px] text-muted-foreground tabular-nums">
-                          {isDone ? `${target}/${target}` : `${prog.attempted}/${target} Q`}
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${typeAccent[b.type]}`}>
+                          {typeShort[b.type]}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-bold tabular-nums bg-muted/50 px-1.5 rounded-md">
+                          {isDone ? `${target}/${target}` : `${prog.attempted}/${target}`} Q
                         </span>
                         {!isDone && (
-                          <>
-                            <span className="text-[10px] text-muted-foreground">·</span>
-                            <span className="text-[10px] text-muted-foreground">{b.minutes}m</span>
-                          </>
+                          <span className="text-[10px] text-muted-foreground font-bold bg-muted/50 px-1.5 rounded-md">
+                            {b.minutes}m
+                          </span>
                         )}
                         {!!b.xp_reward && (
-                          <>
-                            <span className="text-[10px] text-muted-foreground">·</span>
-                            <span className="text-[10px] font-bold text-amber-600">+{b.xp_reward} XP</span>
-                          </>
+                          <span className="text-[10px] font-black text-amber-600 bg-amber-500/10 px-1.5 rounded-md flex items-center gap-0.5">
+                            <Zap className="w-2.5 h-2.5 fill-amber-600" /> +{b.xp_reward} XP
+                          </span>
                         )}
                       </div>
                       {isCurrent && prog.attempted > 0 && (
