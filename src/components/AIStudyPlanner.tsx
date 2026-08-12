@@ -759,58 +759,16 @@ export default function AIStudyPlanner() {
             </Card>
           </div>
 
-          <Card>
-            <CardContent className="space-y-3 p-3">
-              <div>
-                <p className="text-xs font-bold">Next chapter to finish</p>
-                <p className="mt-0.5 text-sm font-semibold">{planner.active?.title || 'Revision mode'}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {planner.active ? `${formatSubjectDisplay(planner.active.subject)} · ${planner.active.accuracy}% accuracy · ${planner.active.totalQuestions} questions available` : 'All roadmap chapters touched.'}
-                </p>
-              </div>
-              {planner.next && (
-                <div>
-                  <p className="text-xs font-bold">After that</p>
-                  <p className="mt-0.5 text-sm font-semibold">{planner.next.title}</p>
-                </div>
-              )}
+        <TabsContent value="insights" className="mt-3">
+          <Card className="bg-muted/30 border-dashed">
+            <CardContent className="p-8 text-center space-y-3">
+              <Trophy className="w-10 h-10 text-primary/40 mx-auto" />
+              <p className="text-base font-black tracking-tight">Insights Integrated</p>
+              <p className="text-sm text-muted-foreground font-medium">Saare data insights ab Mastery Ladder ke dynamic stats mein milenge!</p>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardContent className="space-y-2 p-3">
-              <p className="text-xs font-bold">Coverage by subject</p>
-              {subjectCoverage.map((item) => (
-                <div key={item.subject} className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-semibold">{formatSubjectDisplay(item.subject)}</span>
-                    <span className="text-muted-foreground">{item.touched}/{item.total} chapters</span>
-                  </div>
-                  <Progress value={item.pct} className="h-1.5" />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {planner.weak.length > 0 && (
-            <Card className="border-primary/20">
-              <CardContent className="p-3">
-                <p className="mb-2 text-xs font-bold">Top weak chapters</p>
-                <div className="space-y-1.5">
-                  {planner.weak.slice(0, 4).map((chapter) => (
-                    <button key={chapter.id} type="button" onClick={() => navigate(buildPracticeHref(chapter, 'drill'))} className="flex w-full items-center justify-between gap-2 rounded-lg border border-border p-2 text-left hover:border-primary/50">
-                      <span className="min-w-0">
-                        <span className="block truncate text-xs font-semibold">{chapter.title}</span>
-                        <span className="text-[10px] text-muted-foreground">{formatSubjectDisplay(chapter.subject)} · {chapter.attempts} attempts</span>
-                      </span>
-                      <Badge variant="outline" className="shrink-0 text-[10px]">{chapter.accuracy}%</Badge>
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
+
       </Tabs>
         </div>
       </details>
