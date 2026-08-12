@@ -318,11 +318,11 @@ export default function CoachMissionPanel() {
       {!loading && !needsSetup && (
         <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2.5">
           {signal?.streak && signal.streak.current > 0 ? (
-            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-tighter ${
               signal.streak.today_done ? 'bg-orange-500/15 text-orange-600' : 'bg-muted text-muted-foreground'
             }`}>
               <Flame className="w-3.5 h-3.5" />
-              <span className="tabular-nums">{signal.streak.current}d streak</span>
+              <span className="tabular-nums">{signal.streak.current}d Streak</span>
             </div>
           ) : (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground">
@@ -365,8 +365,8 @@ export default function CoachMissionPanel() {
               <p className="text-[10px] uppercase tracking-widest font-black text-primary">
                 Aaj ki Hit-List
               </p>
-              <p className="text-[10px] text-muted-foreground font-bold">
-                Daily Mission Progress
+              <p className="text-[10px] text-muted-foreground font-bold italic">
+                Daily Mission Tracker
               </p>
             </div>
             <div className="text-right">
@@ -378,7 +378,7 @@ export default function CoachMissionPanel() {
             <Progress value={overallPct} className="h-3 rounded-full bg-muted border-2 border-border/50 relative overflow-visible" />
             {overallPct > 0 && overallPct < 100 && (
               <Zap 
-                className="absolute top-1/2 -translate-y-1/2 w-6 h-6 text-amber-500 fill-amber-500 animate-pulse z-10" 
+                className="absolute top-1/2 -translate-y-1/2 w-6 h-6 text-amber-500 fill-amber-500 animate-pulse z-[20]" 
                 style={{ left: `calc(${overallPct}% - 12px)` }} 
               />
             )}
