@@ -323,17 +323,24 @@ const StudyNowPage: React.FC = () => {
         const map: Record<string, number> = {};
         const chapMap: Record<string, number> = {};
         
+        let hasQuestions = false;
         (allCounts || []).forEach((row: any) => {
           const key = String(row.subject || '').trim().toUpperCase();
-          map[key] = Number(row.question_count) || 0;
+          const qCount = Number(row.question_count) || 0;
+          map[key] = qCount;
           chapMap[key] = Number(row.chapter_count) || 0;
+          if (qCount > 0) hasQuestions = true;
         });
 
         setSubjectQuestionCounts(map);
         setSubjectChapterCounts(chapMap);
+        
+        // If we found questions, we can stop loading. 
+        // If no questions found via RPC for the user's specific grade/exam, 
+        // we keep countsLoading true for a bit longer or rely on the UI to show Coming Soon correctly.
+        setCountsLoading(false);
       } catch (err) {
         logger.error('Error fetching subject totals:', err);
-      } finally {
         setCountsLoading(false);
       }
     };
@@ -533,11 +540,11 @@ const StudyNowPage: React.FC = () => {
             <>
               {isLoading ? (
                 <LoadingScreen pageName="Study Now" message="Loading study subjects..." />
-              ) : availableSubjects.length === 0 || availableSubjects.every((s) => (subjectQuestionCounts[String(s || '').trim().toUpperCase()] ?? 0) === 0) ? (
+              ) : availableSubjects.length === 0 ? (
                 <div className="flex-1 min-h-0 flex items-center justify-center pb-4">
                   <ComingSoonBanner
                     className="w-full max-w-xl"
-                    subtitle="Is class ke liye questions abhi taiyaar ho rahe hain. Bahut jaldi live honge!"
+                    subtitle="Is class ke liye subjects abhi taiyaar ho rahe hain. Bahut jaldi live honge!"
                   />
                 </div>
               ) : (

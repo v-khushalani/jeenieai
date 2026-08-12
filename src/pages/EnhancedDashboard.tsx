@@ -146,7 +146,7 @@ const EnhancedDashboard = () => {
     if (stats.todayProgress >= stats.todayGoal && stats.todayAccuracy >= 80)
       return { message: "🎉 Daily goal smashed!", color: "green", icon: Trophy, route: "/analytics" };
     if (stats.questionsToday >= 50 && stats.todayAccuracy >= 85)
-      return { message: "⭐ Outstanding performance!", color: "green", icon: Sparkles, route: "/analytics" };
+      return { message: "🎉 Daily goal smashed!", color: "green", icon: Trophy, route: "/analytics" };
     if (stats.rankChange && stats.rankChange >= 3)
       return { message: `📈 Climbed ${stats.rankChange} ranks!`, color: "blue", icon: TrendingUp, route: "/analytics" };
     return null;
@@ -401,7 +401,7 @@ const EnhancedDashboard = () => {
                               <div className="p-2 bg-linear-to-r from-purple-600 to-pink-600 rounded-xl shadow-md group-hover:scale-110 transition-transform">
                                 <Trophy className="h-4 w-4 text-white" />
                               </div>
-                              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Mastery XP</p>
+                              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Mastery Points</p>
                             </div>
                             <div className="flex items-center justify-between">
                               <h3 className="text-4xl font-black bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent tracking-tighter">{stats?.totalPoints ?? 0}</h3>

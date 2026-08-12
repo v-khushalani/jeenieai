@@ -613,29 +613,7 @@ export default function AIStudyPlanner() {
 
   return (
     <div className="space-y-4 py-3 pb-24">
-      {/* Dynamic Header */}
-      <div className="flex items-start justify-between gap-2 px-1">
-        <div className="min-w-0">
-          <h1 className="flex items-center gap-2 text-xl font-black sm:text-2xl tracking-tighter uppercase italic text-primary">
-            <Rocket className="h-6 w-6" /> JEEnie AI Planner
-          </h1>
-          <p className="mt-0.5 line-clamp-2 text-[11px] font-bold text-muted-foreground sm:text-xs">
-            Scratch se syllabus cover karwaunga — weakness bhi strength banegi.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={`h-9 w-9 rounded-xl border-2 transition-all ${refreshing ? 'animate-spin' : 'hover:scale-110'}`} 
-            onClick={() => void loadAll()}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-hidden flex flex-col pt-2">
+      <div className="flex-1 overflow-hidden flex flex-col">
         <Tabs defaultValue="ladder" className="w-full flex-1 flex flex-col">
           <TabsList className="grid w-full grid-cols-2 h-14 p-1.5 bg-muted/50 rounded-2xl border-2 border-border/50">
             <TabsTrigger 

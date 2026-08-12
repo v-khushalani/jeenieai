@@ -334,7 +334,7 @@ export default function CoachMissionPanel() {
             <div className="flex-1 flex items-center justify-end gap-2">
               <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 text-amber-600 text-[11px] font-bold tabular-nums">
                 <Trophy className="w-3 h-3" />
-                {xpEarned}<span className="text-amber-600/60 font-normal">/{xpTotal} XP</span>
+                {xpEarned}<span className="text-amber-600/60 font-normal">/{xpTotal} Pts</span>
               </div>
               <div className="text-right">
                 <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold leading-none">Aaj</p>

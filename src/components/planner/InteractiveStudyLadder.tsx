@@ -54,7 +54,7 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
   return (
     <div className="flex flex-col gap-6 py-4">
       {/* Dynamic Header Stats */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-100 overflow-hidden relative group hover:shadow-lg transition-all">
           <div className="absolute top-0 right-0 p-1 opacity-20 group-hover:scale-110 transition-transform">
             <Trophy className="w-12 h-12" />
@@ -65,25 +65,8 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
                 <TrendingUp className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Level XP</p>
+                <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Mastery Points</p>
                 <p className="text-lg font-black text-amber-900 leading-none">{xpPoints}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-rose-50 to-red-50 border-rose-100 overflow-hidden relative group hover:shadow-lg transition-all">
-          <div className="absolute top-0 right-0 p-1 opacity-20 group-hover:scale-110 transition-transform">
-            <Flame className="w-12 h-12" />
-          </div>
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-full bg-rose-100 text-rose-600">
-                <Flame className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-rose-700 uppercase tracking-wider">Streak</p>
-                <p className="text-lg font-black text-rose-900 leading-none">{streak} Days</p>
               </div>
             </div>
           </CardContent>
