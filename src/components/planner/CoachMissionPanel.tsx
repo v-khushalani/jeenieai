@@ -24,6 +24,8 @@ import {
   Flame, Trophy, Circle, Info,
 } from 'lucide-react';
 import LogClassSheet from '@/components/LogClassSheet';
+import { CelebrationCard } from './CelebrationCard';
+
 
 interface CoachSignal {
   streak?: { current: number; best: number; today_done: boolean };
