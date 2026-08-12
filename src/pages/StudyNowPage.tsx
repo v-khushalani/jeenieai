@@ -549,37 +549,39 @@ const StudyNowPage: React.FC = () => {
                       const meta = SUBJECT_META[subName] || { icon: <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-white" />, gradient: 'from-slate-500 to-slate-600', border: 'border-slate-200 hover:border-slate-400', bg: 'bg-slate-100' };
                       return (
                         <div key={subName} className="w-full overflow-visible">
-                          <div className={`group relative rounded-3xl bg-card/95 border-2 border-l-4 border-l-[#e6eeff] ${meta.border} ${subjectEmpty ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer sm:hover:scale-[1.03]'} shadow-lg sm:shadow-xl transition-all duration-300 sm:hover:shadow-2xl min-h-32 sm:min-h-54 flex flex-col box-border origin-center`} onClick={() => { if (!subjectEmpty) handleSubjectClick(subName); }}>
-                            <div className="p-3 sm:p-6 text-center h-full flex flex-col justify-between gap-2 sm:gap-4">
+                          <div className={`group relative rounded-4xl bg-card/95 border-2 border-l-[6px] ${meta.border} ${subjectEmpty ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer sm:hover:scale-[1.03]'} shadow-xl transition-all duration-300 sm:hover:shadow-2xl min-h-36 sm:min-h-54 flex flex-col box-border origin-center overflow-hidden`} onClick={() => { if (!subjectEmpty) handleSubjectClick(subName); }}>
+                            <div className={`absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 transition-transform duration-700 sm:group-hover:scale-[2] sm:group-hover:rotate-45`}>
+                              {meta.icon}
+                            </div>
+                            <div className="p-4 sm:p-6 text-center h-full flex flex-col justify-between gap-3 sm:gap-4 relative z-10">
                               <div>
-                                <div className={`w-10 h-10 sm:w-16 sm:h-16 bg-linear-to-br ${meta.gradient} rounded-2xl flex items-center justify-center mx-auto mb-2.5 sm:mb-4 transition-all duration-300 shadow-lg sm:shadow-xl sm:group-hover:scale-110 sm:group-hover:-translate-y-1`}>
+                                <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-linear-to-br ${meta.gradient} rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-[0_8px_20px_rgba(0,0,0,0.15)] sm:group-hover:scale-110 sm:group-hover:-translate-y-2 transition-transform duration-500`}>
                                   {meta.icon}
                                 </div>
-                                <h3 className="text-[13px] sm:text-2xl font-extrabold mb-0.5 sm:mb-2 text-foreground line-clamp-2 tracking-tight">{subName}</h3>
+                                <h3 className="text-lg sm:text-2xl font-black uppercase italic tracking-tighter text-foreground line-clamp-2">{subName}</h3>
                               </div>
 
                               <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
                                 {subjectEmpty ? (
-                                  <Badge variant="secondary" className="text-[10px] sm:text-xs font-semibold bg-amber-100 text-amber-700 border-amber-200">
-                                    Coming Soon
+                                  <Badge variant="secondary" className="text-[10px] sm:text-xs font-black italic uppercase bg-amber-100 text-amber-700 border-amber-200">
+                                    COMING SOON
                                   </Badge>
                                 ) : (
                                   <>
-                                    <Badge variant="secondary" className="text-[10px] sm:text-xs font-semibold bg-primary/10 text-primary border-primary/20">
-                                      {subjectQuestionCount} Questions
+                                    <Badge variant="secondary" className="text-[10px] sm:text-xs font-black italic uppercase bg-primary/10 text-primary border-primary/20">
+                                      {subjectQuestionCount} Qs
                                     </Badge>
-                                    <Badge variant="outline" className="text-[10px] sm:text-xs font-semibold">
-                                      {(subjectChapterCounts[String(subName || '').trim().toUpperCase()] ?? 0)} Chapters
+                                    <Badge variant="outline" className="text-[10px] sm:text-xs font-black italic uppercase">
+                                      {(subjectChapterCounts[String(subName || '').trim().toUpperCase()] ?? 0)} CH
                                     </Badge>
                                   </>
                                 )}
                               </div>
 
-                              <Button disabled={subjectEmpty} className="w-full bg-linear-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-semibold py-3 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 text-base mt-1 sm:mt-0">
-                                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                                <span>{subjectEmpty ? 'Coming Soon' : 'Start Practicing'}</span>
+                              <Button disabled={subjectEmpty} className="w-full bg-linear-to-r from-primary via-blue-600 to-indigo-700 hover:scale-[1.02] text-white font-black italic uppercase tracking-widest py-4 rounded-2xl shadow-lg transition-all duration-300 text-sm mt-1 sm:mt-0">
+                                <span>{subjectEmpty ? 'SOON' : 'PRACTICE'}</span>
+                                {!subjectEmpty && <Sparkles className="w-4 h-4 ml-2 animate-pulse" />}
                               </Button>
-
                             </div>
                           </div>
                         </div>
