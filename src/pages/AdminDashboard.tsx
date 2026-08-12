@@ -23,8 +23,8 @@ import {
 import {
   BarChart3, Users, BookOpen, Bell, FileText,
   CheckSquare, Home, Package,
-  Eye, LogOut, Shield, ToggleLeft,
-  Download, CreditCard,  FileSpreadsheet,
+  Eye, LogOut, Shield, ToggleLeft, Zap,
+  Download, CreditCard, FileSpreadsheet,
 } from 'lucide-react';
 
 // Lazy load heavy admin components
