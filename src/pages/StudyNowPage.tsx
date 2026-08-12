@@ -306,40 +306,40 @@ const StudyNowPage: React.FC = () => {
   useEffect(() => {
     const fetchSubjectTotals = async () => {
       if (availableSubjects.length === 0) {
-        // Nothing to count yet — stay in "loading" until the profile resolves.
         if (!profileLoading) setCountsLoading(false);
         return;
       }
       setCountsLoading(true);
       try {
+        const examFilter = getExamFilter(userExam, userGrade);
+        const { data: allCounts, error: rpcError } = await supabase.rpc('get_all_subject_question_counts', {
+          p_batch_ids: userBatchIds.length > 0 ? userBatchIds : null,
+          p_exam: examFilter,
+          p_class_level: userGrade
+        });
+
+        if (rpcError) throw rpcError;
+
         const map: Record<string, number> = {};
+        const chapMap: Record<string, number> = {};
+        
+        (allCounts || []).forEach((row: any) => {
+          const key = String(row.subject || '').trim().toUpperCase();
+          map[key] = Number(row.question_count) || 0;
+          chapMap[key] = Number(row.chapter_count) || 0;
+        });
 
-        await Promise.all(availableSubjects.map(async (subject) => {
-          // Fetch chapter rows ONCE per subject, then count via RPC (no duplicate query).
-          const scopedChapterRows = await loadChapterRowsForSubject(subject, false);
-          const chapterCounts = await fetchChapterCountsForRows(scopedChapterRows);
-          const chapterCount = (scopedChapterRows || []).length;
-
-          const key = String(subject || '').trim().toUpperCase();
-
-          const questionCount = (scopedChapterRows || []).reduce((sum, ch) => sum + (chapterCounts.get(ch.id) || 0), 0);
-          map[key] = questionCount;
-          setSubjectChapterCounts((prev) => ({ ...prev, [key]: chapterCount }));
-        }));
-
-        // Always publish counts for every subject (including 0) so the UI shows
-        // a stable value instead of falling back to "0 Questions" for unresolved keys.
-        setSubjectQuestionCounts((prev) => ({ ...prev, ...map }));
+        setSubjectQuestionCounts(map);
+        setSubjectChapterCounts(chapMap);
       } catch (err) {
         logger.error('Error fetching subject totals:', err);
-        // Do NOT wipe existing counts on transient errors — keep last-good values.
       } finally {
         setCountsLoading(false);
       }
     };
 
     fetchSubjectTotals();
-  }, [availableSubjects, fetchChapterCountsForRows, loadChapterRowsForSubject, summarizeChapterCounts, userBatchIds, userExam, userGrade, profileLoading]);
+  }, [availableSubjects, userBatchIds, userExam, userGrade, profileLoading]);
 
 
   const fetchChapters = async (subject: string) => {

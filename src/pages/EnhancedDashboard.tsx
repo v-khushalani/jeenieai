@@ -36,7 +36,7 @@ const EnhancedDashboard = () => {
   const { user, isPremium, isProPlus } = useAuth();
   const navigate = useNavigate();
   const { stats, profile, loading: userStatsLoading, refresh: refreshStats } = useUserStats();
-  const { streak, isLoading: streakLoading } = useStreakData();
+  const { streak, loading: streakLoading } = useStreakData();
   const isLoading = userStatsLoading || streakLoading;
   const { getExamDate } = useExamDates();
   const [showBanner, setShowBanner] = useState(false);
