@@ -627,82 +627,78 @@ const EnhancedDashboard = () => {
 
                     <CardContent className="p-3 sm:p-4 flex-1 min-h-0 overflow-auto">
 
-                      {stats?.subjectStats ? (
-                        <>
-                          {/* Mobile: Circular progress rings */}
-                          <div className="grid grid-cols-3 gap-2 sm:hidden">
-                            {Object.entries(stats.subjectStats).map(([subject, data]: any) => {
-                              const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
-                              const circumference = 2 * Math.PI * 32;
-                              const strokeDashoffset = circumference - (accuracy / 100) * circumference;
-                              const strokeColor = accuracy >= 80 ? '#10b981' : accuracy >= 60 ? '#f59e0b' : '#ef4444';
-                              const bgColor = accuracy >= 80 ? '#d1fae5' : accuracy >= 60 ? '#fef3c7' : '#fee2e2';
-
-                              return (
-                                <div key={subject} className="flex flex-col items-center gap-1">
-                                  <div className="relative w-20 h-20">
-                                    <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                                      <circle cx="40" cy="40" r="32" fill="none" stroke={bgColor} strokeWidth="6" />
-                                      <circle cx="40" cy="40" r="32" fill="none" stroke={strokeColor} strokeWidth="6"
-                                        strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
-                                        className="transition-all duration-700" />
-                                    </svg>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                      <span className="text-sm font-bold" style={{ color: strokeColor }}>{accuracy}%</span>
-                                      <span className="text-[8px] text-muted-foreground">{data.correct}/{data.total}</span>
-                                    </div>
-                                  </div>
-                                  <span className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">{subject}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-
-                          {/* Desktop: Card layout */}
-                              <div className="hidden sm:grid sm:grid-cols-1 gap-3">
+                      {stats?.subjectStats && Object.keys(stats.subjectStats).length > 0 ? (
+                        <div className="space-y-4">
+                          {/* Subject Mastery Overview */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {Object.entries(stats.subjectStats).map(([subject, data]: any) => {
                               const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
                               const badge = getProgressBadge(accuracy);
+                              const isHigh = accuracy >= 80;
+                              const isMid = accuracy >= 60;
 
                               return (
-                                <div key={subject} className="bg-card border border-border rounded-xl p-3 sm:p-4 shadow-xs hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
-                                  <div className="flex justify-between items-start mb-2 sm:mb-3">
-                                    <div>
-                                      <h4 className="text-xs sm:text-sm font-bold text-foreground mb-1">{subject}</h4>
-                                      <Badge className={`${badge.color} text-white text-xs font-medium`}>
-                                        {badge.text}
-                                      </Badge>
+                                <motion.div 
+                                  key={subject}
+                                  whileHover={{ y: -4 }}
+                                  className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-5 transition-all duration-300 shadow-sm hover:shadow-xl"
+                                >
+                                  <div className="flex justify-between items-center mb-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className={`p-2 rounded-xl ${
+                                        isHigh ? 'bg-emerald-500/10 text-emerald-600' : 
+                                        isMid ? 'bg-amber-500/10 text-amber-600' : 
+                                        'bg-red-500/10 text-red-600'
+                                      }`}>
+                                        <BookOpen className="h-4 w-4" />
+                                      </div>
+                                      <h4 className="font-black text-sm uppercase tracking-wider">{subject}</h4>
                                     </div>
                                     <div className="text-right">
-                                      <h3 className={`text-xl sm:text-2xl font-bold ${
-                                        accuracy >= 90 ? 'text-emerald-600' :
-                                        accuracy >= 80 ? 'text-green-600' :
-                                        accuracy >= 70 ? 'text-yellow-600' :
-                                        accuracy >= 60 ? 'text-orange-500' :
+                                      <span className={`text-2xl font-black ${
+                                        isHigh ? 'text-emerald-500' : 
+                                        isMid ? 'text-amber-500' : 
                                         'text-red-500'
-                                      }`}>{accuracy}%</h3>
-                                      <p className="text-xs text-muted-foreground">{data.correct}/{data.total}</p>
+                                      }`}>{accuracy}%</span>
                                     </div>
                                   </div>
-                                  <Progress 
-                                    className={`h-2 sm:h-2.5 rounded-full ${
-                                      accuracy >= 90 ? 'bg-emerald-100 dark:bg-emerald-950' :
-                                      accuracy >= 80 ? 'bg-green-100 dark:bg-green-950' :
-                                      accuracy >= 70 ? 'bg-yellow-100 dark:bg-yellow-950' :
-                                      accuracy >= 60 ? 'bg-orange-100 dark:bg-orange-950' :
-                                      'bg-red-100 dark:bg-red-950'
-                                    }`} 
-                                    value={accuracy} 
-                                  />
-                                </div>
+                                  
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest opacity-60">
+                                      <span>Accuracy</span>
+                                      <span>{data.correct}/{data.total} Solved</span>
+                                    </div>
+                                    <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                      <motion.div 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${accuracy}%` }}
+                                        className={`h-full rounded-full ${
+                                          isHigh ? 'bg-emerald-500' : 
+                                          isMid ? 'bg-amber-500' : 
+                                          'bg-red-500'
+                                        }`}
+                                      />
+                                    </div>
+                                  </div>
+                                </motion.div>
                               );
                             })}
                           </div>
-                        </>
+                        </div>
                       ) : (
-                        <div className="text-center py-6 text-muted-foreground">
-                          <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                          <p className="text-xs sm:text-sm font-medium">Start practicing to see progress</p>
+                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                          <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 text-slate-400">
+                            <BookOpen className="h-10 w-10 opacity-20" />
+                          </div>
+                          <h3 className="text-lg font-bold mb-1">Your journey starts here</h3>
+                          <p className="text-sm text-muted-foreground max-w-[200px] mx-auto">Solve some questions to see your mastery analysis!</p>
+                          <Button 
+                            variant="link" 
+                            onClick={() => navigate("/study-now")}
+                            className="mt-4 text-blue-600 font-bold uppercase tracking-widest text-xs"
+                          >
+                            Start Now →
+                          </Button>
                         </div>
                       )}
 
