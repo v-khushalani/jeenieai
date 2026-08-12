@@ -66,7 +66,7 @@ const SharePage = lazyWithRetry(() => import('@/pages/SharePage'), "SharePage");
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
 import EducatorRoute from "@/components/EducatorRoute";
-import FloatingAIButton from "@/components/FloatingAIButton";
+
 import RouteTracker from "@/components/RouteTracker";
 import FeatureGate from "@/components/FeatureGate";
 import PremiumGate from "@/components/PremiumGate";
@@ -151,7 +151,7 @@ const PendingTestSyncWorker = () => {
 };
 
 // Mobile bottom nav - only renders on mobile for authenticated users, hidden on admin/educator routes
-const MobileBottomNav = () => {
+const MobileZaptomNav = () => {
   const isMobile = useIsMobile();
   const location = useLocation();
   const { isAuthenticated } = useAuth();
@@ -164,17 +164,6 @@ const MobileBottomNav = () => {
   return <MobileNavigation />;
 };
 
-const FloatingAIEntry = () => {
-  const location = useLocation();
-  const { isAuthenticated } = useAuth();
-  const enabled = useFeatureFlag('ai_doubt_solver');
-  if (!enabled) return null;
-  if (location.pathname.startsWith('/educator')) return null;
-  if (location.pathname.startsWith('/battle')) return null;
-  // Hide on landing only when signed-out. Authenticated users see dashboard at "/".
-  if (location.pathname === '/' && !isAuthenticated) return null;
-  return <FloatingAIButton />;
-};
 
 const FeatureFlaggedLiveBanner = () => {
   const enabled = useFeatureFlag('live_notifications');
@@ -420,9 +409,7 @@ function App() {
                 <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
-              {/* Hide AI entry point on educator portal */}
-              <FloatingAIEntry />
-              <MobileBottomNav />
+              <MobileZaptomNav />
               <BadgeUnlockCelebration />
             </GlobalErrorBoundary>
           </TooltipProvider>

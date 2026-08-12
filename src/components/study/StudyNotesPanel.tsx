@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { BookOpen, ChevronDown, Network, Sparkles, Clock } from 'lucide-react';
+import { BookOpen, ChevronDown, Network,  Clock } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -51,7 +51,7 @@ export function StudyNotesPanel({ chapterId, topicId, note: presetNote, forcePre
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-primary-foreground/20 flex items-center justify-center">
-                <Sparkles className="w-4 h-4" />
+                
               </div>
               <div>
                 <div className="font-bold text-sm flex items-center gap-2">
@@ -93,7 +93,7 @@ export function StudyNotesPanel({ chapterId, topicId, note: presetNote, forcePre
               )}
               <div className="mt-4 pt-3 border-t flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>© JEEnie · Curated theory</span>
-                <span className="flex items-center gap-1"><Sparkles className="w-3 h-3" /> Learn smart, solve faster</span>
+                <span className="flex items-center gap-1"> Learn smart, solve faster</span>
               </div>
             </div>
           </CollapsibleContent>

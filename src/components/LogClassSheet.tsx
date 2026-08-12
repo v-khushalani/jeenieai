@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, BookOpen, ChevronLeft, Search, Sparkles } from 'lucide-react';
+import { Loader2, BookOpen, ChevronLeft, Search,  } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Chapter { id: string; name: string; subject: string; class_level: number | null; }
@@ -155,7 +155,7 @@ export default function LogClassSheet({ open, onOpenChange, onLogged, defaultSub
                   <p className="text-xs text-muted-foreground">Koi match nahi mila</p>
                   {query.trim() && (
                     <Button size="sm" variant="outline" onClick={() => saveLog(null, query.trim())} disabled={saving}>
-                      <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                      
                       Log as "{query.trim()}"
                     </Button>
                   )}

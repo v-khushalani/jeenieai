@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Save, Plus, Trash2, Sparkles, Crown, ChevronDown, Eye, Check, RefreshCw } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2,  Crown, ChevronDown, Eye, Check, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
@@ -175,7 +175,7 @@ const TierCard: React.FC<{
 }> = ({ tier, plans, saving, onChange, onSave, onDelete }) => {
   const monthly = plans.find(p => !isYearly(p));
   const yearly = plans.find(p => isYearly(p));
-  const Icon = tier === 'pro_plus' ? Crown : Sparkles;
+  const Icon = tier === 'pro_plus' ? Crown : ;
 
   return (
     <Card className={tier === 'pro_plus' ? 'border-primary/40' : ''}>
@@ -249,7 +249,7 @@ const PlanColumn: React.FC<{
 
       <div>
         <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
-          ✨ Creative tagline
+           Creative tagline
         </Label>
         <Input
           className="h-8 text-sm italic"
@@ -492,7 +492,7 @@ const PreviewPlanButton: React.FC<{ plan: Plan }> = ({ plan }) => {
             </div>
             {plan.tagline && (
               <p className="text-xs italic text-primary/80 font-medium mt-1 mb-4 min-h-[16px]">
-                ✨ {plan.tagline}
+                 {plan.tagline}
               </p>
             )}
             {mrp && mrp > plan.price && (

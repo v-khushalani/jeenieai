@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  ArrowLeft, Users, Share2, Copy, Check, MessageCircle, QrCode, Sparkles, XCircle
+  ArrowLeft, Users, Share2, Copy, Check, MessageCircle, QrCode,  XCircle
 } from "lucide-react";
 import { generateTestCode, generateQRCodeSVG } from "@/utils/qrCode";
 import { logger } from "@/utils/logger";
@@ -443,7 +443,7 @@ const CreateGroupTestPage = () => {
                 Create Group Test
               </CardTitle>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <Sparkles className="w-3 h-3" />
+                
                 Create a test and share with friends — everyone gets the same questions!
               </p>
             </CardHeader>

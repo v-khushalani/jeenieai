@@ -72,7 +72,7 @@ function getRandomFunnyFallback(): string {
 }
 
 
-async function callLovableGateway(
+async function callGateway(
   messages: Array<{ role: string; content: any }>,
   model: string,
   maxTokens: number,
@@ -80,10 +80,10 @@ async function callLovableGateway(
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) { console.error("[JEENIE] ❌ LOVABLE_API_KEY not configured"); return { text: null }; }
   try {
-    console.log(`[JEENIE] 🔄 Lovable AI Gateway → ${model} (max ${maxTokens})`);
+    console.log(`[JEENIE] 🔄  AI Gateway → ${model} (max ${maxTokens})`);
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 30000);
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await fetch("https://ai.gateway..dev/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
       body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: maxTokens }),
@@ -204,7 +204,7 @@ serve(async (req) => {
         try {
           const ctrl = new AbortController();
           const timer = setTimeout(() => ctrl.abort(), 15000);
-          const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          const res = await fetch("https://ai.gateway..dev/v1/chat/completions", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
             body: JSON.stringify({
@@ -425,10 +425,10 @@ serve(async (req) => {
     let inputTokens = 0;
     let outputTokens = 0;
 
-    const primary = await callLovableGateway(messages, primaryModel, maxTokens);
+    const primary = await callGateway(messages, primaryModel, maxTokens);
     if (primary.text) {
       responseText = primary.text;
-      provider = "lovable-gateway";
+      provider = "-gateway";
       inputTokens = primary.usage?.prompt_tokens ?? estTokens(systemPrompt + contextPrompt);
       outputTokens = primary.usage?.completion_tokens ?? estTokens(primary.text);
     }
@@ -453,7 +453,7 @@ serve(async (req) => {
               : messages[messages.length - 1].content,
           },
         ];
-        const retry = await callLovableGateway(retryMessages, primaryModel, retryTokens);
+        const retry = await callGateway(retryMessages, primaryModel, retryTokens);
         if (retry.text && retry.text.length > responseText.length * 0.9) {
           responseText = retry.text;
           inputTokens = retry.usage?.prompt_tokens ?? inputTokens;

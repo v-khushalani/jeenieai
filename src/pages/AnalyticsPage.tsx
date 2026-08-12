@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   BarChart3, TrendingUp, Target, Clock, Trophy,
-  AlertTriangle, CheckCircle2, Circle, Flame, Sparkles,
+  AlertTriangle, CheckCircle2, Circle, Flame, 
   Zap, BookOpen, ArrowRight, CalendarDays, Crosshair,
   TrendingDown, Award, ChevronDown, ChevronRight, Layers
 } from "lucide-react";
@@ -281,7 +281,7 @@ const AnalyticsPage = () => {
         <Header />
         <div className="flex-1 min-h-0 flex items-center justify-center">
           <div className="text-center space-y-3">
-            <Sparkles className="h-16 w-16 text-muted-foreground/40 mx-auto" />
+            
             <h2 className="text-xl font-semibold text-foreground">No Data Yet</h2>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto">Start practicing to see your performance analytics here.</p>
             <Button onClick={() => navigate("/study-now")} className="mt-4">Start Practicing <ArrowRight className="ml-2 h-4 w-4" /></Button>
@@ -303,7 +303,7 @@ const AnalyticsPage = () => {
   // ─── KPI Strip ──────────────────────────────────────────────────
   const kpis = [
     { label: "Accuracy", value: `${overview.accuracy.toFixed(0)}%`, icon: Target, color: "text-emerald-600" },
-    { label: "Questions", value: overview.total, icon: Sparkles, color: "text-blue-600" },
+    { label: "Questions", value: overview.total, icon: BookOpen, color: "text-blue-600" },
     { label: "Streak", value: profile?.current_streak || 0, icon: Flame, color: "text-orange-600" },
     { label: "Topics", value: overview.topicsAttempted, icon: BookOpen, color: "text-pink-600" },
     { label: "Points", value: profile?.total_points || 0, icon: Trophy, color: "text-amber-600" },

@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { X, Share2, Sparkles } from 'lucide-react';
+import { X, Share2,  } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
@@ -237,7 +237,7 @@ export const BadgeUnlockCelebration = () => {
 
               <div className="relative p-6 pt-8 text-center text-white">
                 <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.35em] font-black text-white/70">
-                  <Sparkles className="w-3 h-3" /> Badge Unlocked
+                   Badge Unlocked
                 </div>
 
                 {/* Medallion */}

@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Upload, FileText, Loader2, CheckCircle2, XCircle, Image as ImageIcon, Sparkles, AlertTriangle, ArrowRight } from "lucide-react";
+import { Upload, FileText, Loader2, CheckCircle2, XCircle, Image as ImageIcon,  AlertTriangle, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import * as pdfjsLib from "pdfjs-dist";
 import { logger } from "@/utils/logger";
@@ -387,7 +387,7 @@ export function PDFQuestionExtractor() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            
             PDF Question Extractor (MTG & Books)
           </CardTitle>
           <CardDescription>
@@ -619,7 +619,7 @@ export function PDFQuestionExtractor() {
               </>
             ) : (
               <>
-                <Sparkles className="mr-2 h-4 w-4" />
+                
                 Start AI Extraction
               </>
             )}

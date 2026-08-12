@@ -12,7 +12,7 @@ import LoadingScreen from '@/components/ui/LoadingScreen';
 import safeLocalStorage from '@/utils/safeStorage';
 import {
   BookOpen, Trophy, Play, Clock, Target, FileText, ArrowLeft, CheckCircle2,
-  Sparkles, Crown, Award, Users, Calendar
+   Crown, Award, Users, Calendar
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PricingModal from '@/components/PricingModal';
@@ -970,7 +970,7 @@ const TestPage: React.FC = () => {
                   <span className="text-base sm:text-3xl">PYQ Mock Test Setup</span>
                 </CardTitle>
                 <p className="text-muted-foreground mt-2 flex items-center gap-2 text-xs sm:text-base">
-                  <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-amber-500" />
+                  
                   Select exam and year to practice with actual past paper questions
                 </p>
               </CardHeader>
@@ -1139,7 +1139,7 @@ const TestPage: React.FC = () => {
                    
                   <div className="flex flex-col gap-2 sm:gap-2.5">
                     <Button className="w-full bg-linear-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-semibold py-1.5 sm:py-2 rounded-lg shadow-md transition-all duration-300 text-xs sm:text-sm h-8 sm:h-9">
-                      <Sparkles className="w-3 h-3 mr-1" />
+                      
                       Select Chapters
                     </Button>
                   </div>
@@ -1184,7 +1184,7 @@ const TestPage: React.FC = () => {
                    
                   <div className="flex flex-col gap-2 sm:gap-2.5">
                     <Button className="w-full bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-600/90 hover:to-indigo-600/90 text-white font-semibold py-1.5 sm:py-2 rounded-lg shadow-md transition-all duration-300 text-xs sm:text-sm h-8 sm:h-9">
-                      <Sparkles className="w-3 h-3 mr-1" />
+                      
                       Select Subjects
                     </Button>
                   </div>
@@ -1373,7 +1373,7 @@ const TestPage: React.FC = () => {
                   <span className="text-base sm:text-3xl">Chapter-wise Test Setup</span>
                 </CardTitle>
                 <p className="text-muted-foreground mt-2 flex items-center gap-2 text-xs sm:text-base">
-                  <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500" />
+                  
                   Select subjects first, then choose specific chapters
                 </p>
               </CardHeader>
@@ -1501,7 +1501,7 @@ const TestPage: React.FC = () => {
                   <span className="text-base sm:text-3xl">Subject-wise Test Setup</span>
                 </CardTitle>
                 <p className="text-muted-foreground mt-2 flex items-center gap-2 text-xs sm:text-base">
-                  <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" />
+                  
                   Choose subjects to test your understanding
                 </p>
               </CardHeader>

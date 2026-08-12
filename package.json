@@ -146,7 +146,7 @@
     "husky": "^9.1.7",
     "jsdom": "^28.1.0",
     "lint-staged": "^16.4.0",
-    "lovable-tagger": "^1.3.0",
+    "-tagger": "^1.3.0",
     "playwright": "^1.60.0",
     "postcss": "^8.5.15",
     "supabase": "^2.101.0",

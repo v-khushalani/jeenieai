@@ -6,7 +6,7 @@ import { REFERRAL_CONFIG } from '@/config/subscriptionPlans';
 import { useSubscriptionPlans, DBSubscriptionPlan } from '@/hooks/useSubscriptionPlans';
 import { initializePayment } from '@/utils/razorpay';
 import { supabase } from '@/integrations/supabase/client';
-import { Check, X, Crown, Share2, Gift, Sparkles, Tag, Loader2 } from 'lucide-react';
+import { Check, X, Crown, Share2, Gift,  Tag, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -156,7 +156,7 @@ const SubscriptionPlansPage = () => {
     if (!user) { navigate('/login?redirect=/subscription-plans'); return; }
     const referralCode = ReferralService.generateReferralCode(user.id);
     const referralLink = `${window.location.origin}/signup?ref=${referralCode}`;
-    const message = `🎯 Hey! I'm using *JEEnie* for JEE/NEET prep — it's a game changer! 🚀\n\n✨ Use my code: *${referralCode}*\n📚 Sign up: ${referralLink}\n\n🎁 You + me both get 1 week FREE Pro!`;
+    const message = `🎯 Hey! I'm using *JEEnie* for JEE/NEET prep — it's a game changer! 🚀\n\n Use my code: *${referralCode}*\n📚 Sign up: ${referralLink}\n\n🎁 You + me both get 1 week FREE Pro!`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
@@ -189,7 +189,7 @@ const SubscriptionPlansPage = () => {
         </div>
         {plan.tagline && (
           <p className="text-xs italic text-primary/80 font-medium mt-1 mb-4 min-h-[16px]">
-            ✨ {plan.tagline}
+             {plan.tagline}
           </p>
         )}
 
@@ -250,7 +250,7 @@ const SubscriptionPlansPage = () => {
           {/* Hero */}
           <div className="text-center mb-8">
             <Badge className="bg-primary/10 text-primary border-primary/20 mb-3 font-medium">
-              <Sparkles className="w-3 h-3 mr-1" /> Limited launch pricing
+               Limited launch pricing
             </Badge>
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
               Pick your JEEnie plan

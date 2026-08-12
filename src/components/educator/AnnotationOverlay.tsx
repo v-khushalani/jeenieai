@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Eraser, Highlighter, Move, Pencil, X, Minimize2, Maximize2, Target, WandSparkles } from 'lucide-react';
+import { Eraser, Highlighter, Move, Pencil, X, Minimize2, Maximize2, Target, Wand } from 'lucide-react';
 
 type Point = { x: number; y: number };
 type DrawTool = 'pen' | 'highlighter' | 'eraser' | 'magicEraser' | 'laser';
@@ -429,7 +429,7 @@ const AnnotationOverlay: React.FC = () => {
 									<Eraser className="h-3.5 w-3.5" />
 								</Button>
 								<Button size="sm" variant={tool === 'magicEraser' ? 'default' : 'outline'} className="h-8 px-2" onClick={() => setTool('magicEraser')}>
-									<WandSparkles className="h-3.5 w-3.5" />
+									<Wand className="h-3.5 w-3.5" />
 								</Button>
 								<Button size="sm" variant={tool === 'laser' ? 'default' : 'outline'} className="h-8 px-2" onClick={() => setTool('laser')}>
 									<Target className="h-3.5 w-3.5" />

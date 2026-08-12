@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle2, GitBranch, Sparkles, Database, AlertCircle, X } from 'lucide-react';
+import { Loader2, CheckCircle2, GitBranch,  Database, AlertCircle, X } from 'lucide-react';
 import { MathDisplay } from '@/components/admin/MathDisplay';
 
 const formatInvokeError = (error: any): string => {
@@ -252,7 +252,7 @@ export default function HuggingFaceImporter() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" /> Curated Datasets
+                 Curated Datasets
               </CardTitle>
               <CardDescription>Verified, chapter-mapped. One click.</CardDescription>
             </CardHeader>
@@ -540,7 +540,7 @@ function PlainEnglishSummary({ preview, datasetPath }: { preview: any; datasetPa
   return (
     <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 space-y-3">
       <div className="flex items-center gap-2 text-sm font-semibold">
-        <Sparkles className="h-4 w-4 text-primary" />
+        
         What will happen if you click Import
       </div>
       <ul className="space-y-2 text-sm leading-relaxed text-foreground">

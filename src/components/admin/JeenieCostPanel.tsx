@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
-import { Sparkles, AlertTriangle, TrendingDown, RefreshCw } from 'lucide-react';
+import {  AlertTriangle, TrendingDown, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -159,7 +159,7 @@ export const JeenieCostPanel: React.FC = () => {
     <Card className="border-primary/20">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-base flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" /> JEEnie cost · last {range}d
+           JEEnie cost · last {range}d
         </CardTitle>
         <div className="flex gap-1 text-xs items-center">
           {[7, 30].map((d) => (

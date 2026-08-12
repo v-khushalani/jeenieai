@@ -11,7 +11,7 @@ import {
   ArrowRight,
   BarChart3,
   BookOpen,
-  Sparkles,
+  
   CheckCircle2,
   CircleAlert,
   Target,
@@ -22,7 +22,7 @@ import {
 
 const coreFeatures = [
   {
-    icon: Sparkles,
+    icon: 
     title: 'AI Doubt Solver',
     desc: 'Step-by-step explanation in simple Hinglish, instantly.',
   },
@@ -97,7 +97,7 @@ const WhyUsPage = () => {
         {/* Hero */}
         <section className="text-center mb-12">
           <Badge variant="secondary" className="mb-4">
-            <Sparkles className="w-3 h-3 mr-1" /> WHY JEENIE (ABOUT + WHY US)
+             WHY JEENIE (ABOUT + WHY US)
           </Badge>
           <h1 className="text-3xl sm:text-4xl font-bold text-primary mb-3">
             Built for score growth, not content overload

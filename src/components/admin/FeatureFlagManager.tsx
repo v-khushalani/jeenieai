@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Zap, Trophy, MessageSquare, Sparkles, Bell, Users, CreditCard, FileText, TestTube, DatabaseZap, BarChart3, ArrowRightLeft, History, Layers3 } from 'lucide-react';
+import { Zap, Trophy, MessageSquare,  Bell, Users, CreditCard, FileText, TestTube, DatabaseZap, BarChart3, ArrowRightLeft, History, Layers3 } from 'lucide-react';
 import { logger } from '@/utils/logger';
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -20,7 +20,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const FLAG_ICONS: Record<string, React.ElementType> = {
   leaderboard: Trophy,
-  badges: Sparkles,
+  badges: 
   ai_doubt_solver: MessageSquare,
   study_planner: Zap,
   push_notifications: Bell,

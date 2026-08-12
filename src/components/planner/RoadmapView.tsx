@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Sparkles, Target, Zap, Rocket } from 'lucide-react';
+import { Loader2,  Target, Zap, Rocket } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { formatSubjectDisplay } from '@/utils/subjectDisplay';
@@ -109,7 +109,7 @@ export default function RoadmapView({
       {!loading && data && data.chapters.length === 0 && (
         <Card className="border-dashed border-2 bg-muted/20">
           <CardContent className="p-10 text-center space-y-3">
-            <Sparkles className="w-10 h-10 text-primary/40 mx-auto" />
+            
             <p className="text-base font-black tracking-tight">Jaldi aa raha hai!</p>
             <p className="text-sm text-muted-foreground font-medium">Is subject ke chapters abhi prep mein hain. Tab tak doosra try kar!</p>
           </CardContent>

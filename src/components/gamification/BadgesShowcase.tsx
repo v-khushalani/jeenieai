@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Lock, Trophy, Share2, Sparkles } from 'lucide-react';
+import { Lock, Trophy, Share2,  } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ReferralService from '@/services/referralService';
 import ShareCardDialog from '@/components/ShareCardDialog';
@@ -379,7 +379,7 @@ const BadgesShowcase = () => {
                   <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-5xl">
                     {rarestEarned.icon}
                   </div>
-                  <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-amber-300 drop-shadow" />
+                  
                 </div>
                 <div className="text-xs font-bold text-center max-w-[120px] leading-tight">{rarestEarned.name}</div>
                 <span className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded bg-white/20 text-white">

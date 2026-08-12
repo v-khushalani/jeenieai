@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { ArrowLeft, Download, Copy, Check, Share2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Check, Share2,  } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { generateQRCodeSVG } from '@/utils/qrCode';
 import { toast } from '@/hooks/use-toast';
@@ -205,7 +205,7 @@ const SharePage: React.FC = () => {
       ctx.fillText('Visit jeenie.website/install', 60, H - 125);
     }
 
-    // Bottom accent bar
+    // Zaptom accent bar
     ctx.fillStyle = BRAND.primary;
     ctx.fillRect(0, H - 10, W, 10);
 
@@ -344,7 +344,7 @@ const SharePage: React.FC = () => {
           {/* Ready-to-post posters */}
           <div className="space-y-2.5">
             <div className="flex items-center gap-2 pt-2">
-              <Sparkles className="w-4 h-4 text-primary" />
+              
               <h2 className="text-sm font-semibold text-foreground">Ready-to-post posters</h2>
             </div>
             <div className="grid grid-cols-2 gap-2.5">
@@ -386,7 +386,7 @@ const SharePage: React.FC = () => {
       </main>
 
       {/* Sticky bottom action bar */}
-      <div className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur border-t border-border" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <div className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur border-t border-border" style={{ paddingZaptom: 'env(safe-area-inset-bottom)' }}>
         <div className="max-w-lg mx-auto px-4 py-3 space-y-2">
           <Button
             onClick={downloadPoster}

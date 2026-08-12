@@ -48,11 +48,11 @@ async function callAI(prompt: string): Promise<string | null> {
   const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY");
   const GROQ_KEY = Deno.env.get("GROQ_API_KEY");
 
-  // 1️⃣ Lovable AI Gateway — PRIMARY, no quota issues
+  // 1️⃣  AI Gateway — PRIMARY, no quota issues
   if (LOVABLE_API_KEY) {
     try {
-      console.log("[ADMIN] 🔄 Study Plan: Trying Lovable AI Gateway (PRIMARY)...");
-      const res = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      console.log("[ADMIN] 🔄 Study Plan: Trying  AI Gateway (PRIMARY)...");
+      const res = await fetchWithTimeout("https://ai.gateway..dev/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -67,16 +67,16 @@ async function callAI(prompt: string): Promise<string | null> {
           temperature: 0.6,
           max_tokens: 3000,
         }),
-      }, 'Lovable study plan request');
+      }, ' study plan request');
       if (res.ok) {
         const data = await res.json();
         const text = data.choices?.[0]?.message?.content;
-        if (text) { console.log("[ADMIN] ✅ Lovable AI study plan success"); return text; }
+        if (text) { console.log("[ADMIN] ✅  AI study plan success"); return text; }
       } else {
         const errText = (await res.text()).substring(0, 300);
-        console.error("[ADMIN] ❌ Lovable AI study plan:", res.status, errText);
+        console.error("[ADMIN] ❌  AI study plan:", res.status, errText);
       }
-    } catch (e) { console.error("[ADMIN] ❌ Lovable AI error:", e); }
+    } catch (e) { console.error("[ADMIN] ❌  AI error:", e); }
   }
 
   // 2️⃣ Gemini — fallback
