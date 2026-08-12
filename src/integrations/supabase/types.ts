@@ -2319,6 +2319,42 @@ export type Database = {
         }
         Relationships: []
       }
+      system_logs: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          level: Database["public"]["Enums"]["log_level"]
+          message: string
+          metadata: Json | null
+          route: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          level?: Database["public"]["Enums"]["log_level"]
+          message: string
+          metadata?: Json | null
+          route?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          level?: Database["public"]["Enums"]["log_level"]
+          message?: string
+          metadata?: Json | null
+          route?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       test_attempt_violations: {
         Row: {
           auto_submitted: boolean
@@ -3248,6 +3284,7 @@ export type Database = {
           subject: string
         }[]
       }
+      get_system_health_status: { Args: never; Returns: Json }
       get_topic_question_counts:
         | {
             Args: { p_chapter_id: string }
@@ -3426,6 +3463,7 @@ export type Database = {
         | "CREATE"
       difficulty_level: "EASY" | "MEDIUM" | "HARD"
       exam_code: "JEE_MAINS" | "JEE_ADVANCED" | "NEET" | "FOUNDATION"
+      log_level: "info" | "warning" | "error" | "critical"
       question_style_enum:
         | "numerical"
         | "conceptual"
@@ -3588,6 +3626,7 @@ export const Constants = {
       ],
       difficulty_level: ["EASY", "MEDIUM", "HARD"],
       exam_code: ["JEE_MAINS", "JEE_ADVANCED", "NEET", "FOUNDATION"],
+      log_level: ["info", "warning", "error", "critical"],
       question_style_enum: [
         "numerical",
         "conceptual",

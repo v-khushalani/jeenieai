@@ -1,65 +1,69 @@
-/**
- * Environment-aware logger utility
- * Logs to console only in development, always logs errors
- */
+import { supabase } from "@/integrations/supabase/client";
 
-type LogLevel = 'log' | 'warn' | 'error' | 'info' | 'debug';
+type LogLevel = 'info' | 'warning' | 'error' | 'critical';
 
-class Logger {
-  private isDevelopment = import.meta.env.DEV;
-  private isVerbose = import.meta.env.VITE_VERBOSE_LOGS === 'true';
+export const logger = {
+  async log(
+    levelOrMessage: LogLevel | string,
+    messageOrMetadata?: any,
+    metadataOrUndefined?: any,
+    ...extra: any[]
+  ) {
+    try {
+      let level: LogLevel = 'info';
+      let category = 'general';
+      let message = '';
+      let metadata: any = {};
 
-  private shouldLog() {
-    return this.isDevelopment && this.isVerbose;
-  }
+      // Handle logger.log('level', 'message', ...)
+      if (['info', 'warning', 'error', 'critical'].includes(levelOrMessage)) {
+        level = levelOrMessage as LogLevel;
+        if (typeof messageOrMetadata === 'string') {
+          message = messageOrMetadata;
+          metadata = metadataOrUndefined || {};
+        } else {
+          message = 'Logged object';
+          metadata = messageOrMetadata || {};
+        }
+      } else {
+        // Handle logger.log('message', metadata)
+        message = levelOrMessage;
+        metadata = messageOrMetadata || {};
+      }
 
-  log(...args: any[]) {
-    if (this.shouldLog()) {
-      console.log(...args);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const consoleMethod = level === 'critical' || level === 'error' ? 'error' : level === 'warning' ? 'warn' : 'log';
+      console[consoleMethod](`[${category.toUpperCase()}] ${message}`, metadata);
+
+      // We only insert into DB if we have a valid level string
+      await supabase.from('system_logs').insert({
+        level: level === 'warning' ? 'warning' : level, // enum mapping
+        category,
+        message,
+        metadata: typeof metadata === 'object' ? metadata : { value: metadata },
+        user_id: user?.id,
+        route: window.location.pathname,
+        user_agent: navigator.userAgent
+      });
+    } catch (err) {
+      console.error('Failed to send log to Supabase:', err);
     }
-  }
+  },
 
-  info(...args: any[]) {
-    if (this.shouldLog()) {
-      console.info(...args);
-    }
-  }
+  info(msg: string, meta?: any, ...extra: any[]) {
+    return this.log('info', msg, meta);
+  },
 
-  warn(...args: any[]) {
-    if (this.shouldLog()) {
-      console.warn(...args);
-    }
-  }
+  warn(msg: string, meta?: any, ...extra: any[]) {
+    return this.log('warning', msg, meta);
+  },
 
-  error(...args: any[]) {
-    if (this.isDevelopment || this.isVerbose) {
-      console.error(...args);
-    }
-  }
+  error(msg: string, meta?: any, ...extra: any[]) {
+    return this.log('error', msg, meta);
+  },
 
-  debug(...args: any[]) {
-    if (this.shouldLog()) {
-      console.debug(...args);
-    }
+  critical(msg: string, meta?: any, ...extra: any[]) {
+    return this.log('critical', msg, meta);
   }
-
-  group(label: string) {
-    if (this.shouldLog()) {
-      console.group(label);
-    }
-  }
-
-  groupEnd() {
-    if (this.isDevelopment) {
-      console.groupEnd();
-    }
-  }
-
-  table(data: any) {
-    if (this.shouldLog()) {
-      console.table(data);
-    }
-  }
-}
-
-export const logger = new Logger();
+};
