@@ -605,8 +605,9 @@
 
   /* Comfortable readable base on mobile (also avoids iOS zoom on focus for inputs ≥16px) */
   html {
-    font-size: 15px;
+    font-size: 14px;
   }
+
 
   /* Prevent iOS auto-zoom when focusing form fields */
   input,
