@@ -634,9 +634,17 @@
   }
 }
 
-/* Apple-inspired gradients */
+/* High-Energy Gradients */
 .gradient-primary {
   background: linear-gradient(135deg, #0b5ed7 0%, #1f8bff 100%);
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .gradient-surface {
