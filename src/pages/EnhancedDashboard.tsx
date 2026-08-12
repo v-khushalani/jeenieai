@@ -420,16 +420,19 @@ const EnhancedDashboard = () => {
                           </CardContent>
                         </Card>
 
-                        <Card className={`h-full rounded-xl shadow-xs border-l-4 ${accuracyColors.border} ${accuracyColors.bg}`}> 
-                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
-                            <div className="flex items-start gap-2 mb-1">
-                              <div className={`p-1.5 ${accuracyColors.iconBg} rounded-lg shrink-0`}>
-                                <Target className="h-3 w-3 text-white" />
-                              </div>
-                              <p className="text-[11px] font-medium text-muted-foreground">Today's Accuracy</p>
+                        <Card className={`h-full rounded-2xl shadow-lg border-l-4 transition-transform active:scale-95 ${accuracyColors.border} ${accuracyColors.bg}`}> 
+                          <CardContent className="p-3.5 h-full flex flex-col justify-between relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-1 opacity-10">
+                              <Target className="h-12 w-12" />
                             </div>
-                            <h3 className={`text-xl font-bold ${accuracyColors.text}`}>{stats?.todayAccuracy ?? 0}%</h3>
-                            <p className="text-[10px] text-muted-foreground mt-1">Overall: {stats?.accuracy ?? 0}%</p>
+                            <div className="flex items-start gap-2 mb-1 relative z-10">
+                              <div className={`p-1.5 ${accuracyColors.iconBg} rounded-lg shrink-0 shadow-md`}>
+                                <Target className="h-3.5 w-3.5 text-white" />
+                              </div>
+                              <p className="text-[10px] font-black uppercase tracking-tighter italic text-muted-foreground">ACCURACY</p>
+                            </div>
+                            <h3 className={`text-2xl font-black italic ${accuracyColors.text} relative z-10`}>{stats?.todayAccuracy ?? 0}%</h3>
+                            <p className="text-[10px] font-bold italic opacity-70 mt-1 relative z-10">AVG: {stats?.accuracy ?? 0}%</p>
                           </CardContent>
                         </Card>
                       </div>
