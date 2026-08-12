@@ -49,17 +49,17 @@ const TEMPLATE_ROWS = [
   ],
   [
     'Chemistry',
-    'Matter in Our Surroundings',
-    'States of Matter',
-    'Which state of matter has a definite volume but no definite shape?',
-    'Solid',
-    'Liquid',
-    'Gas',
-    'Plasma',
-    'B',
+    'Atomic Structure',
+    'Dalton\'s Theory',
+    'Which of the following is NOT a postulate of Dalton\'s atomic theory?',
+    'Atoms are indivisible',
+    'Atoms of same element are identical',
+    'Atoms combine in simple ratios',
+    'Atoms can be created in a reaction',
+    'D',
     'single_correct',
     'Easy',
-    'Liquids take the shape of the container but keep their volume.',
+    'Dalton stated atoms cannot be created or destroyed.',
     'no',
     '',
   ],
@@ -319,9 +319,16 @@ export function BulkCsvUploader() {
             <div className="space-y-2">
               <Label>Batch</Label>
               <Select value={batchId} onValueChange={setBatchId}>
-                <SelectTrigger><SelectValue placeholder="Select batch" /></SelectTrigger>
+                <SelectTrigger className={!batchId ? "border-amber-500 animate-pulse" : ""}>
+                  <SelectValue placeholder="Select batch (Grade 6-10 / JEE / NEET)" />
+                </SelectTrigger>
                 <SelectContent>
-                  {batches.map((b) => (
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Foundation (6-10)</div>
+                  {batches.filter(b => b.exam_type === 'Foundation').map((b) => (
+                    <SelectItem key={b.id} value={b.id}>Grade {b.grade} Foundation</SelectItem>
+                  ))}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-2 border-t">Higher Secondary (11-12)</div>
+                  {batches.filter(b => b.exam_type !== 'Foundation').map((b) => (
                     <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                   ))}
                 </SelectContent>
