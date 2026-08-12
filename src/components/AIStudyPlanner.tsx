@@ -704,59 +704,16 @@ export default function AIStudyPlanner() {
 
         </TabsContent>
 
-        <TabsContent value="week" className="mt-3 space-y-3">
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-            {planner.weekly.map((day, index) => (
-              <button
-                key={day.date}
-                type="button"
-                onClick={() => setSelectedDay(index)}
-                className={`min-w-[64px] rounded-xl border p-2 text-center transition-all ${selectedDay === index ? 'border-primary bg-primary/10 ring-1 ring-primary/30' : 'border-border bg-card'}`}
-              >
-                <p className="text-[10px] font-bold text-muted-foreground">{day.dayName}</p>
-                <p className="text-base font-extrabold">{day.tasks.length}</p>
-                <p className="text-[9px] text-muted-foreground">{day.totalMinutes}m</p>
-              </button>
-            ))}
-          </div>
-
-          <div className="space-y-2">
-            {(currentDay?.tasks || []).map((task) => {
-              const done = completedHashes.has(taskHash(task));
-              return (
-                <Card key={task.id} className="border-border/70">
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => void toggleDone(task)}
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${done ? 'border-emerald-500 bg-emerald-500/10' : 'border-border'}`}
-                      >
-                        {done ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <BookOpen className="h-4 w-4 text-primary" />}
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-bold">{task.title}</p>
-                          <Badge variant="outline" className="h-5 text-[9px]">{task.duration}m</Badge>
-                        </div>
-                        <p className="truncate text-[11px] text-muted-foreground">{task.chapter} · {formatSubjectDisplay(task.subject)}</p>
-                        <p className="line-clamp-1 text-[10px] text-muted-foreground">{task.subtitle}</p>
-                      </div>
-                      <Button size="sm" variant={done ? 'outline' : 'default'} className="h-8 shrink-0" onClick={() => navigate(task.href)}>
-                        {task.actionLabel}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-            {(!currentDay || currentDay.tasks.length === 0) && (
-              <Card className="border-dashed">
-                <CardContent className="p-5 text-center text-sm text-muted-foreground">DB data nahi mila. Refresh karke dobara try kar.</CardContent>
-              </Card>
-            )}
-          </div>
+        <TabsContent value="week" className="mt-3">
+          <Card className="bg-muted/30 border-dashed">
+            <CardContent className="p-8 text-center space-y-3">
+              <Sparkles className="w-10 h-10 text-primary/40 mx-auto" />
+              <p className="text-base font-black tracking-tight">Weekly View Integrated</p>
+              <p className="text-sm text-muted-foreground font-medium">Weekly plans abhi automatic ladder mein merge ho gaye hain! Mastery Ladder check karo.</p>
+            </CardContent>
+          </Card>
         </TabsContent>
+
 
         <TabsContent value="insights" className="mt-3 space-y-3">
           <div className="grid grid-cols-2 gap-2">
