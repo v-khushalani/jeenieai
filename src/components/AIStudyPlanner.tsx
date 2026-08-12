@@ -19,6 +19,7 @@ import {
   Target,
   Trophy,
   Zap,
+  Rocket,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -560,21 +561,6 @@ export default function AIStudyPlanner() {
     }
   }, [user?.id, loadAll]);
 
-  const examDate = profile?.target_exam_date || getExamDateForGrade(getExamDate(targetExam as any), profile?.grade);
-  const daysToExam = getDaysUntilDate(examDate) ?? 365;
-  const todayTasks = planner.weekly[0]?.tasks || [];
-  const todayDone = todayTasks.filter((task) => completedHashes.has(taskHash(task))).length;
-  const adherence = todayTasks.length > 0 ? Math.round((todayDone / todayTasks.length) * 100) : 0;
-  const currentDay = planner.weekly[selectedDay] || planner.weekly[0];
-
-  const subjectCoverage = useMemo(() => {
-    return subjectsForExam(targetExam).map((subject) => {
-      const list = planner.bySubject[subject] || [];
-      const touched = list.filter((chapter) => chapter.attempts > 0).length;
-      return { subject, total: list.length, touched, pct: list.length ? Math.round((touched / list.length) * 100) : 0 };
-    });
-  }, [planner.bySubject, targetExam]);
-
   const toggleDone = async (task: PlannerTask) => {
     if (!user?.id) return;
     const hash = taskHash(task);
@@ -683,36 +669,6 @@ export default function AIStudyPlanner() {
           </div>
         </Tabs>
       </div>
-
-
-
-        </TabsContent>
-
-        <TabsContent value="week" className="mt-3">
-          <Card className="bg-muted/30 border-dashed">
-            <CardContent className="p-8 text-center space-y-3">
-              <Sparkles className="w-10 h-10 text-primary/40 mx-auto" />
-              <p className="text-base font-black tracking-tight">Weekly View Integrated</p>
-              <p className="text-sm text-muted-foreground font-medium">Weekly plans abhi automatic ladder mein merge ho gaye hain! Mastery Ladder check karo.</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-
-        <TabsContent value="insights" className="mt-3">
-          <Card className="bg-muted/30 border-dashed">
-            <CardContent className="p-8 text-center space-y-3">
-              <Trophy className="w-10 h-10 text-primary/40 mx-auto" />
-              <p className="text-base font-black tracking-tight">Insights Integrated</p>
-              <p className="text-sm text-muted-foreground font-medium">Saare data insights ab Mastery Ladder ke dynamic stats mein milenge!</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-        </div>
-      </div>
-
     </div>
   );
 }
