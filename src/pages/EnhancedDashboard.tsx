@@ -220,10 +220,10 @@ const EnhancedDashboard = () => {
 
               {/* Notification Banner */}
               {showBanner && notification && (
-                <div className={`hidden lg:block rounded-xl p-3 sm:p-3.5 shadow-lg transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-[1.01] ${
-                  notification.color === "green" ? "bg-linear-to-r from-green-500 to-emerald-600 text-white" :
-                  notification.color === "orange" ? "bg-linear-to-r from-orange-500 to-red-600 text-white" :
-                  "bg-linear-to-r from-blue-500 to-indigo-600 text-white"
+                <div className={`hidden lg:block rounded-2xl p-4 shadow-xl transition-all duration-300 cursor-pointer hover:shadow-2xl hover:scale-[1.01] border-2 border-white/10 ${
+                  notification.color === "green" ? "bg-linear-to-r from-emerald-500 via-green-600 to-teal-700 text-white" :
+                  notification.color === "orange" ? "bg-linear-to-r from-orange-500 via-red-600 to-rose-700 text-white" :
+                  "bg-linear-to-r from-blue-600 via-indigo-700 to-violet-800 text-white"
                 }`}
                   role="button"
                   tabIndex={0}
