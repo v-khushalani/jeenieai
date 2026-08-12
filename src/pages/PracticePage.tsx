@@ -885,34 +885,32 @@ const PracticePage: React.FC = () => {
         {studyNotesEnabled && chapterId && (
           <StudyNotesIntro chapterId={chapterId} topicId={topicId || undefined} />
         )}
-        <Card className="mb-3">
-          <CardHeader className="pb-2">
+        <Card className="mb-3 rounded-3xl border-2 border-primary/5 shadow-xl overflow-hidden bg-card/50 backdrop-blur-xs">
+          <CardHeader className="pb-3 bg-muted/30 border-b border-border/40">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base sm:text-lg">Question {currentIndex + 1}</CardTitle>
+              <CardTitle className="text-sm font-black uppercase italic tracking-widest text-primary">QUESTION {currentIndex + 1}</CardTitle>
               <div className="flex items-center gap-2 flex-wrap justify-end">
                 <ReportButton onClick={() => setReportingQuestionId(currentQuestion.id)} />
                 {currentQuestion.is_pyq && (currentQuestion.pyq_exam || currentQuestion.pyq_year) && (
                   <Badge
-                    variant="outline"
-                    className="text-[10px] sm:text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/40"
+                    className="text-[9px] font-black italic uppercase bg-amber-500 text-white border-0 shadow-sm"
                     title="Previous Year Question"
                   >
                     {[
                       currentQuestion.pyq_exam ? String(currentQuestion.pyq_exam).replace(/_/g, ' ') : '',
                       currentQuestion.pyq_year ? String(currentQuestion.pyq_year) : '',
                     ].filter(Boolean).join(' ')}
-                    {currentQuestion.pyq_session ? ` (${currentQuestion.pyq_session})` : ''}
                   </Badge>
                 )}
                 {currentQuestion.difficulty && (
-                  <Badge variant="outline" className={`text-xs capitalize ${getDifficultyColor(currentQuestion.difficulty)}`}>
+                  <Badge className={`text-[9px] font-black italic uppercase border-0 shadow-sm ${getDifficultyColor(currentQuestion.difficulty)}`}>
                     {currentQuestion.difficulty}
                   </Badge>
                 )}
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="text-sm sm:text-base leading-relaxed mb-4">
               <MathDisplay text={currentQuestion.question_text || currentQuestion.question} />
             </div>
