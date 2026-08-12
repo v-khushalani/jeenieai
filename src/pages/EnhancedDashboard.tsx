@@ -438,27 +438,27 @@ const EnhancedDashboard = () => {
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 auto-rows-fr items-stretch">
-                        <Card className={`h-full rounded-xl shadow-xs border-l-4 ${goalColors.border} ${goalColors.bg}`}> 
-                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
+                        <Card className={`h-full rounded-2xl shadow-lg border-l-4 transition-transform active:scale-95 ${goalColors.border} ${goalColors.bg}`}> 
+                          <CardContent className="p-3.5 h-full flex flex-col justify-between">
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <div className="flex items-start gap-2 min-w-0">
-                                <div className={`p-1.5 ${goalColors.iconBg} rounded-lg shrink-0`}>
-                                  <Calendar className="h-3 w-3 text-white" />
+                                <div className={`p-1.5 ${goalColors.iconBg} rounded-lg shrink-0 shadow-md`}>
+                                  <Calendar className="h-3.5 w-3.5 text-white" />
                                 </div>
-                                <p className="text-[11px] font-medium text-muted-foreground">Today's Goal</p>
+                                <p className="text-[10px] font-black uppercase tracking-tighter italic text-muted-foreground">MISSION</p>
                               </div>
-                              <Badge className="text-[10px] px-2 py-0.5 bg-white/70 text-foreground border-0">
-                                {(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'Done' : 'Go'}
+                              <Badge className="text-[9px] font-black italic px-2 py-0.5 bg-white/70 text-primary border-0 shadow-sm uppercase">
+                                {(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? '🏆 DONE' : '🚀 GO'}
                               </Badge>
                             </div>
-                            <h3 className={`text-xl font-bold ${goalColors.text}`}>{stats?.todayProgress ?? 0}/{stats?.todayGoal ?? 30}</h3>
-                            <div className="w-full bg-muted rounded-full h-2 mt-2 mb-1.5">
-                              <div className={`h-2 rounded-full ${(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500' : 'bg-orange-500'}`} style={{ width: `${Math.min(100, ((stats?.todayProgress ?? 0) / (stats?.todayGoal ?? 30)) * 100)}%` }} />
+                            <h3 className={`text-2xl font-black italic ${goalColors.text}`}>{stats?.todayProgress ?? 0}/{stats?.todayGoal ?? 30}</h3>
+                            <div className="w-full bg-muted/50 rounded-full h-2.5 mt-2 mb-1.5 p-0.5">
+                              <div className={`h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(37,99,235,0.4)] ${(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500' : 'bg-primary'}`} style={{ width: `${Math.min(100, ((stats?.todayProgress ?? 0) / (stats?.todayGoal ?? 30)) * 100)}%` }} />
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-[10px] font-bold italic text-muted-foreground">
                               {(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0) > 0
-                                ? `${(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0)} questions left`
-                                : 'Goal achieved!'}
+                                ? `${(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0)} TO GO`
+                                : 'TARGET SMASHED!'}
                             </p>
                           </CardContent>
                         </Card>
