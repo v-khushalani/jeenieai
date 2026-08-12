@@ -1,65 +1,48 @@
-/**
- * Environment-aware logger utility
- * Logs to console only in development, always logs errors
- */
+import { supabase } from "@/integrations/supabase/client";
 
-type LogLevel = 'log' | 'warn' | 'error' | 'info' | 'debug';
+type LogLevel = 'info' | 'warning' | 'error' | 'critical';
 
-class Logger {
-  private isDevelopment = import.meta.env.DEV;
-  private isVerbose = import.meta.env.VITE_VERBOSE_LOGS === 'true';
-
-  private shouldLog() {
-    return this.isDevelopment && this.isVerbose;
-  }
-
-  log(...args: any[]) {
-    if (this.shouldLog()) {
-      console.log(...args);
+export const logger = {
+  async log(
+    level: LogLevel,
+    category: string,
+    message: string,
+    metadata: Record<string, any> = {}
+  ) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      await supabase.from('system_logs').insert({
+        level,
+        category,
+        message,
+        metadata,
+        user_id: user?.id,
+        route: window.location.pathname,
+        user_agent: navigator.userAgent
+      });
+      
+      // Also log to console for development
+      const consoleMethod = level === 'critical' || level === 'error' ? 'error' : level === 'warning' ? 'warn' : 'log';
+      console[consoleMethod](`[${category.toUpperCase()}] ${message}`, metadata);
+    } catch (err) {
+      console.error('Failed to send log to Supabase:', err);
     }
-  }
+  },
 
-  info(...args: any[]) {
-    if (this.shouldLog()) {
-      console.info(...args);
-    }
-  }
+  info(category: string, message: string, metadata?: Record<string, any>) {
+    return this.log('info', category, message, metadata);
+  },
 
-  warn(...args: any[]) {
-    if (this.shouldLog()) {
-      console.warn(...args);
-    }
-  }
+  warn(category: string, message: string, metadata?: Record<string, any>) {
+    return this.log('warning', category, message, metadata);
+  },
 
-  error(...args: any[]) {
-    if (this.isDevelopment || this.isVerbose) {
-      console.error(...args);
-    }
-  }
+  error(category: string, message: string, metadata?: Record<string, any>) {
+    return this.log('error', category, message, metadata);
+  },
 
-  debug(...args: any[]) {
-    if (this.shouldLog()) {
-      console.debug(...args);
-    }
+  critical(category: string, message: string, metadata?: Record<string, any>) {
+    return this.log('critical', category, message, metadata);
   }
-
-  group(label: string) {
-    if (this.shouldLog()) {
-      console.group(label);
-    }
-  }
-
-  groupEnd() {
-    if (this.isDevelopment) {
-      console.groupEnd();
-    }
-  }
-
-  table(data: any) {
-    if (this.shouldLog()) {
-      console.table(data);
-    }
-  }
-}
-
-export const logger = new Logger();
+};
