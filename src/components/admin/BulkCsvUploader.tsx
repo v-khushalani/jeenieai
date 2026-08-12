@@ -310,8 +310,7 @@ export function BulkCsvUploader() {
             <FileSpreadsheet className="h-5 w-5" /> Bulk CSV Upload
           </CardTitle>
           <CardDescription>
-            Template download karo, fill karo, upload karo. Questions review queue mein jaayenge — approve karne
-            ke baad hi live honge.
+            Smart Work: Template fill karo aur upload karo. Ye best way hai large datasets (MTG Foundation type) ko handle karne ka. Review ke baad live honge.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
