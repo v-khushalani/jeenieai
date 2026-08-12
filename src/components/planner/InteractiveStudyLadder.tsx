@@ -65,7 +65,7 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
                 <TrendingUp className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Mastery Points</p>
+                <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Jeenie Points</p>
                 <p className="text-lg font-black text-amber-900 leading-none">{xpPoints}</p>
               </div>
             </div>
