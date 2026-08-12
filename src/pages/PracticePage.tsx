@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ComingSoonBanner from '@/components/ComingSoonBanner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, ArrowRight, CheckCircle, XCircle, Loader2,
-  Target, Trophy, BookOpen, RotateCcw, Zap, Lock,
+  Target, Trophy, BookOpen, RotateCcw, Zap, Lock, MessageSquare,
 } from 'lucide-react';
+import AIDoubtSolver from '@/components/AIDoubtSolver';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -189,6 +191,11 @@ const PracticePage: React.FC = () => {
   const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set());
   const [numericalInput, setNumericalInput] = useState('');
 
+  // AI Doubt Solver visibility state
+  const [showAIButton, setShowAIButton] = useState(false);
+  const [aiSolverOpen, setAiSolverOpen] = useState(false);
+  const questionStartTime = useRef<number>(Date.now());
+
   const currentAnswer = answeredQuestions.get(currentIndex) || null;
   const isCurrentAnswered = currentAnswer !== null;
 
@@ -196,7 +203,18 @@ const PracticePage: React.FC = () => {
   useEffect(() => {
     setMultiSelected(new Set());
     setNumericalInput('');
-  }, [currentIndex]);
+    setShowAIButton(false);
+    questionStartTime.current = Date.now();
+
+    // Auto-show AI button after 45 seconds if not answered
+    const timer = setTimeout(() => {
+      if (!answeredQuestions.has(currentIndex)) {
+        setShowAIButton(true);
+      }
+    }, 45000);
+
+    return () => clearTimeout(timer);
+  }, [currentIndex, answeredQuestions]);
 
   // Check daily limit on mount and after each answer
   const checkDailyLimit = useCallback(async () => {
@@ -626,6 +644,7 @@ const PracticePage: React.FC = () => {
         }
 
         checkDailyLimit();
+        setShowAIButton(true); // Show AI button immediately after answering
         startAutoAdvance();
       }
     } catch (error) {
@@ -1160,6 +1179,51 @@ const PracticePage: React.FC = () => {
           }}
         />
       )}
+
+      {/* Interactive AI Doubt Solver Button */}
+      <AnimatePresence>
+        {showAIButton && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.5, y: 20 }}
+            className="fixed bottom-24 right-6 z-40"
+          >
+            <Button
+              onClick={() => setAiSolverOpen(true)}
+              className="w-14 h-14 rounded-full bg-[#013062] hover:bg-[#024080] shadow-[0_8px_25px_rgba(1,48,98,0.4)] flex items-center justify-center p-0 group overflow-visible"
+            >
+              <Zap className="w-6 h-6 text-white group-hover:scale-125 transition-transform duration-300" />
+              
+              {/* Addictive Pulse Effect */}
+              <span className="absolute inset-0 rounded-full bg-[#013062] animate-ping opacity-20 group-hover:opacity-40" />
+              
+              {!isCurrentAnswered && (
+                <motion.div 
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="absolute right-16 bg-white dark:bg-slate-900 border border-border shadow-md px-3 py-1.5 rounded-xl whitespace-nowrap text-xs font-bold text-primary flex items-center gap-2"
+                >
+                  <MessageSquare className="w-3 h-3" />
+                  Stuck? Bhai se pucho!
+                </motion.div>
+              )}
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AIDoubtSolver
+        isOpen={aiSolverOpen}
+        onClose={() => setAiSolverOpen(false)}
+        question={currentQuestion ? {
+          question: currentQuestion.question_text || currentQuestion.question,
+          option_a: currentQuestion.option_a,
+          option_b: currentQuestion.option_b,
+          option_c: currentQuestion.option_c,
+          option_d: currentQuestion.option_d
+        } : undefined}
+      />
     </div>
   );
 };
