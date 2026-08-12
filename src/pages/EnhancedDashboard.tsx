@@ -250,116 +250,70 @@ const EnhancedDashboard = () => {
                 </div>
               )}
 
-              {/* Welcome Banner — NO share button, days remaining integrated */}
+              {/* Welcome & Focus Banner */}
               {showWelcome && (
-                <div className="rounded-xl sm:rounded-2xl p-3 sm:p-6 bg-linear-to-br from-slate-900 via-blue-900 to-indigo-900 text-white shadow-2xl relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-40 h-40 sm:w-64 sm:h-64 bg-blue-500/10 rounded-full blur-3xl"></div>
-                  <div className="absolute bottom-0 left-0 w-32 h-32 sm:w-48 sm:h-48 bg-indigo-500/10 rounded-full blur-3xl"></div>
+                <div className="rounded-2xl sm:rounded-3xl p-5 sm:p-8 bg-linear-to-br from-slate-900 via-blue-900 to-indigo-950 text-white shadow-2xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all duration-700"></div>
+                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl"></div>
                   
                   <button
                     onClick={() => {
                       safeLocalStorage.setItem("welcomeLastShown", new Date().toDateString());
                       setShowWelcome(false);
                     }}
-                    className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 text-white/60 hover:text-white transition-colors z-10"
+                    className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors z-20 p-2 hover:bg-white/10 rounded-full"
                   >
-                    <X className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <X className="h-5 w-5" />
                   </button>
 
                   <div className="relative z-10">
-                    <div className="flex flex-col gap-3 sm:gap-4">
-                      <div className="flex items-start gap-3 sm:gap-4">
-                        <div className="flex-1 min-w-0">
-                          <h2 className="text-base sm:text-2xl font-bold mb-1 line-clamp-2">
-                            {timeMessage.greeting}, {displayName}
-                          </h2>
-                          {daysRemaining && (
-                            <p className="text-[11px] sm:text-base text-slate-200">
-                              Pro active for {daysRemaining} more days
-                            </p>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{timeMessage.icon}</span>
+                          <span className="text-xs font-bold uppercase tracking-widest text-blue-400">{timeMessage.greeting}</span>
+                        </div>
+                        <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
+                          Namaste, {displayName}!<br />
+                          <span className="text-blue-400">Ready to crush it?</span>
+                        </h2>
+                        <div className="flex flex-wrap items-center gap-2 pt-2">
+                          {examDaysLeft !== null && (
+                            <Badge className="bg-white/10 text-white border-white/20 hover:bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider">
+                              {formatExamDisplay(profile?.target_exam)}: {examDaysLeft} Days Left
+                            </Badge>
                           )}
-                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                            {examDaysLeft !== null && (
-                              <Badge className="text-[10px] bg-white/15 text-white border-white/20">
-                                {formatExamDisplay(profile?.target_exam)}: {examDaysLeft} days left
-                              </Badge>
-                            )}
-                            {isPremium ? (
-                              <Badge className="text-[10px] bg-emerald-500/80 text-white border-0">
-                                {isProPlus ? 'Pro+ Plan' : 'Pro Plan'}
-                              </Badge>
-                            ) : (
-                              <Badge className="text-[10px] bg-amber-500/80 text-white border-0">
-                                Free Plan
-                              </Badge>
-                            )}
-                          </div>
+                          <Badge className={`px-3 py-1 text-xs font-bold uppercase tracking-wider border-0 ${isPremium ? 'bg-amber-500 text-slate-950' : 'bg-slate-700 text-slate-200'}`}>
+                            {isProPlus ? 'Pro+' : isPremium ? 'Pro' : 'Free Plan'}
+                          </Badge>
+                          {daysRemaining && (
+                            <span className="text-xs font-medium text-slate-400 ml-1">
+                              {daysRemaining} days of Pro left
+                            </span>
+                          )}
                         </div>
                       </div>
 
-                      <div className="hidden sm:flex flex-wrap gap-2">
+                      <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                         {studyNowEnabled && (
                           <Button 
-                            size="sm"
+                            size="lg"
                             onClick={() => navigate("/study-now")} 
-                            className="bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl transition-all flex-1 sm:flex-none text-xs sm:text-sm"
+                            className="bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:shadow-[0_0_30px_rgba(37,99,235,0.6)] transition-all h-14 px-8 rounded-xl font-black uppercase tracking-widest group"
                           >
-                            <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                            <BookOpen className="h-5 w-5 mr-3 group-hover:rotate-6 transition-transform" />
                             {timeMessage.action}
                           </Button>
                         )}
                         {testsEnabled && (
                           <Button 
-                            size="sm"
+                            size="lg"
                             onClick={() => navigate("/tests")} 
                             variant="outline"
-                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm"
+                            className="bg-white/5 hover:bg-white/10 text-white border-white/20 hover:border-white/40 h-14 px-8 rounded-xl font-black uppercase tracking-widest"
                           >
-                            <Target className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                            <Target className="h-5 w-5 mr-3" />
                             Take Test
-                          </Button>
-                        )}
-                        {isPremium && analyticsEnabled && (
-                          <Button 
-                            size="sm"
-                            onClick={() => navigate("/analytics")} 
-                            variant="outline"
-                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm"
-                          >
-                            <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                            Analytics
-                          </Button>
-                        )}
-                        {snapshotEnabled && (
-                          <Button 
-                            size="sm"
-                            onClick={() => navigate("/snapshot")} 
-                            variant="outline"
-                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm"
-                          >
-                            <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                            Yearbook
-                          </Button>
-                        )}
-                        {testHistoryEnabled && (
-                          <Button 
-                            size="sm"
-                            onClick={() => navigate("/test-history")} 
-                            variant="outline"
-                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm"
-                          >
-                            <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                            Test History
-                          </Button>
-                        )}
-                        {isProPlus && battleEnabled && (
-                          <Button
-                            size="sm"
-                            onClick={() => navigate("/battle")}
-                            className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:from-pink-700 hover:to-indigo-700 text-white shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm font-bold"
-                          >
-                            <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                            Battle
                           </Button>
                         )}
                       </div>

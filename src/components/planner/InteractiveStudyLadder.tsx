@@ -32,11 +32,11 @@ interface InteractiveStudyLadderProps {
 const getMasteryColor = (status: RoadmapChapter['status'], accuracy: number) => {
   if (status === 'done') return 'bg-amber-400 border-amber-500 shadow-amber-200';
   if (status === 'active') {
-    if (accuracy >= 0.7) return 'bg-blue-500 border-blue-600 shadow-blue-200';
-    if (accuracy > 0) return 'bg-yellow-400 border-yellow-500 shadow-yellow-200';
+    if (accuracy >= 0.7) return 'bg-emerald-500 border-emerald-600 shadow-emerald-200';
+    if (accuracy > 0) return 'bg-blue-500 border-blue-600 shadow-blue-200';
     return 'bg-primary border-primary-foreground/20';
   }
-  return 'bg-muted border-muted-foreground/20';
+  return 'bg-slate-200 border-slate-300 dark:bg-slate-800 dark:border-slate-700';
 };
 
 export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({ 
