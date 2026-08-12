@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Save, Plus, Trash2,  Crown, ChevronDown, Eye, Check, RefreshCw } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, Crown, ChevronDown, Eye, Check, RefreshCw, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
