@@ -5,7 +5,7 @@ import {
   Loader2,
   AlertCircle,
   Wand2,
-  Bot,
+  Zap,
   User,
   Clock,
   Camera,

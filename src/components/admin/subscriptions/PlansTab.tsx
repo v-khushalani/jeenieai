@@ -249,7 +249,7 @@ const PlanColumn: React.FC<{
 
       <div>
         <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
-          ✨ Creative tagline
+           Creative tagline
         </Label>
         <Input
           className="h-8 text-sm italic"
@@ -492,7 +492,7 @@ const PreviewPlanButton: React.FC<{ plan: Plan }> = ({ plan }) => {
             </div>
             {plan.tagline && (
               <p className="text-xs italic text-primary/80 font-medium mt-1 mb-4 min-h-[16px]">
-                ✨ {plan.tagline}
+                 {plan.tagline}
               </p>
             )}
             {mrp && mrp > plan.price && (

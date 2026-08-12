@@ -156,7 +156,7 @@ const SubscriptionPlansPage = () => {
     if (!user) { navigate('/login?redirect=/subscription-plans'); return; }
     const referralCode = ReferralService.generateReferralCode(user.id);
     const referralLink = `${window.location.origin}/signup?ref=${referralCode}`;
-    const message = `🎯 Hey! I'm using *JEEnie* for JEE/NEET prep — it's a game changer! 🚀\n\n✨ Use my code: *${referralCode}*\n📚 Sign up: ${referralLink}\n\n🎁 You + me both get 1 week FREE Pro!`;
+    const message = `🎯 Hey! I'm using *JEEnie* for JEE/NEET prep — it's a game changer! 🚀\n\n Use my code: *${referralCode}*\n📚 Sign up: ${referralLink}\n\n🎁 You + me both get 1 week FREE Pro!`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
@@ -189,7 +189,7 @@ const SubscriptionPlansPage = () => {
         </div>
         {plan.tagline && (
           <p className="text-xs italic text-primary/80 font-medium mt-1 mb-4 min-h-[16px]">
-            ✨ {plan.tagline}
+             {plan.tagline}
           </p>
         )}
 

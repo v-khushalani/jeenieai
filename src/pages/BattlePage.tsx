@@ -17,7 +17,7 @@ const QUESTION_TIME_SECONDS = 30;
 const MATCH_TIMEOUT_MS = 5500; // wait this long for a real opponent before falling back to bot
 const OPTIONS = ['A', 'B', 'C', 'D'] as const;
 
-const BOT_NAMES = [
+const CPU_NAMES = [
   'Aarav_J', 'IshaRanker', 'KaeXcalibur', 'RxnMaster', 'NeoTensor',
   'PhyPhoenix', 'OrgoOracle', 'QuantumQ', 'IntegralIvy', 'VectorVik',
   'MoleMaverick', 'TheKotaKid', 'JeeShark', 'AcidRain_07', 'SineWave',
@@ -46,7 +46,7 @@ interface PlayerRow {
   finished_at: string | null;
 }
 
-const pickBotName = () => BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)];
+const pickCPUName = () => CPU_NAMES[Math.floor(Math.random() * CPU_NAMES.length)];
 const BOT_ID = '__bot__';
 
 const BattlePage: React.FC = () => {
@@ -116,7 +116,7 @@ const BattlePage: React.FC = () => {
   }, []);
 
   // ── BOT mode helpers ──
-  const fetchRandomQuestionsForBot = useCallback(async (): Promise<BattleQuestion[]> => {
+  const fetchRandomQuestionsForCPU = useCallback(async (): Promise<BattleQuestion[]> => {
     // Grab a small batch, then randomly pick 5
     const { data, error } = await supabase
       .from('questions')
@@ -144,7 +144,7 @@ const BattlePage: React.FC = () => {
     }
   }, []);
 
-  const clearBotTimer = () => {
+  const clearCPUTimer = () => {
     if (botTimerRef.current) {
       clearTimeout(botTimerRef.current);
       botTimerRef.current = null;
@@ -152,13 +152,13 @@ const BattlePage: React.FC = () => {
   };
 
   // Start bot battle (after timeout or immediately if RPC fails)
-  const startBotBattle = useCallback(async () => {
+  const startCPUBattle = useCallback(async () => {
     if (modeRef.current === 'bot') return;
     modeRef.current = 'bot';
     setMode('bot');
     cleanupRealtime();
 
-    const qs = await fetchRandomQuestionsForBot();
+    const qs = await fetchRandomQuestionsForCPU();
     if (!qs.length) {
       toast.error('No questions available for battle right now');
       setPhase('idle');
@@ -173,19 +173,19 @@ const BattlePage: React.FC = () => {
     };
     const botRow: PlayerRow = {
       user_id: BOT_ID,
-      display_name: pickBotName(),
+      display_name: pickCPUName(),
       score: 0, correct_count: 0, wrong_count: 0, streak: 0, finished_at: null,
     };
     setPlayers([meRow, botRow]);
     setCurrentIndex(0);
     setPhase('playing');
-  }, [cleanupRealtime, fetchRandomQuestionsForBot, user]);
+  }, [cleanupRealtime, fetchRandomQuestionsForCPU, user]);
 
-  // Bot answers current question after a randomized delay
+  // CPU answers current question after a randomized delay
   useEffect(() => {
     if (phase !== 'playing' || modeRef.current !== 'bot' || !currentQuestion) return;
-    clearBotTimer();
-    // Bot accuracy ~62%, response time 6–22s
+    clearCPUTimer();
+    // CPU accuracy ~62%, response time 6–22s
     const willBeCorrect = Math.random() < 0.62;
     const delayMs = 6000 + Math.floor(Math.random() * 16000);
     botTimerRef.current = setTimeout(() => {
@@ -199,7 +199,7 @@ const BattlePage: React.FC = () => {
         return { ...p, score: p.score - 20, wrong_count: p.wrong_count + 1, streak: 0 };
       }));
     }, delayMs);
-    return clearBotTimer;
+    return clearCPUTimer;
   }, [phase, currentIndex, currentQuestion?.id]);
 
   // ── Matchmaking entry ──
@@ -216,7 +216,7 @@ const BattlePage: React.FC = () => {
       const result = data as { battle_id: string; status: string; question_ids: string[]; error?: string } | null;
       if (!result || result.error) {
         // fall back to bot quietly
-        await startBotBattle();
+        await startCPUBattle();
         return;
       }
       setBattleId(result.battle_id);
@@ -246,13 +246,13 @@ const BattlePage: React.FC = () => {
       // Waiting → set fallback timer to bot mode
       matchTimeoutRef.current = setTimeout(() => {
         if (modeRef.current === 'real') {
-          startBotBattle();
+          startCPUBattle();
         }
       }, MATCH_TIMEOUT_MS);
     } catch (e: any) {
       logger.error('Battle match error:', e);
       // Silent fallback to bot
-      await startBotBattle();
+      await startCPUBattle();
     }
   };
 
@@ -277,7 +277,7 @@ const BattlePage: React.FC = () => {
     if (advancingRef.current) return;
     advancingRef.current = true;
     if (tickRef.current) clearInterval(tickRef.current);
-    clearBotTimer();
+    clearCPUTimer();
     setTimeout(() => {
       if (currentIndex + 1 >= questions.length) finishBattle();
       else setCurrentIndex(i => i + 1);
@@ -297,7 +297,7 @@ const BattlePage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [players, lastResult, currentIndex, phase]);
 
-  // ── Bot-mode local scoring ──
+  // ── CPU-mode local scoring ──
   const scoreLocalAnswer = (letter: string | null) => {
     if (!currentQuestion) return { isCorrect: false, points: -20 };
     const correctLetter = (currentQuestion.correct_option || currentQuestion.correct_options?.[0] || '').toUpperCase();
@@ -328,7 +328,7 @@ const BattlePage: React.FC = () => {
         setLastResult(res);
         lastResultRef.current = res;
       }
-      clearBotTimer();
+      clearCPUTimer();
       setPlayers(prev => prev.map(p => {
         if (p.user_id !== BOT_ID) return p;
         const botAnswered = (p.correct_count + p.wrong_count) >= (currentIndexRef.current + 1);
@@ -388,7 +388,7 @@ const BattlePage: React.FC = () => {
   };
 
   const finishBattle = async () => {
-    clearBotTimer();
+    clearCPUTimer();
     if (modeRef.current === 'bot') {
       // local winner
       const sorted = [...players].sort((a, b) => b.score - a.score);
@@ -408,7 +408,7 @@ const BattlePage: React.FC = () => {
 
   const resetBattle = () => {
     cleanupRealtime();
-    clearBotTimer();
+    clearCPUTimer();
     modeRef.current = 'real';
     setMode('real');
     setBattleId(null);
@@ -420,7 +420,7 @@ const BattlePage: React.FC = () => {
     setPhase('idle');
   };
 
-  useEffect(() => () => { cleanupRealtime(); clearBotTimer(); if (tickRef.current) clearInterval(tickRef.current); }, [cleanupRealtime]);
+  useEffect(() => () => { cleanupRealtime(); clearCPUTimer(); if (tickRef.current) clearInterval(tickRef.current); }, [cleanupRealtime]);
 
   if (!user) return <LoadingScreen pageName="Battle" />;
 

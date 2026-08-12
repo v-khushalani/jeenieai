@@ -488,7 +488,7 @@ export default function CoachMissionPanel() {
           </ul>
 
           <p className="text-[10px] text-center text-muted-foreground pt-1">
-            Solve karte hi khud tick lag jayega ✨
+            Solve karte hi khud tick lag jayega 
           </p>
         </div>
       )}
