@@ -149,18 +149,19 @@ const WhyUsPage = () => {
 
                 <div className="space-y-2">
                   <h3 className="text-lg font-bold flex items-center gap-2">
-                    <Target className="w-5 h-5 text-red-500" /> 3. Direction > Hard Work.
+                    <Target className="w-5 h-5 text-red-500" /> 3. Direction &gt; Hard Work.
                   </h3>
                   <p className="text-muted-foreground pl-7">
                     A student studying 12 hours without a plan will lose to a student studying 6 hours with a JEEnie Roadmap. 
+
                     We tell you <strong>exactly</strong> what to solve today to move your rank. No guesswork, no doom-scrolling through chapters.
                   </p>
                 </div>
 
                 <div className="pt-4 border-t border-border">
                   <p className="italic text-primary font-medium">
-                    "JEEnie isn't for those who want a fancy library. It's for those who are tired of being average and want a 
-                    system that pushes them to be elite. We're not here to be your friend; we're here to be your mentor."
+                    &quot;JEEnie isn&apos;t for those who want a fancy library. It&apos;s for those who are tired of being average and want a 
+                    system that pushes them to be elite. We&apos;re not here to be your friend; we&apos;re here to be your mentor.&quot;
                   </p>
                 </div>
               </div>
