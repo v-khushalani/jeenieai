@@ -24,6 +24,8 @@ import {
   Flame, Trophy, Circle, Info,
 } from 'lucide-react';
 import LogClassSheet from '@/components/LogClassSheet';
+import { CelebrationCard } from './CelebrationCard';
+
 
 interface CoachSignal {
   streak?: { current: number; best: number; today_done: boolean };
@@ -501,34 +503,13 @@ export default function CoachMissionPanel() {
 
       {/* ALL DONE — celebration */}
       {!loading && mission && allDone && (
-        <div className="rounded-2xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent p-6 space-y-4 relative overflow-hidden animate-scale-in">
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl animate-pulse pointer-events-none" />
-          <div className="relative text-center space-y-2">
-            <div className="w-14 h-14 mx-auto rounded-full bg-emerald-500 flex items-center justify-center animate-scale-in">
-              <Trophy className="w-7 h-7 text-white" />
-            </div>
-            <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">Hit-List clear! 🎯</p>
-            <p className="text-xs text-muted-foreground">Saare {totalCount} tasks done. Aaj tu winner.</p>
-          </div>
-
-          {signal?.streak && signal.streak.current > 0 && (
-            <div className="relative flex items-center justify-center gap-2 py-2.5 rounded-lg bg-orange-500/10 border border-orange-500/30">
-              <Flame className="w-4 h-4 text-orange-600" />
-              <p className="text-xs font-semibold text-orange-700 dark:text-orange-400">
-                {signal.streak.current}-day streak alive 🔥
-              </p>
-            </div>
-          )}
-
-          {tomorrowTeaser && (
-            <div className="relative rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
-              <p className="text-[10px] uppercase tracking-widest font-bold text-primary/80 mb-1">Kal ka teaser</p>
-              <p className="text-xs">{tomorrowTeaser}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">Aaj raat 12 baje unlock</p>
-            </div>
-          )}
-        </div>
+        <CelebrationCard 
+          streak={signal?.streak?.current || 0}
+          xpEarned={xpEarned + 100}
+          tomorrowChapter={tomorrowTeaser ? (tomorrowTeaser.includes('Kal ') ? tomorrowTeaser.split('Kal ')[1].split(' ka')[0] : undefined) : undefined}
+        />
       )}
+
 
       {/* Log class — small chip only for companion/hybrid */}
       {!loading && !needsSetup && (prepMode === 'companion' || prepMode === 'hybrid') && (

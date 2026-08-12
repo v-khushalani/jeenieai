@@ -475,6 +475,8 @@ export default function AIStudyPlanner() {
   const [planner, setPlanner] = useState<PlannerData>(emptyPlanner());
   const [completedHashes, setCompletedHashes] = useState<Set<string>>(new Set());
   const [selectedDay, setSelectedDay] = useState(0);
+  const [signal, setSignal] = useState<any>(null);
+
 
   const loadAll = useCallback(async (opts?: { silent?: boolean }) => {
     if (!user?.id) return;
@@ -521,6 +523,12 @@ export default function AIStudyPlanner() {
       setTargetExam(exam);
       setPlanner(data);
       setCompletedHashes(done);
+
+      // Fetch coach signal (streak, etc.)
+      supabase.functions.invoke('compute-coach-signal').then(({ data: sigData }) => {
+        if (sigData) setSignal(sigData);
+      }).catch(() => {});
+
       writePlannerCache(user.id, { profile: prof, targetExam: exam, planner: data, completedHashes: Array.from(done) });
     } catch (error) {
       logger.error('Planner load error', error);
@@ -635,39 +643,16 @@ export default function AIStudyPlanner() {
 
       <CoachMissionPanel />
 
-      <div className="grid grid-cols-4 gap-2 text-center rounded-xl border border-border/60 bg-card p-3">
-        <div>
-          <Calendar className="mx-auto mb-0.5 h-4 w-4 text-primary" />
-          <p className="text-sm font-bold">{daysToExam}</p>
-          <p className="text-[9px] text-muted-foreground">Days</p>
-        </div>
-        <div>
-          <Target className="mx-auto mb-0.5 h-4 w-4 text-primary" />
-          <p className="text-sm font-bold">{planner.overallAccuracy}%</p>
-          <p className="text-[9px] text-muted-foreground">Accuracy</p>
-        </div>
-        <div>
-          <Flame className="mx-auto mb-0.5 h-4 w-4 text-primary" />
-          <p className="text-sm font-bold">{planner.coveragePct}%</p>
-          <p className="text-[9px] text-muted-foreground">Coverage</p>
-        </div>
-        <div>
-          <Trophy className="mx-auto mb-0.5 h-4 w-4 text-primary" />
-          <p className="text-sm font-bold">{adherence}%</p>
-          <p className="text-[9px] text-muted-foreground">Today</p>
-        </div>
-      </div>
-
-      <details className="group rounded-xl border border-border/60 bg-card/50 open:bg-card">
-        <summary className="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between gap-2 select-none">
+      <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+        <div className="px-3 py-2.5 flex items-center justify-between gap-2 bg-muted/30">
           <span className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-primary" />
-            <span className="text-sm font-bold">Full Roadmap</span>
-            <span className="text-[10px] text-muted-foreground">Chapter ladder · This Week · Insights</span>
+            <span className="text-sm font-bold tracking-tight">MASTERY LADDER</span>
           </span>
-          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
-        </summary>
-        <div className="px-2 pb-3 pt-1">
+          <Badge variant="outline" className="text-[9px] font-black tracking-widest px-1.5 h-4">ROADMAP</Badge>
+        </div>
+        <div className="px-3 pb-3 pt-1">
+
 
 
       <Tabs defaultValue="roadmap" className="w-full">
@@ -687,165 +672,40 @@ export default function AIStudyPlanner() {
                 return Number.isFinite(g) && g >= 6 && g <= 12 ? g : null;
               })()}
               initialRoadmaps={planner.roadmaps}
+              xpPoints={planner.totalAttempts * 10 + planner.coveragePct * 5}
+              streak={signal?.streak?.current || 0}
               onRefresh={loadAll}
             />
           )}
 
+
         </TabsContent>
 
-        <TabsContent value="week" className="mt-3 space-y-3">
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-            {planner.weekly.map((day, index) => (
-              <button
-                key={day.date}
-                type="button"
-                onClick={() => setSelectedDay(index)}
-                className={`min-w-[64px] rounded-xl border p-2 text-center transition-all ${selectedDay === index ? 'border-primary bg-primary/10 ring-1 ring-primary/30' : 'border-border bg-card'}`}
-              >
-                <p className="text-[10px] font-bold text-muted-foreground">{day.dayName}</p>
-                <p className="text-base font-extrabold">{day.tasks.length}</p>
-                <p className="text-[9px] text-muted-foreground">{day.totalMinutes}m</p>
-              </button>
-            ))}
-          </div>
-
-          <div className="space-y-2">
-            {(currentDay?.tasks || []).map((task) => {
-              const done = completedHashes.has(taskHash(task));
-              return (
-                <Card key={task.id} className="border-border/70">
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => void toggleDone(task)}
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${done ? 'border-emerald-500 bg-emerald-500/10' : 'border-border'}`}
-                      >
-                        {done ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <BookOpen className="h-4 w-4 text-primary" />}
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-bold">{task.title}</p>
-                          <Badge variant="outline" className="h-5 text-[9px]">{task.duration}m</Badge>
-                        </div>
-                        <p className="truncate text-[11px] text-muted-foreground">{task.chapter} · {formatSubjectDisplay(task.subject)}</p>
-                        <p className="line-clamp-1 text-[10px] text-muted-foreground">{task.subtitle}</p>
-                      </div>
-                      <Button size="sm" variant={done ? 'outline' : 'default'} className="h-8 shrink-0" onClick={() => navigate(task.href)}>
-                        {task.actionLabel}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-            {(!currentDay || currentDay.tasks.length === 0) && (
-              <Card className="border-dashed">
-                <CardContent className="p-5 text-center text-sm text-muted-foreground">DB data nahi mila. Refresh karke dobara try kar.</CardContent>
-              </Card>
-            )}
-          </div>
+        <TabsContent value="week" className="mt-3">
+          <Card className="bg-muted/30 border-dashed">
+            <CardContent className="p-8 text-center space-y-3">
+              <Sparkles className="w-10 h-10 text-primary/40 mx-auto" />
+              <p className="text-base font-black tracking-tight">Weekly View Integrated</p>
+              <p className="text-sm text-muted-foreground font-medium">Weekly plans abhi automatic ladder mein merge ho gaye hain! Mastery Ladder check karo.</p>
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="insights" className="mt-3 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <Card className="border-red-200 bg-red-50/40 dark:bg-red-950/20">
-              <CardContent className="p-3">
-                <div className="mb-1 flex items-center gap-1.5 text-red-700">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  <p className="text-[10px] font-bold uppercase">Weak now</p>
-                </div>
-                <p className="text-xl font-extrabold text-red-700">{planner.weak.length}</p>
-                <p className="truncate text-[10px] text-muted-foreground">{planner.weak[0]?.title || 'No critical weakness'}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-amber-200 bg-amber-50/40 dark:bg-amber-950/20">
-              <CardContent className="p-3">
-                <div className="mb-1 flex items-center gap-1.5 text-amber-700">
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  <p className="text-[10px] font-bold uppercase">Mistakes</p>
-                </div>
-                <p className="text-xl font-extrabold text-amber-700">{planner.pendingMistakes}</p>
-                <p className="truncate text-[10px] text-muted-foreground">Pending wrong-question repair</p>
-              </CardContent>
-            </Card>
-            <Card className="border-blue-200 bg-blue-50/40 dark:bg-blue-950/20">
-              <CardContent className="p-3">
-                <div className="mb-1 flex items-center gap-1.5 text-blue-700">
-                  <Zap className="h-3.5 w-3.5" />
-                  <p className="text-[10px] font-bold uppercase">Pending</p>
-                </div>
-                <p className="text-xl font-extrabold text-blue-700">{planner.pending.length}</p>
-                <p className="truncate text-[10px] text-muted-foreground">Untouched chapters</p>
-              </CardContent>
-            </Card>
-            <Card className="border-emerald-200 bg-emerald-50/40 dark:bg-emerald-950/20">
-              <CardContent className="p-3">
-                <div className="mb-1 flex items-center gap-1.5 text-emerald-700">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  <p className="text-[10px] font-bold uppercase">Strong</p>
-                </div>
-                <p className="text-xl font-extrabold text-emerald-700">{planner.strong.length}</p>
-                <p className="truncate text-[10px] text-muted-foreground">80%+ accuracy chapters</p>
-              </CardContent>
-            </Card>
-          </div>
 
-          <Card>
-            <CardContent className="space-y-3 p-3">
-              <div>
-                <p className="text-xs font-bold">Next chapter to finish</p>
-                <p className="mt-0.5 text-sm font-semibold">{planner.active?.title || 'Revision mode'}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {planner.active ? `${formatSubjectDisplay(planner.active.subject)} · ${planner.active.accuracy}% accuracy · ${planner.active.totalQuestions} questions available` : 'All roadmap chapters touched.'}
-                </p>
-              </div>
-              {planner.next && (
-                <div>
-                  <p className="text-xs font-bold">After that</p>
-                  <p className="mt-0.5 text-sm font-semibold">{planner.next.title}</p>
-                </div>
-              )}
+        <TabsContent value="insights" className="mt-3">
+          <Card className="bg-muted/30 border-dashed">
+            <CardContent className="p-8 text-center space-y-3">
+              <Trophy className="w-10 h-10 text-primary/40 mx-auto" />
+              <p className="text-base font-black tracking-tight">Insights Integrated</p>
+              <p className="text-sm text-muted-foreground font-medium">Saare data insights ab Mastery Ladder ke dynamic stats mein milenge!</p>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardContent className="space-y-2 p-3">
-              <p className="text-xs font-bold">Coverage by subject</p>
-              {subjectCoverage.map((item) => (
-                <div key={item.subject} className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-semibold">{formatSubjectDisplay(item.subject)}</span>
-                    <span className="text-muted-foreground">{item.touched}/{item.total} chapters</span>
-                  </div>
-                  <Progress value={item.pct} className="h-1.5" />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {planner.weak.length > 0 && (
-            <Card className="border-primary/20">
-              <CardContent className="p-3">
-                <p className="mb-2 text-xs font-bold">Top weak chapters</p>
-                <div className="space-y-1.5">
-                  {planner.weak.slice(0, 4).map((chapter) => (
-                    <button key={chapter.id} type="button" onClick={() => navigate(buildPracticeHref(chapter, 'drill'))} className="flex w-full items-center justify-between gap-2 rounded-lg border border-border p-2 text-left hover:border-primary/50">
-                      <span className="min-w-0">
-                        <span className="block truncate text-xs font-semibold">{chapter.title}</span>
-                        <span className="text-[10px] text-muted-foreground">{formatSubjectDisplay(chapter.subject)} · {chapter.attempts} attempts</span>
-                      </span>
-                      <Badge variant="outline" className="shrink-0 text-[10px]">{chapter.accuracy}%</Badge>
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
       </Tabs>
+
         </div>
-      </details>
+      </div>
+
     </div>
   );
 }
