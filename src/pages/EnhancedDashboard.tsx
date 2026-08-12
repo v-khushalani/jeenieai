@@ -16,7 +16,9 @@ import {
   AlertCircle,
   X,
   Sparkles,
+  Rocket,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
