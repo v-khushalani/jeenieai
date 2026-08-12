@@ -323,17 +323,24 @@ const StudyNowPage: React.FC = () => {
         const map: Record<string, number> = {};
         const chapMap: Record<string, number> = {};
         
+        let hasQuestions = false;
         (allCounts || []).forEach((row: any) => {
           const key = String(row.subject || '').trim().toUpperCase();
-          map[key] = Number(row.question_count) || 0;
+          const qCount = Number(row.question_count) || 0;
+          map[key] = qCount;
           chapMap[key] = Number(row.chapter_count) || 0;
+          if (qCount > 0) hasQuestions = true;
         });
 
         setSubjectQuestionCounts(map);
         setSubjectChapterCounts(chapMap);
+        
+        // If we found questions, we can stop loading. 
+        // If no questions found via RPC for the user's specific grade/exam, 
+        // we keep countsLoading true for a bit longer or rely on the UI to show Coming Soon correctly.
+        setCountsLoading(false);
       } catch (err) {
         logger.error('Error fetching subject totals:', err);
-      } finally {
         setCountsLoading(false);
       }
     };

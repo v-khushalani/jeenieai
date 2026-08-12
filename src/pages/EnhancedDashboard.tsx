@@ -146,7 +146,7 @@ const EnhancedDashboard = () => {
     if (stats.todayProgress >= stats.todayGoal && stats.todayAccuracy >= 80)
       return { message: "🎉 Daily goal smashed!", color: "green", icon: Trophy, route: "/analytics" };
     if (stats.questionsToday >= 50 && stats.todayAccuracy >= 85)
-      return { message: "⭐ Outstanding performance!", color: "green", icon: Sparkles, route: "/analytics" };
+      return { message: "🎉 Daily goal smashed!", color: "green", icon: Trophy, route: "/analytics" };
     if (stats.rankChange && stats.rankChange >= 3)
       return { message: `📈 Climbed ${stats.rankChange} ranks!`, color: "blue", icon: TrendingUp, route: "/analytics" };
     return null;
