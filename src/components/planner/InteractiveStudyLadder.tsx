@@ -103,23 +103,29 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
             return (
               <div key={chapter.id} className="relative z-10 py-6">
                 <motion.button
-                  whileHover={{ scale: 1.15 }}
+                  whileHover={{ scale: 1.3, y: -4 }}
                   whileTap={{ scale: 0.9 }}
+                  animate={{ 
+                    scale: isSelected ? 1.25 : isActive ? 1.15 : 1,
+                    y: isSelected ? -2 : 0
+                  }}
                   onClick={() => setSelectedChapterId(chapter.id)}
-                  className={`w-10 h-10 rounded-full border-4 flex items-center justify-center transition-all ${masteryColor} shadow-lg`}
+                  className={`w-10 h-10 rounded-full border-4 flex items-center justify-center transition-all ${masteryColor} shadow-lg ${isSelected ? 'ring-4 ring-primary/20' : ''}`}
                 >
                   {isDone ? (
-                    <CheckCircle2 className="w-5 h-5 text-white" />
+                    <Trophy className="w-5 h-5 text-white drop-shadow-sm" />
+                  ) : isActive ? (
+                    <Rocket className="w-5 h-5 text-white animate-pulse" />
                   ) : chapter.status === 'locked' ? (
-                    <Lock className="w-4 h-4 text-muted-foreground" />
+                    <Lock className="w-4 h-4 text-white/40" />
                   ) : (
-                    <span className="text-xs font-bold text-white">{idx + 1}</span>
+                    <Star className="w-5 h-5 text-white/80" />
                   )}
                 </motion.button>
                 {isSelected && (
                   <motion.div 
                     layoutId="active-indicator"
-                    className="absolute -inset-2 rounded-full border-2 border-primary/30 animate-pulse"
+                    className="absolute -inset-2 rounded-full border-2 border-primary border-dashed animate-spin-slow"
                   />
                 )}
               </div>
