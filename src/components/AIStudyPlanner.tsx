@@ -475,6 +475,8 @@ export default function AIStudyPlanner() {
   const [planner, setPlanner] = useState<PlannerData>(emptyPlanner());
   const [completedHashes, setCompletedHashes] = useState<Set<string>>(new Set());
   const [selectedDay, setSelectedDay] = useState(0);
+  const [signal, setSignal] = useState<any>(null);
+
 
   const loadAll = useCallback(async (opts?: { silent?: boolean }) => {
     if (!user?.id) return;
