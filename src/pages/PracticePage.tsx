@@ -1205,7 +1205,7 @@ const PracticePage: React.FC = () => {
                   className="absolute right-16 bg-white dark:bg-slate-900 border border-border shadow-md px-3 py-1.5 rounded-xl whitespace-nowrap text-xs font-bold text-primary flex items-center gap-2"
                 >
                   <MessageSquare className="w-3 h-3" />
-                  Stuck? Bhai se pucho!
+                  Stuck?
                 </motion.div>
               )}
             </Button>

@@ -388,7 +388,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                 <span className="text-[11px] font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider">Bhai Ki Pro-Tip</span>
               </div>
               <p className="text-xs text-blue-700/80 dark:text-blue-400/80 leading-relaxed font-medium">
-                "Bas solution mat ratna, logic samjhna. JEE/NEET mein logic hi kaam aata hai, calculation toh calculator bhi kar lega!" 😉
+                "Bas solution mat ratna, logic samjhna. JEE/NEET mein logic hi kaam aata hai!" 😉
               </p>
             </div>
           )}
