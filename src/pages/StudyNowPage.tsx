@@ -540,11 +540,11 @@ const StudyNowPage: React.FC = () => {
             <>
               {isLoading ? (
                 <LoadingScreen pageName="Study Now" message="Loading study subjects..." />
-              ) : availableSubjects.length === 0 || availableSubjects.every((s) => (subjectQuestionCounts[String(s || '').trim().toUpperCase()] ?? 0) === 0) ? (
+              ) : availableSubjects.length === 0 ? (
                 <div className="flex-1 min-h-0 flex items-center justify-center pb-4">
                   <ComingSoonBanner
                     className="w-full max-w-xl"
-                    subtitle="Is class ke liye questions abhi taiyaar ho rahe hain. Bahut jaldi live honge!"
+                    subtitle="Is class ke liye subjects abhi taiyaar ho rahe hain. Bahut jaldi live honge!"
                   />
                 </div>
               ) : (
