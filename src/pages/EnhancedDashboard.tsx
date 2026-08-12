@@ -16,7 +16,10 @@ import {
   AlertCircle,
   X,
   Sparkles,
+  Rocket,
+  CheckCircle2,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
@@ -218,10 +221,10 @@ const EnhancedDashboard = () => {
 
               {/* Notification Banner */}
               {showBanner && notification && (
-                <div className={`hidden lg:block rounded-xl p-3 sm:p-3.5 shadow-lg transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-[1.01] ${
-                  notification.color === "green" ? "bg-linear-to-r from-green-500 to-emerald-600 text-white" :
-                  notification.color === "orange" ? "bg-linear-to-r from-orange-500 to-red-600 text-white" :
-                  "bg-linear-to-r from-blue-500 to-indigo-600 text-white"
+                <div className={`hidden lg:block rounded-2xl p-4 shadow-xl transition-all duration-300 cursor-pointer hover:shadow-2xl hover:scale-[1.01] border-2 border-white/10 ${
+                  notification.color === "green" ? "bg-linear-to-r from-emerald-500 via-green-600 to-teal-700 text-white" :
+                  notification.color === "orange" ? "bg-linear-to-r from-orange-500 via-red-600 to-rose-700 text-white" :
+                  "bg-linear-to-r from-blue-600 via-indigo-700 to-violet-800 text-white"
                 }`}
                   role="button"
                   tabIndex={0}
@@ -250,116 +253,70 @@ const EnhancedDashboard = () => {
                 </div>
               )}
 
-              {/* Welcome Banner — NO share button, days remaining integrated */}
+              {/* Welcome & Focus Banner */}
               {showWelcome && (
-                <div className="rounded-xl sm:rounded-2xl p-3 sm:p-6 bg-linear-to-br from-slate-900 via-blue-900 to-indigo-900 text-white shadow-2xl relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-40 h-40 sm:w-64 sm:h-64 bg-blue-500/10 rounded-full blur-3xl"></div>
-                  <div className="absolute bottom-0 left-0 w-32 h-32 sm:w-48 sm:h-48 bg-indigo-500/10 rounded-full blur-3xl"></div>
+                <div className="rounded-2xl sm:rounded-3xl p-5 sm:p-8 bg-linear-to-br from-slate-900 via-blue-900 to-indigo-950 text-white shadow-2xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all duration-700"></div>
+                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl"></div>
                   
                   <button
                     onClick={() => {
                       safeLocalStorage.setItem("welcomeLastShown", new Date().toDateString());
                       setShowWelcome(false);
                     }}
-                    className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 text-white/60 hover:text-white transition-colors z-10"
+                    className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors z-20 p-2 hover:bg-white/10 rounded-full"
                   >
-                    <X className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <X className="h-5 w-5" />
                   </button>
 
                   <div className="relative z-10">
-                    <div className="flex flex-col gap-3 sm:gap-4">
-                      <div className="flex items-start gap-3 sm:gap-4">
-                        <div className="flex-1 min-w-0">
-                          <h2 className="text-base sm:text-2xl font-bold mb-1 line-clamp-2">
-                            {timeMessage.greeting}, {displayName}
-                          </h2>
-                          {daysRemaining && (
-                            <p className="text-[11px] sm:text-base text-slate-200">
-                              Pro active for {daysRemaining} more days
-                            </p>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{timeMessage.icon}</span>
+                          <span className="text-xs font-bold uppercase tracking-widest text-blue-400">{timeMessage.greeting}</span>
+                        </div>
+                        <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
+                          Namaste, {displayName}!<br />
+                          <span className="text-blue-400">Ready to crush it?</span>
+                        </h2>
+                        <div className="flex flex-wrap items-center gap-2 pt-2">
+                          {examDaysLeft !== null && (
+                            <Badge className="bg-white/10 text-white border-white/20 hover:bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider">
+                              {formatExamDisplay(profile?.target_exam)}: {examDaysLeft} Days Left
+                            </Badge>
                           )}
-                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                            {examDaysLeft !== null && (
-                              <Badge className="text-[10px] bg-white/15 text-white border-white/20">
-                                {formatExamDisplay(profile?.target_exam)}: {examDaysLeft} days left
-                              </Badge>
-                            )}
-                            {isPremium ? (
-                              <Badge className="text-[10px] bg-emerald-500/80 text-white border-0">
-                                {isProPlus ? 'Pro+ Plan' : 'Pro Plan'}
-                              </Badge>
-                            ) : (
-                              <Badge className="text-[10px] bg-amber-500/80 text-white border-0">
-                                Free Plan
-                              </Badge>
-                            )}
-                          </div>
+                          <Badge className={`px-3 py-1 text-xs font-bold uppercase tracking-wider border-0 ${isPremium ? 'bg-amber-500 text-slate-950' : 'bg-slate-700 text-slate-200'}`}>
+                            {isProPlus ? 'Pro+' : isPremium ? 'Pro' : 'Free Plan'}
+                          </Badge>
+                          {daysRemaining && (
+                            <span className="text-xs font-medium text-slate-400 ml-1">
+                              {daysRemaining} days of Pro left
+                            </span>
+                          )}
                         </div>
                       </div>
 
-                      <div className="hidden sm:flex flex-wrap gap-2">
+                      <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                         {studyNowEnabled && (
                           <Button 
-                            size="sm"
+                            size="lg"
                             onClick={() => navigate("/study-now")} 
-                            className="bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl transition-all flex-1 sm:flex-none text-xs sm:text-sm"
+                            className="bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:shadow-[0_0_30px_rgba(37,99,235,0.6)] transition-all h-14 px-8 rounded-xl font-black uppercase tracking-widest group"
                           >
-                            <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                            <BookOpen className="h-5 w-5 mr-3 group-hover:rotate-6 transition-transform" />
                             {timeMessage.action}
                           </Button>
                         )}
                         {testsEnabled && (
                           <Button 
-                            size="sm"
+                            size="lg"
                             onClick={() => navigate("/tests")} 
                             variant="outline"
-                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm"
+                            className="bg-white/5 hover:bg-white/10 text-white border-white/20 hover:border-white/40 h-14 px-8 rounded-xl font-black uppercase tracking-widest"
                           >
-                            <Target className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                            <Target className="h-5 w-5 mr-3" />
                             Take Test
-                          </Button>
-                        )}
-                        {isPremium && analyticsEnabled && (
-                          <Button 
-                            size="sm"
-                            onClick={() => navigate("/analytics")} 
-                            variant="outline"
-                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm"
-                          >
-                            <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                            Analytics
-                          </Button>
-                        )}
-                        {snapshotEnabled && (
-                          <Button 
-                            size="sm"
-                            onClick={() => navigate("/snapshot")} 
-                            variant="outline"
-                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm"
-                          >
-                            <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                            Yearbook
-                          </Button>
-                        )}
-                        {testHistoryEnabled && (
-                          <Button 
-                            size="sm"
-                            onClick={() => navigate("/test-history")} 
-                            variant="outline"
-                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/40 shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm"
-                          >
-                            <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                            Test History
-                          </Button>
-                        )}
-                        {isProPlus && battleEnabled && (
-                          <Button
-                            size="sm"
-                            onClick={() => navigate("/battle")}
-                            className="bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:from-pink-700 hover:to-indigo-700 text-white shadow-lg transition-all flex-1 sm:flex-none text-xs sm:text-sm font-bold"
-                          >
-                            <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-                            Battle
                           </Button>
                         )}
                       </div>
@@ -404,130 +361,94 @@ const EnhancedDashboard = () => {
                 >
                   <div className="w-full flex-none snap-start p-1 min-h-0">
                     <div className="h-full space-y-2 overflow-y-auto p-1">
-                      <div className="grid grid-cols-2 gap-2 auto-rows-fr items-stretch">
-                        <Card className={`h-full rounded-xl shadow-xs border-l-4 ${streakColors.border} ${streakColors.bg}`}> 
-                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
-                            <div className="flex items-start gap-2 mb-1">
-                              <div className={`p-1.5 ${streakColors.iconBg} rounded-lg shrink-0`}>
-                                <Flame className="h-3 w-3 text-white" />
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <Card className={`h-full rounded-2xl shadow-lg border-2 ${streakColors.border} ${streakColors.bg} relative overflow-hidden group`}> 
+                          <CardContent className="p-4 h-full flex flex-col justify-between">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className={`p-2 ${streakColors.iconBg} rounded-xl shadow-md group-hover:scale-110 transition-transform`}>
+                                <Flame className="h-4 w-4 text-white" />
                               </div>
-                              <p className="text-[11px] font-medium text-muted-foreground">Day Streak</p>
+                              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Streak</p>
                             </div>
-                            <h3 className={`text-xl font-bold ${streakColors.text}`}>{streak ?? 0}</h3>
-                            <p className="text-[10px] text-muted-foreground mt-1">{streak > 0 ? 'Keep going!' : 'Start streak today'}</p>
+                            <h3 className={`text-3xl font-black ${streakColors.text} tracking-tighter`}>{streak ?? 0} <span className="text-xs font-bold opacity-60">Days</span></h3>
                           </CardContent>
                         </Card>
 
-                        <Card className={`h-full rounded-xl shadow-xs border-l-4 ${accuracyColors.border} ${accuracyColors.bg}`}> 
-                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
-                            <div className="flex items-start gap-2 mb-1">
-                              <div className={`p-1.5 ${accuracyColors.iconBg} rounded-lg shrink-0`}>
-                                <Target className="h-3 w-3 text-white" />
-                              </div>
-                              <p className="text-[11px] font-medium text-muted-foreground">Today's Accuracy</p>
-                            </div>
-                            <h3 className={`text-xl font-bold ${accuracyColors.text}`}>{stats?.todayAccuracy ?? 0}%</h3>
-                            <p className="text-[10px] text-muted-foreground mt-1">Overall: {stats?.accuracy ?? 0}%</p>
-                          </CardContent>
-                        </Card>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 auto-rows-fr items-stretch">
-                        <Card className={`h-full rounded-xl shadow-xs border-l-4 ${goalColors.border} ${goalColors.bg}`}> 
-                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <div className="flex items-start gap-2 min-w-0">
-                                <div className={`p-1.5 ${goalColors.iconBg} rounded-lg shrink-0`}>
-                                  <Calendar className="h-3 w-3 text-white" />
+                        <Card className={`h-full rounded-2xl shadow-lg border-2 ${goalColors.border} ${goalColors.bg} relative overflow-hidden group`}> 
+                          <CardContent className="p-4 h-full flex flex-col justify-between">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className={`p-2 ${goalColors.iconBg} rounded-xl shadow-md group-hover:scale-110 transition-transform`}>
+                                  <Calendar className="h-4 w-4 text-white" />
                                 </div>
-                                <p className="text-[11px] font-medium text-muted-foreground">Today's Goal</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Goal</p>
                               </div>
-                              <Badge className="text-[10px] px-2 py-0.5 bg-white/70 text-foreground border-0">
-                                {(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'Done' : 'Go'}
-                              </Badge>
                             </div>
-                            <h3 className={`text-xl font-bold ${goalColors.text}`}>{stats?.todayProgress ?? 0}/{stats?.todayGoal ?? 30}</h3>
-                            <div className="w-full bg-muted rounded-full h-2 mt-2 mb-1.5">
-                              <div className={`h-2 rounded-full ${(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500' : 'bg-orange-500'}`} style={{ width: `${Math.min(100, ((stats?.todayProgress ?? 0) / (stats?.todayGoal ?? 30)) * 100)}%` }} />
+                            <h3 className={`text-3xl font-black ${goalColors.text} tracking-tighter`}>{stats?.todayProgress ?? 0}<span className="text-xs opacity-60">/{stats?.todayGoal ?? 30}</span></h3>
+                            <div className="w-full bg-black/5 dark:bg-white/10 rounded-full h-2 mt-2">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${Math.min(100, ((stats?.todayProgress ?? 0) / (stats?.todayGoal ?? 30)) * 100)}%` }}
+                                className={`h-full rounded-full ${(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500' : 'bg-orange-500'}`} 
+                              />
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
-                              {(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0) > 0
-                                ? `${(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0)} questions left`
-                                : 'Goal achieved!'}
-                            </p>
                           </CardContent>
                         </Card>
 
-                        <Card className="h-full rounded-xl shadow-xs border-l-4 border-purple-500 bg-linear-to-br from-purple-50/80 via-pink-50/80 to-indigo-50/80"> 
-                          <CardContent className="p-2.5 h-full flex flex-col justify-between">
-                            <div className="flex items-start gap-2 mb-1">
-                              <div className="p-1.5 bg-linear-to-r from-purple-600 to-pink-600 rounded-lg shrink-0">
-                                <Trophy className="h-3 w-3 text-white" />
+                        <Card className="h-full rounded-2xl shadow-lg border-2 border-purple-200 bg-linear-to-br from-purple-50 via-white to-pink-50 dark:from-purple-900/20 dark:to-pink-950/20 relative overflow-hidden group col-span-2"> 
+                          <CardContent className="p-4 h-full flex flex-col justify-between">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="p-2 bg-linear-to-r from-purple-600 to-pink-600 rounded-xl shadow-md group-hover:scale-110 transition-transform">
+                                <Trophy className="h-4 w-4 text-white" />
                               </div>
-                              <p className="text-[11px] font-medium text-muted-foreground">JEEnie Points</p>
+                              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Mastery XP</p>
                             </div>
-                            <h3 className="text-xl font-bold bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">{stats?.totalPoints ?? 0}</h3>
-                            <div className="flex items-center gap-2 mt-1.5">
-                              <Badge className="text-[10px] font-bold px-2 py-0.5 bg-linear-to-r from-purple-600 to-pink-600 text-white">{pointsLevel.name}</Badge>
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-4xl font-black bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent tracking-tighter">{stats?.totalPoints ?? 0}</h3>
+                              <Badge className="text-[10px] font-black px-2 py-1 bg-linear-to-r from-purple-600 to-pink-600 text-white border-0">{pointsLevel.name}</Badge>
                             </div>
                           </CardContent>
                         </Card>
                       </div>
 
-                      <Card className="rounded-xl shadow-xs border border-border bg-card/95 overflow-hidden">
-                        <CardHeader className="p-3 pb-2 border-b border-border/60">
+                      <Card className="rounded-2xl shadow-lg border-2 border-slate-100 dark:border-slate-800 bg-card/95 overflow-hidden">
+                        <CardHeader className="p-4 pb-2 border-b border-border/60">
                           <CardTitle className="flex items-center gap-2 text-sm">
-                            <div className="p-1.5 rounded-lg bg-linear-to-br from-indigo-500 to-purple-600 text-white">
+                            <div className="p-2 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 text-white shadow-md">
                               <TrendingUp className="h-3 w-3" />
                             </div>
-                            <span className="font-bold text-foreground">Your Progress</span>
-                            <Badge className="ml-auto text-[10px] bg-primary/10 text-primary border-0">This Week</Badge>
+                            <span className="font-black uppercase tracking-widest text-xs">Mastery Levels</span>
                           </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-3">
+                        <CardContent className="p-4">
                           {stats?.subjectStats ? (
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-4">
                               {Object.entries(stats.subjectStats).slice(0, 3).map(([subject, data]: any) => {
                                 const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
-                                const circumference = 2 * Math.PI * 32;
-                                const strokeDashoffset = circumference - (accuracy / 100) * circumference;
-                                const strokeColor = accuracy >= 80 ? '#10b981' : accuracy >= 60 ? '#f59e0b' : '#ef4444';
-                                const bgColor = accuracy >= 80 ? '#d1fae5' : accuracy >= 60 ? '#fef3c7' : '#fee2e2';
-
+                                const isHigh = accuracy >= 80;
+                                const isMid = accuracy >= 60;
+                                
                                 return (
-                                  <div key={subject} className="flex flex-col items-center gap-1">
-                                    <div className="relative w-20 h-20">
-                                      <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                                        <circle cx="40" cy="40" r="32" fill="none" stroke={bgColor} strokeWidth="6" />
-                                        <circle
-                                          cx="40"
-                                          cy="40"
-                                          r="32"
-                                          fill="none"
-                                          stroke={strokeColor}
-                                          strokeWidth="6"
-                                          strokeLinecap="round"
-                                          strokeDasharray={circumference}
-                                          strokeDashoffset={strokeDashoffset}
-                                          className="transition-all duration-700"
-                                        />
-                                      </svg>
-                                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span className="text-sm font-bold" style={{ color: strokeColor }}>{accuracy}%</span>
-                                        <span className="text-[8px] text-muted-foreground">{data.correct}/{data.total}</span>
-                                      </div>
+                                  <div key={subject} className="space-y-1.5">
+                                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                                      <span className="opacity-70">{subject}</span>
+                                      <span className={isHigh ? 'text-emerald-500' : isMid ? 'text-amber-500' : 'text-red-500'}>{accuracy}%</span>
                                     </div>
-                                    <span className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">
-                                      {subject}
-                                    </span>
+                                    <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                      <motion.div 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${accuracy}%` }}
+                                        className={`h-full rounded-full ${isHigh ? 'bg-emerald-500' : isMid ? 'bg-amber-500' : 'bg-red-500'}`}
+                                      />
+                                    </div>
                                   </div>
                                 );
                               })}
                             </div>
                           ) : (
-                            <div className="text-center py-4 text-muted-foreground">
-                              <BookOpen className="h-6 w-6 mx-auto mb-2 opacity-40" />
-                              <p className="text-xs font-medium">Start practicing to see progress</p>
+                            <div className="text-center py-6 text-muted-foreground opacity-50">
+                              <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                              <p className="text-[10px] font-bold uppercase tracking-widest">No Practice Data</p>
                             </div>
                           )}
                         </CardContent>
@@ -545,130 +466,91 @@ const EnhancedDashboard = () => {
                 </div>
               </div>
 
-              {/* 4 Dynamic Stats Cards */}
-              <div className="hidden lg:grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2 md:gap-3 shrink-0 auto-rows-fr items-stretch">
-                
-                {/* 1st Card: Day Streak */}
-                <Card className={`rounded-lg sm:rounded-xl shadow-xs hover:shadow-md transition-all border-l-4 ${streakColors.border} ${streakColors.bg} backdrop-blur-xs`}> 
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-start gap-2 mb-2">
-                      <div className={`p-1.5 sm:p-2 ${streakColors.iconBg} rounded-lg shrink-0 animate-pulse`}>
-                        <Flame className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
-                      </div>
-                      <p className="text-xs font-medium text-muted-foreground">Day Streak</p>
-                    </div>
-                    <h3 className={`text-2xl sm:text-3xl font-bold ${streakColors.text}`}>
-                      {streak ?? 0}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <Flame className="h-3 w-3 text-orange-500" />
-                      {streak > 0 ? 'Keep going!' : 'Start your streak today!'}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* 2nd Card: Today's Accuracy */}
-                <Card className={`rounded-lg sm:rounded-xl shadow-xs hover:shadow-md transition-all border-l-4 ${accuracyColors.border} ${accuracyColors.bg} backdrop-blur-xs`}> 
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-start gap-2">
-                        <div className={`p-1.5 sm:p-2 ${accuracyColors.iconBg} rounded-lg shrink-0`}>
-                          <Target className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+              {/* Desktop Progress Analysis (Hidden on Mobile) */}
+              <div className="hidden lg:flex flex-col gap-6 pt-4">
+                <Card className="rounded-3xl border-2 border-slate-100 dark:border-slate-800 bg-card/95 shadow-2xl overflow-hidden flex flex-col">
+                  <CardHeader className="p-6 border-b border-border/60">
+                    <CardTitle className="flex justify-between items-center">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-linear-to-br from-indigo-500 via-purple-600 to-violet-700 text-white rounded-2xl shadow-xl">
+                          <TrendingUp className="h-6 w-6" />
                         </div>
-                        <p className="text-xs font-medium text-muted-foreground">Today's Accuracy</p>
-                      </div>
-                    </div>
-                    <div className="flex items-end justify-between mb-2">
-                      <h3 className={`text-2xl sm:text-3xl font-bold ${accuracyColors.text}`}>
-                        {stats?.todayAccuracy ?? 0}%
-                      </h3>
-                      <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1">
-                        {stats?.accuracyChange == null ? (
-                          <span className="hidden sm:inline text-xs text-muted-foreground font-semibold">— new</span>
-                        ) : stats.accuracyChange > 0 ? (
-                          <span className="hidden sm:inline text-xs text-green-600 dark:text-green-400 font-semibold">↑ {Math.abs(stats.accuracyChange)}% week</span>
-                        ) : stats.accuracyChange < 0 ? (
-                          <span className="hidden sm:inline text-xs text-red-600 dark:text-red-400 font-semibold">↓ {Math.abs(stats.accuracyChange)}% week</span>
-                        ) : (
-                          <span className="hidden sm:inline text-xs text-muted-foreground font-semibold">→ same as last week</span>
-                        )}
-                        <Badge className={`text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 ${
-                          (stats?.todayAccuracy ?? 0) >= 80 ? 'bg-emerald-500 text-white' :
-                          (stats?.todayAccuracy ?? 0) >= 60 ? 'bg-orange-500 text-white' :
-                          'bg-red-500 text-white'
-                        }`}>
-                          {(stats?.todayAccuracy ?? 0) >= 80 ? 'Great!' : (stats?.todayAccuracy ?? 0) >= 60 ? 'Focus!' : 'Practice!'}
-                        </Badge>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Overall: {stats?.accuracy ?? 0}%
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* 3rd Card: Today's Goal */}
-                <Card className={`rounded-lg sm:rounded-xl shadow-xs hover:shadow-md transition-all border-l-4 ${goalColors.border} ${goalColors.bg} backdrop-blur-xs`}> 
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-start gap-2">
-                        <div className={`p-1.5 sm:p-2 ${goalColors.iconBg} rounded-lg shrink-0`}>
-                          <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                        <div>
+                          <h3 className="text-xl font-black uppercase tracking-widest text-foreground leading-none mb-1">Mastery Analysis</h3>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Real-time performance metrics</p>
                         </div>
-                        <p className="text-xs font-medium text-muted-foreground">Today's Goal</p>
                       </div>
-                    </div>
-                    <div className="flex items-end justify-between mb-2">
-                      <h3 className={`text-2xl sm:text-3xl font-bold ${goalColors.text}`}>
-                        {stats?.todayProgress ?? 0}/{stats?.todayGoal ?? 30}
-                      </h3>
-                      <Badge className={`text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 ${
-                        (stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500 text-white' :
-                        (stats?.todayProgress ?? 0) >= ((stats?.todayGoal ?? 30) * 0.5) ? 'bg-yellow-500 text-white' :
-                        'bg-orange-500 text-white'
-                      }`}>
-                        {(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? '🔥 Done!' : 
-                         (stats?.todayProgress ?? 0) >= ((stats?.todayGoal ?? 30) * 0.5) ? '💪 Push!' : 
-                         '🎯 Go!'}
-                      </Badge>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2 mb-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all ${
-                          (stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500' :
-                          (stats?.todayProgress ?? 0) >= ((stats?.todayGoal ?? 30) * 0.5) ? 'bg-yellow-500' :
-                          'bg-orange-500'
-                        }`}
-                        style={{ width: `${Math.min(100, ((stats?.todayProgress ?? 0) / (stats?.todayGoal ?? 30)) * 100)}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0) > 0 
-                        ? `${(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0)} questions left - Let's go! 🚀`
-                        : `Goal achieved! 🎉`
-                      }
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* 4th Card: JEEnie Points */}
-                <Card className="rounded-lg sm:rounded-xl shadow-xs hover:shadow-md transition-all border-l-4 border-purple-500 bg-linear-to-br from-purple-50/80 via-pink-50/80 to-indigo-50/80 dark:from-purple-950/50 dark:via-pink-950/50 dark:to-indigo-950/50 backdrop-blur-xs"> 
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-start gap-2 mb-2">
-                      <div className="p-1.5 sm:p-2 bg-linear-to-r from-purple-600 to-pink-600 rounded-lg shrink-0">
-                        <Trophy className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                      <Badge className="bg-primary/10 text-primary text-xs font-black px-4 py-1.5 uppercase tracking-widest border-0">Global Stats</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    {stats?.subjectStats && Object.keys(stats.subjectStats).length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {Object.entries(stats.subjectStats).map(([subject, data]: any) => {
+                          const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
+                          const isHigh = accuracy >= 80;
+                          const isMid = accuracy >= 60;
+                          
+                          return (
+                            <motion.div 
+                              key={subject}
+                              whileHover={{ y: -8, scale: 1.02 }}
+                              className="bg-slate-50 dark:bg-slate-900/40 border-2 border-slate-100 dark:border-slate-800/50 rounded-3xl p-6 transition-all duration-300 shadow-lg hover:shadow-2xl group"
+                            >
+                              <div className="flex justify-between items-start mb-6">
+                                <div className="space-y-1">
+                                  <h4 className="font-black text-sm uppercase tracking-widest opacity-70 group-hover:opacity-100 transition-opacity">{subject}</h4>
+                                  <p className="text-[10px] font-bold opacity-40 uppercase tracking-tighter">Subject Proficiency</p>
+                                </div>
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg ${
+                                  isHigh ? 'bg-emerald-500/10 text-emerald-500' : 
+                                  isMid ? 'bg-amber-500/10 text-amber-500' : 
+                                  'bg-red-500/10 text-red-500'
+                                }`}>
+                                  {accuracy}%
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-4">
+                                <div className="h-4 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden p-1 shadow-inner">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${accuracy}%` }}
+                                    className={`h-full rounded-full shadow-lg ${
+                                      isHigh ? 'bg-linear-to-r from-emerald-400 to-emerald-600' : 
+                                      isMid ? 'bg-linear-to-r from-amber-400 to-amber-600' : 
+                                      'bg-linear-to-r from-red-400 to-red-600'
+                                    }`}
+                                  />
+                                </div>
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest opacity-60">
+                                  <div className="flex items-center gap-1.5">
+                                    <CheckCircle2 className={`h-3 w-3 ${isHigh ? 'text-emerald-500' : 'text-slate-400'}`} />
+                                    <span>{data.correct} Correct</span>
+                                  </div>
+                                  <span>{data.total} Total</span>
+                                </div>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
                       </div>
-                      <p className="text-xs font-medium text-muted-foreground">JEEnie Points</p>
-                    </div>
-                    <h3 className="text-2xl sm:text-3xl font-bold bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                      {stats?.totalPoints ?? 0}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge className="text-xs font-bold px-2 py-0.5 bg-linear-to-r from-purple-600 to-pink-600 text-white">
-                        {pointsLevel.name}
-                      </Badge>
-                      <Sparkles className="h-3 w-3 text-pink-500" />
-                    </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                        <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800/50 rounded-full flex items-center justify-center mb-6 text-slate-300">
+                          <BookOpen className="h-12 w-12 opacity-10" />
+                        </div>
+                        <h3 className="text-xl font-black uppercase tracking-widest mb-2">Initialize Learning</h3>
+                        <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-8">Start your daily missions to unlock advanced mastery analytics and performance tracking.</p>
+                        <Button 
+                          size="lg"
+                          onClick={() => navigate("/study-now")}
+                          className="bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-500/20 px-10 h-14 rounded-2xl font-black uppercase tracking-widest"
+                        >
+                          Unlock Analytics →
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -676,102 +558,65 @@ const EnhancedDashboard = () => {
               {/* Main Content Area */}
               <div className="hidden lg:grid grid-cols-1 lg:grid-cols-3 gap-3 flex-1 min-h-0">
 
-                {/* Progress Section */}
-                <div className="lg:col-span-2 min-h-0 flex flex-col">
-                  <Card className="rounded-xl shadow-md border border-border bg-card flex-1 min-h-0 flex flex-col">
-                    <CardHeader className="p-3 sm:p-4 border-b border-border">
+                {/* Mobile: Progress Section (Hidden on Desktop) */}
+                <div className="lg:hidden flex flex-col min-h-0 pt-2 pb-6">
+                  <Card className="rounded-3xl border-2 border-slate-100 dark:border-slate-800 bg-card shadow-xl overflow-hidden flex flex-col">
+                    <CardHeader className="p-4 border-b border-border/60">
                       <CardTitle className="flex justify-between items-center">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <div className="p-2 bg-linear-to-br from-indigo-500 to-purple-600 text-white rounded-lg shadow-md">
-                            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-linear-to-br from-indigo-500 to-purple-600 text-white rounded-xl shadow-md">
+                            <TrendingUp className="h-4 w-4" />
                           </div>
-                          <span className="text-sm sm:text-base font-bold text-foreground">Your Progress</span>
+                          <span className="text-sm font-black uppercase tracking-widest">Mastery</span>
                         </div>
-                        <Badge className="bg-primary/10 text-primary text-xs font-semibold px-2 sm:px-3">This Week</Badge>
+                        <Badge className="bg-primary/10 text-primary text-[10px] font-black px-2 py-1 uppercase tracking-widest border-0">Weekly</Badge>
                       </CardTitle>
                     </CardHeader>
 
-                    <CardContent className="p-3 sm:p-4 flex-1 min-h-0 overflow-auto">
+                    <CardContent className="p-4 flex-1">
+                      {stats?.subjectStats && Object.keys(stats.subjectStats).length > 0 ? (
+                        <div className="space-y-4">
+                          {Object.entries(stats.subjectStats).map(([subject, data]: any) => {
+                            const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
+                            const isHigh = accuracy >= 80;
+                            const isMid = accuracy >= 60;
 
-                      {stats?.subjectStats ? (
-                        <>
-                          {/* Mobile: Circular progress rings */}
-                          <div className="grid grid-cols-3 gap-2 sm:hidden">
-                            {Object.entries(stats.subjectStats).map(([subject, data]: any) => {
-                              const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
-                              const circumference = 2 * Math.PI * 32;
-                              const strokeDashoffset = circumference - (accuracy / 100) * circumference;
-                              const strokeColor = accuracy >= 80 ? '#10b981' : accuracy >= 60 ? '#f59e0b' : '#ef4444';
-                              const bgColor = accuracy >= 80 ? '#d1fae5' : accuracy >= 60 ? '#fef3c7' : '#fee2e2';
-
-                              return (
-                                <div key={subject} className="flex flex-col items-center gap-1">
-                                  <div className="relative w-20 h-20">
-                                    <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                                      <circle cx="40" cy="40" r="32" fill="none" stroke={bgColor} strokeWidth="6" />
-                                      <circle cx="40" cy="40" r="32" fill="none" stroke={strokeColor} strokeWidth="6"
-                                        strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
-                                        className="transition-all duration-700" />
-                                    </svg>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                      <span className="text-sm font-bold" style={{ color: strokeColor }}>{accuracy}%</span>
-                                      <span className="text-[8px] text-muted-foreground">{data.correct}/{data.total}</span>
-                                    </div>
-                                  </div>
-                                  <span className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">{subject}</span>
+                            return (
+                              <motion.div 
+                                key={subject}
+                                whileTap={{ scale: 0.98 }}
+                                className="bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 transition-all duration-300"
+                              >
+                                <div className="flex justify-between items-center mb-3">
+                                  <h4 className="font-black text-xs uppercase tracking-wider opacity-70">{subject}</h4>
+                                  <span className={`text-lg font-black ${
+                                    isHigh ? 'text-emerald-500' : 
+                                    isMid ? 'text-amber-500' : 
+                                    'text-red-500'
+                                  }`}>{accuracy}%</span>
                                 </div>
-                              );
-                            })}
-                          </div>
-
-                          {/* Desktop: Card layout */}
-                              <div className="hidden sm:grid sm:grid-cols-1 gap-3">
-                            {Object.entries(stats.subjectStats).map(([subject, data]: any) => {
-                              const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
-                              const badge = getProgressBadge(accuracy);
-
-                              return (
-                                <div key={subject} className="bg-card border border-border rounded-xl p-3 sm:p-4 shadow-xs hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
-                                  <div className="flex justify-between items-start mb-2 sm:mb-3">
-                                    <div>
-                                      <h4 className="text-xs sm:text-sm font-bold text-foreground mb-1">{subject}</h4>
-                                      <Badge className={`${badge.color} text-white text-xs font-medium`}>
-                                        {badge.text}
-                                      </Badge>
-                                    </div>
-                                    <div className="text-right">
-                                      <h3 className={`text-xl sm:text-2xl font-bold ${
-                                        accuracy >= 90 ? 'text-emerald-600' :
-                                        accuracy >= 80 ? 'text-green-600' :
-                                        accuracy >= 70 ? 'text-yellow-600' :
-                                        accuracy >= 60 ? 'text-orange-500' :
-                                        'text-red-500'
-                                      }`}>{accuracy}%</h3>
-                                      <p className="text-xs text-muted-foreground">{data.correct}/{data.total}</p>
-                                    </div>
-                                  </div>
-                                  <Progress 
-                                    className={`h-2 sm:h-2.5 rounded-full ${
-                                      accuracy >= 90 ? 'bg-emerald-100 dark:bg-emerald-950' :
-                                      accuracy >= 80 ? 'bg-green-100 dark:bg-green-950' :
-                                      accuracy >= 70 ? 'bg-yellow-100 dark:bg-yellow-950' :
-                                      accuracy >= 60 ? 'bg-orange-100 dark:bg-orange-950' :
-                                      'bg-red-100 dark:bg-red-950'
-                                    }`} 
-                                    value={accuracy} 
+                                
+                                <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${accuracy}%` }}
+                                    className={`h-full rounded-full ${
+                                      isHigh ? 'bg-emerald-500' : 
+                                      isMid ? 'bg-amber-500' : 
+                                      'bg-red-500'
+                                    }`}
                                   />
                                 </div>
-                              );
-                            })}
-                          </div>
-                        </>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
                       ) : (
-                        <div className="text-center py-6 text-muted-foreground">
-                          <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                          <p className="text-xs sm:text-sm font-medium">Start practicing to see progress</p>
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <BookOpen className="h-8 w-8 opacity-10 mb-2" />
+                          <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Practice to see stats</p>
                         </div>
                       )}
-
                     </CardContent>
                   </Card>
                 </div>

@@ -559,8 +559,13 @@ const StudyNowPage: React.FC = () => {
                               </div>
 
                               <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
-                                {subjectEmpty ? (
-                                  <Badge variant="secondary" className="text-[10px] sm:text-xs font-semibold bg-amber-100 text-amber-700 border-amber-200">
+                                {countsLoading ? (
+                                  <div className="flex items-center gap-2 text-muted-foreground">
+                                    <div className="w-3 h-3 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Loading...</span>
+                                  </div>
+                                ) : subjectEmpty ? (
+                                  <Badge variant="secondary" className="text-[10px] sm:text-xs font-black bg-amber-100 text-amber-700 border-amber-200 uppercase tracking-widest">
                                     Coming Soon
                                   </Badge>
                                 ) : (

@@ -32,11 +32,11 @@ interface InteractiveStudyLadderProps {
 const getMasteryColor = (status: RoadmapChapter['status'], accuracy: number) => {
   if (status === 'done') return 'bg-amber-400 border-amber-500 shadow-amber-200';
   if (status === 'active') {
-    if (accuracy >= 0.7) return 'bg-blue-500 border-blue-600 shadow-blue-200';
-    if (accuracy > 0) return 'bg-yellow-400 border-yellow-500 shadow-yellow-200';
+    if (accuracy >= 0.7) return 'bg-emerald-500 border-emerald-600 shadow-emerald-200';
+    if (accuracy > 0) return 'bg-blue-500 border-blue-600 shadow-blue-200';
     return 'bg-primary border-primary-foreground/20';
   }
-  return 'bg-muted border-muted-foreground/20';
+  return 'bg-slate-200 border-slate-300 dark:bg-slate-800 dark:border-slate-700';
 };
 
 export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({ 
@@ -104,29 +104,33 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
             return (
               <div key={chapter.id} className="relative z-10 py-6">
                 <motion.button
-                  whileHover={{ scale: 1.3, y: -4 }}
+                  whileHover={{ scale: 1.3, y: -4, rotate: [0, -5, 5, 0] }}
                   whileTap={{ scale: 0.9 }}
                   animate={{ 
                     scale: isSelected ? 1.25 : isActive ? 1.15 : 1,
-                    y: isSelected ? -2 : 0
+                    y: isSelected ? -2 : 0,
+                    boxShadow: isSelected ? "0 0 20px rgba(59, 130, 246, 0.4)" : "0 4px 6px rgba(0,0,0,0.1)"
                   }}
                   onClick={() => setSelectedChapterId(chapter.id)}
-                  className={`w-10 h-10 rounded-full border-4 flex items-center justify-center transition-all ${masteryColor} shadow-lg ${isSelected ? 'ring-4 ring-primary/20' : ''}`}
+                  className={`w-12 h-12 rounded-2xl border-4 flex items-center justify-center transition-all ${masteryColor} ${isSelected ? 'ring-4 ring-primary/20 scale-110' : ''}`}
                 >
                   {isDone ? (
-                    <Trophy className="w-5 h-5 text-white drop-shadow-sm" />
+                    <Trophy className="w-6 h-6 text-white drop-shadow-sm" />
                   ) : isActive ? (
-                    <Rocket className="w-5 h-5 text-white animate-pulse" />
+                    <div className="relative">
+                      <Rocket className="w-6 h-6 text-white animate-bounce" />
+                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                    </div>
                   ) : chapter.status === 'locked' ? (
-                    <Lock className="w-4 h-4 text-white/40" />
+                    <Lock className="w-5 h-5 text-white/40" />
                   ) : (
-                    <Star className="w-5 h-5 text-white/80" />
+                    <Star className="w-6 h-6 text-white/80" />
                   )}
                 </motion.button>
                 {isSelected && (
                   <motion.div 
                     layoutId="active-indicator"
-                    className="absolute -inset-2 rounded-full border-2 border-primary border-dashed animate-spin-slow"
+                    className="absolute -inset-2.5 rounded-3xl border-2 border-primary border-dashed animate-spin-slow opacity-40"
                   />
                 )}
               </div>
