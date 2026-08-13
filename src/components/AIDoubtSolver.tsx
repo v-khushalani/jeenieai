@@ -386,7 +386,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                 <Button 
                   type="button"
                   onClick={() => handleSendMessage()}
-                  disabled={loading || (!input.trim() && !imageBase64)}
+                  disabled={loading}
                   className="w-11 h-11 rounded-xl bg-[#013062] hover:bg-[#024080] shrink-0 shadow-lg shadow-blue-900/20 transition-all active:scale-90 disabled:opacity-40 disabled:scale-100"
                 >
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send size={18} className="ml-0.5" />}
