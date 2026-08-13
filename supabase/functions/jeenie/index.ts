@@ -104,7 +104,7 @@ async function callGemini(prompt: string, apiKey: string): Promise<string | null
     console.log("[ADMIN] 🔄 Trying Gemini (fallback)...");
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 25000);
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -208,7 +208,7 @@ serve(async (req) => {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
             body: JSON.stringify({
-              model: "google/gemini-2.5-flash",
+              model: "google/gemini-1.5-flash",
               messages,
               temperature: 1.1,
               top_p: 0.95,
@@ -471,7 +471,7 @@ serve(async (req) => {
         if (responseText) {
           provider = "gemini-direct";
           fallbackUsed = "gemini";
-          modelUsed = "google/gemini-2.5-flash";
+          modelUsed = "google/gemini-1.5-flash";
           inputTokens = estTokens(flatPrompt);
           outputTokens = estTokens(responseText);
         }

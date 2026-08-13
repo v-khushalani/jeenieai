@@ -269,38 +269,38 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-x-4 bottom-4 top-4 sm:inset-auto sm:right-6 sm:bottom-24 sm:w-[400px] sm:h-[600px] bg-white rounded-[32px] shadow-[0_32px_120px_rgba(0,0,0,0.15)] z-[10000] flex flex-col overflow-hidden border border-slate-100"
+            className="fixed inset-x-4 bottom-4 top-4 sm:inset-auto sm:right-6 sm:bottom-24 sm:w-[420px] sm:h-[650px] bg-white rounded-[32px] shadow-[0_32px_120px_rgba(0,0,0,0.18)] z-[10000] flex flex-col overflow-hidden border border-slate-100/50 ring-1 ring-black/5"
           >
             {/* Header */}
-            <div className="p-4 border-b bg-slate-50/50 flex items-center justify-between">
+            <div className="p-5 border-b bg-gradient-to-r from-slate-50 to-white flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#013062] flex items-center justify-center shadow-inner">
-                  <Zap className="w-5 h-5 text-white" fill="currentColor" />
+                <div className="w-12 h-12 rounded-2xl bg-[#013062] flex items-center justify-center shadow-[0_4px_12px_rgba(1,48,98,0.25)] ring-2 ring-blue-50">
+                  <Zap className="w-6 h-6 text-white" fill="currentColor" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 flex items-center gap-1.5">
+                  <h3 className="font-extrabold text-slate-900 flex items-center gap-2 text-lg">
                     JEEnie
-                    <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-black tracking-widest">MENTOR</span>
+                    <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-black tracking-widest uppercase shadow-sm">MENTOR</span>
                   </h3>
-                  <p className="text-[10px] text-slate-400 font-medium">Always here for you</p>
+                  <p className="text-[11px] text-slate-500 font-semibold tracking-wide">ALWAYS HERE FOR YOU</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => { setInternalOpen(false); onClose(); }} className="rounded-full hover:bg-slate-100">
-                <X className="w-5 h-5 text-slate-400" />
+              <Button variant="ghost" size="icon" onClick={() => { setInternalOpen(false); onClose(); }} className="rounded-full hover:bg-slate-100 transition-colors">
+                <X className="w-6 h-6 text-slate-400" />
               </Button>
             </div>
 
             {/* Chat Body */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-[#F8FAFC] custom-scrollbar">
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] p-3.5 rounded-2xl text-sm shadow-sm ${
+                  <div className={`max-w-[88%] p-4 rounded-3xl text-[14.5px] leading-relaxed shadow-sm transition-all ${
                     msg.role === 'user' 
-                      ? 'bg-[#013062] text-white rounded-br-none' 
-                      : 'bg-white border border-slate-100 text-slate-800 rounded-bl-none'
+                      ? 'bg-[#013062] text-white rounded-br-none shadow-[0_4px_12px_rgba(1,48,98,0.15)] font-medium' 
+                      : 'bg-white border border-slate-100/80 text-slate-800 rounded-bl-none shadow-[0_2px_8px_rgba(0,0,0,0.02)]'
                   }`}>
-                    {msg.imageUrl && <img src={msg.imageUrl} className="rounded-lg mb-2 max-h-48 w-full object-cover" />}
-                    <div className="prose prose-sm max-w-none prose-slate" dangerouslySetInnerHTML={{ __html: msg.content }} />
+                    {msg.imageUrl && <img src={msg.imageUrl} className="rounded-xl mb-3 max-h-56 w-full object-cover shadow-sm ring-1 ring-black/5" />}
+                    <div className="prose prose-sm max-w-none prose-slate font-medium" dangerouslySetInnerHTML={{ __html: msg.content }} />
                   </div>
                 </div>
               ))}
@@ -326,16 +326,16 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             )}
 
             {/* Input */}
-            <div className="p-4 bg-white border-t">
+            <div className="p-5 bg-white border-t border-slate-100 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
               {imagePreview && (
-                <div className="mb-3 relative inline-block">
-                  <img src={imagePreview} className="w-16 h-16 rounded-xl object-cover border" />
-                  <button onClick={clearImage} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 shadow-md">
-                    <X size={12} />
+                <div className="mb-4 relative inline-block animate-in fade-in slide-in-from-bottom-2">
+                  <img src={imagePreview} className="w-20 h-20 rounded-2xl object-cover border-2 border-blue-50 shadow-md ring-1 ring-black/5" />
+                  <button onClick={clearImage} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:scale-110 transition-transform">
+                    <X size={14} />
                   </button>
                 </div>
               )}
-              <div className="relative flex items-center gap-2">
+              <div className="relative flex items-center gap-3">
                 <input
                   type="file"
                   hidden
@@ -347,23 +347,25 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                   variant="ghost" 
                   size="icon" 
                   onClick={() => fileInputRef.current?.click()}
-                  className="shrink-0 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                  className="shrink-0 w-11 h-11 rounded-2xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100"
                 >
-                  <Camera size={20} />
+                  <Camera size={22} />
                 </Button>
-                <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder="Kuch poocho bhai..."
-                  className="flex-1 bg-slate-50 border-none focus:ring-2 focus:ring-blue-100 rounded-2xl px-4 py-2.5 text-sm"
-                />
+                <div className="flex-1 relative group">
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                    placeholder="Kuch poocho bhai..."
+                    className="w-full bg-slate-50 border border-slate-100 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-2xl px-5 py-3 text-[14.5px] transition-all placeholder:text-slate-400 outline-none"
+                  />
+                </div>
                 <Button 
                   onClick={() => handleSendMessage()}
                   disabled={loading || (!input.trim() && !imageBase64)}
-                  className="rounded-xl bg-[#013062] hover:bg-[#024080] shrink-0"
+                  className="w-11 h-11 rounded-2xl bg-[#013062] hover:bg-[#024080] shrink-0 shadow-lg shadow-blue-900/10 transition-transform active:scale-95 disabled:opacity-50 disabled:scale-100"
                 >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send size={18} />}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send size={20} />}
                 </Button>
               </div>
             </div>
@@ -383,18 +385,26 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 function cleanAndFormatJeenieText(text: string, isFirstResponse: boolean): string {
   let formatted = text.trim();
   
+  // 1. Convert bold markdown to our specific class
   formatted = formatted
-    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-[#013062] font-bold">$1</strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-[#013062] font-bold">$1</strong>');
+
+  // 2. Handle Display Math ($$ ... $$)
+  formatted = formatted.replace(/\$\$([\s\S]+?)\$\$/g, (_, latex) => {
+    return `<div class="my-3 flex justify-center overflow-x-auto py-1">${renderLatex(`$$${latex.trim()}$$`)}</div>`;
+  });
+
+  // 3. Handle Inline Math ($ ... $)
+  // Negative lookbehind for digits to avoid catching currency $50
+  formatted = formatted.replace(/(?<!\d)\$([^$]+?)\$/g, (full, latex) => {
+    if (/^\s*\d+(\.\d+)?\s*$/.test(latex)) return full;
+    return renderLatex(`$${latex.trim()}$`);
+  });
+
+  // 4. Convert newlines to breaks
+  formatted = formatted
     .replace(/\n{2,}/g, '<br><br>')
     .replace(/\n/g, '<br>');
-
-  if (formatted.includes('$')) {
-    formatted = formatted.replace(/\$\$([\s\S]+?)\$\$/g, (_, latex) => renderLatex(`$$${latex}$$`));
-    formatted = formatted.replace(/\$([^$]+)\$/g, (full, latex) => {
-      if (/^\s*\d+(\.\d+)?\s*$/.test(latex)) return full;
-      return renderLatex(`$${latex}$`);
-    });
-  }
   
   return formatted;
 }
