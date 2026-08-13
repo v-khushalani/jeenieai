@@ -15,7 +15,7 @@ import type { JeenieRequest, JeenieResponse, StudyPlanRequest, StudyPlanResponse
 
 // Common questions cache - precomputed answers for frequent questions
 const COMMON_ANSWERS: Record<string, string> = {
-  'velocity formula': `**Hello Puttar!** 🧞‍♂️
+  'velocity formula': `**Oye!** 🧞‍♂️
 
 Newton ki kasam, velocity ka formula bahut simple hai!
 
@@ -29,7 +29,7 @@ For uniform acceleration:
 
 Yaad rakhna: Velocity ek vector quantity hai, speed nahi!`,
 
-  'newton laws': `**Hello Puttar!** 🧞‍♂️
+  'newton laws': `**Oye!** 🧞‍♂️
 
 **Newton's Three Laws of Motion:**
 
@@ -41,7 +41,7 @@ Yaad rakhna: Velocity ek vector quantity hai, speed nahi!`,
 
 Practice problems se yaad rakhoge! 💪`,
 
-  'quadratic formula': `**Hello Puttar!** 🧞‍♂️
+  'quadratic formula': `**Oye!** 🧞‍♂️
 
 **Quadratic Formula:**
 
@@ -57,7 +57,7 @@ x = (-b ± √(b² - 4ac)) / 2a
 
 Ratta maar lo, exam mein zaroor aayega! 📚`,
 
-  'integration': `**Hello Puttar!** 🧞‍♂️
+  'integration': `**Oye!** 🧞‍♂️
 
 **Integration is the reverse of differentiation!**
 

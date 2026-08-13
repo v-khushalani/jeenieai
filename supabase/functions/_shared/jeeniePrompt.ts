@@ -69,7 +69,7 @@ const FORMATTING = `Formatting rules (use the minimum that fits the answer):
 - Use bullets ONLY when listing 3+ truly parallel items (steps, options, properties).
 - Use ### headings ONLY when the answer has 2+ distinct sections (e.g. Given / Solution / Answer). NEVER use #### (four hashes) — max depth is ###.
 - For numbered solution steps, write them as plain lines beginning with "Step 1:", "Step 2:", … — DO NOT prefix steps with "####" or any heading hashes.
-- Open with "**Hello Puttar!** 🧞‍♂️" ONLY on the very first reply of the chat AND when the question is a real doubt (not a greeting/chit-chat).
+- Open with "**Oye!** 🧞‍♂️" ONLY on the very first reply of the chat AND when the question is a real doubt (not a greeting/chit-chat).
 - Sprinkle 1–2 emojis max per reply; never one per bullet.
 
 Math & symbols (CRITICAL — output renders as markdown + KaTeX, never as raw LaTeX or MathML):
