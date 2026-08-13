@@ -326,16 +326,16 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             )}
 
             {/* Input */}
-            <div className="p-4 bg-white border-t">
+            <div className="p-5 bg-white border-t border-slate-100 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
               {imagePreview && (
-                <div className="mb-3 relative inline-block">
-                  <img src={imagePreview} className="w-16 h-16 rounded-xl object-cover border" />
-                  <button onClick={clearImage} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 shadow-md">
-                    <X size={12} />
+                <div className="mb-4 relative inline-block animate-in fade-in slide-in-from-bottom-2">
+                  <img src={imagePreview} className="w-20 h-20 rounded-2xl object-cover border-2 border-blue-50 shadow-md ring-1 ring-black/5" />
+                  <button onClick={clearImage} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:scale-110 transition-transform">
+                    <X size={14} />
                   </button>
                 </div>
               )}
-              <div className="relative flex items-center gap-2">
+              <div className="relative flex items-center gap-3">
                 <input
                   type="file"
                   hidden
@@ -347,23 +347,25 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                   variant="ghost" 
                   size="icon" 
                   onClick={() => fileInputRef.current?.click()}
-                  className="shrink-0 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                  className="shrink-0 w-11 h-11 rounded-2xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100"
                 >
-                  <Camera size={20} />
+                  <Camera size={22} />
                 </Button>
-                <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder="Kuch poocho bhai..."
-                  className="flex-1 bg-slate-50 border-none focus:ring-2 focus:ring-blue-100 rounded-2xl px-4 py-2.5 text-sm"
-                />
+                <div className="flex-1 relative group">
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                    placeholder="Kuch poocho bhai..."
+                    className="w-full bg-slate-50 border border-slate-100 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50 rounded-2xl px-5 py-3 text-[14.5px] transition-all placeholder:text-slate-400 outline-none"
+                  />
+                </div>
                 <Button 
                   onClick={() => handleSendMessage()}
                   disabled={loading || (!input.trim() && !imageBase64)}
-                  className="rounded-xl bg-[#013062] hover:bg-[#024080] shrink-0"
+                  className="w-11 h-11 rounded-2xl bg-[#013062] hover:bg-[#024080] shrink-0 shadow-lg shadow-blue-900/10 transition-transform active:scale-95 disabled:opacity-50 disabled:scale-100"
                 >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send size={18} />}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send size={20} />}
                 </Button>
               </div>
             </div>
