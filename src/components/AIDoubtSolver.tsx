@@ -383,18 +383,26 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 function cleanAndFormatJeenieText(text: string, isFirstResponse: boolean): string {
   let formatted = text.trim();
   
+  // 1. Convert bold markdown to our specific class
   formatted = formatted
-    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-[#013062] font-bold">$1</strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-[#013062] font-bold">$1</strong>');
+
+  // 2. Handle Display Math ($$ ... $$)
+  formatted = formatted.replace(/\$\$([\s\S]+?)\$\$/g, (_, latex) => {
+    return `<div class="my-3 flex justify-center overflow-x-auto py-1">${renderLatex(`$$${latex.trim()}$$`)}</div>`;
+  });
+
+  // 3. Handle Inline Math ($ ... $)
+  // Negative lookbehind for digits to avoid catching currency $50
+  formatted = formatted.replace(/(?<!\d)\$([^$]+?)\$/g, (full, latex) => {
+    if (/^\s*\d+(\.\d+)?\s*$/.test(latex)) return full;
+    return renderLatex(`$${latex.trim()}$`);
+  });
+
+  // 4. Convert newlines to breaks
+  formatted = formatted
     .replace(/\n{2,}/g, '<br><br>')
     .replace(/\n/g, '<br>');
-
-  if (formatted.includes('$')) {
-    formatted = formatted.replace(/\$\$([\s\S]+?)\$\$/g, (_, latex) => renderLatex(`$$${latex}$$`));
-    formatted = formatted.replace(/\$([^$]+)\$/g, (full, latex) => {
-      if (/^\s*\d+(\.\d+)?\s*$/.test(latex)) return full;
-      return renderLatex(`$${latex}$`);
-    });
-  }
   
   return formatted;
 }
