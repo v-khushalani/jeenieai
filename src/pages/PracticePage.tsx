@@ -1175,8 +1175,5 @@ const PracticePage: React.FC = () => {
     </div>
   );
 };
-    </div>
-  );
-};
 
 export default PracticePage;
