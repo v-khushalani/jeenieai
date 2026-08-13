@@ -199,6 +199,9 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     }
   };
 
+  // Logged-in users only — prevents anonymous credit burn on public pages
+  if (!user) return null;
+
   return (
     <>
       {/* Floating Trigger */}
