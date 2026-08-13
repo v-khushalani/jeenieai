@@ -240,6 +240,19 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
         </motion.div>
       </div>
 
+      {/* Backdrop Blur for Modal Feel */}
+      <AnimatePresence>
+        {internalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => { setInternalOpen(false); onClose(); }}
+            className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[9999]"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Chat Window */}
       <AnimatePresence>
         {internalOpen && (
@@ -248,7 +261,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, scale: 0.9, y: 40, filter: 'blur(10px)' }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed inset-x-4 bottom-4 top-4 sm:inset-auto sm:right-8 sm:bottom-28 sm:w-[440px] sm:h-[700px] bg-white/95 backdrop-blur-2xl rounded-[32px] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.25)] z-[10000] flex flex-col overflow-hidden border border-white/60 ring-1 ring-black/5"
+            className="fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[500px] sm:h-[80%] max-h-[850px] bg-white/95 backdrop-blur-3xl rounded-none sm:rounded-[40px] shadow-[0_80px_200px_-40px_rgba(0,0,0,0.4)] z-[10000] flex flex-col overflow-hidden border border-white/60 ring-1 ring-black/5"
           >
             {/* Header */}
             <div className="px-6 py-5 border-b border-slate-100/80 bg-white/50 flex items-center justify-between cursor-default">
@@ -386,27 +399,41 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 };
 
 function cleanAndFormatJeenieText(text: string): string {
+  if (!text) return "";
+
   let formatted = text.trim();
+
+  // 0. Remove "Bhai" or "Bada Bhai" mentions if they slipped through
+  formatted = formatted.replace(/Bada Bhai/gi, "Mentor");
   
-  // 1. Convert bold markdown to our specific class
+  // 1. Ensure bold formatting for specific Hinglish markers
+  formatted = formatted.replace(/(Oye!)/g, '<span class="text-[#013062] font-black text-lg">$1</span>');
+  
+  // 2. Highlight analogies or key insights
+  formatted = formatted.replace(/(Logic:)/gi, '<strong class="text-[#013062]">$1</strong>');
+  formatted = formatted.replace(/(Shortcut:)/gi, '<strong class="text-emerald-600">$1</strong>');
+  formatted = formatted.replace(/(Trap Alert ⚠️:)/gi, '<strong class="text-amber-600">$1</strong>');
+  
+  // 3. Convert bold markdown to our specific class
   formatted = formatted
     .replace(/\*\*(.+?)\*\*/g, '<strong class="text-[#013062] font-extrabold">$1</strong>');
 
-  // 2. Handle Display Math ($$ ... $$)
+  // 4. Handle Display Math ($$ ... $$)
   formatted = formatted.replace(/\$\$([\s\S]+?)\$\$/g, (_, latex) => {
-    return `<div class="my-4 flex justify-center overflow-x-auto py-2 bg-blue-50/30 rounded-xl border border-blue-100/50">${renderLatex(`$$${latex.trim()}$$`)}</div>`;
+    return `<div class="my-6 flex justify-center overflow-x-auto py-4 bg-slate-50/80 rounded-2xl border border-slate-200/50 shadow-inner text-lg">${renderLatex(`$$${latex.trim()}$$`)}</div>`;
   });
 
-  // 3. Handle Inline Math ($ ... $)
+  // 5. Handle Inline Math ($ ... $)
   formatted = formatted.replace(/(?<!\d)\$([^$]+?)\$/g, (full, latex) => {
     if (/^\s*\d+(\.\d+)?\s*$/.test(latex)) return full;
-    return `<span class="inline-math px-0.5">${renderLatex(`$${latex.trim()}$`)}</span>`;
+    return `<span class="inline-math px-1.5 py-0.5 bg-blue-50/30 rounded-md font-medium text-[#013062]">${renderLatex(`$${latex.trim()}$`)}</span>`;
   });
 
-  // 4. Convert newlines to breaks
+  // 6. Basic formatting (bullets, line breaks)
   formatted = formatted
     .replace(/\n{2,}/g, '<div class="h-4"></div>')
-    .replace(/\n/g, '<br>');
+    .replace(/\n/g, '<br/>')
+    .replace(/\* (.*?)(?=<br\/>|$)/g, '<div class="flex gap-2 items-start py-0.5"><span class="text-[#013062] mt-1.5 w-1.5 h-1.5 rounded-full bg-[#013062] shrink-0"></span><span>$1</span></div>');
   
   return formatted;
 }
