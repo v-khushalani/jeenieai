@@ -1171,7 +1171,19 @@ const PracticePage: React.FC = () => {
         />
       )}
 
-      {/* Interactive AI Doubt Solver Button */}
+      {/* AI Doubt Solver */}
+      <AIDoubtSolver
+        isOpen={aiSolverOpen}
+        onClose={() => setAiSolverOpen(false)}
+        isCurrentAnswered={isCurrentAnswered}
+        question={questions[currentIndex] ? {
+          question: questions[currentIndex].question_text || questions[currentIndex].question,
+          option_a: questions[currentIndex].option_a,
+          option_b: questions[currentIndex].option_b,
+          option_c: questions[currentIndex].option_c,
+          option_d: questions[currentIndex].option_d
+        } : undefined}
+      />
     </div>
   );
 };
