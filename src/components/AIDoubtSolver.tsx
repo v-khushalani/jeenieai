@@ -240,6 +240,19 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
         </motion.div>
       </div>
 
+      {/* Backdrop Blur for Modal Feel */}
+      <AnimatePresence>
+        {internalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => { setInternalOpen(false); onClose(); }}
+            className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[9999]"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Chat Window */}
       <AnimatePresence>
         {internalOpen && (
@@ -248,7 +261,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, scale: 0.9, y: 40, filter: 'blur(10px)' }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed inset-x-4 bottom-4 top-4 sm:inset-auto sm:right-8 sm:bottom-28 sm:w-[440px] sm:h-[700px] bg-white/95 backdrop-blur-2xl rounded-[32px] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.25)] z-[10000] flex flex-col overflow-hidden border border-white/60 ring-1 ring-black/5"
+            className="fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[500px] sm:h-[80%] max-h-[850px] bg-white/95 backdrop-blur-3xl rounded-none sm:rounded-[40px] shadow-[0_80px_200px_-40px_rgba(0,0,0,0.4)] z-[10000] flex flex-col overflow-hidden border border-white/60 ring-1 ring-black/5"
           >
             {/* Header */}
             <div className="px-6 py-5 border-b border-slate-100/80 bg-white/50 flex items-center justify-between cursor-default">
