@@ -263,22 +263,19 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, scale: 0.9, y: 40, filter: 'blur(10px)' }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[500px] sm:h-[80%] max-h-[850px] bg-white/95 backdrop-blur-3xl rounded-none sm:rounded-[40px] shadow-[0_80px_200px_-40px_rgba(0,0,0,0.4)] z-[10000] flex flex-col overflow-hidden border border-white/60 ring-1 ring-black/5"
+            className="fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[400px] sm:h-[76%] max-h-[720px] bg-white/95 backdrop-blur-3xl rounded-none sm:rounded-[32px] shadow-[0_60px_160px_-40px_rgba(0,0,0,0.38)] z-[10000] flex flex-col overflow-hidden border border-white/60 ring-1 ring-black/5"
           >
             {/* Header */}
-            <div className="px-6 py-5 border-b border-slate-100/80 bg-white/50 flex items-center justify-between cursor-default">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-[18px] bg-gradient-to-br from-[#013062] to-[#024080] flex items-center justify-center shadow-lg shadow-blue-900/20 ring-4 ring-blue-50">
-                  <Zap className="w-6 h-6 text-white" fill="currentColor" />
+            <div className="px-5 py-4 border-b border-slate-100/80 bg-white/60 flex items-center justify-between cursor-default">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[#013062] to-[#024080] flex items-center justify-center shadow-md shadow-blue-900/20 ring-4 ring-blue-50">
+                  <Zap className="w-5 h-5 text-white" fill="currentColor" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 flex items-center gap-2 text-xl tracking-tight">
-                    JEEnie
-                    <span className="text-[10px] bg-[#013062] text-white px-2.5 py-1 rounded-full font-black tracking-widest uppercase shadow-sm">MENTOR</span>
-                  </h3>
+                  <h3 className="font-extrabold text-slate-900 text-[17px] tracking-tight leading-tight">JEEnie</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <p className="text-[11px] text-slate-500 font-bold tracking-wider uppercase">Always here for you</p>
+                    <p className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">Online</p>
                   </div>
                 </div>
               </div>
@@ -286,11 +283,12 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                 variant="ghost" 
                 size="icon" 
                 onClick={() => { setInternalOpen(false); onClose(); }} 
-                className="w-10 h-10 rounded-full hover:bg-slate-100/80 text-slate-400 hover:text-slate-600 transition-all"
+                className="w-9 h-9 rounded-full hover:bg-slate-100/80 text-slate-400 hover:text-slate-600 transition-all"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </Button>
             </div>
+
 
             {/* Chat Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-[#F8FAFC] to-white custom-scrollbar">
