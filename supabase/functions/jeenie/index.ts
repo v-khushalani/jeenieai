@@ -464,20 +464,6 @@ serve(async (req) => {
       }
     }
 
-    if (!responseText && !image) {
-      const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY");
-      if (OPENAI_KEY) {
-        responseText = await callOpenAI(systemPrompt, contextPrompt, maxTokens, OPENAI_KEY);
-        if (responseText) {
-          provider = "openai";
-          fallbackUsed = "openai";
-          modelUsed = "openai/gpt-4o-mini";
-          inputTokens = estTokens(systemPrompt + contextPrompt);
-          outputTokens = estTokens(responseText);
-        }
-      }
-    }
-
     if (!responseText) {
       console.error("[JEENIE] 🚨 ALL AI PROVIDERS FAILED! Using humor fallback.");
       responseText = getRandomFunnyFallback();
