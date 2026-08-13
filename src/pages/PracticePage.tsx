@@ -1172,36 +1172,9 @@ const PracticePage: React.FC = () => {
       )}
 
       {/* Interactive AI Doubt Solver Button */}
-      <div className="fixed bottom-32 right-6 z-[100]">
-        <Button
-          onClick={() => setAiSolverOpen(true)}
-          className={`w-14 h-14 rounded-full bg-[#013062] hover:bg-[#024080] shadow-[0_8px_25px_rgba(1,48,98,0.4)] flex items-center justify-center p-0 group overflow-visible transition-all duration-300 ${!isCurrentAnswered ? 'opacity-30 hover:opacity-100 scale-95 hover:scale-100' : 'opacity-100'}`}
-        >
-          <Zap className="w-6 h-6 text-white group-hover:scale-125 transition-transform duration-300" />
-          
-          {/* Addictive Pulse Effect */}
-          <span className="absolute inset-0 rounded-full bg-[#013062] animate-ping opacity-20 group-hover:opacity-40" />
-          
-          {!isCurrentAnswered && (
-            <div className="absolute right-16 bg-white dark:bg-slate-900 border border-border shadow-md px-3 py-1.5 rounded-xl whitespace-nowrap text-xs font-bold text-primary flex items-center gap-2 animate-in fade-in slide-in-from-right-2">
-              <MessageSquare className="w-3 h-3" />
-              Stuck?
-            </div>
-          )}
-        </Button>
-      </div>
-
-      <AIDoubtSolver
-        isOpen={aiSolverOpen}
-        onClose={() => setAiSolverOpen(false)}
-        question={currentQuestion ? {
-          question: currentQuestion.question_text || currentQuestion.question,
-          option_a: currentQuestion.option_a,
-          option_b: currentQuestion.option_b,
-          option_c: currentQuestion.option_c,
-          option_d: currentQuestion.option_d
-        } : undefined}
-      />
+    </div>
+  );
+};
     </div>
   );
 };
