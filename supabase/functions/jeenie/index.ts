@@ -416,7 +416,7 @@ serve(async (req) => {
     }
 
     // Single free-tier model for every user/mode — no paid Pro model routing.
-    const primaryModel = "google/gemini-3.6-flash";
+    const primaryModel = "google/gemini-1.5-flash";
 
     let responseText: string | null = null;
     let provider = "fallback";
