@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Position {
   x: number;
@@ -6,62 +6,50 @@ interface Position {
 }
 
 export const useDraggable = (initialPosition: Position = { x: 0, y: 0 }) => {
-  const [position, setPosition] = useState<Position>(initialPosition);
+  const [position, setPosition] = useState<Position>(() => {
+    const saved = localStorage.getItem('jeenie_mentor_pos');
+    return saved ? JSON.parse(saved) : initialPosition;
+  });
   const [isDragging, setIsDragging] = useState(false);
-  const dragStartPos = useRef<Position | null>(null);
-  const lastPosition = useRef<Position>(initialPosition);
 
   const onMouseDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     setIsDragging(true);
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    dragStartPos.current = { x: clientX, y: clientY };
-  }, []);
+    
+    const startX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const startY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
+    const initialX = position.x;
+    const initialY = position.y;
 
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent | TouchEvent) => {
-      if (!isDragging || !dragStartPos.current) return;
-
-      const clientX = 'touches' in e ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
-      const clientY = 'touches' in e ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
-
-      const deltaX = clientX - dragStartPos.current.x;
-      const deltaY = clientY - dragStartPos.current.y;
-
-      // Update position relative to initial drag point
-      // We want to update from the last stable position
-      const newX = lastPosition.current.x + deltaX;
-      const newY = lastPosition.current.y + deltaY;
-
-      // Basic viewport containment (approximate)
-      const boundedX = Math.max(-window.innerWidth + 80, Math.min(0, newX));
-      const boundedY = Math.max(-window.innerHeight + 80, Math.min(0, newY));
-
-      setPosition({ x: boundedX, y: boundedY });
+    const onMouseMove = (moveEvent: MouseEvent | TouchEvent) => {
+      const currentX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
+      
+      const newPos = {
+        x: initialX + (startX - currentX),
+        y: initialY + (startY - currentY)
+      };
+      
+      setPosition(newPos);
     };
 
     const onMouseUp = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        lastPosition.current = position;
-        dragStartPos.current = null;
-      }
+      setIsDragging(false);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('touchmove', onMouseMove);
+      document.removeEventListener('touchend', onMouseUp);
     };
 
-    if (isDragging) {
-      window.addEventListener('mousemove', onMouseMove);
-      window.addEventListener('mouseup', onMouseUp);
-      window.addEventListener('touchmove', onMouseMove);
-      window.addEventListener('touchend', onMouseUp);
-    }
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('touchmove', onMouseMove);
+    document.addEventListener('touchend', onMouseUp);
+  }, [position]);
 
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-      window.removeEventListener('touchmove', onMouseMove);
-      window.removeEventListener('touchend', onMouseUp);
-    };
-  }, [isDragging, position]);
+  useEffect(() => {
+    localStorage.setItem('jeenie_mentor_pos', JSON.stringify(position));
+  }, [position]);
 
   return { position, isDragging, onMouseDown };
 };
