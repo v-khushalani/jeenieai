@@ -90,46 +90,19 @@ serve(async (req) => {
       } catch (e) { console.error("[ADMIN] ❌ Groq Whisper error:", e); }
     }
 
-    // 2️⃣ OpenAI Whisper
+    // 2️⃣ OpenAI Whisper — REMOVED
+    /*
     if (OPENAI_KEY) {
-      try {
-        console.log("[ADMIN] 🔄 Voice: Trying OpenAI Whisper...");
-        const binaryString = atob(cleanBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-
-        const formData = new FormData();
-        formData.append('file', new Blob([bytes], { type: 'audio/webm' }), 'audio.webm');
-        formData.append('model', 'whisper-1');
-        formData.append('language', 'en');
-
-        const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${OPENAI_KEY}` },
-          body: formData,
-        });
-
-        if (res.ok) {
-          const result = await res.json();
-          if (result.text) {
-            console.log("[ADMIN] ✅ OpenAI Whisper success");
-            return new Response(
-              JSON.stringify({ text: result.text }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-        } else {
-          console.error("[ADMIN] ❌ OpenAI Whisper:", res.status, (await res.text()).substring(0, 200));
-        }
-      } catch (e) { console.error("[ADMIN] ❌ OpenAI Whisper error:", e); }
+      ...
     }
+    */
 
     // 3️⃣ Gemini Audio Transcription
     if (GEMINI_KEY) {
       try {
         console.log("[ADMIN] 🔄 Voice: Trying Gemini Audio...");
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

@@ -10,7 +10,7 @@ const corsHeaders = {
 };
 
 const SETUP_TOKEN = "qa-repair-latex-2026-jeenie";
-const MODEL = "google/gemini-3.6-flash";
+const MODEL = "google/gemini-1.5-flash";
 
 const SYSTEM = `You restore broken JEE/NEET question text.
 The text lost its superscripts, subscripts and fraction markup during a bad import, so

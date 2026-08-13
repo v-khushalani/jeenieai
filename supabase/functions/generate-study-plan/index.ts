@@ -59,7 +59,7 @@ async function callAI(prompt: string): Promise<string | null> {
           "Authorization": `Bearer ${LOVABLE_API_KEY}`,
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-1.5-flash",
           messages: [
             { role: "system", content: "You are JEEnie, an expert study planner. Always respond with valid JSON only." },
             { role: "user", content: prompt }
@@ -84,7 +84,7 @@ async function callAI(prompt: string): Promise<string | null> {
     try {
       console.log("[ADMIN] 🔄 Study Plan: Trying Gemini (fallback)...");
       const res = await fetchWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -103,29 +103,12 @@ async function callAI(prompt: string): Promise<string | null> {
     } catch (e) { console.error("[ADMIN] ❌ Gemini error:", e); }
   }
 
-  // 3️⃣ OpenAI — fallback
+  // 3️⃣ OpenAI — REMOVED
+  /*
   if (OPENAI_KEY) {
-    try {
-      console.log("[ADMIN] 🔄 Study Plan: Trying OpenAI (fallback)...");
-      const res = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${OPENAI_KEY}` },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: "You are JEEnie, an expert study planner. Always respond with valid JSON only." },
-            { role: "user", content: prompt }
-          ],
-          temperature: 0.7, max_tokens: 2000,
-        }),
-      }, 'OpenAI study plan request');
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.choices?.[0]?.message?.content;
-        if (text) { console.log("[ADMIN] ✅ OpenAI study plan success"); return text; }
-      } else { console.error("[ADMIN] ❌ OpenAI study plan:", res.status, (await res.text()).substring(0, 200)); }
-    } catch (e) { console.error("[ADMIN] ❌ OpenAI error:", e); }
+    ...
   }
+  */
 
   // 4️⃣ Groq — last resort
   if (GROQ_KEY) {
