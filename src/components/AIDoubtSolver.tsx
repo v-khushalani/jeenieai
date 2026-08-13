@@ -26,6 +26,7 @@ import 'katex/dist/katex.min.css';
 interface Message {
   role: "user" | "assistant";
   content: string;
+  timestamp: string;
   imageUrl?: string;
   upgradeTo?: 'pro' | 'pro_plus' | null;
 }
@@ -102,7 +103,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 
   useEffect(() => {
     if (internalOpen && messages.length === 0) {
-      setMessages([{ role: "assistant", content: initialMessage }]);
+      setMessages([{ role: "assistant", content: initialMessage, timestamp: new Date().toISOString() }]);
     }
   }, [internalOpen, messages.length, initialMessage]);
 
@@ -144,7 +145,12 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     }
 
     setLoading(true);
-    const userMsg: Message = { role: "user", content: effectiveInput || "📸 Photo", imageUrl: imagePreview || undefined };
+    const userMsg: Message = { 
+      role: "user", 
+      content: effectiveInput || "📸 Photo", 
+      imageUrl: imagePreview || undefined,
+      timestamp: new Date().toISOString() 
+    };
     setMessages((prev) => [...prev, userMsg]);
     
     const currentImage = imageBase64;
@@ -155,7 +161,8 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       const isGeneral = !question?.option_a || question?.question?.includes("koi bhi");
       const history = messages.slice(-10).map(m => ({ 
         role: m.role, 
-        content: m.content.replace(/<[^>]*>/g, ' ').trim() 
+        content: m.content.replace(/<[^>]*>/g, ' ').trim(),
+        timestamp: m.timestamp
       }));
       
       let prompt: string;
@@ -177,6 +184,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       setMessages((prev) => [...prev, {
         role: "assistant",
         content: formatted,
+        timestamp: new Date().toISOString(),
         upgradeTo: data.quota_exhausted ? (data.upgrade_to ?? 'pro') : undefined,
       }]);
 
@@ -185,7 +193,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
         setPricingOpen(true);
       }
     } catch (e: any) {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Oho! Kuch gadbad ho gayi. Ek baar phir pooch?" }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "Oho! Kuch gadbad ho gayi. Ek baar phir pooch?", timestamp: new Date().toISOString() }]);
     } finally {
       setTyping(false);
       setLoading(false);
