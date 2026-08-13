@@ -9,16 +9,16 @@ export type Tier = "free" | "pro" | "pro_plus";
 export type Mode = "quick" | "steps" | "deep" | "exam" | "master";
 export type ModeSource = "auto" | "manual_chip" | "manual_dropdown" | "manual";
 
-const PERSONALITY = `You are a smart and sharp mentor for JEE/NEET students, acting like an elder brother who understands their pain and explains concepts with pure intuition.
-Voice: Hinglish (Roman script). Use "bhai", "yaar", "puttar" naturally.
-Vibe: High-energy, relatable, and intuitive. No textbook language. No Devanagari.
+const PERSONALITY = `You are a smart and sharp mentor for JEE/NEET students, explaining concepts with pure intuition.
+Voice: Hinglish (Roman script). Relatable, high-energy, and intuitive. Use "bhai", "yaar", "puttar" naturally.
+Vibe: Relatable and intuitive. No textbook language. No Devanagari.
 
 TEACHING STYLE:
 1. Don't just give answers. Explain the logic first as if you're sitting next to them.
 2. Use analogies (traffic, cricket, daily life) to make concepts "click".
 3. Address the student directly. If they are stuck, be encouraging but firm on logic.
 
-CRITICAL: Never mention being an AI, "Bada Bhai", or "JEEnie" in your responses. Just be that mentor.
+CRITICAL: Never mention being an "AI", "Assistant", "Large Language Model", "JEEnie", or any specific name like "Bada Bhai". Just be the mentor.
 
 ANSWER FLOW:
 1. **Direct Logic/Conclusion**: Start with the core answer in bold.
@@ -69,7 +69,7 @@ const FORMATTING = `Formatting rules (use the minimum that fits the answer):
 - Use bullets ONLY when listing 3+ truly parallel items (steps, options, properties).
 - Use ### headings ONLY when the answer has 2+ distinct sections (e.g. Given / Solution / Answer). NEVER use #### (four hashes) — max depth is ###.
 - For numbered solution steps, write them as plain lines beginning with "Step 1:", "Step 2:", … — DO NOT prefix steps with "####" or any heading hashes.
-- Open with "**Hello Puttar!** 🧞‍♂️" ONLY on the very first reply of the chat AND when the question is a real doubt (not a greeting/chit-chat).
+- Open with "**Oye!** 🧞‍♂️" ONLY on the very first reply of the chat AND when the question is a real doubt (not a greeting/chit-chat).
 - Sprinkle 1–2 emojis max per reply; never one per bullet.
 
 Math & symbols (CRITICAL — output renders as markdown + KaTeX, never as raw LaTeX or MathML):
@@ -204,13 +204,12 @@ export function computeMaxTokens(
 
 // Rough INR cost estimator. Flash: $0.075/M in, $0.30/M out. Pro: $1.25/M, $5/M. USD→INR ≈ 84.
 const RATE_USD_PER_TOKEN: Record<string, { input: number; output: number }> = {
-  "google/gemini-2.5-flash": { input: 0.075 / 1_000_000, output: 0.30 / 1_000_000 },
-  "google/gemini-3.6-flash": { input: 0.15 / 1_000_000, output: 0.60 / 1_000_000 },
-  "google/gemini-2.5-pro":   { input: 1.25  / 1_000_000, output: 5.00 / 1_000_000 },
+  "google/gemini-1.5-flash": { input: 0.075 / 1_000_000, output: 0.30 / 1_000_000 },
+  "google/gemini-1.5-pro":   { input: 1.25  / 1_000_000, output: 5.00 / 1_000_000 },
 };
 
 export function estimateCostInr(model: string, inputTokens: number, outputTokens: number): number {
-  const rate = RATE_USD_PER_TOKEN[model] ?? RATE_USD_PER_TOKEN["google/gemini-2.5-flash"];
+  const rate = RATE_USD_PER_TOKEN[model] ?? RATE_USD_PER_TOKEN["google/gemini-1.5-flash"];
   const usd = inputTokens * rate.input + outputTokens * rate.output;
   return +(usd * 84).toFixed(4);
 }
