@@ -4,25 +4,24 @@ import {
   Send,
   Loader2,
   AlertCircle,
-  Wand2,
   Zap,
-  User,
   Clock,
   Camera,
   Star,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { aiAPI } from "@/services/api/modules/ai";
 import { aiQueue } from "@/services/api/queue";
-import DOMPurify from "dompurify";
 import { logger } from "@/utils/logger";
-import { replaceGreekLetters } from "@/constants/unified";
 import { renderLatex, containsLatex } from "@/utils/mathRenderer";
 import { useAuth } from "@/contexts/AuthContext";
-import AIDoubtActionChips, { type ChipDef } from "@/components/AIDoubtActionChips";
 import PricingModal from "@/components/PricingModal";
 import type { JeenieMode, JeenieModeSource } from "@/services/api/types";
+import { motion, AnimatePresence } from "framer-motion";
+import { useDraggable } from "@/hooks/useDraggable";
 
 import 'katex/dist/katex.min.css';
 
@@ -43,12 +42,14 @@ interface AIDoubtSolverProps {
   };
   isOpen: boolean;
   onClose: () => void;
+  isCurrentAnswered?: boolean;
 }
 
 const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   question,
   isOpen,
   onClose,
+  isCurrentAnswered = false,
 }) => {
   const { subscriptionTier } = useAuth();
   const [input, setInput] = useState("");
@@ -62,11 +63,18 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [pricingOpen, setPricingOpen] = useState(false);
   const [pricingRequiredTier, setPricingRequiredTier] = useState<'pro' | 'pro_plus'>('pro');
+  const [internalOpen, setInternalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [internalIsDragging, setInternalIsDragging] = useState(false);
 
-  const RATE_LIMIT_MS = 0;
+  const { position, isDragging, onMouseDown } = useDraggable({ x: 0, y: 0 });
+
   const isAIAvailable = useMemo(() => aiAPI.isAvailable(), []);
+
+  useEffect(() => {
+    if (isOpen) setInternalOpen(true);
+  }, [isOpen]);
 
   const escapeHtml = (value: string) => value
     .replace(/&/g, '&amp;')
@@ -88,13 +96,9 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   }, [loading]);
 
   const initialMessage = useMemo(() => {
-    const isGeneral =
-      !question?.option_a || question?.question?.includes("koi bhi");
+    const isGeneral = !question?.option_a || question?.question?.includes("koi bhi");
     if (isGeneral) {
-      return `
-<div style="padding: 2px 0 0 0;">
-  <div style="margin-top:4px;font-size:15px;font-weight:800;color:#0b2536;line-height:1.4;">Oye! 👋 Main hu tera Bada Bhai (JEEnie). Bol, kya dikkat aa rahi hai? Sharmayiye mat, khul ke puchiye! 😉</div>
-</div>`;
+      return `<div class="p-1"><p class="font-bold text-base mb-1">Oye! 👋</p><p>Bol, kya dikkat aa rahi hai? Sharmayiye mat, khul ke puchiye! 😉</p></div>`;
     } else {
       const options = [
         question.option_a && `A) ${escapeHtml(question.option_a)}`,
@@ -104,55 +108,37 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       ].filter(Boolean).join('<br>');
 
       return `
-<div style="padding: 2px 0 0 0;">
-  <div style="margin-top:4px;font-size:13px;font-weight:700;color:#0b2536;line-height:1.4;">${escapeHtml(question.question)}</div>
-  <div style="margin-top:8px;padding:10px;border-radius:12px;background:#fff;border:1px solid rgba(11,37,54,0.06);font-size:12px;line-height:1.6;color:#0b2536;font-weight:600;">
-    ${options || 'Tap below to ask for a full solution.'}
+<div class="space-y-3">
+  <div class="bg-white/50 p-3 rounded-xl border border-blue-100/50 text-xs font-medium text-slate-800">
+    <p class="mb-2 font-bold">${escapeHtml(question.question)}</p>
+    <div class="space-y-1 opacity-80">${options}</div>
   </div>
-  <div style="margin-top:8px;font-size:11px;line-height:1.4;color:rgba(11,37,54,0.68);font-weight:500;">
-    Bata, isme kya phas raha hai? Short worked solution chahiye toh tap kar, tera Bhai sab solve kar dega! 😉
-  </div>
+  <p class="text-sm font-medium">Bata, isme kya phas raha hai? Short logic chahiye toh bata, sab solve kar lenge! 😉</p>
 </div>`;
     }
   }, [question]);
 
-  const isInitialAssistantMessage = (message: Message, index: number) =>
-    index === 0 && message.role === 'assistant' && message.content === initialMessage;
-
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (internalOpen && messages.length === 0) {
       setMessages([{ role: "assistant", content: initialMessage }]);
     }
-  }, [isOpen, messages.length, initialMessage]);
+  }, [internalOpen, messages.length, initialMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const playSound = (tone: "send" | "receive") => {
-    const audio = new Audio(
-      tone === "send"
-        ? "https://cdn.pixabay.com/download/audio/2022/03/15/audio_040b9c8d6b.mp3?filename=click-124467.mp3"
-        : "https://cdn.pixabay.com/download/audio/2022/03/15/audio_8f27e7a46a.mp3?filename=notification-5-173230.mp3"
-    );
-    audio.volume = 0.25;
-    audio.play().catch(() => {});
-  };
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (file.size > 5 * 1024 * 1024) {
       setError("Image 5MB se chhota hona chahiye! 📸");
       return;
     }
-
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
       setImagePreview(result);
-      // Extract base64 data (remove data:image/...;base64, prefix)
       setImageBase64(result.split(",")[1]);
     };
     reader.readAsDataURL(file);
@@ -164,106 +150,32 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Structured history — send actual user/assistant turns so the model
-  // remembers what was asked before and can answer follow-ups naturally.
-  const buildConversationHistory = (
-    currentMessages: Message[],
-  ): Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }> => {
-    // Keep last 16 turns; server trims further by tier.
+  const buildConversationHistory = (currentMessages: Message[]) => {
     const recent = currentMessages.slice(-16);
     return recent
       .map((msg) => ({
         role: msg.role,
-        // Strip HTML from the seeded initial assistant bubble but keep the text.
         content: msg.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 1200),
         timestamp: new Date().toISOString(),
       }))
       .filter((m) => m.content.length > 0);
   };
 
-  const callEdgeFunction = async (
-    prompt: string,
-    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>,
-    base64Image: string | undefined,
-    mode: JeenieMode,
-    modeSource: JeenieModeSource,
-  ): Promise<{ text: string; quotaExhausted?: boolean; upgradeTo?: 'pro' | 'pro_plus' | null }> => {
-    try {
-      logger.info("Calling JEEnie via API layer...");
-
-      const payload: any = {
-        contextPrompt: prompt,
-        mode,
-        modeSource,
-        conversationHistory: conversationHistory.length > 0 ? conversationHistory : undefined,
-      };
-
-      if (base64Image) {
-        payload.image = base64Image;
-      }
-
-      const { data, error: apiError } = await aiAPI.askJeenie(payload);
-
-      if (apiError) {
-        logger.error("API error from JEEnie:", apiError);
-        const errorType = apiError.code;
-
-        if (errorType === "RATE_LIMITED" || apiError.message.includes("rate")) {
-          throw new Error("JEEnie abhi chai pe gaya hai! ☕ 2 second ruk, wapas aata hai!");
-        } else if (apiError.message.includes("overloaded") || apiError.message.includes("unavailable")) {
-          throw new Error("JEEnie ke neurons mein traffic jam! 🧠 Thoda patience, genius loading...");
-        } else if (apiError.message.includes("timeout")) {
-          throw new Error("JEEnie itna soch raha hai ki time hi nikal gaya! ⏰ Dobara pooch!");
-        } else {
-          throw new Error("Oho! JEEnie thoda confuse ho gaya! 🤪 Ek aur baar try kar, pakka answer dega!");
-        }
-      }
-
-      if (!data || !data.response) {
-        throw new Error("JEEnie ko kuch samajh nahi aaya! 😅 Thoda aur detail mein pooch!");
-      }
-
-      return {
-        text: data.response.trim(),
-        quotaExhausted: !!data.quota_exhausted,
-        upgradeTo: data.upgrade_to ?? null,
-      };
-
-    } catch (error) {
-      logger.error("Error calling JEEnie Edge Function:", error);
-      if (error instanceof Error) throw error;
-      throw new Error("Internet connection check karo! 🌐 JEEnie se baat nahi ho pa rahi.");
-    }
-  };
-
-
-
-  const handleSendMessage = async (
-    overrideInput?: string,
-    explicitMode?: JeenieMode,
-    explicitModeSource?: JeenieModeSource,
-  ) => {
+  const handleSendMessage = async (overrideInput?: string, explicitMode?: JeenieMode) => {
     const effectiveInput = (overrideInput ?? input).trim();
     if (!effectiveInput && !imageBase64) return;
     setError(null);
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      setError("Pehle login kar bhai! 🔑 JEEnie sirf apne students se baat karta hai.");
+      setError("Pehle login kar bhai! 🔑");
       return;
     }
 
-    const now = Date.now();
-    // No client-side throttle — send whenever the user is ready.
-
-    setLastRequestTime(now);
     setLoading(true);
-    playSound("send");
-
-    const userContent = effectiveInput || (imageBase64 ? "📸 Photo se doubt solve karo" : "");
-    const userMsg: Message = { role: "user", content: userContent, imageUrl: imagePreview || undefined };
+    const userMsg: Message = { role: "user", content: effectiveInput || "📸 Photo", imageUrl: imagePreview || undefined };
     setMessages((prev) => [...prev, userMsg]);
-
+    
     const currentImage = imageBase64;
     setInput("");
     clearImage();
@@ -271,439 +183,220 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     try {
       const isGeneral = !question?.option_a || question?.question?.includes("koi bhi");
       const history = buildConversationHistory(messages);
-
-      // Personality + formatting + mode-specific teaching rules now live in the
-      // server's modular system prompt (supabase/functions/_shared/jeeniePrompt.ts).
-      // We send only the user's actual content here — keeps per-request tokens minimal.
       let prompt: string;
+      
       if (currentImage) {
-        prompt = userContent !== "📸 Photo se doubt solve karo"
-          ? `Student ne photo bheji hai aur saath bola: "${userContent}". Image dekh, question identify kar, complete solution de.`
-          : `Student ne doubt ki photo bheji hai. Image dekh, question identify kar, complete solution de.`;
+        prompt = `Image doubt: ${effectiveInput || "Analyze this image"}`;
       } else if (isGeneral) {
-        prompt = `Student ka doubt: "${userContent}"`;
+        prompt = userMsg.content;
       } else {
-        prompt = `Question: ${question.question}\nOptions: A) ${question.option_a}, B) ${question.option_b}, C) ${question.option_c}, D) ${question.option_d}\n\nStudent ka doubt: "${userContent}"`;
+        prompt = `Question: ${question.question}\nStudent says: ${userMsg.content}`;
       }
 
-
       setTyping(true);
-      const mode: JeenieMode = explicitMode ?? 'auto';
-      const modeSource: JeenieModeSource = explicitModeSource ?? (explicitMode ? 'manual_chip' : 'auto');
-      const aiResult = await callEdgeFunction(prompt, history, currentImage || undefined, mode, modeSource);
-      // Note: do NOT run sanitizeRoast here — it strips "Hello Puttar!", markdown
-      // and salutations which JEEnie's doubt-solver answers rely on for tone.
-      const isFirstResponse = messages.filter((m) => m.role === 'user').length === 0;
-      const formatted = cleanAndFormatJeenieText(aiResult.text, isFirstResponse);
-      playSound("receive");
+      const { data, error: apiError } = await aiAPI.askJeenie({
+        contextPrompt: prompt,
+        mode: explicitMode || 'auto',
+        conversationHistory: history,
+        image: currentImage || undefined
+      });
+
+      if (apiError) throw new Error(apiError.message);
+      
+      const formatted = cleanAndFormatJeenieText(data.response, false);
       setMessages((prev) => [...prev, {
         role: "assistant",
         content: formatted,
-        upgradeTo: aiResult.quotaExhausted ? (aiResult.upgradeTo ?? null) : undefined,
+        upgradeTo: data.quota_exhausted ? (data.upgrade_to ?? 'pro') : undefined,
       }]);
-      // Quota exhausted → auto-open the upgrade dialog so user doesn't dead-end.
-      if (aiResult.quotaExhausted && aiResult.upgradeTo) {
-        setPricingRequiredTier(subscriptionTier === 'free' ? 'pro' : (aiResult.upgradeTo as 'pro' | 'pro_plus'));
+
+      if (data.quota_exhausted) {
+        setPricingRequiredTier(data.upgrade_to || 'pro');
         setPricingOpen(true);
       }
-
-    } catch (error: any) {
-      logger.error("Error in handleSendMessage:", error);
-      const errorMessage = error instanceof Error
-        ? error.message
-        : "JEEnie ka chirag thoda garam ho gaya! 🧞‍♂️🔥 Ek minute ruk, thanda hone de!";
-      setMessages((prev) => [...prev, { role: "assistant", content: errorMessage }]);
+    } catch (e: any) {
+      setMessages((prev) => [...prev, { role: "assistant", content: "Oho! Kuch gadbad ho gayi. Ek baar phir pooch?" }]);
     } finally {
       setTyping(false);
       setLoading(false);
     }
   };
 
-  const hasQuestionContext = !!question?.option_a && !question?.question?.includes("koi bhi");
-  // Show quick-actions only when no user message has been sent yet
-  const showQuickActions = hasQuestionContext && !loading && !messages.some((m) => m.role === "user");
-  const quickActions: { label: string; emoji: string; prompt: string; mode: JeenieMode }[] = [
-    { label: "Sirf Answer", emoji: "✅", mode: 'quick', prompt: "Sirf final correct answer batao (A/B/C/D), bina kuch extra explanation ke. 1 line max — no greeting, no headings." },
-    { label: "Solution", emoji: "📝", mode: 'steps', prompt: "Step-by-step short solution do is question ka. Sirf zaroori steps, koi filler nahi. Complete answer dena — beech mein kabhi mat ruko." },
-    { label: "Formula", emoji: "💡", mode: 'quick', prompt: "Sirf woh key formula(s) batao jo is question mein use hote hain. Symbols ka matlab bhi 1 line mein. Short mein." },
-  ];
-
-  const handleQuickAction = (qa: { prompt: string; mode: JeenieMode }) => {
-    handleSendMessage(qa.prompt, qa.mode, 'manual_chip');
-  };
-
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-white/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-white rounded-[28px] shadow-[0_24px_80px_rgba(2,18,36,0.08)] max-w-lg w-full max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-[#0b2536]/6 relative">
-        {/* Floating JEEnie Icon */}
-        <div className={`absolute -top-6 sm:-top-8 left-1/2 -translate-x-1/2 bg-[#013062] p-2 sm:p-3 rounded-full shadow-lg ${loading || typing ? 'animate-pulse scale-110 shadow-blue-500/50 ring-4 ring-blue-500/20' : 'animate-bounce'}`}>
-          <Zap className={`text-white w-5 h-5 sm:w-6 sm:h-6 ${(loading || typing) ? 'animate-spin' : ''}`} />
-        </div>
-
-        {/* Header */}
-        <div className="p-3 sm:p-4 border-b border-[#0b2536]/8 bg-white/60 sm:rounded-t-[28px] flex justify-between items-center">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Zap className="w-4 h-4 text-primary" />
-            <div>
-              <h3 className="font-extrabold text-[#013062] text-lg sm:text-xl tracking-tight">
-                  JEEnie <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full ml-1 font-bold animate-pulse">BHAI</span>
-                </h3>
-                <p className="text-xs text-[#013062]/70 font-medium hidden sm:block">
-                {!isAIAvailable ? (
-                  <span className="text-[#013062]">Busy. Still thinking.</span>
-                ) : queuePosition ? (
-                  <span className="text-[#013062]">
-                    <Clock size={10} className="inline mr-1" />
-                    Queue position: {queuePosition}
-                  </span>
-                ) : null}
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="text-[#013062]/70 hover:text-[#013062] hover:bg-white p-1.5 sm:p-2 rounded-lg transition-all"
-          >
-            <X className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
-        </div>
-
-        {/* Chat Body */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-secondary/30 text-primary scroll-smooth custom-scrollbar">
-          {!messages.some(m => m.role === 'user') && (
-            <div className="bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-3 rounded-2xl mb-2 animate-in fade-in slide-in-from-top-4 duration-500">
-              <div className="flex items-center gap-2 mb-1.5">
-                <Star className="w-4 h-4 text-amber-500 fill-amber-500 animate-pulse" />
-                <span className="text-[11px] font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider">Bhai Ki Pro-Tip</span>
-              </div>
-              <p className="text-xs text-blue-700/80 dark:text-blue-400/80 leading-relaxed font-medium">
-                "Bas solution mat ratna, logic samjhna. JEE/NEET mein logic hi kaam aata hai!" 😉
-              </p>
-            </div>
-          )}
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex items-end ${
-                msg.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              {msg.role === "assistant" && (
-                <div className={`bg-secondary p-1.5 sm:p-2 rounded-full mr-1.5 sm:mr-2 shrink-0 ${isInitialAssistantMessage(msg, i) ? 'ring-2 ring-primary/15 bg-primary/5' : ''}`}>
-                  <Zap className="w-4 h-4 text-primary" />
-                </div>
-              )}
-              <div
-                className={`max-w-[85%] sm:max-w-[80%] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm leading-relaxed shadow-xs transition-all duration-300 hover:shadow-md animate-in slide-in-from-bottom-2 ${
-                  msg.role === "user"
-                    ? "bg-linear-to-r from-accent-foreground to-primary text-primary-foreground rounded-br-sm"
-                    : isInitialAssistantMessage(msg, i)
-                      ? "bg-linear-to-br from-white via-blue-50 to-indigo-50 border border-primary/15 text-primary rounded-bl-sm shadow-md"
-                      : "bg-background border border-border text-primary rounded-bl-sm"
-                }`}
+    <>
+      {/* Floating Button */}
+      <div 
+        className="fixed z-[9999] pointer-events-none"
+        style={{ right: '24px', bottom: '100px' }}
+      >
+        <motion.div
+        drag
+        dragMomentum={false}
+        onDragStart={() => setInternalIsDragging(true)}
+        onDragEnd={() => setTimeout(() => setInternalIsDragging(false), 50)}
+        className="pointer-events-auto cursor-grab active:cursor-grabbing relative"
+      >
+        <AnimatePresence>
+          {!internalOpen && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              whileHover={{ scale: 1.1 }}
+              onClick={() => !internalIsDragging && setInternalOpen(true)}
+                className={`w-16 h-16 rounded-full bg-[#013062] flex items-center justify-center shadow-[0_8px_32px_rgba(1,48,98,0.4)] border-2 border-white/20 relative overflow-hidden group transition-opacity duration-300 ${!isCurrentAnswered ? 'opacity-40 hover:opacity-100' : 'opacity-100'}`}
               >
-                {msg.imageUrl && (
-                  <img 
-                    src={msg.imageUrl} 
-                    alt="Uploaded doubt" 
-                    className="w-full max-h-40 object-contain rounded-lg mb-2 border border-primary-foreground/20"
-                  />
-                )}
-                <div
-                  className={isInitialAssistantMessage(msg, i) ? "text-xs sm:text-sm [&_strong]:font-extrabold" : "text-xs sm:text-sm"}
-                  dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(msg.content),
-                  }}
-                />
-                {msg.role === "assistant" && msg.upgradeTo && (
-                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                    <Button
-                      size="sm"
-                      className="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold shadow-md"
-                      onClick={() => {
-                        setPricingRequiredTier(msg.upgradeTo as 'pro' | 'pro_plus');
-                        setPricingOpen(true);
-                      }}
-                    >
-                      🚀 Upgrade to {msg.upgradeTo === 'pro_plus' ? 'Pro+' : 'Pro'}
-                    </Button>
-                  </div>
-                )}
-              </div>
-              {msg.role === "user" && (
-                <div className="bg-secondary p-1.5 sm:p-2 rounded-full ml-1.5 sm:ml-2 shrink-0">
-                  <User className="text-primary" size={14} />
+                <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 to-transparent" />
+                <Zap className={`w-7 h-7 text-white transition-transform group-hover:scale-110 ${loading || typing ? 'animate-pulse' : ''}`} fill="currentColor" />
+                
+                {/* Visual Highlight Ring */}
+                <div className="absolute inset-0 border-2 border-blue-400/30 rounded-full animate-ping pointer-events-none" />
+                
+                {/* Floating "Stuck?" label */}
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white px-3 py-1 rounded-full shadow-md text-[10px] font-bold text-blue-900 border border-blue-100 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                  Stuck? Pooch le!
                 </div>
-              )}
-            </div>
-          ))}
-
-          {typing && (
-            <div className="flex justify-start items-center gap-2 text-accent-foreground">
-              <div className="bg-background border border-border px-3 py-2 rounded-2xl shadow-xs flex gap-1 items-center">
-                <span className="w-2 h-2 bg-accent-foreground rounded-full animate-bounce"></span>
-                <span className="w-2 h-2 bg-accent-foreground/80 rounded-full animate-bounce delay-100"></span>
-                <span className="w-2 h-2 bg-accent-foreground/60 rounded-full animate-bounce delay-200"></span>
-              </div>
-            </div>
-          )}
-
-          {/* Follow-up action chips — appear after any user message + assistant reply.
-              Free users see locked chips that open the upgrade modal; Pro users see
-              Pro+-locked chips. Keeps the conversation alive instead of dead-ending. */}
-          {(() => {
-            const lastUser = [...messages].reverse().find((m) => m.role === 'user');
-            const showChips = !loading && !typing && lastUser && messages[messages.length - 1]?.role === 'assistant';
-            if (!showChips) return null;
-            return (
-            <div className="px-1">
-              <AIDoubtActionChips
-                tier={subscriptionTier}
-                disabled={loading}
-                onChip={(chip: ChipDef) => {
-                  handleSendMessage(chip.prompt, chip.mode, 'manual_chip');
-                }}
-                onLocked={(chip: ChipDef) => {
-                  // Free users: always show full pricing (both Pro & Pro+). Pro users
-                  // hitting a Pro+ chip see the Pro+ upsell.
-                  setPricingRequiredTier(subscriptionTier === 'free' ? 'pro' : chip.minTier);
-                  setPricingOpen(true);
-                }}
-              />
-            </div>
-            );
-          })()}
-
-
-
-          {error && (
-            <div className="flex justify-center">
-              <div className="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 rounded-xl flex items-center gap-2 text-sm">
-                <AlertCircle size={16} />
-                <span>{error}</span>
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Image Preview */}
-        {imagePreview && (
-          <div className="px-3 pt-2 bg-secondary/30 border-t border-border">
-            <div className="relative inline-block">
-              <img 
-                src={imagePreview} 
-                alt="Preview" 
-                className="h-16 w-auto rounded-lg border border-border shadow-xs"
-              />
-              <button
-                onClick={clearImage}
-                className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 transition-colors"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Footer */}
-        <div className="p-2.5 sm:p-3 border-t border-border bg-secondary/30 pb-[calc(0.75rem+env(safe-area-inset-bottom,0))] sm:pb-3 space-y-2">
-          {/* Quick Actions — saves tokens by sending pre-defined intents */}
-          {showQuickActions && (
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              {quickActions.map((qa) => (
-                <button
-                  key={qa.label}
-                  type="button"
-                  onClick={() => handleQuickAction(qa)}
-                  disabled={loading}
-                  className="flex-1 min-w-[30%] text-[11px] sm:text-xs font-medium px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent text-foreground hover:text-accent-foreground transition-all disabled:opacity-50"
-                >
-                  <span className="mr-1">{qa.emoji}</span>{qa.label}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="flex gap-1.5 sm:gap-2 items-center">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImageUpload}
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              className="shrink-0 border-border hover:bg-secondary text-accent-foreground h-9 w-9 sm:h-10 sm:w-10"
-              title="📸 Photo se doubt pucho"
-            >
-              <Camera size={16} />
-            </Button>
-
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={imageBase64 ? "Optional note (photo attached)" : "Type your doubt or upload a photo"}
-              onKeyPress={handleKeyPress}
-              className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-background border border-border rounded-lg sm:rounded-xl text-primary placeholder:text-muted-foreground focus:ring-2 focus:ring-ring outline-hidden text-xs sm:text-sm transition-all"
-            />
-            <Button
-              onClick={() => handleSendMessage()}
-              disabled={loading || (!input.trim() && !imageBase64)}
-              className="bg-linear-to-r from-accent-foreground to-primary hover:opacity-90 text-primary-foreground px-3 sm:px-6 rounded-lg sm:rounded-xl transition-all shadow-md h-auto"
-            >
-              {loading ? (
-                <Loader2 className="animate-spin" size={16} />
-              ) : (
-                <Send size={16} />
-              )}
-            </Button>
-          </div>
-        </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </div>
+
+      {/* Main Chat Window */}
+      <AnimatePresence>
+        {internalOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-x-4 bottom-4 top-4 sm:inset-auto sm:right-6 sm:bottom-24 sm:w-[400px] sm:h-[600px] bg-white rounded-[32px] shadow-[0_32px_120px_rgba(0,0,0,0.15)] z-[10000] flex flex-col overflow-hidden border border-slate-100"
+          >
+            {/* Header */}
+            <div className="p-4 border-b bg-slate-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#013062] flex items-center justify-center shadow-inner">
+                  <Zap className="w-5 h-5 text-white" fill="currentColor" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 flex items-center gap-1.5">
+                    JEEnie
+                    <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-black tracking-widest">BHAI</span>
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-medium">Always here for you</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => { setInternalOpen(false); onClose(); }} className="rounded-full hover:bg-slate-100">
+                <X className="w-5 h-5 text-slate-400" />
+              </Button>
+            </div>
+
+            {/* Chat Body */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30 custom-scrollbar">
+              {messages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] p-3.5 rounded-2xl text-sm shadow-sm ${
+                    msg.role === 'user' 
+                      ? 'bg-[#013062] text-white rounded-br-none' 
+                      : 'bg-white border border-slate-100 text-slate-800 rounded-bl-none'
+                  }`}>
+                    {msg.imageUrl && <img src={msg.imageUrl} className="rounded-lg mb-2 max-h-48 w-full object-cover" />}
+                    <div className="prose prose-sm max-w-none prose-slate" dangerouslySetInnerHTML={{ __html: msg.content }} />
+                  </div>
+                </div>
+              ))}
+              {typing && (
+                <div className="flex justify-start">
+                  <div className="bg-white border border-slate-100 p-3 rounded-2xl rounded-bl-none flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" />
+                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0.2s]" />
+                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0.4s]" />
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Action Chips */}
+            {messages.length === 1 && question?.option_a && (
+              <div className="px-4 py-2 flex gap-2 overflow-x-auto no-scrollbar">
+                <Button variant="outline" size="sm" onClick={() => handleSendMessage("Sirf Answer batao", "quick")} className="rounded-full text-[11px] font-bold border-emerald-100 bg-emerald-50/30 text-emerald-700 hover:bg-emerald-50">Sirf Answer</Button>
+                <Button variant="outline" size="sm" onClick={() => handleSendMessage("Full Solution chahiye", "steps")} className="rounded-full text-[11px] font-bold border-blue-100 bg-blue-50/30 text-blue-700 hover:bg-blue-50">Solution</Button>
+                <Button variant="outline" size="sm" onClick={() => handleSendMessage("Formula kya hai?", "quick")} className="rounded-full text-[11px] font-bold border-amber-100 bg-amber-50/30 text-amber-700 hover:bg-amber-50">Formula</Button>
+              </div>
+            )}
+
+            {/* Input */}
+            <div className="p-4 bg-white border-t">
+              {imagePreview && (
+                <div className="mb-3 relative inline-block">
+                  <img src={imagePreview} className="w-16 h-16 rounded-xl object-cover border" />
+                  <button onClick={clearImage} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 shadow-md">
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+              <div className="relative flex items-center gap-2">
+                <input
+                  type="file"
+                  hidden
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="shrink-0 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                >
+                  <Camera size={20} />
+                </Button>
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  placeholder="Kuch poocho bhai..."
+                  className="flex-1 bg-slate-50 border-none focus:ring-2 focus:ring-blue-100 rounded-2xl px-4 py-2.5 text-sm"
+                />
+                <Button 
+                  onClick={() => handleSendMessage()}
+                  disabled={loading || (!input.trim() && !imageBase64)}
+                  className="rounded-xl bg-[#013062] hover:bg-[#024080] shrink-0"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send size={18} />}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <PricingModal
         isOpen={pricingOpen}
         onClose={() => setPricingOpen(false)}
-        limitType="ai_doubt_locked"
         requiredTier={pricingRequiredTier}
       />
-    </div>
+    </>
   );
 };
 
-function cleanAndFormatJeenieText(text: string, isFirstResponse: boolean = false): string {
-  let formatted = text;
+function cleanAndFormatJeenieText(text: string, isFirstResponse: boolean): string {
+  let formatted = text.trim();
   
-  if (!isFirstResponse) {
-    formatted = formatted
-      .replace(/\*?\*?Hello Puttar!?\*?\*?\s*🧞‍♂️?\s*/gi, '')
-      .replace(/Hello Puttar!?\s*/gi, '')
-      .replace(/^[\s\n]*/, '');
-  }
-  
-  formatted = replaceGreekLetters(formatted);
-
-  // ---- Strip raw LaTeX artifacts that escape KaTeX (text outside $...$). ----
-  // \textbf{X} → **X**, \text{X} → X, \mathrm{X} → X
   formatted = formatted
-    .replace(/\\textbf\{([^}]*)\}/g, '**$1**')
-    .replace(/\\(?:text|mathrm|mathbf|mathit|mathsf|operatorname)\{([^}]*)\}/g, '$1')
-    // \circ outside math → °  (handles "20\circ", "20^\circ", "20°\circ")
-    .replace(/\^?\\circ/g, '°')
-    // \times, \cdot, \div, \pm outside math
-    .replace(/\\times/g, '×')
-    .replace(/\\cdot/g, '·')
-    .replace(/\\div/g, '÷')
-    .replace(/\\pm/g, '±')
-    // Orphan single `$` followed by a number with stray backslash like "$60^\"
-    .replace(/\$([^$\n]{0,40})\\\s*$/gm, '$1')
-    // Collapse leftover lone backslashes at line ends
-    .replace(/\\\s*$/gm, '');
-
-  formatted = formatted
-    .replace(/->/g, '→')
-    .replace(/<-/g, '←')
-    .replace(/<=>/g, '⇌')
-    .replace(/>=/g, '≥')
-    .replace(/<=/g, '≤')
-    .replace(/!=/g, '≠')
-    .replace(/~=/g, '≈')
-    .replace(/\^2(?![0-9])/g, '²')
-    .replace(/\^3(?![0-9])/g, '³')
-    .replace(/\+-/g, '±')
-    .replace(/H2O/g, 'H₂O')
-    .replace(/CO2/g, 'CO₂')
-    .replace(/O2(?![0-9])/g, 'O₂')
-    .replace(/N2(?![0-9])/g, 'N₂')
-    .replace(/H2(?![0-9O])/g, 'H₂')
-    .replace(/SO4/g, 'SO₄')
-    .replace(/NO3/g, 'NO₃')
-    .replace(/NH3/g, 'NH₃')
-    .replace(/CH4/g, 'CH₄')
-    .replace(/H2SO4/g, 'H₂SO₄')
-    .replace(/HNO3/g, 'HNO₃')
-    .replace(/([A-Za-z])_([A-Za-z0-9]+)/g, '$1<sub>$2</sub>');
-
-  // NOTE: we intentionally do NOT synthesize bullets from "**Title**:" patterns
-  // anymore. That was shredding short prose into noisy bullet lists.
-
-  // Markdown → HTML headings. Convert numbered sub-headings ("#### 5. Title")
-  // into a clean "Step 5: Title" so students don't see literal '####'.
-  formatted = formatted
-    .replace(/^####\s*(\d+)\.\s*(.+)$/gm, '<h4 class="font-bold text-primary mt-3 mb-1 text-sm">Step $1: $2</h4>')
-    .replace(/^####\s+(.+)$/gm, '<h4 class="font-bold text-primary mt-3 mb-1 text-sm">$1</h4>')
-    .replace(/^###\s*(\d+)\.\s*(.+)$/gm, '<h4 class="font-bold text-primary mt-3 mb-1 text-sm">Step $1: $2</h4>')
-    .replace(/^###\s+(.+)$/gm, '<h4 class="font-bold text-primary mt-3 mb-1 text-sm">$1</h4>')
-    .replace(/^##\s+(.+)$/gm, '<h3 class="font-extrabold text-primary mt-3 mb-1 text-base">$1</h3>')
-    .replace(/^#\s+(.+)$/gm, '<h3 class="font-extrabold text-primary mt-3 mb-1 text-base">$1</h3>');
-
-  // Numbered lists: "1. item" → <ol><li>
-  formatted = formatted.replace(/(?:^|\n)((?:\s*\d+\.\s+.+(?:\n|$))+)/g, (_, block: string) => {
-    const items = block
-      .trim()
-      .split(/\n/)
-      .map((l) => l.replace(/^\s*\d+\.\s+/, '').trim())
-      .filter(Boolean)
-      .map((t) => `<li class="ml-1">${t}</li>`) 
-      .join('');
-    return `\n<ol class="list-decimal pl-5 my-2 space-y-1 marker:text-accent-foreground marker:font-bold">${items}</ol>\n`;
-  });
-
-  // Bullet lists: lines starting with -, *, • → <ul><li>
-  formatted = formatted.replace(/(?:^|\n)((?:\s*[-*•]\s+.+(?:\n|$))+)/g, (_, block: string) => {
-    const items = block
-      .trim()
-      .split(/\n/)
-      .map((l) => l.replace(/^\s*[-*•]\s+/, '').trim())
-      .filter(Boolean)
-      .map((t) => `<li class="ml-1">${t}</li>`) 
-      .join('');
-    return `\n<ul class="list-disc pl-5 my-2 space-y-1 marker:text-accent-foreground">${items}</ul>\n`;
-  });
-
-  formatted = formatted
-    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-primary font-bold">$1</strong>')
-    .replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>')
-    // Collapse 3+ newlines, then convert remaining newlines to <br>
+    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-[#013062] font-bold">$1</strong>')
     .replace(/\n{2,}/g, '<br><br>')
-    .replace(/\n/g, '<br>')
-    // Don't put <br> right before/after block tags
-    .replace(/<br>\s*(<\/?(?:ul|ol|li|h3|h4)[^>]*>)/g, '$1')
-    .replace(/(<\/(?:ul|ol|li|h3|h4)>)\s*<br>/g, '$1')
-    ;
+    .replace(/\n/g, '<br>');
 
-  // Render LaTeX: $$...$$ (display) and $...$ (inline) via KaTeX
-  if (formatted.includes('$') || containsLatex(formatted)) {
-    // Process display math $$...$$
+  if (formatted.includes('$')) {
     formatted = formatted.replace(/\$\$([\s\S]+?)\$\$/g, (_, latex) => renderLatex(`$$${latex}$$`));
-    // Process inline math $...$
     formatted = formatted.replace(/\$([^$]+)\$/g, (full, latex) => {
-      if (/^\s*\d+(\.\d+)?\s*$/.test(latex)) return full; // skip currency
+      if (/^\s*\d+(\.\d+)?\s*$/.test(latex)) return full;
       return renderLatex(`$${latex}$`);
     });
-    // If no $ but has LaTeX commands, render the whole thing
-    if (!formatted.includes('$') && !formatted.includes('class="katex"') && containsLatex(formatted)) {
-      formatted = renderLatex(formatted);
-    }
   }
   
-  return formatted.trim();
+  return formatted;
 }
 
 export default AIDoubtSolver;
