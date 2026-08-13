@@ -327,64 +327,73 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 
             {/* Action Chips */}
             <AnimatePresence>
-              {messages.length === 1 && question?.option_a && (
+              {messages.length === 1 && !loading && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="px-6 py-2 flex gap-3 overflow-x-auto no-scrollbar"
+                  exit={{ opacity: 0 }}
+                  className="px-4 pb-1 flex gap-2 overflow-x-auto no-scrollbar"
                 >
-                  <button onClick={() => handleSendMessage("Intuition samjha do", "deep")} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-100 hover:bg-emerald-100 transition-all whitespace-nowrap">
-                    <Sparkles size={12} /> Desi Logic
+                  <button onClick={() => handleSendMessage(question?.option_a ? "Intuition samjha do" : "Concept intuition se samjha do", "deep")} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-[11px] font-bold rounded-full border border-emerald-100 hover:bg-emerald-100 transition-all whitespace-nowrap">
+                    <Sparkles size={11} /> Desi Logic
                   </button>
-                  <button onClick={() => handleSendMessage("Full Solution chahiye", "steps")} className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border border-blue-100 hover:bg-blue-100 transition-all whitespace-nowrap">
-                    <Star size={12} /> Step-by-Step
+                  <button onClick={() => handleSendMessage("Step-by-step solution chahiye", "steps")} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-[11px] font-bold rounded-full border border-blue-100 hover:bg-blue-100 transition-all whitespace-nowrap">
+                    <Star size={11} /> Step-by-Step
                   </button>
-                  <button onClick={() => handleSendMessage("Short Tip/Trap?", "quick")} className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 text-xs font-bold rounded-full border border-amber-100 hover:bg-amber-100 transition-all whitespace-nowrap">
-                    <Zap size={12} /> Quick Tip
+                  <button onClick={() => handleSendMessage("Short tip aur common trap batao", "quick")} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 text-[11px] font-bold rounded-full border border-amber-100 hover:bg-amber-100 transition-all whitespace-nowrap">
+                    <Zap size={11} /> Quick Tip
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Input Area */}
-            <div className="p-6 bg-white border-t border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+            <div className="px-4 py-4 bg-white border-t border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+              {error && (
+                <p className="mb-2 text-[12px] font-semibold text-red-500">{error}</p>
+              )}
               {imagePreview && (
-                <div className="mb-4 relative inline-block animate-in fade-in zoom-in-90">
-                  <img src={imagePreview} className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-xl ring-1 ring-black/5" />
-                  <button onClick={clearImage} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:scale-110 transition-transform ring-2 ring-white">
-                    <X size={14} />
+                <div className="mb-3 relative inline-block animate-in fade-in zoom-in-90">
+                  <img src={imagePreview} className="w-20 h-20 rounded-xl object-cover border-4 border-white shadow-lg ring-1 ring-black/5" />
+                  <button onClick={clearImage} className="absolute -top-2.5 -right-2.5 bg-red-500 text-white rounded-full p-1 shadow-lg hover:scale-110 transition-transform ring-2 ring-white">
+                    <X size={12} />
                   </button>
                 </div>
               )}
-              <div className="flex items-center gap-3">
+              <div className="flex items-end gap-2">
                 <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handleImageUpload} />
                 <Button 
+                  type="button"
                   variant="ghost" 
                   size="icon" 
                   onClick={() => fileInputRef.current?.click()}
-                  className="shrink-0 w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 hover:text-[#013062] hover:bg-blue-50 transition-all border border-slate-100"
+                  className="shrink-0 w-11 h-11 rounded-xl bg-slate-50 text-slate-400 hover:text-[#013062] hover:bg-blue-50 transition-all border border-slate-100"
                 >
-                  <Camera size={24} />
+                  <Camera size={20} />
                 </Button>
-                <div className="flex-1 relative">
-                  <input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder="Kuch poocho bhai..."
-                    className="w-full bg-slate-50 border border-slate-100 focus:border-[#013062] focus:bg-white focus:ring-4 focus:ring-blue-50/50 rounded-2xl px-5 py-3.5 text-[15px] transition-all placeholder:text-slate-400 outline-none font-medium"
-                  />
-                </div>
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder="Kuch bhi poochho..."
+                  className="flex-1 min-w-0 h-11 bg-slate-50 border border-slate-100 focus:border-[#013062] focus:bg-white focus:ring-4 focus:ring-blue-50/50 rounded-xl px-4 text-[14.5px] transition-all placeholder:text-slate-400 outline-none font-medium"
+                />
                 <Button 
+                  type="button"
                   onClick={() => handleSendMessage()}
                   disabled={loading || (!input.trim() && !imageBase64)}
-                  className="w-12 h-12 rounded-2xl bg-[#013062] hover:bg-[#024080] shrink-0 shadow-xl shadow-blue-900/20 transition-all active:scale-90 disabled:opacity-40 disabled:scale-100"
+                  className="w-11 h-11 rounded-xl bg-[#013062] hover:bg-[#024080] shrink-0 shadow-lg shadow-blue-900/20 transition-all active:scale-90 disabled:opacity-40 disabled:scale-100"
                 >
-                  {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send size={22} className="ml-0.5" />}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send size={18} className="ml-0.5" />}
                 </Button>
               </div>
-              <p className="text-center text-[10px] text-slate-400 mt-4 font-bold tracking-widest uppercase">Expert Mentor • AI Powered</p>
             </div>
+
           </motion.div>
         )}
       </AnimatePresence>
