@@ -61,10 +61,10 @@ function gcRecentPrompts() {
 }
 
 const FUNNY_FALLBACKS = [
-  "**Hello Puttar!** 🧞‍♂️\n\nAre yaar! JEEnie ka chirag thoda garam ho gaya hai! 🔥😅\n\nEk minute ruk, thanda hone de... phir tera doubt pakka solve karunga! 💪\n\n⏰ **2 second mein dobara try kar!**",
-  "**Hello Puttar!** 🧞‍♂️\n\nJEEnie abhi chai pe gaya tha! ☕😎\n\nWapas aa gaya hoon — ab bol, kya doubt hai?\n\n💡 **Dobara send kar apna question!**",
-  "**Hello Puttar!** 🧞‍♂️\n\nServer pe traffic jam ho gaya — Mumbai ki tarah! 🚗😤\n\nBut don't worry, JEEnie ke paas shortcut hai! 🛣️\n\n✨ **Try again, is baar express lane milega!**",
-  "**Hello Puttar!** 🧞‍♂️\n\nJEEnie ke neurons mein short circuit ho gaya! ⚡😱\n\nBut don't worry — Faraday ke law se recharge ho raha hoon!\n\n🔋 **10 second mein dobara try kar!**",
+  "**Oye!** 🧞‍♂️\n\nAre yaar! Chirag thoda garam ho gaya hai! 🔥😅\n\nEk minute ruk, thanda hone de... phir tera doubt pakka solve karunga! 💪\n\n⏰ **2 second mein dobara try kar!**",
+  "**Oye!** 🧞‍♂️\n\nMain abhi chai pe gaya tha! ☕😎\n\nWapas aa gaya hoon — ab bol, kya doubt hai?\n\n💡 **Dobara send kar apna question!**",
+  "**Oye!** 🧞‍♂️\n\nServer pe traffic jam ho gaya — Mumbai ki tarah! 🚗😤\n\nBut don't worry, mere paas shortcut hai! 🛣️\n\n✨ **Try again, is baar express lane milega!**",
+  "**Oye!** 🧞‍♂️\n\nMere neurons mein short circuit ho gaya! ⚡😱\n\nBut don't worry — Faraday ke law se recharge ho raha hoon!\n\n🔋 **10 second mein dobara try kar!**",
 ];
 
 function getRandomFunnyFallback(): string {
@@ -161,7 +161,7 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ response: "**Hello Puttar!** 🧞‍♂️\n\nPehle login kar, phir baat karte hain! 🔐", suggestions: [], content: "" }),
+        JSON.stringify({ response: "**Oye!** 🧞‍♂️\n\nPehle login kar, phir baat karte hain! 🔐", suggestions: [], content: "" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -175,7 +175,7 @@ serve(async (req) => {
 
     if (authError || !user) {
       return new Response(
-        JSON.stringify({ response: "**Hello Puttar!** 🧞‍♂️\n\nSession expire ho gayi! Dobara login kar. 🔄", suggestions: [], content: "" }),
+        JSON.stringify({ response: "**Oye!** 🧞‍♂️\n\nSession expire ho gayi! Dobara login kar. 🔄", suggestions: [], content: "" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -287,10 +287,10 @@ serve(async (req) => {
 
       if (queriesUsed >= dailyLimit) {
         const msg = userTier === "pro_plus"
-          ? `**Hello Puttar!** 🧞‍♂️\n\nAaj ke doubts khatam ho gaye! 😅 Kal fresh ho ke wapas aa — JEEnie ready rahega! 💪`
+          ? `**Oye!** 🧞‍♂️\n\nAaj ke doubts khatam ho gaye! 😅 Kal fresh ho ke wapas aa — main ready rahunga! 💪`
           : userTier === "pro"
-          ? `**Hello Puttar!** 🧞‍♂️\n\nAaj ke doubts khatam! 😅 **Pro+** pe upgrade kar — aur badi limit milegi. 🚀`
-          : `**Hello Puttar!** 🧞‍♂️\n\nAaj ke free doubts khatam! 😅\n\n**Pro** ya **Pro+** pe upgrade kar — unlimited learning! 🚀`;
+          ? `**Oye!** 🧞‍♂️\n\nAaj ke doubts khatam! 😅 **Pro+** pe upgrade kar — aur badi limit milegi. 🚀`
+          : `**Oye!** 🧞‍♂️\n\nAaj ke free doubts khatam! 😅\n\n**Pro** ya **Pro+** pe upgrade kar — unlimited learning! 🚀`;
         return new Response(
           JSON.stringify({
             response: msg, suggestions: [], content: "",
@@ -305,10 +305,10 @@ serve(async (req) => {
 
       if (monthlyUsed >= monthlyLimit) {
         const msg = userTier === "free"
-          ? `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka free quota khatam! 😅\n\n**Pro** ya **Pro+** pe upgrade kar. 🚀`
+          ? `**Oye!** 🧞‍♂️\n\nIs mahine ka free quota khatam! 😅\n\n**Pro** ya **Pro+** pe upgrade kar. 🚀`
           : userTier === "pro"
-          ? `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka quota khatam! 😅\n\n**Pro+** pe upgrade kar. 🚀`
-          : `**Hello Puttar!** 🧞‍♂️\n\nIs mahine ka quota khatam ho gaya! 😅\n\n📅 Next month reset hoga.`;
+          ? `**Oye!** 🧞‍♂️\n\nIs mahine ka quota khatam! 😅\n\n**Pro+** pe upgrade kar. 🚀`
+          : `**Oye!** 🧞‍♂️\n\nIs mahine ka quota khatam ho gaya! 😅\n\n📅 Next month reset hoga.`;
         return new Response(
           JSON.stringify({
             response: msg, suggestions: [], content: "",
@@ -344,7 +344,7 @@ serve(async (req) => {
     if (!contextPrompt || contextPrompt.length > MAX_INPUT_CHARS) {
       return new Response(
         JSON.stringify({
-          response: `**Hello Bhai!** 🧞‍♂️\n\nAbbe yaar, pura chapter hi paste kar diya kya? 😂 Itna lamba doubt mat bhej, break it down — **${MAX_INPUT_CHARS} characters max** hi JEEnie handle kar payega.`,
+          response: `**Oye!** 🧞‍♂️\n\nAbbe yaar, pura chapter hi paste kar diya kya? 😂 Itna lamba doubt mat bhej, break it down — **${MAX_INPUT_CHARS} characters max** hi handle kar paunga.`,
           suggestions: [], content: "",
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -359,7 +359,7 @@ serve(async (req) => {
       if (Date.now() - last < DEDUPE_WINDOW_MS) {
         return new Response(
           JSON.stringify({
-            response: "**Hello Puttar!** 🧞‍♂️\n\nAbhi-abhi same question puchha tha! 😄 Pehle wala answer scroll kar le — ya thoda alag word use kar.",
+            response: "**Oye!** 🧞‍♂️\n\nAbhi-abhi same question puchha tha! 😄 Pehle wala answer scroll kar le — ya thoda alag word use kar.",
             suggestions: [], content: "",
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
