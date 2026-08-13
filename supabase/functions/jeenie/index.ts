@@ -44,9 +44,9 @@ const MIN_INTERVAL_SECONDS_BY_TIER: Record<string, number> = {
   pro_plus: 4,
 };
 const MAX_INPUT_CHARS = 2500;
-// In-memory de-dupe: identical question from same user within 60s is blocked.
+// In-memory de-dupe: identical question from same user within 15s is blocked.
 const RECENT_PROMPTS = new Map<string, number>(); // key: `${userId}|${hash}` → ts
-const DEDUPE_WINDOW_MS = 60_000;
+const DEDUPE_WINDOW_MS = 15_000;
 function djb2(str: string): string {
   let h = 5381;
   for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
