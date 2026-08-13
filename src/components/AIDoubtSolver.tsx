@@ -229,20 +229,20 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
         style={{ right: '24px', bottom: '100px' }}
       >
         <motion.div
-          drag
-          dragMomentum={false}
-          onDragStart={() => setIsDragging(true)}
-          onDragEnd={() => setTimeout(() => setIsDragging(false), 50)}
-          className="pointer-events-auto cursor-grab active:cursor-grabbing relative"
-        >
-          <AnimatePresence>
-            {!internalOpen && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                whileHover={{ scale: 1.1 }}
-                onClick={() => !isDragging && setInternalOpen(true)}
+        drag
+        dragMomentum={false}
+        onDragStart={() => setInternalIsDragging(true)}
+        onDragEnd={() => setTimeout(() => setInternalIsDragging(false), 50)}
+        className="pointer-events-auto cursor-grab active:cursor-grabbing relative"
+      >
+        <AnimatePresence>
+          {!internalOpen && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              whileHover={{ scale: 1.1 }}
+              onClick={() => !internalIsDragging && setInternalOpen(true)}
                 className={`w-16 h-16 rounded-full bg-[#013062] flex items-center justify-center shadow-[0_8px_32px_rgba(1,48,98,0.4)] border-2 border-white/20 relative overflow-hidden group transition-opacity duration-300 ${!isCurrentAnswered ? 'opacity-40 hover:opacity-100' : 'opacity-100'}`}
               >
                 <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 to-transparent" />
@@ -372,7 +372,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 
       <PricingModal
         isOpen={pricingOpen}
-        onOpenChange={setPricingOpen}
+        onClose={() => setPricingOpen(false)}
         requiredTier={pricingRequiredTier}
       />
     </>

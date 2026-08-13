@@ -10,6 +10,7 @@ import LoadingScreen from "@/components/ui/LoadingScreen";
 import { GlobalErrorBoundary } from "@/components/ErrorBoundary";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileNavigation from "@/components/mobile/MobileNavigation";
+import AIDoubtSolver from "@/components/AIDoubtSolver";
 import { LiveNotificationBanner } from "@/components/LiveNotificationBanner";
 import { useFeatureFlag } from "@/contexts/FeatureFlagContext";
 import { useAutoSubscribePush } from "@/hooks/useAutoSubscribePush";
