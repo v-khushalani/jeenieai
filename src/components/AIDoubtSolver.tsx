@@ -399,27 +399,41 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 };
 
 function cleanAndFormatJeenieText(text: string): string {
+  if (!text) return "";
+
   let formatted = text.trim();
+
+  // 0. Remove "Bhai" or "Bada Bhai" mentions if they slipped through
+  formatted = formatted.replace(/Bada Bhai/gi, "Mentor");
   
-  // 1. Convert bold markdown to our specific class
+  // 1. Ensure bold formatting for specific Hinglish markers
+  formatted = formatted.replace(/(Oye!)/g, '<span class="text-[#013062] font-black text-lg">$1</span>');
+  
+  // 2. Highlight analogies or key insights
+  formatted = formatted.replace(/(Logic:)/gi, '<strong class="text-[#013062]">$1</strong>');
+  formatted = formatted.replace(/(Shortcut:)/gi, '<strong class="text-emerald-600">$1</strong>');
+  formatted = formatted.replace(/(Trap Alert ⚠️:)/gi, '<strong class="text-amber-600">$1</strong>');
+  
+  // 3. Convert bold markdown to our specific class
   formatted = formatted
     .replace(/\*\*(.+?)\*\*/g, '<strong class="text-[#013062] font-extrabold">$1</strong>');
 
-  // 2. Handle Display Math ($$ ... $$)
+  // 4. Handle Display Math ($$ ... $$)
   formatted = formatted.replace(/\$\$([\s\S]+?)\$\$/g, (_, latex) => {
-    return `<div class="my-4 flex justify-center overflow-x-auto py-2 bg-blue-50/30 rounded-xl border border-blue-100/50">${renderLatex(`$$${latex.trim()}$$`)}</div>`;
+    return `<div class="my-6 flex justify-center overflow-x-auto py-4 bg-slate-50/80 rounded-2xl border border-slate-200/50 shadow-inner text-lg">${renderLatex(`$$${latex.trim()}$$`)}</div>`;
   });
 
-  // 3. Handle Inline Math ($ ... $)
+  // 5. Handle Inline Math ($ ... $)
   formatted = formatted.replace(/(?<!\d)\$([^$]+?)\$/g, (full, latex) => {
     if (/^\s*\d+(\.\d+)?\s*$/.test(latex)) return full;
-    return `<span class="inline-math px-0.5">${renderLatex(`$${latex.trim()}$`)}</span>`;
+    return `<span class="inline-math px-1.5 py-0.5 bg-blue-50/30 rounded-md font-medium text-[#013062]">${renderLatex(`$${latex.trim()}$`)}</span>`;
   });
 
-  // 4. Convert newlines to breaks
+  // 6. Basic formatting (bullets, line breaks)
   formatted = formatted
     .replace(/\n{2,}/g, '<div class="h-4"></div>')
-    .replace(/\n/g, '<br>');
+    .replace(/\n/g, '<br/>')
+    .replace(/\* (.*?)(?=<br\/>|$)/g, '<div class="flex gap-2 items-start py-0.5"><span class="text-[#013062] mt-1.5 w-1.5 h-1.5 rounded-full bg-[#013062] shrink-0"></span><span>$1</span></div>');
   
   return formatted;
 }
