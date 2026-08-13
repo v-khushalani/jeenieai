@@ -96,7 +96,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     <p class="mb-2 font-bold text-[#013062]">${escapeHtml(question.question)}</p>
     <div class="space-y-1.5 opacity-90">${options}</div>
   </div>
-  <p class="text-[14.5px] font-medium text-slate-700">Bata, isme kya phas raha hai? Logic samjhaun ya full solution chahiye? 😉</p>
+  <p class="text-[14.5px] font-medium text-slate-700">Isme kya phas raha hai? Logic samjhaun ya full solution chahiye? 😉</p>
 </div>`;
     }
   }, [question]);
@@ -139,7 +139,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     setError(null);
 
     if (!user) {
-      setError("Pehle login kar bhai! 🔑");
+      setError("Pehle login kar yaar! 🔑");
       return;
     }
 
@@ -413,7 +413,7 @@ function cleanAndFormatJeenieText(text: string): string {
   let formatted = text.trim();
 
   // 0. Remove "Bhai" or "Bada Bhai" mentions if they slipped through
-  formatted = formatted.replace(/\b(bada bhai|mentor)\b/gi, "JEEnie");
+  formatted = formatted.replace(/\b(bada bhai|mentor|bhai)\b/gi, "JEEnie");
   
   // 1. Ensure bold formatting for specific Hinglish markers
   formatted = formatted.replace(/(Oye!)/g, '<span class="text-[#013062] font-black text-lg">$1</span>');
