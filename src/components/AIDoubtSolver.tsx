@@ -280,7 +280,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                 <div>
                   <h3 className="font-bold text-slate-900 flex items-center gap-1.5">
                     JEEnie
-                    <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-black tracking-widest">BHAI</span>
+                    <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-black tracking-widest">MENTOR</span>
                   </h3>
                   <p className="text-[10px] text-slate-400 font-medium">Always here for you</p>
                 </div>
