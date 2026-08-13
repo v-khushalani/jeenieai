@@ -129,22 +129,8 @@ async function callGemini(prompt: string, apiKey: string): Promise<string | null
 }
 
 async function callOpenAI(systemPrompt: string, prompt: string, maxTokens: number, apiKey: string): Promise<string | null> {
-  try {
-    console.log("[JEENIE] 🔄 Trying OpenAI (fallback)...");
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 20000);
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }], temperature: 0.7, max_tokens: maxTokens }),
-      signal: ctrl.signal,
-    });
-    clearTimeout(timer);
-    if (!res.ok) { const err = await res.text(); console.error(`[JEENIE] ❌ OpenAI failed (${res.status}):`, err.substring(0, 300)); return null; }
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content;
-    return text || null;
-  } catch (e) { console.error("[JEENIE] ❌ OpenAI error:", e); return null; }
+  // OpenAI dependency removed as per user request.
+  return null;
 }
 
 // Rough char-based token estimate when the provider doesn't return usage.
@@ -473,20 +459,6 @@ serve(async (req) => {
           fallbackUsed = "gemini";
           modelUsed = "google/gemini-1.5-flash";
           inputTokens = estTokens(flatPrompt);
-          outputTokens = estTokens(responseText);
-        }
-      }
-    }
-
-    if (!responseText && !image) {
-      const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY");
-      if (OPENAI_KEY) {
-        responseText = await callOpenAI(systemPrompt, contextPrompt, maxTokens, OPENAI_KEY);
-        if (responseText) {
-          provider = "openai";
-          fallbackUsed = "openai";
-          modelUsed = "openai/gpt-4o-mini";
-          inputTokens = estTokens(systemPrompt + contextPrompt);
           outputTokens = estTokens(responseText);
         }
       }
