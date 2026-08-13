@@ -413,7 +413,7 @@ function cleanAndFormatJeenieText(text: string): string {
   let formatted = text.trim();
 
   // 0. Remove "Bhai" or "Bada Bhai" mentions if they slipped through
-  formatted = formatted.replace(/Bada Bhai/gi, "Mentor");
+  formatted = formatted.replace(/\b(bada bhai|mentor)\b/gi, "JEEnie");
   
   // 1. Ensure bold formatting for specific Hinglish markers
   formatted = formatted.replace(/(Oye!)/g, '<span class="text-[#013062] font-black text-lg">$1</span>');
