@@ -251,7 +251,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             className="fixed inset-x-4 bottom-4 top-4 sm:inset-auto sm:right-8 sm:bottom-28 sm:w-[440px] sm:h-[700px] bg-white/95 backdrop-blur-2xl rounded-[32px] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.25)] z-[10000] flex flex-col overflow-hidden border border-white/60 ring-1 ring-black/5"
           >
             {/* Header */}
-            <div className="px-6 py-5 border-b border-slate-100/80 bg-white/50 flex items-center justify-between">
+            <div className="px-6 py-5 border-b border-slate-100/80 bg-white/50 flex items-center justify-between cursor-default">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-[18px] bg-gradient-to-br from-[#013062] to-[#024080] flex items-center justify-center shadow-lg shadow-blue-900/20 ring-4 ring-blue-50">
                   <Zap className="w-6 h-6 text-white" fill="currentColor" />
