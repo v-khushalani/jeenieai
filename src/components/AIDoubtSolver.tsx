@@ -291,7 +291,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 
 
             {/* Chat Body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-[#F8FAFC] to-white custom-scrollbar">
+            <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4 bg-gradient-to-b from-[#F8FAFC] to-white custom-scrollbar">
               {messages.map((msg, i) => (
                 <motion.div 
                   initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -299,10 +299,10 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                   key={i} 
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[90%] p-5 rounded-[26px] text-[15px] leading-relaxed shadow-sm transition-all ${
+                  <div className={`max-w-[88%] px-4 py-3.5 rounded-[20px] text-[14.5px] leading-relaxed shadow-sm transition-all ${
                     msg.role === 'user' 
-                      ? 'bg-[#013062] text-white rounded-tr-none shadow-[0_8px_24px_-8px_rgba(1,48,98,0.3)] font-medium' 
-                      : 'bg-white border border-slate-100 text-slate-800 rounded-tl-none shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)]'
+                      ? 'bg-[#013062] text-white rounded-br-md shadow-[0_8px_24px_-8px_rgba(1,48,98,0.3)] font-medium' 
+                      : 'bg-white border border-slate-100 text-slate-800 rounded-bl-md shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)]'
                   }`}>
                     {msg.imageUrl && (
                       <div className="mb-4 overflow-hidden rounded-2xl ring-1 ring-black/5">
