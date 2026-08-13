@@ -66,6 +66,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   const [internalOpen, setInternalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [internalIsDragging, setInternalIsDragging] = useState(false);
 
   const { position, isDragging, onMouseDown } = useDraggable({ x: 0, y: 0 });
 
