@@ -50,7 +50,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   onClose,
   isCurrentAnswered = false,
 }) => {
-  const { subscriptionTier } = useAuth();
+  const { user, subscriptionTier } = useAuth();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -138,7 +138,6 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     if (!effectiveInput && !imageBase64) return;
     setError(null);
 
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setError("Pehle login kar bhai! 🔑");
       return;
@@ -199,6 +198,9 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       setLoading(false);
     }
   };
+
+  // Logged-in users only — prevents anonymous credit burn on public pages
+  if (!user) return null;
 
   return (
     <>
@@ -261,22 +263,19 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, scale: 0.9, y: 40, filter: 'blur(10px)' }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[500px] sm:h-[80%] max-h-[850px] bg-white/95 backdrop-blur-3xl rounded-none sm:rounded-[40px] shadow-[0_80px_200px_-40px_rgba(0,0,0,0.4)] z-[10000] flex flex-col overflow-hidden border border-white/60 ring-1 ring-black/5"
+            className="fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[400px] sm:h-[76%] max-h-[720px] bg-white/95 backdrop-blur-3xl rounded-none sm:rounded-[32px] shadow-[0_60px_160px_-40px_rgba(0,0,0,0.38)] z-[10000] flex flex-col overflow-hidden border border-white/60 ring-1 ring-black/5"
           >
             {/* Header */}
-            <div className="px-6 py-5 border-b border-slate-100/80 bg-white/50 flex items-center justify-between cursor-default">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-[18px] bg-gradient-to-br from-[#013062] to-[#024080] flex items-center justify-center shadow-lg shadow-blue-900/20 ring-4 ring-blue-50">
-                  <Zap className="w-6 h-6 text-white" fill="currentColor" />
+            <div className="px-5 py-4 border-b border-slate-100/80 bg-white/60 flex items-center justify-between cursor-default">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[#013062] to-[#024080] flex items-center justify-center shadow-md shadow-blue-900/20 ring-4 ring-blue-50">
+                  <Zap className="w-5 h-5 text-white" fill="currentColor" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 flex items-center gap-2 text-xl tracking-tight">
-                    JEEnie
-                    <span className="text-[10px] bg-[#013062] text-white px-2.5 py-1 rounded-full font-black tracking-widest uppercase shadow-sm">MENTOR</span>
-                  </h3>
+                  <h3 className="font-extrabold text-slate-900 text-[17px] tracking-tight leading-tight">JEEnie</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <p className="text-[11px] text-slate-500 font-bold tracking-wider uppercase">Always here for you</p>
+                    <p className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">Online</p>
                   </div>
                 </div>
               </div>
@@ -284,14 +283,15 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                 variant="ghost" 
                 size="icon" 
                 onClick={() => { setInternalOpen(false); onClose(); }} 
-                className="w-10 h-10 rounded-full hover:bg-slate-100/80 text-slate-400 hover:text-slate-600 transition-all"
+                className="w-9 h-9 rounded-full hover:bg-slate-100/80 text-slate-400 hover:text-slate-600 transition-all"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </Button>
             </div>
 
+
             {/* Chat Body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-[#F8FAFC] to-white custom-scrollbar">
+            <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4 bg-gradient-to-b from-[#F8FAFC] to-white custom-scrollbar">
               {messages.map((msg, i) => (
                 <motion.div 
                   initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -299,10 +299,10 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                   key={i} 
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[90%] p-5 rounded-[26px] text-[15px] leading-relaxed shadow-sm transition-all ${
+                  <div className={`max-w-[88%] px-4 py-3.5 rounded-[20px] text-[14.5px] leading-relaxed shadow-sm transition-all ${
                     msg.role === 'user' 
-                      ? 'bg-[#013062] text-white rounded-tr-none shadow-[0_8px_24px_-8px_rgba(1,48,98,0.3)] font-medium' 
-                      : 'bg-white border border-slate-100 text-slate-800 rounded-tl-none shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)]'
+                      ? 'bg-[#013062] text-white rounded-br-md shadow-[0_8px_24px_-8px_rgba(1,48,98,0.3)] font-medium' 
+                      : 'bg-white border border-slate-100 text-slate-800 rounded-bl-md shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)]'
                   }`}>
                     {msg.imageUrl && (
                       <div className="mb-4 overflow-hidden rounded-2xl ring-1 ring-black/5">
@@ -327,64 +327,73 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 
             {/* Action Chips */}
             <AnimatePresence>
-              {messages.length === 1 && question?.option_a && (
+              {messages.length === 1 && !loading && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="px-6 py-2 flex gap-3 overflow-x-auto no-scrollbar"
+                  exit={{ opacity: 0 }}
+                  className="px-4 pb-1 flex gap-2 overflow-x-auto no-scrollbar"
                 >
-                  <button onClick={() => handleSendMessage("Intuition samjha do", "deep")} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-100 hover:bg-emerald-100 transition-all whitespace-nowrap">
-                    <Sparkles size={12} /> Desi Logic
+                  <button onClick={() => handleSendMessage(question?.option_a ? "Intuition samjha do" : "Concept intuition se samjha do", "deep")} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-[11px] font-bold rounded-full border border-emerald-100 hover:bg-emerald-100 transition-all whitespace-nowrap">
+                    <Sparkles size={11} /> Desi Logic
                   </button>
-                  <button onClick={() => handleSendMessage("Full Solution chahiye", "steps")} className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border border-blue-100 hover:bg-blue-100 transition-all whitespace-nowrap">
-                    <Star size={12} /> Step-by-Step
+                  <button onClick={() => handleSendMessage("Step-by-step solution chahiye", "steps")} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-[11px] font-bold rounded-full border border-blue-100 hover:bg-blue-100 transition-all whitespace-nowrap">
+                    <Star size={11} /> Step-by-Step
                   </button>
-                  <button onClick={() => handleSendMessage("Short Tip/Trap?", "quick")} className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 text-xs font-bold rounded-full border border-amber-100 hover:bg-amber-100 transition-all whitespace-nowrap">
-                    <Zap size={12} /> Quick Tip
+                  <button onClick={() => handleSendMessage("Short tip aur common trap batao", "quick")} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 text-[11px] font-bold rounded-full border border-amber-100 hover:bg-amber-100 transition-all whitespace-nowrap">
+                    <Zap size={11} /> Quick Tip
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Input Area */}
-            <div className="p-6 bg-white border-t border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+            <div className="px-4 py-4 bg-white border-t border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+              {error && (
+                <p className="mb-2 text-[12px] font-semibold text-red-500">{error}</p>
+              )}
               {imagePreview && (
-                <div className="mb-4 relative inline-block animate-in fade-in zoom-in-90">
-                  <img src={imagePreview} className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-xl ring-1 ring-black/5" />
-                  <button onClick={clearImage} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:scale-110 transition-transform ring-2 ring-white">
-                    <X size={14} />
+                <div className="mb-3 relative inline-block animate-in fade-in zoom-in-90">
+                  <img src={imagePreview} className="w-20 h-20 rounded-xl object-cover border-4 border-white shadow-lg ring-1 ring-black/5" />
+                  <button onClick={clearImage} className="absolute -top-2.5 -right-2.5 bg-red-500 text-white rounded-full p-1 shadow-lg hover:scale-110 transition-transform ring-2 ring-white">
+                    <X size={12} />
                   </button>
                 </div>
               )}
-              <div className="flex items-center gap-3">
+              <div className="flex items-end gap-2">
                 <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handleImageUpload} />
                 <Button 
+                  type="button"
                   variant="ghost" 
                   size="icon" 
                   onClick={() => fileInputRef.current?.click()}
-                  className="shrink-0 w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 hover:text-[#013062] hover:bg-blue-50 transition-all border border-slate-100"
+                  className="shrink-0 w-11 h-11 rounded-xl bg-slate-50 text-slate-400 hover:text-[#013062] hover:bg-blue-50 transition-all border border-slate-100"
                 >
-                  <Camera size={24} />
+                  <Camera size={20} />
                 </Button>
-                <div className="flex-1 relative">
-                  <input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder="Kuch poocho bhai..."
-                    className="w-full bg-slate-50 border border-slate-100 focus:border-[#013062] focus:bg-white focus:ring-4 focus:ring-blue-50/50 rounded-2xl px-5 py-3.5 text-[15px] transition-all placeholder:text-slate-400 outline-none font-medium"
-                  />
-                </div>
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder="Kuch bhi poochho..."
+                  className="flex-1 min-w-0 h-11 bg-slate-50 border border-slate-100 focus:border-[#013062] focus:bg-white focus:ring-4 focus:ring-blue-50/50 rounded-xl px-4 text-[14.5px] transition-all placeholder:text-slate-400 outline-none font-medium"
+                />
                 <Button 
+                  type="button"
                   onClick={() => handleSendMessage()}
                   disabled={loading || (!input.trim() && !imageBase64)}
-                  className="w-12 h-12 rounded-2xl bg-[#013062] hover:bg-[#024080] shrink-0 shadow-xl shadow-blue-900/20 transition-all active:scale-90 disabled:opacity-40 disabled:scale-100"
+                  className="w-11 h-11 rounded-xl bg-[#013062] hover:bg-[#024080] shrink-0 shadow-lg shadow-blue-900/20 transition-all active:scale-90 disabled:opacity-40 disabled:scale-100"
                 >
-                  {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send size={22} className="ml-0.5" />}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send size={18} className="ml-0.5" />}
                 </Button>
               </div>
-              <p className="text-center text-[10px] text-slate-400 mt-4 font-bold tracking-widest uppercase">Expert Mentor • AI Powered</p>
             </div>
+
           </motion.div>
         )}
       </AnimatePresence>
@@ -404,7 +413,7 @@ function cleanAndFormatJeenieText(text: string): string {
   let formatted = text.trim();
 
   // 0. Remove "Bhai" or "Bada Bhai" mentions if they slipped through
-  formatted = formatted.replace(/Bada Bhai/gi, "Mentor");
+  formatted = formatted.replace(/\b(bada bhai|mentor)\b/gi, "JEEnie");
   
   // 1. Ensure bold formatting for specific Hinglish markers
   formatted = formatted.replace(/(Oye!)/g, '<span class="text-[#013062] font-black text-lg">$1</span>');
