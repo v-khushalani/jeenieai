@@ -50,7 +50,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
   onClose,
   isCurrentAnswered = false,
 }) => {
-  const { subscriptionTier } = useAuth();
+  const { user, subscriptionTier } = useAuth();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -138,7 +138,6 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     if (!effectiveInput && !imageBase64) return;
     setError(null);
 
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setError("Pehle login kar bhai! 🔑");
       return;
