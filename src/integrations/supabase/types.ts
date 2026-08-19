@@ -2074,6 +2074,39 @@ export type Database = {
         }
         Relationships: []
       }
+      reward_vault_claims: {
+        Row: {
+          claim_date: string
+          created_at: string
+          id: string
+          payload: Json
+          points_awarded: number
+          rarity: string
+          reward_type: string
+          user_id: string
+        }
+        Insert: {
+          claim_date?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          points_awarded?: number
+          rarity?: string
+          reward_type: string
+          user_id: string
+        }
+        Update: {
+          claim_date?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          points_awarded?: number
+          rarity?: string
+          reward_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       study_notes: {
         Row: {
           chapter_id: string | null
@@ -2644,6 +2677,81 @@ export type Database = {
           },
         ]
       }
+      user_contracts: {
+        Row: {
+          created_at: string
+          ends_on: string
+          id: string
+          kind: string
+          reward_points: number
+          starts_on: string
+          status: string
+          target_accuracy: number
+          target_questions: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ends_on?: string
+          id?: string
+          kind?: string
+          reward_points?: number
+          starts_on?: string
+          status?: string
+          target_accuracy?: number
+          target_questions?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ends_on?: string
+          id?: string
+          kind?: string
+          reward_points?: number
+          starts_on?: string
+          status?: string
+          target_accuracy?: number
+          target_questions?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_inventory: {
+        Row: {
+          created_at: string
+          equipped: boolean
+          id: string
+          item_code: string
+          item_type: string
+          label: string | null
+          quantity: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          equipped?: boolean
+          id?: string
+          item_code: string
+          item_type: string
+          label?: string | null
+          quantity?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          equipped?: boolean
+          id?: string
+          item_code?: string
+          item_type?: string
+          label?: string | null
+          quantity?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_notifications: {
         Row: {
           body: string | null
@@ -3069,6 +3177,10 @@ export type Database = {
         Args: { _badge_id: string; _user_id: string }
         Returns: string
       }
+      award_mission_points: {
+        Args: { p_block_id: string; p_mission_id: string }
+        Returns: Json
+      }
       award_xp: {
         Args: { p_amount?: number; p_combo?: number; p_is_correct: boolean }
         Returns: Json
@@ -3111,6 +3223,7 @@ export type Database = {
         }[]
       }
       check_and_reset_streak: { Args: { p_user_id: string }; Returns: Json }
+      claim_daily_vault: { Args: never; Returns: Json }
       classify_question_text: { Args: { p_text: string }; Returns: string }
       classify_questions_batch: {
         Args: { p_batch_size?: number }
@@ -3241,6 +3354,7 @@ export type Database = {
               count: number
             }[]
           }
+      get_contract_status: { Args: never; Returns: Json }
       get_leaderboard_with_stats: {
         Args: { limit_count?: number }
         Returns: {
@@ -3355,6 +3469,14 @@ export type Database = {
       reset_user_progress: { Args: { p_user_id: string }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      sign_contract: {
+        Args: {
+          p_days?: number
+          p_target_accuracy: number
+          p_target_questions: number
+        }
+        Returns: Json
+      }
       start_battle: {
         Args: {
           p_chapter?: string
