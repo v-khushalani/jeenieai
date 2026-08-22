@@ -665,8 +665,9 @@ export default function AIStudyPlanner() {
             </TabsContent>
             
             <TabsContent value="mission" className="mt-0 focus-visible:ring-0">
-              <CoachMissionPanel />
+              <MissionChain />
             </TabsContent>
+
           </div>
         </Tabs>
       </div>
