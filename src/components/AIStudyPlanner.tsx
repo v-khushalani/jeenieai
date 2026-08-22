@@ -31,7 +31,7 @@ import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import RoadmapView from '@/components/planner/RoadmapView';
-import CoachMissionPanel from '@/components/planner/CoachMissionPanel';
+import MissionChain from '@/components/planner/MissionChain';
 import {
   buildAllSubjectRoadmaps,
   examRelevanceValues,
@@ -629,21 +629,22 @@ export default function AIStudyPlanner() {
       </div>
 
       <div className="flex-1 overflow-hidden flex flex-col pt-2">
-        <Tabs defaultValue="ladder" className="w-full flex-1 flex flex-col">
+        <Tabs defaultValue="mission" className="w-full flex-1 flex flex-col">
           <TabsList className="grid w-full grid-cols-2 h-14 p-1.5 bg-muted/50 rounded-2xl border-2 border-border/50">
+            <TabsTrigger 
+              value="mission" 
+              className="text-xs font-black uppercase tracking-tighter rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:border-2 data-[state=active]:border-primary/20 transition-all flex items-center justify-center gap-2 py-2"
+            >
+              <Zap className="w-4 h-4" /> Aaj ke Challenges
+            </TabsTrigger>
             <TabsTrigger 
               value="ladder" 
               className="text-xs font-black uppercase tracking-tighter rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:border-2 data-[state=active]:border-primary/20 transition-all flex items-center justify-center gap-2 py-2"
             >
               <Rocket className="w-4 h-4" /> Mastery Ladder
             </TabsTrigger>
-            <TabsTrigger 
-              value="mission" 
-              className="text-xs font-black uppercase tracking-tighter rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:border-2 data-[state=active]:border-primary/20 transition-all flex items-center justify-center gap-2 py-2"
-            >
-              <Zap className="w-4 h-4" /> Aaj ki Hit-List
-            </TabsTrigger>
           </TabsList>
+
 
           <div className="mt-4 outline-none">
             <TabsContent value="ladder" className="mt-0 focus-visible:ring-0">
@@ -664,8 +665,9 @@ export default function AIStudyPlanner() {
             </TabsContent>
             
             <TabsContent value="mission" className="mt-0 focus-visible:ring-0">
-              <CoachMissionPanel />
+              <MissionChain />
             </TabsContent>
+
           </div>
         </Tabs>
       </div>
