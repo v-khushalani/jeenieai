@@ -31,7 +31,7 @@ import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import RoadmapView from '@/components/planner/RoadmapView';
-import CoachMissionPanel from '@/components/planner/CoachMissionPanel';
+import MissionChain from '@/components/planner/MissionChain';
 import {
   buildAllSubjectRoadmaps,
   examRelevanceValues,
