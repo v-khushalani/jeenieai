@@ -163,8 +163,6 @@ const CreateGroupTestPage = () => {
     setLoading(true);
     try {
       const targetExam = profile?.target_exam || "JEE";
-      const userGrade = parseGrade(profile?.grade || 12);
-      const batch = await getBatchForStudent(user.id, userGrade, targetExam);
 
       let questionIds: string[] = [];
 
@@ -174,7 +172,6 @@ const CreateGroupTestPage = () => {
           .select("id")
           .or('is_active.is.null,is_active.eq.true')
           .in('exam', mapBatchToExamValues(targetExam));
-        if (batch?.id) query = query.or(`batch_id.eq.${batch.id},batch_id.is.null`);
 
         if (selectedChapters.length > 0) {
           query = query.in("chapter", selectedChapters.map((ch) => ch.chapter));
@@ -182,7 +179,7 @@ const CreateGroupTestPage = () => {
           query = query.in("subject", Array.from(new Set(selectedSubjects.flatMap((subject) => getSubjectAliases(subject)))));
         }
 
-        const { data: questions, error } = await query.limit(300);
+        const { data: questions, error } = await query.limit(Math.max(300, questionCount * 4));
         if (error) throw error;
 
         if (!questions || questions.length === 0) {
@@ -195,6 +192,10 @@ const CreateGroupTestPage = () => {
         questionIds = shuffled
           .slice(0, Math.min(questionCount, questions.length))
           .map((q) => q.id);
+
+        if (questionIds.length < questionCount) {
+          toast.info(`Only ${questionIds.length} questions available — test created with these.`);
+        }
       } else {
         const preset = GROUP_TEST_PRESETS[groupTestType];
         const pattern = getExamPattern(preset.patternName);
@@ -287,7 +288,8 @@ const CreateGroupTestPage = () => {
       toast.success("Group test created!");
     } catch (err) {
       logger.error("Failed to create group test:", err);
-      toast.error("Failed to create group test");
+      const msg = (err as { message?: string })?.message;
+      toast.error(msg ? `Failed to create group test: ${msg}` : "Failed to create group test");
     } finally {
       setLoading(false);
     }
@@ -509,34 +511,61 @@ const CreateGroupTestPage = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div>
                   <Label className="text-sm font-medium">Questions</Label>
-                  <select
-                    className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  <Input
+                    type="number"
+                    min={1}
+                    max={200}
+                    className="mt-1"
                     value={questionCount}
-                    onChange={(e) => setQuestionCount(Number(e.target.value))}
+                    onChange={(e) => setQuestionCount(Math.max(1, Math.min(200, Number(e.target.value) || 1)))}
                     disabled={groupTestType !== "custom"}
-                  >
-                    <option value={10}>10 Questions</option>
-                    <option value={15}>15 Questions</option>
-                    <option value={25}>25 Questions</option>
-                    <option value={50}>50 Questions</option>
-                  </select>
+                  />
+                  {groupTestType === "custom" && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {[10, 15, 25, 30, 50, 75, 100].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setQuestionCount(n)}
+                          className={`px-2 py-0.5 rounded-full border text-[11px] transition-colors ${
+                            questionCount === n ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Duration</Label>
-                  <select
-                    className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  <Label className="text-sm font-medium">Duration (min)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={360}
+                    className="mt-1"
                     value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
+                    onChange={(e) => setDuration(Math.max(1, Math.min(360, Number(e.target.value) || 1)))}
                     disabled={groupTestType !== "custom"}
-                  >
-                    <option value={15}>15 min</option>
-                    <option value={30}>30 min</option>
-                    <option value={45}>45 min</option>
-                    <option value={60}>60 min</option>
-                    <option value={90}>90 min</option>
-                    <option value={120}>120 min</option>
-                  </select>
+                  />
+                  {groupTestType === "custom" && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {[15, 30, 45, 60, 90, 120, 180].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setDuration(n)}
+                          className={`px-2 py-0.5 rounded-full border text-[11px] transition-colors ${
+                            duration === n ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          {n}m
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
                 <div>
                   <Label className="text-sm font-medium">Expiry</Label>
                   <select
