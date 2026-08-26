@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callLovableAiGateway } from "../_shared/ai-gateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": Deno.env.get("CORS_ORIGIN") || "https://jeenie.website",
@@ -7,8 +8,7 @@ const corsHeaders = {
 };
 
 // ====================================================================
-//  📄 PDF QUESTION EXTRACTION v3.0
-//  Chain:  AI Gateway → Gemini Vision → Claude Vision → OpenAI Vision
+//  📄 PDF QUESTION EXTRACTION — Gemini Vision through Lovable AI Gateway
 // ====================================================================
 
 interface ExtractedQuestion {
@@ -81,90 +81,23 @@ function determineDifficulty(question: string, options: string[]): string {
 // --- Vision API calls ---
 
 async function callAIVision(imageBase64: string, prompt: string, mimeType: string): Promise<string | null> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) return null;
   try {
-    console.log("[ADMIN] 🔄 PDF: Trying  AI Gateway (google/gemini-1.5-flash)...");
+    console.log("[ADMIN] 🔄 PDF: Trying JEEnie Gemini Vision...");
     const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-    const res = await fetch("https://ai.gateway..dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-1.5-flash",
-        messages: [{
+    const result = await callLovableAiGateway({
+      messages: [{
           role: "user",
           content: [
             { type: "text", text: prompt },
             { type: "image_url", image_url: { url: `data:${mimeType};base64,${cleanBase64}` } }
           ]
         }],
-        max_tokens: 16000,
-        temperature: 0.1,
-      }),
+      maxTokens: 16000,
+      temperature: 0.1,
     });
-    if (!res.ok) {
-      const errText = (await res.text()).substring(0, 300);
-      console.error("[ADMIN] ❌  AI Vision:", res.status, errText);
-      return null;
-    }
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content;
-    if (text) { console.log("[ADMIN] ✅  AI Vision success"); return text; }
-    return null;
+    console.log("[ADMIN] ✅ JEEnie Gemini Vision success");
+    return result.text;
   } catch (e) { console.error("[ADMIN] ❌  AI Vision error:", e); return null; }
-}
-
-async function callGeminiVision(imageBase64: string, prompt: string, apiKey: string, mimeType: string): Promise<string | null> {
-  try {
-    console.log("[ADMIN] 🔄 PDF: Trying Gemini Vision (fallback)...");
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType, data: imageBase64.replace(/^data:image\/\w+;base64,/, "") } }
-          ]}],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 16000, topP: 0.8 },
-          safetySettings: [
-            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-          ],
-        }),
-      }
-    );
-    if (!res.ok) { console.error("[ADMIN] ❌ Gemini Vision:", res.status, (await res.text()).substring(0, 200)); return null; }
-    const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
-  } catch (e) { console.error("[ADMIN] ❌ Gemini Vision error:", e); return null; }
-}
-
-async function callClaudeVision(imageBase64: string, prompt: string, apiKey: string, mimeType: string): Promise<string | null> {
-  try {
-    console.log("[ADMIN] 🔄 PDF: Trying Claude Vision (fallback)...");
-    const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({
-        model: "claude-3-5-haiku-20241022", max_tokens: 8000,
-        messages: [{ role: "user", content: [
-          { type: "image", source: { type: "base64", media_type: mimeType, data: cleanBase64 } },
-          { type: "text", text: prompt }
-        ]}],
-      }),
-    });
-    if (!res.ok) { console.error("[ADMIN] ❌ Claude Vision:", res.status, (await res.text()).substring(0, 200)); return null; }
-    const data = await res.json();
-    return data.content?.[0]?.text || null;
-  } catch (e) { console.error("[ADMIN] ❌ Claude Vision error:", e); return null; }
 }
 
 serve(async (req) => {
@@ -268,19 +201,7 @@ If no questions: {"questions": [], "page_type": "non-question", "total_questions
     // 1️⃣  AI Gateway (PRIMARY - no quota issues)
     responseText = await callAIVision(imageBase64, extractionPrompt, detectedMime);
 
-    // 2️⃣ Gemini Vision (fallback)
-    const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!responseText && GEMINI_KEY) {
-      responseText = await callGeminiVision(imageBase64, extractionPrompt, GEMINI_KEY, detectedMime);
-    }
-
-    // 3️⃣ Claude Vision (fallback)
-    const CLAUDE_KEY = Deno.env.get("CLAUDE_API_KEY");
-    if (!responseText && CLAUDE_KEY) {
-      responseText = await callClaudeVision(imageBase64, extractionPrompt, CLAUDE_KEY, detectedMime);
-    }
-
-    // 4️⃣ All failed
+    // All failed
     if (!responseText) {
       console.error("[ADMIN] 🚨 ALL vision APIs failed for page", pageNumber);
       return new Response(

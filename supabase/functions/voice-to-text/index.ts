@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callLovableAiGateway, gatewayErrorResponse } from "../_shared/ai-gateway.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': Deno.env.get('CORS_ORIGIN') || 'https://jeenie.website',
@@ -7,9 +8,7 @@ const corsHeaders = {
 };
 
 // ====================================================================
-//  🎤 VOICE-TO-TEXT FALLBACK ENGINE v2.0
-//  Chain: Groq Whisper → OpenAI Whisper → Gemini Audio → Funny fallback
-//  Student NEVER sees error codes.
+//  🎤 VOICE-TO-TEXT — Gemini multimodal through Lovable AI Gateway
 // ====================================================================
 
 serve(async (req) => {
@@ -41,7 +40,7 @@ serve(async (req) => {
       );
     }
 
-    const { audio } = await req.json();
+    const { audio, mimeType: requestedMimeType } = await req.json();
 
     if (!audio) {
       // No error code — friendly message
@@ -51,101 +50,33 @@ serve(async (req) => {
       );
     }
 
-    const cleanBase64 = audio.replace(/^data:audio\/\w+;base64,/, '');
-    const GROQ_KEY = Deno.env.get('GROQ_API_KEY');
-    const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY');
-    const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY');
+    const dataUrlMatch = String(audio).match(/^data:(audio\/[\w.+-]+);base64,(.+)$/s);
+    const mimeType = dataUrlMatch?.[1] || (typeof requestedMimeType === 'string' ? requestedMimeType : 'audio/webm');
+    const cleanBase64 = dataUrlMatch?.[2] || String(audio);
+    const format = mimeType.split('/')[1]?.split(';')[0] || 'webm';
+    const result = await callLovableAiGateway({
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Transcribe this audio exactly as spoken. Return only the transcription. Preserve Hinglish as spoken.' },
+          { type: 'input_audio', input_audio: { data: cleanBase64, format } },
+        ],
+      }],
+      temperature: 0.1,
+      maxTokens: 1000,
+    });
 
-    // 1️⃣ Groq Whisper (fastest, 30 RPM free)
-    if (GROQ_KEY) {
-      try {
-        console.log("[ADMIN] 🔄 Voice: Trying Groq Whisper...");
-        const binaryString = atob(cleanBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-
-        const formData = new FormData();
-        formData.append('file', new Blob([bytes], { type: 'audio/webm' }), 'audio.webm');
-        formData.append('model', 'whisper-large-v3');
-        formData.append('language', 'en');
-
-        const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${GROQ_KEY}` },
-          body: formData,
-        });
-
-        if (res.ok) {
-          const result = await res.json();
-          if (result.text) {
-            console.log("[ADMIN] ✅ Groq Whisper success");
-            return new Response(
-              JSON.stringify({ text: result.text }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-        } else {
-          console.error("[ADMIN] ❌ Groq Whisper:", res.status, (await res.text()).substring(0, 200));
-        }
-      } catch (e) { console.error("[ADMIN] ❌ Groq Whisper error:", e); }
-    }
-
-    // 2️⃣ OpenAI Whisper — REMOVED
-    /*
-    if (OPENAI_KEY) {
-      ...
-    }
-    */
-
-    // 3️⃣ Gemini Audio Transcription
-    if (GEMINI_KEY) {
-      try {
-        console.log("[ADMIN] 🔄 Voice: Trying Gemini Audio...");
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: "Transcribe this audio exactly as spoken. Return ONLY the transcribed text. If Hinglish, transcribe as-is. If unclear, return empty string." },
-                  { inline_data: { mime_type: "audio/webm", data: cleanBase64 } }
-                ]
-              }],
-              generationConfig: { temperature: 0.1, maxOutputTokens: 1000 },
-            }),
-          }
-        );
-
-        if (res.ok) {
-          const data = await res.json();
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (text) {
-            console.log("[ADMIN] ✅ Gemini Audio success");
-            return new Response(
-              JSON.stringify({ text }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-        } else {
-          console.error("[ADMIN] ❌ Gemini Audio:", res.status, (await res.text()).substring(0, 200));
-        }
-      } catch (e) { console.error("[ADMIN] ❌ Gemini Audio error:", e); }
-    }
-
-    // 4️⃣ All failed — funny fallback, not error
-    console.error("[ADMIN] 🚨 ALL voice transcription providers failed!");
     return new Response(
-      JSON.stringify({ text: "", message: "Arre puttar, audio thoda unclear tha! 🎤😅 Zara clear voice mein dobara bol!" }),
+      JSON.stringify({ text: result.text.trim() }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error("[ADMIN] 🚨 Voice-to-text catastrophic error:", error);
+    const failure = gatewayErrorResponse(error);
     return new Response(
-      JSON.stringify({ text: "", message: "Mic pe thoda issue aaya! 🎤 Type karke puch le abhi ke liye!" }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ text: "", ...failure.body }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: failure.status }
     );
   }
 });

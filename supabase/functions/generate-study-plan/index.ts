@@ -1,140 +1,23 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callLovableAiGateway, gatewayErrorResponse } from "../_shared/ai-gateway.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': Deno.env.get('CORS_ORIGIN') || 'https://jeenie.website',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const FUNNY_PLAN_FALLBACK = {
-  personalizedGreeting: "Arre champion! 🏆 AI thoda busy hai aaj, but tera study plan toh ready hai!",
-  strengthAnalysis: "Tere strong topics mein tu solid hai — keep it up! Revision pe focus kar aur mock tests de regularly.",
-  weaknessStrategy: "Weak topics ko daily 1-2 hours do. Pehle basics clear karo, phir advanced problems try karo. Consistency is key! 💪",
-  timeAllocation: { weakTopics: "2 hours/day", mediumTopics: "1.5 hours/day", revision: "1 hour/day", mockTests: "2 per week" },
-  keyRecommendations: [
-    "🎯 Weak topics ko subah fresh mind se padho — 6-8 AM best time hai!",
-    "📝 Har din ek mock test section solve karo — speed + accuracy dono badhegi",
-    "🔄 Revision cycle: Naye topics ke saath purane bhi revise karo (Spaced Repetition)",
-    "⏰ Pomodoro technique use karo: 45 min study + 10 min break"
-  ],
-  motivationalMessage: "Bhai, topper woh nahi jo sab kuch jaanta hai — topper woh hai jo consistently padta hai! Tu kar sakta hai, bas rukna mat! 🔥🚀",
-  rankPrediction: {
-    currentProjection: "With consistent effort, strong results possible!",
-    targetProjection: "Top 10% achievable with the right strategy",
-    improvementPath: "Daily practice + weekly mock tests + smart revision = Success!"
-  }
-};
-
-const AI_FETCH_TIMEOUT_MS = 6000;
-
-async function fetchWithTimeout(input: string, init: RequestInit, label: string) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(`${label} timed out after ${AI_FETCH_TIMEOUT_MS}ms`), AI_FETCH_TIMEOUT_MS);
-
-  try {
-    return await fetch(input, {
-      ...init,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-async function callAI(prompt: string): Promise<string | null> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY");
-  const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY");
-  const GROQ_KEY = Deno.env.get("GROQ_API_KEY");
-
-  // 1️⃣  AI Gateway — PRIMARY, no quota issues
-  if (LOVABLE_API_KEY) {
-    try {
-      console.log("[ADMIN] 🔄 Study Plan: Trying  AI Gateway (PRIMARY)...");
-      const res = await fetchWithTimeout("https://ai.gateway..dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "google/gemini-1.5-flash",
-          messages: [
-            { role: "system", content: "You are JEEnie, an expert study planner. Always respond with valid JSON only." },
-            { role: "user", content: prompt }
-          ],
-          temperature: 0.6,
-          max_tokens: 3000,
-        }),
-      }, ' study plan request');
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.choices?.[0]?.message?.content;
-        if (text) { console.log("[ADMIN] ✅  AI study plan success"); return text; }
-      } else {
-        const errText = (await res.text()).substring(0, 300);
-        console.error("[ADMIN] ❌  AI study plan:", res.status, errText);
-      }
-    } catch (e) { console.error("[ADMIN] ❌  AI error:", e); }
-  }
-
-  // 2️⃣ Gemini — fallback
-  if (GEMINI_KEY) {
-    try {
-      console.log("[ADMIN] 🔄 Study Plan: Trying Gemini (fallback)...");
-      const res = await fetchWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.6, maxOutputTokens: 3000 },
-          }),
-        },
-        'Gemini study plan request'
-      );
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) { console.log("[ADMIN] ✅ Gemini study plan success"); return text; }
-      } else { console.error("[ADMIN] ❌ Gemini study plan:", res.status, (await res.text()).substring(0, 200)); }
-    } catch (e) { console.error("[ADMIN] ❌ Gemini error:", e); }
-  }
-
-  // 3️⃣ OpenAI — REMOVED
-  /*
-  if (OPENAI_KEY) {
-    ...
-  }
-  */
-
-  // 4️⃣ Groq — last resort
-  if (GROQ_KEY) {
-    try {
-      console.log("[ADMIN] 🔄 Study Plan: Trying Groq (last resort)...");
-      const res = await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_KEY}` },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [
-            { role: "system", content: "You are JEEnie, an expert study planner. Always respond with valid JSON only." },
-            { role: "user", content: prompt }
-          ],
-          temperature: 0.7, max_tokens: 2000,
-        }),
-      }, 'Groq study plan request');
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.choices?.[0]?.message?.content;
-        if (text) { console.log("[ADMIN] ✅ Groq study plan success"); return text; }
-      } else { console.error("[ADMIN] ❌ Groq study plan:", res.status, (await res.text()).substring(0, 200)); }
-    } catch (e) { console.error("[ADMIN] ❌ Groq error:", e); }
-  }
-
-  return null;
+async function callAI(prompt: string): Promise<string> {
+  const result = await callLovableAiGateway({
+    messages: [
+      { role: "system", content: "You are JEEnie, an expert study planner. Always respond with valid JSON only." },
+      { role: "user", content: prompt },
+    ],
+    temperature: 0.6,
+    maxTokens: 3000,
+  });
+  return result.text;
 }
 
 function parseAIResponse(raw: string): any {
@@ -222,12 +105,13 @@ Generate a personalized response in JSON format with these fields:
 Use their actual numbers. Be encouraging but honest. Return ONLY valid JSON.`;
 
     const aiRaw = await callAI(prompt);
-    const aiInsights = aiRaw ? parseAIResponse(aiRaw) : null;
+    const aiInsights = parseAIResponse(aiRaw);
+    if (!aiInsights) throw new Error('The study plan response was not valid JSON.');
 
     return new Response(
       JSON.stringify({
         success: true,
-        insights: aiInsights || FUNNY_PLAN_FALLBACK,
+        insights: aiInsights,
         generatedAt: new Date().toISOString(),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -235,13 +119,10 @@ Use their actual numbers. Be encouraging but honest. Return ONLY valid JSON.`;
 
   } catch (error) {
     console.error('[ADMIN] 🚨 Study plan catastrophic error:', error);
+    const failure = gatewayErrorResponse(error);
     return new Response(
-      JSON.stringify({
-        success: true,
-        insights: FUNNY_PLAN_FALLBACK,
-        generatedAt: new Date().toISOString(),
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      JSON.stringify({ success: false, ...failure.body, generatedAt: new Date().toISOString() }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: failure.status }
     );
   }
 });

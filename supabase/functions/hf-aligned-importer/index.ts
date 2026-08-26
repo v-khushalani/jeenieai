@@ -11,6 +11,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callLovableAiGateway } from "../_shared/ai-gateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -335,26 +336,14 @@ Inputs:
 ${numbered}`;
 
   try {
-    const r = await fetch("https://ai.gateway..dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-1.5-flash",
-        messages: [
-          { role: "system", content: "You are a strict classifier. Output ONLY valid JSON." },
-          { role: "user", content: prompt },
-        ],
-      }),
+    const result = await callLovableAiGateway({
+      messages: [
+        { role: "system", content: "You are a strict classifier. Output ONLY valid JSON." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.1,
     });
-    if (!r.ok) {
-      console.warn("AI tag failed", r.status, await r.text().catch(() => ""));
-      return questions.map(q => fallbackScienceClassify(q));
-    }
-    const data = await r.json();
-    const txt: string = data?.choices?.[0]?.message?.content ?? "";
+    const txt = result.text;
     const jsonMatch = txt.match(/\[[\s\S]*\]/);
     if (!jsonMatch) return questions.map(q => fallbackScienceClassify(q));
     const arr = JSON.parse(jsonMatch[0]);

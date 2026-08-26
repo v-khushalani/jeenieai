@@ -192,9 +192,9 @@ export function getSimulationContentKind(
   return ext === 'js' ? 'script' : 'document';
 }
 
-export function buildHostedSimulationUrl(moduleUrl: string, title?: string) {
+export function buildHostedSimulationUrl(moduleUrl: string, title?: string, kind: 'script' | 'document' = 'script') {
   const url = new URL('/simulation-host.html', window.location.origin);
-  url.searchParams.set('src', moduleUrl);
+  url.searchParams.set(kind === 'script' ? 'src' : 'doc', moduleUrl);
 
   if (title) {
     url.searchParams.set('title', title);

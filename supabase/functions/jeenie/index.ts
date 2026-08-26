@@ -13,6 +13,12 @@ import {
   type ModeSource,
   type Tier,
 } from "../_shared/jeeniePrompt.ts";
+import {
+  callLovableAiGateway,
+  gatewayErrorResponse,
+  LOVABLE_AI_MODEL,
+  type GatewayMessage,
+} from "../_shared/ai-gateway.ts";
 
 // Hard per-request output ceiling. Auto-retry path can grow up to this on
 // truncation. Default budgets stay tight (see computeMaxTokens) — only
@@ -60,77 +66,12 @@ function gcRecentPrompts() {
   }
 }
 
-const FUNNY_FALLBACKS = [
-  "**Oye!** 🧞‍♂️\n\nAre yaar! Chirag thoda garam ho gaya hai! 🔥😅\n\nEk minute ruk, thanda hone de... phir tera doubt pakka solve karunga! 💪\n\n⏰ **2 second mein dobara try kar!**",
-  "**Oye!** 🧞‍♂️\n\nMain abhi chai pe gaya tha! ☕😎\n\nWapas aa gaya hoon — ab bol, kya doubt hai?\n\n💡 **Dobara send kar apna question!**",
-  "**Oye!** 🧞‍♂️\n\nServer pe traffic jam ho gaya — Mumbai ki tarah! 🚗😤\n\nBut don't worry, mere paas shortcut hai! 🛣️\n\n✨ **Try again, is baar express lane milega!**",
-  "**Oye!** 🧞‍♂️\n\nMere neurons mein short circuit ho gaya! ⚡😱\n\nBut don't worry — Faraday ke law se recharge ho raha hoon!\n\n🔋 **10 second mein dobara try kar!**",
-];
-
-function getRandomFunnyFallback(): string {
-  return FUNNY_FALLBACKS[Math.floor(Math.random() * FUNNY_FALLBACKS.length)];
-}
-
-
 async function callGateway(
-  messages: Array<{ role: string; content: any }>,
-  model: string,
+  messages: GatewayMessage[],
   maxTokens: number,
 ): Promise<{ text: string | null; usage?: { prompt_tokens?: number; completion_tokens?: number }; finishReason?: string }> {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey) { console.error("[JEENIE] ❌ LOVABLE_API_KEY not configured"); return { text: null }; }
-  try {
-    console.log(`[JEENIE] 🔄  AI Gateway → ${model} (max ${maxTokens})`);
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 30000);
-    const res = await fetch("https://ai.gateway..dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: maxTokens }),
-      signal: ctrl.signal,
-    });
-    clearTimeout(timer);
-    if (!res.ok) { const err = await res.text(); console.error(`[JEENIE] ❌ Gateway ${res.status}:`, err.substring(0, 300)); return { text: null }; }
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content;
-    const finishReason = data.choices?.[0]?.finish_reason;
-    return { text: text || null, usage: data.usage, finishReason };
-  } catch (e) { console.error("[JEENIE] ❌ Gateway error:", e); return { text: null }; }
-}
-
-
-async function callGemini(prompt: string, apiKey: string): Promise<string | null> {
-  try {
-    console.log("[ADMIN] 🔄 Trying Gemini (fallback)...");
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 25000);
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 4000 },
-        safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-        ],
-      }),
-      signal: ctrl.signal,
-    });
-    clearTimeout(timer);
-    if (!res.ok) { const err = await res.text(); console.error(`[ADMIN] ❌ Gemini failed (${res.status}):`, err.substring(0, 300)); return null; }
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (text) { console.log("[ADMIN] ✅ Gemini success"); return text; }
-    return null;
-  } catch (e) { console.error("[ADMIN] ❌ Gemini error:", e); return null; }
-}
-
-async function callOpenAI(systemPrompt: string, prompt: string, maxTokens: number, apiKey: string): Promise<string | null> {
-  // OpenAI dependency removed as per user request.
-  return null;
+  const result = await callLovableAiGateway({ messages, maxTokens, temperature: 0.7 });
+  return { text: result.text, usage: result.usage, finishReason: result.finishReason };
 }
 
 // Rough char-based token estimate when the provider doesn't return usage.
@@ -184,37 +125,11 @@ serve(async (req) => {
         { role: "user", content: `Roast me on "${topic}" (${Math.round(accuracy)}%). One line. Go.` },
       ];
 
-      const apiKey = Deno.env.get("LOVABLE_API_KEY");
-      let roastText: string | null = null;
-      if (apiKey) {
-        try {
-          const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 15000);
-          const res = await fetch("https://ai.gateway..dev/v1/chat/completions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-            body: JSON.stringify({
-              model: "google/gemini-1.5-flash",
-              messages,
-              temperature: 1.1,
-              top_p: 0.95,
-              presence_penalty: 0.7,
-              frequency_penalty: 0.5,
-              max_tokens: 120,
-            }),
-            signal: ctrl.signal,
-          });
-          clearTimeout(timer);
-          if (res.ok) {
-            const data = await res.json();
-            roastText = data.choices?.[0]?.message?.content || null;
-          } else {
-            console.error(`[JEENIE:roast] gateway ${res.status}`);
-          }
-        } catch (e) {
-          console.error("[JEENIE:roast] error", e);
-        }
-      }
+      const roastText = (await callLovableAiGateway({
+        messages: messages as GatewayMessage[],
+        temperature: 1.1,
+        maxTokens: 120,
+      })).text;
 
       const latency = Date.now() - startedAt;
       console.log(`[JEENIE:roast] acc=${accuracy} topic="${topic}" ok=${!!roastText} ${latency}ms`);
@@ -377,7 +292,7 @@ serve(async (req) => {
     // History window: give every tier real conversation memory so follow-ups work.
     // Free = last 6 turns, Pro = 10, Pro+ = 16.
     const historyWindow = userTier === "pro_plus" ? 16 : userTier === "pro" ? 10 : 6;
-    const messages: Array<{ role: string; content: any }> = [
+    const messages: GatewayMessage[] = [
       { role: "system", content: systemPrompt },
     ];
     if (historyWindow > 0 && conversationHistory && Array.isArray(conversationHistory)) {
@@ -402,7 +317,7 @@ serve(async (req) => {
     }
 
     // Single free-tier model for every user/mode — no paid Pro model routing.
-    const primaryModel = "google/gemini-1.5-flash";
+    const primaryModel = LOVABLE_AI_MODEL;
 
     let responseText: string | null = null;
     let provider = "fallback";
@@ -411,7 +326,7 @@ serve(async (req) => {
     let inputTokens = 0;
     let outputTokens = 0;
 
-    const primary = await callGateway(messages, primaryModel, maxTokens);
+    const primary = await callGateway(messages, maxTokens);
     if (primary.text) {
       responseText = primary.text;
       provider = "-gateway";
@@ -439,7 +354,7 @@ serve(async (req) => {
               : messages[messages.length - 1].content,
           },
         ];
-        const retry = await callGateway(retryMessages, primaryModel, retryTokens);
+        const retry = await callGateway(retryMessages as GatewayMessage[], retryTokens);
         if (retry.text && retry.text.length > responseText.length * 0.9) {
           responseText = retry.text;
           inputTokens = retry.usage?.prompt_tokens ?? inputTokens;
@@ -449,41 +364,21 @@ serve(async (req) => {
       }
     }
 
-    if (!responseText && !image) {
-      const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY");
-      if (GEMINI_KEY) {
-        const flatPrompt = `${systemPrompt}\n\nQuestion: ${contextPrompt}\n\nAnswer:`;
-        responseText = await callGemini(flatPrompt, GEMINI_KEY);
-        if (responseText) {
-          provider = "gemini-direct";
-          fallbackUsed = "gemini";
-          modelUsed = "google/gemini-1.5-flash";
-          inputTokens = estTokens(flatPrompt);
-          outputTokens = estTokens(responseText);
-        }
-      }
-    }
-
     if (!responseText) {
-      console.error("[JEENIE] 🚨 ALL AI PROVIDERS FAILED! Using humor fallback.");
-      responseText = getRandomFunnyFallback();
-      provider = "humor-fallback";
-      fallbackUsed = "humor";
+      throw new Error("JEEnie returned an empty response.");
     }
 
     // Tier-blindness scrub — if the model leaked any plan/upgrade word, strip
     // those sentences and replace with a neutral redirect. We log it so we can
     // monitor false positives via the analytics panel.
-    if (provider !== "humor-fallback") {
-      const scrubbed = scrubTierMentions(responseText);
-      if (scrubbed.tripped) {
-        responseText = scrubbed.text;
-        fallbackUsed = fallbackUsed ? `${fallbackUsed}+tier_scrub` : "tier_scrub";
-      }
+    const scrubbed = scrubTierMentions(responseText);
+    if (scrubbed.tripped) {
+      responseText = scrubbed.text;
+      fallbackUsed = fallbackUsed ? `${fallbackUsed}+tier_scrub` : "tier_scrub";
     }
 
     const latencyMs = Date.now() - startedAt;
-    const estimatedCostInr = provider === "humor-fallback" ? 0 : estimateCostInr(modelUsed, inputTokens, outputTokens);
+    const estimatedCostInr = estimateCostInr(modelUsed, inputTokens, outputTokens);
 
     console.log(`[JEENIE] 📊 ${provider} | tier=${userTier} mode=${resolvedMode}(${modeSource}) intent=${lengthIntent} model=${modelUsed} in=${inputTokens} out=${outputTokens} cost=₹${estimatedCostInr} ${latencyMs}ms${fallbackUsed ? ` fallback=${fallbackUsed}` : ""}`);
 
@@ -525,10 +420,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("[JEENIE] 🚨 CATASTROPHIC ERROR:", error);
-    const funnyMsg = getRandomFunnyFallback();
+    const failure = gatewayErrorResponse(error);
     return new Response(
-      JSON.stringify({ response: funnyMsg, suggestions: [], content: funnyMsg }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify(failure.body),
+      { status: failure.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 

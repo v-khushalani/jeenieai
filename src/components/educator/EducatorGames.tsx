@@ -69,9 +69,7 @@ const EducatorGames: React.FC = () => {
       return buildHostedSimulationUrl(url, item.title);
     }
 
-    const response = await fetch(url, { cache: 'no-store' });
-    if (!response.ok) return '';
-    return await response.text();
+    return buildHostedSimulationUrl(url, item.title, 'document');
   };
 
   const openWindowed = async (item: EducatorContentItem) => {

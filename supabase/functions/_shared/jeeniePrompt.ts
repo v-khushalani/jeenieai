@@ -207,14 +207,13 @@ export function computeMaxTokens(
 
 
 
-// Rough INR cost estimator. Flash: $0.075/M in, $0.30/M out. Pro: $1.25/M, $5/M. USD→INR ≈ 84.
+// Approximate telemetry rate. Billing remains authoritative in Lovable AI usage logs.
 const RATE_USD_PER_TOKEN: Record<string, { input: number; output: number }> = {
-  "google/gemini-1.5-flash": { input: 0.075 / 1_000_000, output: 0.30 / 1_000_000 },
-  "google/gemini-1.5-pro":   { input: 1.25  / 1_000_000, output: 5.00 / 1_000_000 },
+  "google/gemini-3.7-flash": { input: 0.10 / 1_000_000, output: 0.40 / 1_000_000 },
 };
 
 export function estimateCostInr(model: string, inputTokens: number, outputTokens: number): number {
-  const rate = RATE_USD_PER_TOKEN[model] ?? RATE_USD_PER_TOKEN["google/gemini-1.5-flash"];
+  const rate = RATE_USD_PER_TOKEN[model] ?? RATE_USD_PER_TOKEN["google/gemini-3.7-flash"];
   const usd = inputTokens * rate.input + outputTokens * rate.output;
   return +(usd * 84).toFixed(4);
 }
