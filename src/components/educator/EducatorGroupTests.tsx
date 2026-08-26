@@ -64,8 +64,9 @@ const EducatorGroupTests: React.FC = () => {
   }, [user?.id, loadTests]);
 
   const isExpired = (test: GroupTest) => {
-    if (!test.expires_at) return false;
-    return new Date(test.expires_at) < new Date();
+    if (test.is_active === false) return true;
+    if (!test.ends_at) return false;
+    return new Date(test.ends_at) < new Date();
   };
 
   if (loading) {
