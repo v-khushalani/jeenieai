@@ -174,7 +174,6 @@ const CreateGroupTestPage = () => {
           .select("id")
           .or('is_active.is.null,is_active.eq.true')
           .in('exam', mapBatchToExamValues(targetExam));
-        if (batch?.id) query = query.or(`batch_id.eq.${batch.id},batch_id.is.null`);
 
         if (selectedChapters.length > 0) {
           query = query.in("chapter", selectedChapters.map((ch) => ch.chapter));
@@ -182,7 +181,7 @@ const CreateGroupTestPage = () => {
           query = query.in("subject", Array.from(new Set(selectedSubjects.flatMap((subject) => getSubjectAliases(subject)))));
         }
 
-        const { data: questions, error } = await query.limit(300);
+        const { data: questions, error } = await query.limit(Math.max(300, questionCount * 4));
         if (error) throw error;
 
         if (!questions || questions.length === 0) {
@@ -195,6 +194,10 @@ const CreateGroupTestPage = () => {
         questionIds = shuffled
           .slice(0, Math.min(questionCount, questions.length))
           .map((q) => q.id);
+
+        if (questionIds.length < questionCount) {
+          toast.info(`Only ${questionIds.length} questions available — test created with these.`);
+        }
       } else {
         const preset = GROUP_TEST_PRESETS[groupTestType];
         const pattern = getExamPattern(preset.patternName);
