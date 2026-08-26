@@ -27,6 +27,8 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
   const normalizedSrc = src.trim();
   const htmlContent = normalizedSrc.startsWith('<') ? src : '';
   const effectiveSrc = htmlContent ? undefined : normalizedSrc || undefined;
@@ -201,8 +203,36 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
   useEffect(() => {
     setIsLoaded(false);
     setHasError(!normalizedSrc);
+    setErrorMessage(normalizedSrc ? '' : 'No Interactive Animation source configured.');
     setUsesParentWatermark(!htmlContent);
   }, [normalizedSrc, htmlContent]);
+
+  useEffect(() => {
+    if (!normalizedSrc || isLoaded || hasError) return;
+    const timeoutId = window.setTimeout(() => {
+      setHasError(true);
+      setErrorMessage('The simulation took too long to start. Check the uploaded file and try again.');
+    }, 20_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [normalizedSrc, isLoaded, hasError, reloadKey]);
+
+  useEffect(() => {
+    const handleRuntimeMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.source !== iframeRef.current?.contentWindow) return;
+      if (event.data?.type !== 'JEENIE_SIMULATION_ERROR') return;
+      setHasError(true);
+      setErrorMessage(String(event.data.message || 'The simulation could not start.'));
+    };
+    window.addEventListener('message', handleRuntimeMessage);
+    return () => window.removeEventListener('message', handleRuntimeMessage);
+  }, []);
+
+  const retrySimulation = () => {
+    setHasError(false);
+    setErrorMessage('');
+    setIsLoaded(false);
+    setReloadKey((value) => value + 1);
+  };
 
   // Live watermark clock
   useEffect(() => {
@@ -382,7 +412,8 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           {hasError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted z-10 text-destructive">
               <AlertTriangle className="h-8 w-8" />
-              <p className="text-sm">{src ? 'Failed to load content.' : 'No Interactive Animation source configured.'}</p>
+              <p className="max-w-md px-6 text-center text-sm">{errorMessage || 'Failed to load content.'}</p>
+              {src && <Button variant="outline" size="sm" onClick={retrySimulation}>Try again</Button>}
             </div>
           )}
 
@@ -396,6 +427,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           )}
 
           <iframe
+            key={reloadKey}
             ref={iframeRef}
             src={effectiveSrc}
             srcDoc={htmlContent || undefined}
@@ -416,7 +448,10 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
               iframeRef.current?.focus();
               scheduleSimulationResizeNudges();
             }}
-            onError={() => setHasError(true)}
+            onError={() => {
+              setHasError(true);
+              setErrorMessage('The simulation file could not be loaded.');
+            }}
             onContextMenu={(e) => e.preventDefault()}
           />
 

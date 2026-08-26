@@ -3,6 +3,7 @@
 // restore proper LaTeX (superscripts, subscripts, fractions, integrals).
 // Safe to re-run: it only touches rows still flagged as `text_quality = 'damaged'`.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { callLovableAiGateway } from "../_shared/ai-gateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +11,6 @@ const corsHeaders = {
 };
 
 const SETUP_TOKEN = "qa-repair-latex-2026-jeenie";
-const MODEL = "google/gemini-1.5-flash";
 
 const SYSTEM = `You restore broken JEE/NEET question text.
 The text lost its superscripts, subscripts and fraction markup during a bad import, so
@@ -24,33 +24,21 @@ mathematical expression. Rules:
 - Return STRICT JSON only: {"question_text": "...", "options": ["...","...","...","..."], "explanation": "..."}
 - If options or explanation were empty, return them as empty array / empty string.`;
 
-async function repairOne(row: any, apiKey: string) {
+async function repairOne(row: any) {
   const payload = {
     question_text: row.question_text ?? "",
     options: row.options ?? [],
     explanation: row.explanation ?? "",
   };
 
-  const res = await fetch("https://ai.gateway..dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: JSON.stringify(payload) },
-      ],
-      temperature: 0.1,
-    }),
+  const result = await callLovableAiGateway({
+    messages: [
+      { role: "system", content: SYSTEM },
+      { role: "user", content: JSON.stringify(payload) },
+    ],
+    temperature: 0.1,
   });
-
-  if (res.status === 429 || res.status === 402) {
-    throw new Error(`rate_limited_${res.status}`);
-  }
-  if (!res.ok) throw new Error(`ai_error_${res.status}`);
-
-  const json = await res.json();
-  const raw: string = json?.choices?.[0]?.message?.content ?? "";
+  const raw = result.text;
   const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
   const parsed = JSON.parse(cleaned);
   if (!parsed?.question_text || typeof parsed.question_text !== "string") {
@@ -108,7 +96,7 @@ Deno.serve(async (req) => {
       const row = queue.shift();
       if (!row) return;
       try {
-        const fixed = await repairOne(row, apiKey!);
+        const fixed = await repairOne(row);
         const update: Record<string, unknown> = { question_text: fixed.question_text };
         if (Array.isArray(fixed.options) && fixed.options.length > 0) update.options = fixed.options;
         if (typeof fixed.explanation === "string" && fixed.explanation.trim()) {

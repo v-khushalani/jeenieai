@@ -466,22 +466,11 @@ class ApiClient {
   }
 
   private normalizeError(error: unknown): ApiError {
-    // 🎭 STUDENTS SHOULD NEVER SEE TECHNICAL ERRORS
-    // All errors get friendly Hinglish messages
-    const FRIENDLY_MESSAGES = [
-      'Arre yaar! Thoda sa hiccup aa gaya! 😅 Dobara try karo.',
-      'Server pe chai break chal raha hai! ☕ Ek second ruko.',
-      'Network thoda mood off mein hai! 🌐 Refresh karo ya thoda wait karo.',
-      'Kuch toh gadbad hai! 🤔 But tension mat lo, dobara try karo.',
-    ];
-    const friendlyMsg = FRIENDLY_MESSAGES[Math.floor(Math.random() * FRIENDLY_MESSAGES.length)];
-
-    // Log real error for admin debugging (console only)
     logger.error('API Error:', error);
 
     if (error instanceof Error) {
       return {
-        message: friendlyMsg,
+        message: error.message || 'The request could not be completed. Please try again.',
         code: 'ERROR',
         details: error,
       };
@@ -490,7 +479,7 @@ class ApiClient {
     if (typeof error === 'object' && error !== null) {
       const err = error as Record<string, unknown>;
       return {
-        message: friendlyMsg,
+        message: String(err.message || err.error || 'The request could not be completed. Please try again.'),
         code: String(err.code || 'ERROR'),
         status: typeof err.status === 'number' ? err.status : undefined,
         details: err.details,
@@ -498,7 +487,7 @@ class ApiClient {
     }
 
     return {
-      message: friendlyMsg,
+      message: 'The request could not be completed. Please try again.',
       code: 'UNKNOWN_ERROR',
     };
   }

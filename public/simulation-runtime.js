@@ -3,6 +3,7 @@ const errorBox = document.getElementById('error');
 
 const params = new URLSearchParams(window.location.search);
 const moduleUrl = params.get('src');
+const documentUrl = params.get('doc');
 const title = params.get('title');
 
 if (title) {
@@ -29,6 +30,20 @@ const isRenderableExport = (value) => {
 const renderSimulation = async () => {
   if (!root) {
     throw new Error('Simulation root not found.');
+  }
+
+  if (documentUrl) {
+    const response = await fetch(documentUrl, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Failed to load simulation document (${response.status}).`);
+    const html = (await response.text()).replace(/^\uFEFF/, '');
+    const base = `<base href="${documentUrl.replace(/"/g, '&quot;')}">`;
+    const prepared = /<head[^>]*>/i.test(html)
+      ? html.replace(/<head([^>]*)>/i, `<head$1>${base}`)
+      : `<!doctype html><html><head>${base}</head><body>${html}</body></html>`;
+    document.open();
+    document.write(prepared);
+    document.close();
+    return;
   }
 
   if (!moduleUrl) {
@@ -69,4 +84,5 @@ const renderSimulation = async () => {
 renderSimulation().catch((error) => {
   const message = error instanceof Error ? error.message : 'Unknown simulation runtime error';
   showError(message);
+  window.parent?.postMessage({ type: 'JEENIE_SIMULATION_ERROR', message }, window.location.origin);
 });

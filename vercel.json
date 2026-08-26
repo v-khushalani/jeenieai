@@ -4,7 +4,16 @@
   "framework": "vite",
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/simulation-host.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self' https://*.supabase.co data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co; style-src 'self' 'unsafe-inline' https://*.supabase.co; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co; font-src 'self' data: https:; frame-ancestors 'self'; object-src 'none'; base-uri https://*.supabase.co 'self'"
+        }
+      ]
+    },
+    {
+      "source": "/((?!simulation-host\\.html).*)",
       "headers": [
         {
           "key": "Cache-Control",
