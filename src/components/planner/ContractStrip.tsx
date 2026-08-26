@@ -64,7 +64,7 @@ export default function ContractStrip() {
 
   if (!contract) {
     return (
-      <div className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-4 space-y-3">
+      <div data-testid="contract-sign" className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <PenLine className="w-4 h-4 text-primary" />
           <p className="text-sm font-black uppercase tracking-tight">Apna contract sign karo</p>
@@ -98,6 +98,7 @@ export default function ContractStrip() {
     <motion.div
       initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
+      data-testid="contract-strip"
       className="rounded-2xl border-2 border-border/60 bg-card p-3 space-y-2"
     >
       <div className="flex items-center justify-between gap-2">

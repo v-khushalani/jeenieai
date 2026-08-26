@@ -17,7 +17,9 @@ const EducatorRoute: React.FC<EducatorRouteProps> = ({ children }) => {
     if (!user || !isAuthenticated) return;
     // Educator portal is strictly for educators. Admins have their own panel
     // and should NOT be able to open /educator routes.
-    if (userRole !== 'educator' && userRole !== 'admin' && userRole !== 'super_admin') {
+    if (userRole !== 'educator') {
+      // Stop the spinner so the redirect below can run instead of hanging.
+      setApprovalStatus('error');
       return;
     }
 
@@ -40,7 +42,7 @@ const EducatorRoute: React.FC<EducatorRouteProps> = ({ children }) => {
         }
 
         // Must be explicitly approved (true). null / false → pending.
-        setApprovalStatus((data?.educator_approved === true || userRole === 'admin' || userRole === 'super_admin') ? 'approved' : 'pending');
+        setApprovalStatus(data?.educator_approved === true ? 'approved' : 'pending');
       } catch {
         setApprovalStatus('pending'); // fail closed
       }
@@ -48,6 +50,11 @@ const EducatorRoute: React.FC<EducatorRouteProps> = ({ children }) => {
 
     checkApproval();
   }, [user, isAuthenticated, userRole]);
+
+  // Non-educators never wait on the approval check — bounce them immediately.
+  if (!isLoading && isAuthenticated && userRole && userRole !== 'educator') {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   if (isLoading || approvalStatus === 'loading') {
     return (
@@ -62,7 +69,7 @@ const EducatorRoute: React.FC<EducatorRouteProps> = ({ children }) => {
   }
 
   // Educator portal is educator-only. Admins go back to /dashboard (they have /admin).
-  if (userRole !== 'educator' && userRole !== 'admin' && userRole !== 'super_admin') {
+  if (userRole !== 'educator') {
     return <Navigate to="/dashboard" replace />;
   }
 
