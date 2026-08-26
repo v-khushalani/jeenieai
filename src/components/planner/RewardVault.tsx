@@ -73,6 +73,7 @@ export default function RewardVault({ unlocked }: { unlocked: boolean }) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
+      data-testid="reward-vault"
       className={`relative rounded-2xl border-2 p-4 bg-gradient-to-br ${
         flipped ? style : unlocked
           ? 'from-amber-500/20 to-amber-500/5 border-amber-400/60'
@@ -110,7 +111,7 @@ export default function RewardVault({ unlocked }: { unlocked: boolean }) {
               {unlocked ? 'Chain complete! Vault khol le.' : 'Poori chain complete karo — tabhi khulega.'}
             </p>
           </div>
-          <Button size="sm" disabled={!unlocked || claiming} onClick={() => void claim()} className="shrink-0">
+          <Button data-testid="vault-open" size="sm" disabled={!unlocked || claiming} onClick={() => void claim()} className="shrink-0">
             {claiming ? 'Khul raha…' : 'Open'}
           </Button>
         </div>

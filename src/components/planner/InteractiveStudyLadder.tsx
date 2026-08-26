@@ -156,7 +156,7 @@ export const InteractiveStudyLadder: React.FC<InteractiveStudyLadderProps> = ({
                       </Badge>
                     )}
                   </div>
-                  <h3 className="text-lg font-black leading-tight tracking-tight">
+                  <h3 data-testid="ladder-node-title" className="text-lg font-black leading-tight tracking-tight">
                     {activeChapter.title}
                   </h3>
                   <div className="flex items-center gap-3">

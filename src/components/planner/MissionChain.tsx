@@ -275,7 +275,8 @@ export default function MissionChain() {
       )}
 
       {!loading && mission && total > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-3" data-testid="mission-chain">
+
           <div className="flex items-center justify-between px-1">
             <div>
               <p className="text-[10px] uppercase tracking-widest font-black text-primary">Aaj ka Rasta</p>
