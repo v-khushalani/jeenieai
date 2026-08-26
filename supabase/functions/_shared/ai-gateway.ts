@@ -59,6 +59,7 @@ export async function callLovableAiGateway(options: {
         messages: options.messages,
         ...(options.maxTokens ? { max_tokens: options.maxTokens } : {}),
         ...(options.temperature === undefined ? {} : { temperature: options.temperature }),
+        reasoning: { effort: "low" },
       }),
     });
 

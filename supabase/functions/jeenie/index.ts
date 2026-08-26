@@ -128,7 +128,7 @@ serve(async (req) => {
       const roastText = (await callLovableAiGateway({
         messages: messages as GatewayMessage[],
         temperature: 1.1,
-        maxTokens: 120,
+        maxTokens: 220,
       })).text;
 
       const latency = Date.now() - startedAt;
