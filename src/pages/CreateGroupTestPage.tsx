@@ -163,8 +163,6 @@ const CreateGroupTestPage = () => {
     setLoading(true);
     try {
       const targetExam = profile?.target_exam || "JEE";
-      const userGrade = parseGrade(profile?.grade || 12);
-      const batch = await getBatchForStudent(user.id, userGrade, targetExam);
 
       let questionIds: string[] = [];
 
