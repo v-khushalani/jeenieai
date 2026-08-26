@@ -18,7 +18,7 @@ interface GroupTest {
   subject: string | null;
   chapter_names: string[];
   created_at: string;
-  expires_at: string | null;
+  ends_at: string | null;
   is_active: boolean;
   sessions_count?: number;
 }
