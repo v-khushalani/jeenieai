@@ -288,7 +288,8 @@ const CreateGroupTestPage = () => {
       toast.success("Group test created!");
     } catch (err) {
       logger.error("Failed to create group test:", err);
-      toast.error("Failed to create group test");
+      const msg = (err as { message?: string })?.message;
+      toast.error(msg ? `Failed to create group test: ${msg}` : "Failed to create group test");
     } finally {
       setLoading(false);
     }
