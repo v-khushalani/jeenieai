@@ -1,16 +1,12 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app..96499479549949ee9a2ac61520e53433',
+  appId: 'ai.jeenie.app',
   appName: 'JEEnie AI',
   webDir: 'dist',
-  server: {
-    url: 'https://96499479-5499-49ee-9a2a-c61520e53433.project.com?forceHideBadge=true',
-    cleartext: true,
-  },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
+      launchShowDuration: 1500,
       backgroundColor: '#013062',
       showSpinner: false,
     },
