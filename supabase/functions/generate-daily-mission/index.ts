@@ -335,6 +335,41 @@ serve(async (req) => {
       });
     }
 
+    // ── TOP-UP: a chain needs at least 3 steps, otherwise the loop is pointless ──
+    const MIN_BLOCKS = 3;
+    let topUpIdx = 0;
+    while (blocks.length < MIN_BLOCKS && topUpIdx < subjects.length + 2) {
+      const subj = subjects[(new Date().getDate() + blocks.length + topUpIdx) % Math.max(1, subjects.length)]
+        ?? subjects[0] ?? 'Physics';
+      topUpIdx += 1;
+      if (blocks.some(b => b.subject === subj && b.type === 'learn_practice')) continue;
+      const qCount = blocks.length === 0 ? 10 : 8;
+      const mins = Math.max(10, Math.min(25, remaining > 0 ? takeMinutes(Math.min(25, remaining)) : 15));
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'learn_practice',
+        title: `Practice — ${subj}`,
+        subtitle: `${qCount} mixed Q · ~${mins} min`,
+        subject: subj,
+        minutes: mins,
+        question_count: qCount,
+        passing_goal: Math.ceil(qCount * 0.6),
+        xp_reward: xpFor('learn_practice', qCount),
+        why: `${subj} pe consistency chahiye — roz thoda practice = syllabus time pe complete.`,
+        what: `${qCount} mixed-difficulty Q from ${subj}`,
+        goal: `${Math.ceil(qCount * 0.6)}/${qCount} sahi = step done ✅`,
+        action_href: buildPracticeHref({
+          mode: 'chapter',
+          subject: subj,
+          difficulty: adaptiveDifficulty,
+          target: qCount,
+        }),
+        progress: mkProgress(),
+      });
+    }
+
+
+
     const totalMinutes = blocks.reduce((s, b) => s + b.minutes, 0);
     const reasoning = buildReasoning({
       prepMode, dailyMinutes, accuracy, totalQs,
