@@ -1,36 +1,66 @@
-# Planner cleanup + JEEnie solver fixes
+# Planner 4.0 — Bento Redesign (Cuberto-inspired)
 
-Four fixes, all frontend/presentation only.
+Goal: planner should feel like a game board, not a document. One glance = "aaj kya karna hai", one tap = start. Har tile live data se juda hua, koi dead end nahi.
 
-## 1. AI Planner looks too complex
+Locked taste (from your picks):
+- Colors: existing JEEnie brand tokens only (navy `--primary`, amber points, emerald done, orange streak). No new palette.
+- Type: Saira (already the app font) — heavy weights for numbers/labels, normal for body.
+- Structure: Bento grid.
 
-- Replace the current planner header (big italic uppercase "JEEnie AI Planner" rocket title + two-line Hinglish subtitle + bordered refresh button) with a quiet single-line header: small "Aaj ka plan" label, the date, and a plain icon-only refresh on the right. No italic/uppercase/rocket.
-- Drop the subtitle line entirely — the mission chain already speaks in the coach line right below it.
-- Tighten vertical rhythm so the first thing on screen is the active challenge card, not chrome.
-- Keep "My Journey" as the collapsed details block, but style it as a quiet muted row rather than a heavy 2px-bordered card.
+## What's wrong today
 
-## 2. Doubt solver icon appearing twice on Study Now
+The planner stacks too many full-width blocks in one scroll: HUD row, contract strip, coach line, mission title row, combo bar, active card, chain dots, done-list, reward vault, teaser, log-class chip, plus a separate "My Journey" ladder. Everything competes; nothing leads.
 
-`AIDoubtSolver` is mounted globally in `App.tsx` and again inside `PracticePage.tsx` (which renders `/study-now` and `/practice`), so two floating mascots stack.
+## New structure
 
-- Keep the page-level instance on practice/study-now (it is the one that receives the current question context).
-- Make the global instance in `App.tsx` skip rendering on the routes that mount their own instance, so exactly one floating button exists everywhere.
+```text
+┌──────────────────────────────────────────┐
+│  HERO TILE (2x2) — Aaj ka challenge      │
+│  mascot line + big title + timer + START │
+├───────────────┬──────────────────────────┤
+│ STREAK tile   │ POINTS tile              │
+├───────────────┼──────────────────────────┤
+│ CHAIN tile    │ COMBO tile               │
+│ (dots+n/total)│ (x1..x5 meter)           │
+├───────────────┴──────────────────────────┤
+│ VAULT tile (wide, locked/unlocked)       │
+└──────────────────────────────────────────┘
+```
 
-## 3. Content overflowing the solver container
+- Bento grid: 2 columns on mobile, 4 on desktop; hero tile spans full width. Cuberto feel = big radii, generous padding, one bold number per tile, soft motion.
+- Only the hero tile has a CTA. Everything else is a status tile that expands on tap (sheet), so the surface stays calm.
+- Secondary depth lives behind **tabs at the top of the planner**: `Aaj` (bento board) · `Journey` (mastery ladder / roadmap) · `Inaam` (vault + contract + rewards link). Swipeable on touch, tabs on desktop. Nothing gets deleted — it moves inside a tab.
 
-Message bubbles have no width containment, so long formulas, long unbroken words and KaTeX display blocks push past the rounded card.
+## Interaction
 
-- Add width containment on the bubble: min-width 0, `break-words`, and overflow handling so nothing escapes the rounded edge.
-- Make KaTeX display blocks scroll horizontally inside their own container instead of stretching the bubble.
-- Constrain inline code / pre blocks and long links the same way.
-- Ensure images inside messages stay within the bubble width.
-- Verify on mobile width (full-screen sheet) and the 400px desktop modal.
+- Tile entry: staggered fade+rise; hero tile has a subtle magnetic hover/press scale (Cuberto-style), reduced-motion respected.
+- Hero card swipe: swipe left = "next step preview" (locked/teaser), swipe right = details sheet.
+- Completing a step: tile flips to done state, points counter animates up, chain dot fills, combo meter pulses — all driven by the existing realtime mission subscription so it updates while the student practices.
+- Empty/first-time state: single tile "Chalo shuru karein" with the 2-question setup, no wall of text.
 
-## 4. Verification
+## Backend wiring (no dead ends)
 
-Reload `/ai-planner` and `/study-now` in the preview, open the solver, send a formula-heavy prompt, and confirm: one floating icon, no horizontal overflow, calmer planner header.
+Every tile is bound to what already exists, and each binding gets verified end to end:
+
+- Hero tile → `daily_missions` row + `generate-daily-mission` edge function; START navigates to the block's `action_href`.
+- Progress/auto-tick → existing realtime UPDATE channel on `daily_missions` + `bump_mission_progress_by_chapter`.
+- Points → `award_mission_points` RPC and `profiles.total_points`.
+- Streak → `compute-coach-signal`.
+- Combo → existing combo hook.
+- Contract → contract strip data source.
+- Vault / rewards → rewards tables and the `/rewards` page.
+- Journey tab → roadmap/ladder data, grade-filtered.
+- Audit pass: every tile, button, tab and sheet must lead to a real route or open real data; anything without a destination is either wired or removed. Loading and error states on each tile instead of blank space.
+
+## Verification
+
+- Sign in as the pro-plus test account, walk `/ai-planner`: start a challenge, solve questions, confirm the hero tile auto-ticks live, points animate, chain fills, vault unlocks at 100%.
+- Check all three tabs, mobile (820px and 390px) and desktop, light and dark.
+- Extend the Playwright planner spec to cover tab switching and tile → destination links, and run the suite.
 
 ## Technical notes
 
-- Files: `src/components/AIStudyPlanner.tsx` (header block around the render root), `src/App.tsx` (conditional global mount), `src/components/AIDoubtSolver.tsx` (bubble + prose containment), plus a small KaTeX overflow rule in `src/index.css` scoped to solver messages.
-- No backend, prompt, or business-logic changes.
+- Rewrite `src/components/AIStudyPlanner.tsx` as the tabbed shell; new `src/components/planner/BentoBoard.tsx` plus small tile components (`HeroChallengeTile`, `StatTile`, `ChainTile`, `ComboTile`, `VaultTile`).
+- Reuse `MissionChain`'s data layer — extract its fetching/awarding logic into a `usePlannerMission` hook so tiles share one source of truth, with no logic changes to the queries or RPCs themselves.
+- Keep `MissionCard`, `ChainDots`, `ComboBar`, `ContractStrip`, `RewardVault`, `JeenieCoachLine` as internals of the new tiles where they fit; retire what the bento replaces.
+- Styling only via existing semantic tokens in `src/index.css`; add planner-specific tile radius/shadow tokens there if needed.
