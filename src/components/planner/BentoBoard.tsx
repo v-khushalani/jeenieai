@@ -21,15 +21,16 @@ import RewardVault from './RewardVault';
 import ContractStrip from './ContractStrip';
 import ChainDots from './ChainDots';
 import ComboBar from './ComboBar';
-import JeenieCoachLine, { type CoachState } from './JeenieCoachLine';
+
 import { usePlannerMission, type PrepMode } from '@/hooks/usePlannerMission';
 
 const PREP_MODES: Array<{ value: PrepMode; label: string; desc: string }> = [
-  { value: 'guided', label: 'Full guidance', desc: 'JEEnie decide karegi sab' },
-  { value: 'companion', label: 'Companion', desc: 'Coaching / school + practice help' },
-  { value: 'hybrid', label: 'Hybrid', desc: 'Self-study + kuch classes' },
-  { value: 'dropper', label: 'Dropper', desc: 'Full-time prep, 8+ hrs/day' },
+  { value: 'guided', label: 'Full guidance', desc: 'We decide what you study' },
+  { value: 'companion', label: 'Companion', desc: 'Coaching or school plus practice' },
+  { value: 'hybrid', label: 'Hybrid', desc: 'Self-study with some classes' },
+  { value: 'dropper', label: 'Dropper', desc: 'Full-time prep, 8+ hrs a day' },
 ];
+
 
 const MINUTE_CHOICES = [60, 90, 120, 150, 180, 240];
 const formatTime = (m: number) => (m < 60 ? `${m}m` : m % 60 === 0 ? `${m / 60}h` : `${Math.floor(m / 60)}h ${m % 60}m`);
@@ -79,16 +80,6 @@ export default function BentoBoard() {
 
   const { blocks, doneCount, total, allDone, activeIndex, activeBlock, streak, points, combo } = p;
 
-  const coachState: CoachState = allDone
-    ? 'done'
-    : streak && !streak.today_done && streak.current > 0
-      ? 'risk'
-      : combo >= 3
-        ? 'combo'
-        : streak && streak.current === 0 && doneCount === 0
-          ? 'comeback'
-          : 'idle';
-
   const start = async (block: MissionBlock) => {
     await p.startBlock(block);
     navigate(block.action_href);
@@ -98,7 +89,8 @@ export default function BentoBoard() {
     return (
       <div className={`${tileBase} flex flex-col items-center gap-2 py-14 text-muted-foreground`}>
         <Loader2 className="h-6 w-6 animate-spin" />
-        <p className="text-sm font-medium">Aaj ka board bana raha hu…</p>
+        <p className="text-sm font-medium">Building today's board…</p>
+
       </div>
     );
   }
@@ -116,14 +108,10 @@ export default function BentoBoard() {
           >
             <div className="rounded-[32px] border border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card p-4 shadow-[0_18px_50px_-30px_hsl(var(--primary)/0.6)]">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-primary">Aaj ka challenge</p>
-                <p className="text-[11px] font-semibold text-muted-foreground">
-                  {allDone ? 'Streak secure 🔥' : `${total - doneCount} step${total - doneCount > 1 ? 's' : ''} baaki`}
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-primary">Today</p>
+                <p className="text-sm font-extrabold tabular-nums">
+                  {doneCount}<span className="font-medium text-muted-foreground">/{total}</span>
                 </p>
-              </div>
-
-              <div className="mt-3">
-                <JeenieCoachLine state={coachState} />
               </div>
 
               {activeBlock ? (
@@ -142,8 +130,8 @@ export default function BentoBoard() {
               ) : (
                 <div className="mt-3 rounded-3xl border border-emerald-500/40 bg-emerald-500/5 p-5 text-center">
                   <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-600" strokeWidth={2.5} />
-                  <p className="mt-2 text-sm font-extrabold">Aaj ka board clear!</p>
-                  <p className="text-[11px] font-medium text-muted-foreground">Vault khol lo — kal naya challenge ready hoga.</p>
+                  <p className="mt-2 text-sm font-extrabold">All done</p>
+                  <p className="text-[11px] font-medium text-muted-foreground">Open the vault — new steps tomorrow.</p>
                 </div>
               )}
             </div>
@@ -154,20 +142,21 @@ export default function BentoBoard() {
             delay={0.05}
             label="Streak"
             value={`${streak?.current ?? 0}d`}
-            sub={streak?.today_done ? 'Aaj safe' : 'Aaj pending'}
+            sub={streak?.today_done ? 'Safe' : 'At risk'}
             icon={<Flame className="h-4 w-4 text-orange-600" />}
             accent="bg-orange-500/10"
           />
 
+
           {/* POINTS */}
           <StatTile
             delay={0.1}
-            label="JEEnie Points"
+            label="Points"
             value={points.toLocaleString('en-IN')}
-            sub="Store mein kharch karo"
             icon={<Coins className="h-4 w-4 text-amber-600" />}
             accent="bg-amber-500/10"
           />
+
 
           {/* CHAIN */}
           <Tile delay={0.15} className="col-span-2 lg:col-span-2">
@@ -212,10 +201,8 @@ export default function BentoBoard() {
             </div>
             <div className="mt-3">
               <ComboBar combo={combo} />
-              <p className="mt-2 text-[11px] font-medium text-muted-foreground">
-                Lagataar sahi answers = bada multiplier.
-              </p>
             </div>
+
           </Tile>
 
           {/* CONTRACT */}
@@ -241,7 +228,7 @@ export default function BentoBoard() {
             onClick={() => void p.generate(true)}
           >
             <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${p.generating ? 'animate-spin' : ''}`} />
-            Naya board
+            New board
           </Button>
           <Button variant="ghost" size="sm" className="ml-auto rounded-2xl" onClick={() => navigate('/rewards')}>
             Rewards <ChevronRight className="ml-1 h-3.5 w-3.5" />
@@ -253,20 +240,19 @@ export default function BentoBoard() {
       {!p.needsSetup && total === 0 && (
         <div className="rounded-[28px] border border-dashed border-primary/40 bg-primary/5 p-6 text-center">
           <Target className="mx-auto h-7 w-7 text-primary" />
-          <p className="mt-2 text-sm font-extrabold">Aaj ka board ready nahi hai</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            5 questions solve karo — JEEnie tumhara pattern samajh ke board bana degi.
-          </p>
+          <p className="mt-2 text-sm font-extrabold">No board yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">Solve a few questions and today's steps appear here.</p>
           <div className="mt-3 flex flex-col justify-center gap-2 sm:flex-row">
             <Button size="sm" className="rounded-2xl" onClick={() => navigate('/practice')}>
-              <Play className="mr-1 h-3.5 w-3.5" /> Practice shuru karo
+              <Play className="mr-1 h-3.5 w-3.5" /> Start practice
             </Button>
             <Button size="sm" variant="outline" className="rounded-2xl" disabled={p.generating} onClick={() => void p.generate(true)}>
-              {p.generating ? 'Ban raha hai…' : 'Board banao'}
+              {p.generating ? 'Building…' : 'Build board'}
             </Button>
           </div>
         </div>
       )}
+
 
       {/* Log class */}
       {!p.needsSetup && (p.prepMode === 'companion' || p.prepMode === 'hybrid') && (
@@ -280,7 +266,7 @@ export default function BentoBoard() {
               ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
               : <BookOpen className="h-3.5 w-3.5 shrink-0 text-primary" />}
             <span className="truncate text-xs font-semibold">
-              {p.loggedToday ? `Class logged: ${p.loggedToday.chapter_name ?? p.loggedToday.subject}` : 'Log aaj ki class'}
+              {p.loggedToday ? `Class logged: ${p.loggedToday.chapter_name ?? p.loggedToday.subject}` : "Log today's class"}
             </span>
           </div>
           <PlusCircle className="h-3.5 w-3.5 shrink-0 text-primary" />
@@ -298,29 +284,24 @@ export default function BentoBoard() {
                 </SheetTitle>
               </SheetHeader>
               <div className="space-y-3 py-4 text-sm leading-snug">
-                <div>
-                  <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Kyun</p>
-                  <p className="text-foreground/90">{sheetBlock.why}</p>
+                <div className="flex items-center gap-2 text-xs font-semibold">
+                  <span className="rounded-lg bg-muted px-2 py-1 tabular-nums">{sheetBlock.question_count} Q</span>
+                  <span className="rounded-lg bg-muted px-2 py-1">{sheetBlock.minutes}m</span>
+                  <span className="rounded-lg bg-amber-500/10 px-2 py-1 text-amber-600">+{sheetBlock.xp_reward ?? 0} pts</span>
                 </div>
-                <div>
-                  <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Target</p>
-                  <p className="text-foreground/90">
-                    {sheetBlock.goal || `${sheetBlock.passing_goal ?? Math.ceil(sheetBlock.question_count * 0.6)}/${sheetBlock.question_count} sahi = auto-tick`}
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Reward</p>
-                  <p className="font-bold text-amber-600">+{sheetBlock.xp_reward ?? 0} JEEnie Points</p>
-                </div>
+                <p className="text-xs font-medium text-muted-foreground">
+                  Goal: {sheetBlock.passing_goal ?? Math.ceil(sheetBlock.question_count * 0.6)}/{sheetBlock.question_count} correct
+                </p>
               </div>
               {(sheetBlock.progress?.status ?? 'pending') !== 'done' && (
                 <Button
                   className="h-11 w-full rounded-2xl font-extrabold uppercase"
                   onClick={() => { const b = sheetBlock; setSheetBlock(null); void start(b); }}
                 >
-                  <Play className="mr-1.5 h-4 w-4" /> Challenge accept
+                  <Play className="mr-1.5 h-4 w-4" /> Start
                 </Button>
               )}
+
             </>
           )}
         </SheetContent>
@@ -332,12 +313,13 @@ export default function BentoBoard() {
           <DialogHeader>
             <DialogTitle>2 quick questions</DialogTitle>
             <DialogDescription>
-              Isi se JEEnie roz ka board banayegi — Settings se badal sakte ho.
+              We build your daily board from these. Change anytime in Settings.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Preparation kaise chal rahi hai?</p>
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">How are you preparing?</p>
+
               <div className="grid gap-2">
                 {PREP_MODES.map((m) => (
                   <button

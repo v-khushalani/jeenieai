@@ -613,7 +613,7 @@ export default function AIStudyPlanner() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
           </p>
-          <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">Aaj ka plan</h1>
+          <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">Planner</h1>
         </div>
         <Button
           variant="ghost"
@@ -627,17 +627,17 @@ export default function AIStudyPlanner() {
       </div>
 
       <Tabs defaultValue="today" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 rounded-2xl">
-          <TabsTrigger value="today" className="rounded-xl text-xs font-bold">Aaj</TabsTrigger>
-          <TabsTrigger value="journey" className="rounded-xl text-xs font-bold">Mastery Ladder</TabsTrigger>
-          <TabsTrigger value="rewards" className="rounded-xl text-xs font-bold">Inaam</TabsTrigger>
+        <TabsList className="grid h-11 w-full grid-cols-3 gap-1 rounded-2xl bg-muted/60 p-1">
+          <TabsTrigger value="today" className="rounded-xl text-xs font-bold data-[state=active]:shadow-sm">Today</TabsTrigger>
+          <TabsTrigger value="journey" className="rounded-xl text-xs font-bold data-[state=active]:shadow-sm">Journey</TabsTrigger>
+          <TabsTrigger value="rewards" className="rounded-xl text-xs font-bold data-[state=active]:shadow-sm">Rewards</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="today" className="mt-3 focus-visible:outline-none">
+        <TabsContent value="today" className="mt-4 focus-visible:outline-none">
           <BentoBoard />
         </TabsContent>
 
-        <TabsContent value="journey" className="mt-3 focus-visible:outline-none">
+        <TabsContent value="journey" className="mt-4 focus-visible:outline-none">
           {user?.id && (
             <RoadmapView
               userId={user.id}
@@ -654,26 +654,27 @@ export default function AIStudyPlanner() {
           )}
         </TabsContent>
 
-        <TabsContent value="rewards" className="mt-3 space-y-3 focus-visible:outline-none">
+        <TabsContent value="rewards" className="mt-4 space-y-3 focus-visible:outline-none">
           <div className="rounded-[28px] border border-border/60 bg-card p-5">
             <div className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-amber-600" />
-              <p className="text-sm font-extrabold">Points se inaam lo</p>
+              <p className="text-sm font-extrabold">Turn points into prizes</p>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Daily vault, streak milestones aur Points Store — sab ek jagah.
+              Daily vault, streak milestones and the points store.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button size="sm" className="rounded-2xl" onClick={() => navigate('/rewards')}>
-                Rewards kholo <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                Open rewards <ArrowRight className="ml-1 h-3.5 w-3.5" />
               </Button>
               <Button size="sm" variant="outline" className="rounded-2xl" onClick={() => navigate('/badges')}>
-                Badges dekho
+                Badges
               </Button>
             </div>
           </div>
         </TabsContent>
       </Tabs>
+
     </div>
   );
 }
