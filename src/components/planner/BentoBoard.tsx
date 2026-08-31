@@ -209,10 +209,8 @@ export default function BentoBoard() {
             </div>
             <div className="mt-3">
               <ComboBar combo={combo} />
-              <p className="mt-2 text-[11px] font-medium text-muted-foreground">
-                Lagataar sahi answers = bada multiplier.
-              </p>
             </div>
+
           </Tile>
 
           {/* CONTRACT */}
