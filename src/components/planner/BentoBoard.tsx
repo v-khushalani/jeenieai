@@ -236,7 +236,7 @@ export default function BentoBoard() {
             onClick={() => void p.generate(true)}
           >
             <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${p.generating ? 'animate-spin' : ''}`} />
-            Naya board
+            New board
           </Button>
           <Button variant="ghost" size="sm" className="ml-auto rounded-2xl" onClick={() => navigate('/rewards')}>
             Rewards <ChevronRight className="ml-1 h-3.5 w-3.5" />
@@ -248,20 +248,19 @@ export default function BentoBoard() {
       {!p.needsSetup && total === 0 && (
         <div className="rounded-[28px] border border-dashed border-primary/40 bg-primary/5 p-6 text-center">
           <Target className="mx-auto h-7 w-7 text-primary" />
-          <p className="mt-2 text-sm font-extrabold">Aaj ka board ready nahi hai</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            5 questions solve karo — JEEnie tumhara pattern samajh ke board bana degi.
-          </p>
+          <p className="mt-2 text-sm font-extrabold">No board yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">Solve a few questions and today's steps appear here.</p>
           <div className="mt-3 flex flex-col justify-center gap-2 sm:flex-row">
             <Button size="sm" className="rounded-2xl" onClick={() => navigate('/practice')}>
-              <Play className="mr-1 h-3.5 w-3.5" /> Practice shuru karo
+              <Play className="mr-1 h-3.5 w-3.5" /> Start practice
             </Button>
             <Button size="sm" variant="outline" className="rounded-2xl" disabled={p.generating} onClick={() => void p.generate(true)}>
-              {p.generating ? 'Ban raha hai…' : 'Board banao'}
+              {p.generating ? 'Building…' : 'Build board'}
             </Button>
           </div>
         </div>
       )}
+
 
       {/* Log class */}
       {!p.needsSetup && (p.prepMode === 'companion' || p.prepMode === 'hybrid') && (
