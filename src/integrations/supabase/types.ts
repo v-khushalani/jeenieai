@@ -835,6 +835,33 @@ export type Database = {
         }
         Relationships: []
       }
+      draw_entries: {
+        Row: {
+          created_at: string
+          draw_month: string
+          entries: number
+          id: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          draw_month: string
+          entries?: number
+          id?: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          draw_month?: string
+          entries?: number
+          id?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       educator_content: {
         Row: {
           approval_status: string
@@ -2071,6 +2098,101 @@ export type Database = {
           topic_id?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      reward_claims: {
+        Row: {
+          claim_type: string
+          created_at: string
+          id: string
+          item_id: string | null
+          notes: string | null
+          points_spent: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          claim_type?: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          notes?: string | null
+          points_spent?: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          claim_type?: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          notes?: string | null
+          points_spent?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_claims_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "reward_store_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reward_store_items: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          image_url: string | null
+          is_active: boolean
+          mrp: number | null
+          name: string
+          podium_rank: number | null
+          points_cost: number | null
+          streak_required: number | null
+          units_left: number
+          units_total: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          mrp?: number | null
+          name: string
+          podium_rank?: number | null
+          points_cost?: number | null
+          streak_required?: number | null
+          units_left?: number
+          units_total?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          mrp?: number | null
+          name?: string
+          podium_rank?: number | null
+          points_cost?: number | null
+          streak_required?: number | null
+          units_left?: number
+          units_total?: number
+          updated_at?: string
         }
         Relationships: []
       }
