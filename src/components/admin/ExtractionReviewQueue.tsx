@@ -1279,14 +1279,21 @@ export function ExtractionReviewQueue() {
                         <QuestionLivePreview
                           question={{
                             question: editedQuestion.parsed_question.question,
+                            question_image_url: (editedQuestion.parsed_question as any).question_image_url,
                             option_a: (editedQuestion.parsed_question as any).option_a,
+                            option_a_image_url: (editedQuestion.parsed_question as any).option_a_image_url,
                             option_b: (editedQuestion.parsed_question as any).option_b,
+                            option_b_image_url: (editedQuestion.parsed_question as any).option_b_image_url,
                             option_c: (editedQuestion.parsed_question as any).option_c,
+                            option_c_image_url: (editedQuestion.parsed_question as any).option_c_image_url,
                             option_d: (editedQuestion.parsed_question as any).option_d,
+                            option_d_image_url: (editedQuestion.parsed_question as any).option_d_image_url,
                             correct_option: editedQuestion.parsed_question.correct_option,
                             explanation: editedQuestion.parsed_question.explanation,
+                            explanation_image_url: (editedQuestion.parsed_question as any).explanation_image_url,
                           }}
                         />
+
                       </div>
                     </div>
                   ) : (
