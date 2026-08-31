@@ -277,41 +277,65 @@ export default function MissionChain() {
       {!loading && mission && total > 0 && (
         <div className="space-y-3" data-testid="mission-chain">
 
+          <JeenieCoachLine state={coachState} />
+
+          {/* Near-win framing instead of raw counters */}
           <div className="flex items-center justify-between px-1">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest font-black text-primary">Aaj ka Rasta</p>
-              <p className="text-[10px] font-bold italic text-muted-foreground">
-                Ek time pe ek challenge · {pointsToday} points daanv pe
-              </p>
-            </div>
-            <span className="text-sm font-black text-primary tabular-nums">{pct}%</span>
+            <p className="text-[10px] uppercase tracking-widest font-black text-primary">Aaj ka Mission</p>
+            <p className="text-[11px] font-black text-foreground">
+              {allDone
+                ? 'Streak secure 🔥'
+                : `${total - doneCount} step${total - doneCount > 1 ? 's' : ''} left to secure streak`}
+            </p>
           </div>
 
-          <Progress value={pct} className="h-2.5 rounded-full" />
+          <ComboBar combo={combo} />
 
-          <div className="space-y-2">
-            <AnimatePresence initial={false}>
-              {blocks.map((b, i) => (
-                <MissionCard
-                  key={b.id}
-                  block={b}
-                  index={i}
-                  total={total}
-                  state={(b.progress?.status ?? 'pending') === 'done' ? 'done' : i === activeIndex ? 'active' : 'locked'}
-                  onStart={() => void startBlock(b)}
-                  onInfo={() => setSheetBlock(b)}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
+          {/* ONE action at a time */}
+          {activeBlock && (
+            <MissionCard
+              key={activeBlock.id}
+              block={activeBlock}
+              index={activeIndex}
+              total={total}
+              state="active"
+              elapsedSeconds={elapsed}
+              onStart={() => void startBlock(activeBlock)}
+              onInfo={() => setSheetBlock(activeBlock)}
+            />
+          )}
+
+          <ChainDots total={total} doneCount={doneCount} activeIndex={activeIndex} />
+
+          {doneCount > 0 && (
+            <details className="rounded-2xl border border-border/60 bg-muted/20 px-3 py-2">
+              <summary className="cursor-pointer text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                {doneCount} step{doneCount > 1 ? 's' : ''} done today
+              </summary>
+              <div className="mt-2 space-y-1.5">
+                {blocks
+                  .filter(b => (b.progress?.status ?? 'pending') === 'done')
+                  .map(b => (
+                    <div key={b.id} className="flex items-center gap-2 text-[11px] font-bold text-muted-foreground">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" strokeWidth={3} />
+                      <span className="truncate line-through">{b.title}</span>
+                      <span className="ml-auto shrink-0 text-amber-600">+{b.xp_reward ?? 0}</span>
+                    </div>
+                  ))}
+              </div>
+            </details>
+          )}
 
           <RewardVault unlocked={allDone} />
 
-          <p className="text-[10px] text-center text-muted-foreground">
-            {allDone ? 'Aaj ki chain poori. Kal naya rasta khulega 🔥' : 'Solve karte hi challenge khud tick ho jayega'}
-          </p>
+          {allDone && nextTeaser && (
+            <p className="text-[11px] text-center font-bold text-primary">
+              Kal: {nextTeaser} 👀
+            </p>
+          )}
         </div>
       )}
+
 
       {!loading && !needsSetup && !mission && (
         <div className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-6 text-center space-y-3">
