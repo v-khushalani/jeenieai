@@ -5,7 +5,7 @@
 Numbers below come from live database queries just now.
 
 - Active questions: **69,415** — Class 11: 21,270, Class 12: 48,124, 21 with no grade/chapter.
-- Of those, **16,082 (23%) are marked `damaged`** by our text-quality checker. They are still active, so students are being shown broken/garbled questions today. 53,325 are `ok`.
+- Of those, **16,082 (23%) are marked `damaged**` by our text-quality checker. They are still active, so students are being shown broken/garbled questions today. 53,325 are `ok`.
 - Questions with an image attached: 6,447 (11th + 12th).
 - **Foundation Class 6, 7, 8, 9, 10: chapters exist (30/32/34/30/31) but 0 questions.** So every Foundation batch is an empty shell right now.
 - Content tables that are empty or near-empty: `study_notes` = 0, `concept_maps` = 0, `educator_content` = 4 items, `reward_store_items` = 6.
@@ -55,15 +55,17 @@ Everything still lands in the review queue first, then promotes to live question
 
 Recommended flags to switch off (my honest list, based on what is actually backed by data):
 
-| Flag | Why off |
-|---|---|
-| `study_notes` | 0 notes and 0 concept maps in the database. Every chapter shows an empty panel. |
-| `virtual_lab` | Simulation hosting is fragile and only a handful of assets exist. |
-| `educator_content` | Only 4 items across all grades — a library with 4 files looks abandoned. |
-| `battle_mode` | Needs concurrent online users. With 0 users at launch, every battle times out. |
-| `wrapped_yearbook` / `snapshot` | Recap of a year with no history produces empty cards. |
-| `roast_meme` | High risk of tone-deaf output in front of parents on day 1. Re-enable after we see real usage. |
-| `leaderboard` | With a handful of students a leaderboard exposes how small the base is. Enable at ~200 active users. |
+
+| Flag                            | Why off                                                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `study_notes`                   | 0 notes and 0 concept maps in the database. Every chapter shows an empty panel.                      |
+| `virtual_lab`                   | Simulation hosting is fragile and only a handful of assets exist.                                    |
+| `educator_content`              | Only 4 items across all grades — a library with 4 files looks abandoned.                             |
+| `battle_mode`                   | Needs concurrent online users. With 0 users at launch, every battle times out.                       |
+| `wrapped_yearbook` / `snapshot` | Recap of a year with no history produces empty cards.                                                |
+| `roast_meme`                    | High risk of tone-deaf output in front of parents on day 1. Re-enable after we see real usage.       |
+| `leaderboard`                   | With a handful of students a leaderboard exposes how small the base is. Enable at ~200 active users. |
+
 
 Keep ON: study_now, test_mode, study_planner, ai_doubt_solver, badges, badge_celebration, test_history, group_tests, analytics, pricing_plans, referral_system, share_card, install_app_prompt, push_notifications.
 
@@ -88,7 +90,7 @@ A grade-scoped study discussion space.
 - Students see a feed for **their own grade + goal** (e.g. Class 11 JEE). No cross-grade noise.
 - Post types: **Doubt**, **Discussion**, **Resource**. A doubt can attach an image (photo of a sum) and optionally a linked question from our bank.
 - Threaded replies, upvotes, and a "Solved" mark by the original poster.
-- Answering earns JEEnie Points; an accepted answer earns more. This ties community into the existing points economy instead of creating a new currency.
+- Answering earns JEEnie Points; only if accepted and is genuine help. This ties community into the existing points economy instead of creating a new currency.
 - Moderation: report button, admin moderation queue, auto-hide after N reports, educators get a verified badge on their replies.
 - Free users can read and reply; posting a doubt has a daily cap, unlimited for Pro.
 - Tables: `community_posts`, `community_replies`, `community_votes`, `community_reports`, all with RLS restricted to authenticated users and grade filtering, plus an admin moderation policy.
