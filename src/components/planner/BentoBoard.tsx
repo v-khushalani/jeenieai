@@ -321,12 +321,13 @@ export default function BentoBoard() {
           <DialogHeader>
             <DialogTitle>2 quick questions</DialogTitle>
             <DialogDescription>
-              Isi se JEEnie roz ka board banayegi — Settings se badal sakte ho.
+              We build your daily board from these. Change anytime in Settings.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Preparation kaise chal rahi hai?</p>
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">How are you preparing?</p>
+
               <div className="grid gap-2">
                 {PREP_MODES.map((m) => (
                   <button
