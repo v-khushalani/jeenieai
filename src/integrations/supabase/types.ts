@@ -3473,6 +3473,21 @@ export type Database = {
           question_text: string
         }[]
       }
+      pick_available_chapters: {
+        Args: {
+          p_exam?: string
+          p_limit?: number
+          p_min_questions?: number
+          p_subject?: string
+          p_user_id: string
+        }
+        Returns: {
+          chapter_id: string
+          chapter_name: string
+          subject: string
+          unseen_count: number
+        }[]
+      }
       redeem_referral: { Args: { _code: string }; Returns: Json }
       repair_mojibake_batch: { Args: { p_limit?: number }; Returns: number }
       repair_streak: { Args: never; Returns: Json }
