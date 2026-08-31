@@ -609,6 +609,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "class_logs_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "content_health"
+            referencedColumns: ["chapter_id"]
+          },
+          {
             foreignKeyName: "class_logs_topic_id_fkey"
             columns: ["topic_id"]
             isOneToOne: false
@@ -889,6 +896,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "chapters"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "concept_maps_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "content_health"
+            referencedColumns: ["chapter_id"]
           },
           {
             foreignKeyName: "concept_maps_topic_id_fkey"
@@ -1179,6 +1193,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "chapters"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "educator_content_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "content_health"
+            referencedColumns: ["chapter_id"]
           },
           {
             foreignKeyName: "educator_content_topic_id_fkey"
@@ -2232,6 +2253,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "content_health"
+            referencedColumns: ["chapter_id"]
+          },
+          {
             foreignKeyName: "questions_concept_id_fkey"
             columns: ["concept_id"]
             isOneToOne: false
@@ -2527,6 +2555,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "study_notes_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "content_health"
+            referencedColumns: ["chapter_id"]
+          },
+          {
             foreignKeyName: "study_notes_topic_id_fkey"
             columns: ["topic_id"]
             isOneToOne: false
@@ -2585,6 +2620,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "chapters"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_plan_progress_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "content_health"
+            referencedColumns: ["chapter_id"]
           },
         ]
       }
@@ -2967,6 +3009,13 @@ export type Database = {
             referencedRelation: "chapters"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "topics_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "content_health"
+            referencedColumns: ["chapter_id"]
+          },
         ]
       }
       user_badges: {
@@ -3176,6 +3225,18 @@ export type Database = {
       }
     }
     Views: {
+      content_health: {
+        Row: {
+          chapter_id: string | null
+          chapter_name: string | null
+          class_level: number | null
+          hidden_questions: number | null
+          subject: string | null
+          total_questions: number | null
+          usable_questions: number | null
+        }
+        Relationships: []
+      }
       my_profile: {
         Row: {
           avatar_url: string | null
@@ -3447,6 +3508,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "content_health"
+            referencedColumns: ["chapter_id"]
+          },
+          {
             foreignKeyName: "questions_subject_id_fkey"
             columns: ["subject_id"]
             isOneToOne: false
@@ -3593,6 +3661,11 @@ export type Database = {
       }
       cleanup_expired_subscriptions: { Args: never; Returns: undefined }
       close_league_cycle: { Args: never; Returns: Json }
+      community_accept_reply: { Args: { p_reply_id: string }; Returns: Json }
+      community_toggle_vote: {
+        Args: { p_post_id: string; p_reply_id: string }
+        Returns: Json
+      }
       count_unseen_questions: {
         Args: {
           p_chapter_id?: string
