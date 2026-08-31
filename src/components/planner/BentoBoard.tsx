@@ -116,14 +116,10 @@ export default function BentoBoard() {
           >
             <div className="rounded-[32px] border border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card p-4 shadow-[0_18px_50px_-30px_hsl(var(--primary)/0.6)]">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-primary">Aaj ka challenge</p>
-                <p className="text-[11px] font-semibold text-muted-foreground">
-                  {allDone ? 'Streak secure 🔥' : `${total - doneCount} step${total - doneCount > 1 ? 's' : ''} baaki`}
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-primary">Today</p>
+                <p className="text-sm font-extrabold tabular-nums">
+                  {doneCount}<span className="font-medium text-muted-foreground">/{total}</span>
                 </p>
-              </div>
-
-              <div className="mt-3">
-                <JeenieCoachLine state={coachState} />
               </div>
 
               {activeBlock ? (
@@ -142,8 +138,8 @@ export default function BentoBoard() {
               ) : (
                 <div className="mt-3 rounded-3xl border border-emerald-500/40 bg-emerald-500/5 p-5 text-center">
                   <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-600" strokeWidth={2.5} />
-                  <p className="mt-2 text-sm font-extrabold">Aaj ka board clear!</p>
-                  <p className="text-[11px] font-medium text-muted-foreground">Vault khol lo — kal naya challenge ready hoga.</p>
+                  <p className="mt-2 text-sm font-extrabold">All done</p>
+                  <p className="text-[11px] font-medium text-muted-foreground">Open the vault — new steps tomorrow.</p>
                 </div>
               )}
             </div>
@@ -154,10 +150,11 @@ export default function BentoBoard() {
             delay={0.05}
             label="Streak"
             value={`${streak?.current ?? 0}d`}
-            sub={streak?.today_done ? 'Aaj safe' : 'Aaj pending'}
+            sub={streak?.today_done ? 'Safe' : 'At risk'}
             icon={<Flame className="h-4 w-4 text-orange-600" />}
             accent="bg-orange-500/10"
           />
+
 
           {/* POINTS */}
           <StatTile
