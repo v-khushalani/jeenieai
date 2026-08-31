@@ -400,8 +400,69 @@ serve(async (req) => {
     }
 
 
+    // ── AVAILABILITY PASS: every block must point at a scope that has questions ──
+    const MIN_FILL = 4;
+    const validated: MissionBlock[] = [];
+    for (const b of blocks) {
+      if (b.action_href.startsWith('/recap/')) { validated.push(b); continue; }
+
+      let scope: { subject?: string | null; chapter_id?: string | null; topic_id?: string | null } = {
+        subject: b.subject ?? null,
+        chapter_id: b.chapter_id ?? null,
+        topic_id: b.topic_id ?? null,
+      };
+      let available = await countUnseen(scope);
+
+      // topic too thin → widen to its chapter
+      if (available < MIN_FILL && scope.topic_id && scope.chapter_id) {
+        scope = { subject: b.subject ?? null, chapter_id: b.chapter_id, topic_id: null };
+        available = await countUnseen(scope);
+      }
+      // still thin, or subject-only link → pick a real chapter with stock
+      if (available < MIN_FILL || (!scope.chapter_id && !scope.topic_id)) {
+        const subj = b.subject ?? subjects[0] ?? 'Physics';
+        const used = new Set(validated.map(v => v.chapter_id).filter(Boolean) as string[]);
+        const candidates = (await availableChapters(subj, MIN_FILL)).filter(c => !used.has(c.chapter_id));
+        const pick = candidates[0];
+        if (pick) {
+          b.subject = pick.subject ?? subj;
+          b.chapter_id = pick.chapter_id;
+          b.chapter_name = pick.chapter_name;
+          b.topic_id = undefined;
+          scope = { subject: b.subject, chapter_id: pick.chapter_id, topic_id: null };
+          available = Number(pick.unseen_count ?? 0);
+        }
+      }
+
+      if (available < MIN_FILL) continue; // no stock anywhere → drop, no dead end
+
+      const qCount = Math.max(MIN_FILL, Math.min(b.question_count, available));
+      b.question_count = qCount;
+      b.passing_goal = Math.max(2, Math.ceil(qCount * (b.type === 'revision' ? 0.7 : 0.6)));
+      b.xp_reward = xpFor(b.type, qCount);
+      b.subtitle = `${qCount} questions · ~${b.minutes} min`;
+      b.what = b.chapter_name ? `${qCount} Q — ${b.chapter_name}` : `${qCount} Q — ${b.subject ?? 'Practice'}`;
+      b.goal = `${b.passing_goal}/${qCount} correct`;
+      if (b.chapter_name && /—\s*(this topic|.*)$/.test(b.title) && b.title.startsWith('Weak-fix') && !b.topic_id) {
+        b.title = `Weak-fix — ${b.chapter_name}`;
+      }
+      b.action_href = buildPracticeHref({
+        mode: b.type === 'revision' ? 'revision' : b.type === 'pyq' ? 'pyq' : b.type === 'weak_fix' ? 'weak' : 'chapter',
+        subject: b.subject,
+        chapter: b.chapter_name,
+        chapter_id: b.chapter_id,
+        topic_id: b.topic_id,
+        difficulty: adaptiveDifficulty,
+        target: qCount,
+      });
+      validated.push(b);
+    }
+
+    blocks.length = 0;
+    blocks.push(...validated);
 
     const totalMinutes = blocks.reduce((s, b) => s + b.minutes, 0);
+
     const reasoning = buildReasoning({
       prepMode, dailyMinutes, accuracy, totalQs,
       hasClass: !!freshClass, dueCount: dueRevisions.length, adaptiveDifficulty,
