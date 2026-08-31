@@ -159,12 +159,12 @@ export default function BentoBoard() {
           {/* POINTS */}
           <StatTile
             delay={0.1}
-            label="JEEnie Points"
+            label="Points"
             value={points.toLocaleString('en-IN')}
-            sub="Store mein kharch karo"
             icon={<Coins className="h-4 w-4 text-amber-600" />}
             accent="bg-amber-500/10"
           />
+
 
           {/* CHAIN */}
           <Tile delay={0.15} className="col-span-2 lg:col-span-2">
