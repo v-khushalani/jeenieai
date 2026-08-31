@@ -80,16 +80,6 @@ export default function BentoBoard() {
 
   const { blocks, doneCount, total, allDone, activeIndex, activeBlock, streak, points, combo } = p;
 
-  const coachState: CoachState = allDone
-    ? 'done'
-    : streak && !streak.today_done && streak.current > 0
-      ? 'risk'
-      : combo >= 3
-        ? 'combo'
-        : streak && streak.current === 0 && doneCount === 0
-          ? 'comeback'
-          : 'idle';
-
   const start = async (block: MissionBlock) => {
     await p.startBlock(block);
     navigate(block.action_href);
@@ -99,7 +89,8 @@ export default function BentoBoard() {
     return (
       <div className={`${tileBase} flex flex-col items-center gap-2 py-14 text-muted-foreground`}>
         <Loader2 className="h-6 w-6 animate-spin" />
-        <p className="text-sm font-medium">Aaj ka board bana raha hu…</p>
+        <p className="text-sm font-medium">Building today's board…</p>
+
       </div>
     );
   }
