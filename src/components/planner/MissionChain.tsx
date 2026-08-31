@@ -24,6 +24,9 @@ import LogClassSheet from '@/components/LogClassSheet';
 import MissionCard, { TYPE_LABEL, type MissionBlock } from './MissionCard';
 import RewardVault from './RewardVault';
 import ContractStrip from './ContractStrip';
+import ChainDots from './ChainDots';
+import ComboBar, { useCombo } from './ComboBar';
+import JeenieCoachLine, { type CoachState } from './JeenieCoachLine';
 
 interface DailyMission {
   id: string;
@@ -64,6 +67,8 @@ export default function MissionChain() {
   const [points, setPoints] = useState<number>(0);
   const [sheetBlock, setSheetBlock] = useState<MissionBlock | null>(null);
   const claimedRef = useRef<Set<string>>(new Set());
+  const { combo, refreshCombo } = useCombo();
+  const [elapsed, setElapsed] = useState(0);
 
   const generate = useCallback(async (force = false) => {
     setGenerating(true);
@@ -220,6 +225,7 @@ export default function MissionChain() {
         .update({ status: 'in_progress', started_at: new Date().toISOString() } as any)
         .eq('id', mission.id);
     }
+    try { window.localStorage.setItem(`jeenie_step_started_${block.id}`, String(Date.now())); } catch { /* ignore */ }
     navigate(block.action_href);
   };
 
@@ -232,10 +238,38 @@ export default function MissionChain() {
   const allDone = total > 0 && doneCount >= total;
   const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
   const activeIndex = blocks.findIndex(b => (b.progress?.status ?? 'pending') !== 'done');
-  const pointsToday = useMemo(
-    () => blocks.reduce((s, b) => s + (b.xp_reward ?? 0), 0),
-    [blocks],
-  );
+  const activeBlock = activeIndex >= 0 ? blocks[activeIndex] : null;
+  const nextTeaser = useMemo(() => {
+    const last = blocks[blocks.length - 1];
+    return last?.chapter_name || last?.subject || 'naya chapter';
+  }, [blocks]);
+
+  const coachState: CoachState = allDone
+    ? 'done'
+    : streak && !streak.today_done && streak.current > 0
+      ? 'risk'
+      : combo >= 3
+        ? 'combo'
+        : streak && streak.current === 0 && doneCount === 0
+          ? 'comeback'
+          : 'idle';
+
+  // Session timer for the active step (persists across reloads)
+  const timerKey = activeBlock ? `jeenie_step_started_${activeBlock.id}` : null;
+  useEffect(() => {
+    if (!timerKey) { setElapsed(0); return; }
+    const tick = () => {
+      const raw = window.localStorage.getItem(timerKey);
+      if (!raw) { setElapsed(0); return; }
+      setElapsed(Math.max(0, Math.floor((Date.now() - Number(raw)) / 1000)));
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [timerKey]);
+
+  // Keep the combo fresh whenever mission progress changes
+  useEffect(() => { void refreshCombo(); }, [mission?.completed_blocks, refreshCombo]);
 
   return (
     <div className="space-y-3">
