@@ -274,7 +274,7 @@ export default function BentoBoard() {
               ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
               : <BookOpen className="h-3.5 w-3.5 shrink-0 text-primary" />}
             <span className="truncate text-xs font-semibold">
-              {p.loggedToday ? `Class logged: ${p.loggedToday.chapter_name ?? p.loggedToday.subject}` : 'Log aaj ki class'}
+              {p.loggedToday ? `Class logged: ${p.loggedToday.chapter_name ?? p.loggedToday.subject}` : "Log today's class"}
             </span>
           </div>
           <PlusCircle className="h-3.5 w-3.5 shrink-0 text-primary" />
