@@ -30,7 +30,9 @@ import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import RoadmapView from '@/components/planner/RoadmapView';
-import MissionChain from '@/components/planner/MissionChain';
+import BentoBoard from '@/components/planner/BentoBoard';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import {
   buildAllSubjectRoadmaps,
   examRelevanceValues,
