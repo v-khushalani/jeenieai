@@ -617,6 +617,231 @@ export type Database = {
           },
         ]
       }
+      community_posts: {
+        Row: {
+          accepted_reply_id: string | null
+          body: string | null
+          created_at: string
+          goal_exam: string | null
+          grade: number | null
+          id: string
+          image_url: string | null
+          is_hidden: boolean
+          is_solved: boolean
+          post_type: string
+          question_id: string | null
+          reply_count: number
+          report_count: number
+          subject: string | null
+          title: string
+          updated_at: string
+          upvotes: number
+          user_id: string
+        }
+        Insert: {
+          accepted_reply_id?: string | null
+          body?: string | null
+          created_at?: string
+          goal_exam?: string | null
+          grade?: number | null
+          id?: string
+          image_url?: string | null
+          is_hidden?: boolean
+          is_solved?: boolean
+          post_type?: string
+          question_id?: string | null
+          reply_count?: number
+          report_count?: number
+          subject?: string | null
+          title: string
+          updated_at?: string
+          upvotes?: number
+          user_id: string
+        }
+        Update: {
+          accepted_reply_id?: string | null
+          body?: string | null
+          created_at?: string
+          goal_exam?: string | null
+          grade?: number | null
+          id?: string
+          image_url?: string | null
+          is_hidden?: boolean
+          is_solved?: boolean
+          post_type?: string
+          question_id?: string | null
+          reply_count?: number
+          report_count?: number
+          subject?: string | null
+          title?: string
+          updated_at?: string
+          upvotes?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_posts_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_posts_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_replies: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          image_url: string | null
+          is_accepted: boolean
+          is_hidden: boolean
+          parent_reply_id: string | null
+          points_awarded: boolean
+          post_id: string
+          report_count: number
+          upvotes: number
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_accepted?: boolean
+          is_hidden?: boolean
+          parent_reply_id?: string | null
+          points_awarded?: boolean
+          post_id: string
+          report_count?: number
+          upvotes?: number
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_accepted?: boolean
+          is_hidden?: boolean
+          parent_reply_id?: string | null
+          points_awarded?: boolean
+          post_id?: string
+          report_count?: number
+          upvotes?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_replies_parent_reply_id_fkey"
+            columns: ["parent_reply_id"]
+            isOneToOne: false
+            referencedRelation: "community_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_replies_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_reports: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string | null
+          reason: string
+          reply_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id?: string | null
+          reason: string
+          reply_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string | null
+          reason?: string
+          reply_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_reports_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_reports_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "community_replies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_votes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string | null
+          reply_id: string | null
+          user_id: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id?: string | null
+          reply_id?: string | null
+          user_id: string
+          value?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string | null
+          reply_id?: string | null
+          user_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_votes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_votes_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "community_replies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       concept_maps: {
         Row: {
           chapter_id: string | null
@@ -1847,6 +2072,7 @@ export type Database = {
           exam: string | null
           exam_relevance: Database["public"]["Enums"]["exam_code"][] | null
           explanation: string | null
+          explanation_image_url: string | null
           id: string
           is_active: boolean | null
           is_pyq: boolean | null
@@ -1857,8 +2083,11 @@ export type Database = {
           option_a: string | null
           option_a_image_url: string | null
           option_b: string | null
+          option_b_image_url: string | null
           option_c: string | null
+          option_c_image_url: string | null
           option_d: string | null
+          option_d_image_url: string | null
           options: Json | null
           pyq_exam: string | null
           pyq_session: string | null
@@ -1898,6 +2127,7 @@ export type Database = {
           exam?: string | null
           exam_relevance?: Database["public"]["Enums"]["exam_code"][] | null
           explanation?: string | null
+          explanation_image_url?: string | null
           id?: string
           is_active?: boolean | null
           is_pyq?: boolean | null
@@ -1908,8 +2138,11 @@ export type Database = {
           option_a?: string | null
           option_a_image_url?: string | null
           option_b?: string | null
+          option_b_image_url?: string | null
           option_c?: string | null
+          option_c_image_url?: string | null
           option_d?: string | null
+          option_d_image_url?: string | null
           options?: Json | null
           pyq_exam?: string | null
           pyq_session?: string | null
@@ -1949,6 +2182,7 @@ export type Database = {
           exam?: string | null
           exam_relevance?: Database["public"]["Enums"]["exam_code"][] | null
           explanation?: string | null
+          explanation_image_url?: string | null
           id?: string
           is_active?: boolean | null
           is_pyq?: boolean | null
@@ -1959,8 +2193,11 @@ export type Database = {
           option_a?: string | null
           option_a_image_url?: string | null
           option_b?: string | null
+          option_b_image_url?: string | null
           option_c?: string | null
+          option_c_image_url?: string | null
           option_d?: string | null
+          option_d_image_url?: string | null
           options?: Json | null
           pyq_exam?: string | null
           pyq_session?: string | null
@@ -3414,6 +3651,7 @@ export type Database = {
           exam: string | null
           exam_relevance: Database["public"]["Enums"]["exam_code"][] | null
           explanation: string | null
+          explanation_image_url: string | null
           id: string
           is_active: boolean | null
           is_pyq: boolean | null
@@ -3424,8 +3662,11 @@ export type Database = {
           option_a: string | null
           option_a_image_url: string | null
           option_b: string | null
+          option_b_image_url: string | null
           option_c: string | null
+          option_c_image_url: string | null
           option_d: string | null
+          option_d_image_url: string | null
           options: Json | null
           pyq_exam: string | null
           pyq_session: string | null
