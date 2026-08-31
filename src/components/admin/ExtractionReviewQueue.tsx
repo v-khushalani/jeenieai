@@ -484,8 +484,15 @@ export function ExtractionReviewQueue() {
         is_verified: true, // admin-approved through this queue
         is_pyq: isPyq,
         pyq_year: pyqYear,
+        question_image_url: qAny.question_image_url || null,
+        option_a_image_url: qAny.option_a_image_url || null,
+        option_b_image_url: qAny.option_b_image_url || null,
+        option_c_image_url: qAny.option_c_image_url || null,
+        option_d_image_url: qAny.option_d_image_url || null,
+        explanation_image_url: qAny.explanation_image_url || null,
         source: qAny.source || "extraction_queue",
       } as any);
+
 
       if (insertError) throw insertError;
 
@@ -1279,14 +1286,21 @@ export function ExtractionReviewQueue() {
                         <QuestionLivePreview
                           question={{
                             question: editedQuestion.parsed_question.question,
+                            question_image_url: (editedQuestion.parsed_question as any).question_image_url,
                             option_a: (editedQuestion.parsed_question as any).option_a,
+                            option_a_image_url: (editedQuestion.parsed_question as any).option_a_image_url,
                             option_b: (editedQuestion.parsed_question as any).option_b,
+                            option_b_image_url: (editedQuestion.parsed_question as any).option_b_image_url,
                             option_c: (editedQuestion.parsed_question as any).option_c,
+                            option_c_image_url: (editedQuestion.parsed_question as any).option_c_image_url,
                             option_d: (editedQuestion.parsed_question as any).option_d,
+                            option_d_image_url: (editedQuestion.parsed_question as any).option_d_image_url,
                             correct_option: editedQuestion.parsed_question.correct_option,
                             explanation: editedQuestion.parsed_question.explanation,
+                            explanation_image_url: (editedQuestion.parsed_question as any).explanation_image_url,
                           }}
                         />
+
                       </div>
                     </div>
                   ) : (
