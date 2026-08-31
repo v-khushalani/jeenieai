@@ -484,8 +484,15 @@ export function ExtractionReviewQueue() {
         is_verified: true, // admin-approved through this queue
         is_pyq: isPyq,
         pyq_year: pyqYear,
+        question_image_url: qAny.question_image_url || null,
+        option_a_image_url: qAny.option_a_image_url || null,
+        option_b_image_url: qAny.option_b_image_url || null,
+        option_c_image_url: qAny.option_c_image_url || null,
+        option_d_image_url: qAny.option_d_image_url || null,
+        explanation_image_url: qAny.explanation_image_url || null,
         source: qAny.source || "extraction_queue",
       } as any);
+
 
       if (insertError) throw insertError;
 
