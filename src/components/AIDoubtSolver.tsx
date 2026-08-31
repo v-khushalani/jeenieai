@@ -21,6 +21,8 @@ import type { JeenieMode } from "@/services/api/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDraggable } from "@/hooks/useDraggable";
 
+import jeenieMascot from '@/assets/jeenie-mascot.png';
+
 import 'katex/dist/katex.min.css';
 
 interface Message {
@@ -273,8 +275,8 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             {/* Header */}
             <div className="px-5 py-4 border-b border-slate-100/80 bg-white/60 flex items-center justify-between cursor-default">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[#013062] to-[#024080] flex items-center justify-center shadow-md shadow-blue-900/20 ring-4 ring-blue-50">
-                  <Zap className="w-5 h-5 text-white" fill="currentColor" />
+                <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[#013062] to-[#024080] flex items-end justify-center overflow-hidden shadow-md shadow-blue-900/20 ring-4 ring-blue-50">
+                  <img src={jeenieMascot} alt="JEEnie" loading="lazy" width={1024} height={1024} className="w-8 h-8 object-contain object-bottom" />
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-[17px] tracking-tight leading-tight">JEEnie</h3>
