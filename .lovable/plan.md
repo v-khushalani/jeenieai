@@ -1,61 +1,123 @@
-# Launch Pack — Android Build, Landing + Onboarding, Store Listing
+# Launch Readiness: Class 6-10 Content Pipeline, Feature Cleanup, Audit, Community
 
-Three tracks. One honest limitation up front: the Android app bundle (.aab) has to be produced and uploaded from your own machine / Play Console — no cloud tool can sign and publish it for you. What I can do is make the project 100% ready so the build is three commands, and hand you a fill-in-the-blanks checklist.
+## Verified current state
 
-## Track A — Play Store readiness (in-app work)
+Numbers below come from live database queries just now.
 
-- PWA manifest upgrade: proper `id`, `scope`, `display_override`, `shortcuts` (Practice, Planner, Rewards), correct 192/512/maskable icon entries (files already exist in `public/`).
-- Generate a real icon set and splash asset from the JEEnie mascot/logo: adaptive icon foreground, 512x512 store icon, 1024x500 feature graphic, portrait splash. Saved under `public/store/` so you can upload straight from there.
-- Capacitor: keep `ai.jeenie.app`, add splash + status-bar plugin config, safe-area handling, hardware back-button handling (Android back should navigate, not close the app).
-- Add `/legal` completeness check — Play requires a public privacy policy URL; we already have `/privacy-policy`, will verify it is reachable without login and mentions data collection + deletion.
-- Add an in-app "Delete my account" path (Play policy requirement for accounts) in Settings.
+- Active questions: **69,415** — Class 11: 21,270, Class 12: 48,124, 21 with no grade/chapter.
+- Of those, **16,082 (23%) are marked `damaged`** by our text-quality checker. They are still active, so students are being shown broken/garbled questions today. 53,325 are `ok`.
+- Questions with an image attached: 6,447 (11th + 12th).
+- **Foundation Class 6, 7, 8, 9, 10: chapters exist (30/32/34/30/31) but 0 questions.** So every Foundation batch is an empty shell right now.
+- Content tables that are empty or near-empty: `study_notes` = 0, `concept_maps` = 0, `educator_content` = 4 items, `reward_store_items` = 6.
+- All 23 feature flags are currently ON, including `study_notes` which has no content behind it.
+- PYQ-tagged questions: 17,365.
 
-Build steps you run once locally (I will write them into `README.md`):
+---
+
+## 1. CSV question pipeline v2 (with diagrams, works for Class 6-10)
+
+The current template has only 14 text columns and no image support. Replace it with a full template.
+
+New template columns:
 
 ```text
-git pull → bun install → bun run build
-npx cap add android → npx cap sync android
-npx cap open android  → Android Studio → Build → Signed Bundle (.aab)
+grade, subject, chapter, topic, question_type, difficulty,
+question, question_image_url,
+option_a, option_a_image_url,
+option_b, option_b_image_url,
+option_c, option_c_image_url,
+option_d, option_d_image_url,
+correct_answer, numerical_answer, numerical_tolerance,
+explanation, explanation_image_url,
+is_pyq, pyq_year, pyq_exam, exam_relevance, source
 ```
 
-## Track B — Home page: onboarding + marketing copy
+How diagrams work — two supported ways, both in one flow:
 
-Rebuild `/` as a real conversion page, then a real first-run flow.
+1. **Image folder upload** — you put a `question_image` / `option_a_image` filename in the CSV (e.g. `q101.png`), then drag the whole image folder into the uploader. Files are uploaded to a `question-images` storage bucket and matched by filename. This is the practical route for a content team working in Excel.
+2. **Direct URL** — if the image is already hosted, paste the URL in the same column.
 
-Landing sections (in order):
-1. Hero — one promise: "12 minutes a day. We decide what you study." + Start free / See how it works.
-2. Why JEEnie — 3 cards: no more "what to study today", every question new (never repeated), progress you can actually see.
-3. How it works — 3 steps: tell us your exam → get today's 3 challenges → solve, auto-tick, earn points.
-4. Daily 12-min promise — visual of a day's board (3 tiles), honest framing: small daily wins beat weekend marathons.
-5. Proof strip — question bank size, chapters, exams covered (real numbers from the DB, not invented claims).
-6. Rewards teaser → streak prizes.
-7. FAQ (existing schema) + final CTA.
+Other pipeline changes:
 
-Onboarding flow after sign-up (`/onboarding`, 4 quick screens, no typing):
-exam & class → target year → prep style + daily minutes (writes `prep_mode`, `daily_study_minutes`) → first mission generated and student lands directly on their first challenge, not on an empty dashboard.
-Existing users who already set `prep_mode_set_at` skip it.
+- Grade column drives the batch: choose the batch once in the UI, and rows whose `grade` conflicts are flagged rather than silently imported.
+- Chapter/topic auto-match against existing chapters; unknown chapter names can be auto-created (with a checkbox) instead of failing the row — needed because Class 6-10 topics are mostly unpopulated.
+- Support all four question types: single_correct, multi_correct, numerical, assertion_reason.
+- Duplicate detection via the existing content hash so the same question never enters twice.
+- Row limit raised from 500 to 2,000 with chunked insert; larger files are split automatically.
+- Live preview panel stays, and now also renders option images so you can spot a broken diagram before approving.
+- `.xlsx` upload accepted in addition to `.csv`.
 
-## Track C — Store listing checklist + post-launch tracking
+Everything still lands in the review queue first, then promotes to live questions.
 
-I will write `docs/play-store-checklist.md` containing:
-- App name, short description (80 chars), full description (4000 chars) — written, ready to paste.
-- Asset list with exact sizes and where each generated file lives.
-- Data safety form answers (what we collect: email, name, study activity; no location, no ads SDK).
-- Content rating questionnaire answers, target audience (13+), ads declaration, financial-features declaration for Razorpay.
-- Note: keep subscriptions on the web for v1 to avoid Play billing rejection; the app links out, does not sell in-app.
-- Release plan: internal testing → closed test (20 testers, 14 days, required by Google for new personal accounts) → production.
+---
 
-Tracking real students after launch: an admin "Launch metrics" view showing sign-ups per day, onboarding completion %, students with a mission today, missions completed, reward claims — all from existing tables (`profiles`, `daily_missions`, `reward_claims`, `question_attempts`). No new tracking SDK.
+## 2. Things that are defective — turn these OFF before launch
 
-## Order of work
+Recommended flags to switch off (my honest list, based on what is actually backed by data):
 
-1. Track B (landing + onboarding) — this is what students see, biggest impact.
-2. Track A (manifest, icons, splash, Capacitor, account deletion).
-3. Track C (checklist doc + admin launch metrics).
+| Flag | Why off |
+|---|---|
+| `study_notes` | 0 notes and 0 concept maps in the database. Every chapter shows an empty panel. |
+| `virtual_lab` | Simulation hosting is fragile and only a handful of assets exist. |
+| `educator_content` | Only 4 items across all grades — a library with 4 files looks abandoned. |
+| `battle_mode` | Needs concurrent online users. With 0 users at launch, every battle times out. |
+| `wrapped_yearbook` / `snapshot` | Recap of a year with no history produces empty cards. |
+| `roast_meme` | High risk of tone-deaf output in front of parents on day 1. Re-enable after we see real usage. |
+| `leaderboard` | With a handful of students a leaderboard exposes how small the base is. Enable at ~200 active users. |
+
+Keep ON: study_now, test_mode, study_planner, ai_doubt_solver, badges, badge_celebration, test_history, group_tests, analytics, pricing_plans, referral_system, share_card, install_app_prompt, push_notifications.
+
+Additionally, empty states will show a Coming Soon banner instead of a broken screen wherever a flag stays on but content is thin.
+
+---
+
+## 3. Full content and dead-end audit
+
+- **Quarantine damaged questions**: set the 16,082 `damaged` rows to inactive so students only ever see the 53,325 clean ones, then run them through the repair pipeline in batches and re-activate as they pass. This is the single biggest quality win available today.
+- Fix the 21 questions with no chapter/grade.
+- Per-chapter coverage report: every chapter with fewer than 10 usable questions gets flagged and hidden from practice/test selection so no student hits "no questions available".
+- Route sweep across all six roles (free, pro, pro+, educator, admin, super admin) for dead links, empty screens and failing loads, delivered as a written report.
+- Output: an admin "Content Health" screen showing usable vs hidden questions per grade, subject and chapter, so this stays visible after launch.
+
+---
+
+## 4. Community (new feature)
+
+A grade-scoped study discussion space.
+
+- Students see a feed for **their own grade + goal** (e.g. Class 11 JEE). No cross-grade noise.
+- Post types: **Doubt**, **Discussion**, **Resource**. A doubt can attach an image (photo of a sum) and optionally a linked question from our bank.
+- Threaded replies, upvotes, and a "Solved" mark by the original poster.
+- Answering earns JEEnie Points; an accepted answer earns more. This ties community into the existing points economy instead of creating a new currency.
+- Moderation: report button, admin moderation queue, auto-hide after N reports, educators get a verified badge on their replies.
+- Free users can read and reply; posting a doubt has a daily cap, unlimited for Pro.
+- Tables: `community_posts`, `community_replies`, `community_votes`, `community_reports`, all with RLS restricted to authenticated users and grade filtering, plus an admin moderation policy.
+
+---
+
+## 5. Market research and launch strategy
+
+I have not yet verified the Tayyari app's actual feature set, so before writing the positioning I will research it properly and report findings rather than guess. Research covers:
+
+- Target Publications' Tayyari — features, pricing, review sentiment, what they do well.
+- The direct comparison set: Physics Wallah, Allen Digital, Unacademy, Vedantu, Doubtnut, Marks (MARKS app), Embibe.
+- Where a small player realistically wins: hyper-local (Maharashtra CET + JEE/NEET), Hinglish mentor tone, and a habit loop nobody else has.
+
+Then a written launch plan covering: pricing check against competitors, first-100-students acquisition (coaching tie-ups, school tie-ups, WhatsApp/Telegram groups, Instagram reels of the mascot), the referral engine, and a week-by-week launch calendar. Plus a brutally honest verdict on whether we launch this week or hold.
+
+---
+
+## Suggested execution order
+
+1. Quarantine damaged questions + content health audit (protects every student who signs up).
+2. Feature flag cleanup.
+3. CSV pipeline v2 so you can start filling Class 6-10 immediately.
+4. Community.
+5. Market research report and launch calendar.
 
 ## Technical notes
 
-- New: `src/pages/OnboardingPage.tsx`, `src/components/landing/*` sections, `docs/play-store-checklist.md`, `public/store/*` assets.
-- Edited: `index.html` (no change to title/desc, only PWA bits), `public/manifest.json`, `capacitor.config.ts`, `src/App.tsx` (onboarding route + redirect), `src/pages/Settings.tsx` (account deletion), `README.md` (build steps).
-- Account deletion uses the existing `admin-delete-user` edge function pattern, restricted to the caller's own id.
-- All styling stays on existing semantic tokens; no new palette.
+- New storage bucket `question-images` (public read, admin write) plus a migration adding `option_a_image_url`..`option_d_image_url` and `explanation_image_url` to `questions`, all nullable — additive only, nothing breaks.
+- `BulkCsvUploader.tsx` gains a folder-drop image step and chunked insert; `QuestionLivePreview.tsx` extended to render option images.
+- Damaged-question quarantine runs as a data update, reversible per-row as repairs pass.
+- Community adds four tables with GRANTs + RLS, a feed page, and an admin moderation tab.
