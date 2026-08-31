@@ -25,11 +25,12 @@ import JeenieCoachLine, { type CoachState } from './JeenieCoachLine';
 import { usePlannerMission, type PrepMode } from '@/hooks/usePlannerMission';
 
 const PREP_MODES: Array<{ value: PrepMode; label: string; desc: string }> = [
-  { value: 'guided', label: 'Full guidance', desc: 'JEEnie decide karegi sab' },
-  { value: 'companion', label: 'Companion', desc: 'Coaching / school + practice help' },
-  { value: 'hybrid', label: 'Hybrid', desc: 'Self-study + kuch classes' },
-  { value: 'dropper', label: 'Dropper', desc: 'Full-time prep, 8+ hrs/day' },
+  { value: 'guided', label: 'Full guidance', desc: 'We decide what you study' },
+  { value: 'companion', label: 'Companion', desc: 'Coaching or school plus practice' },
+  { value: 'hybrid', label: 'Hybrid', desc: 'Self-study with some classes' },
+  { value: 'dropper', label: 'Dropper', desc: 'Full-time prep, 8+ hrs a day' },
 ];
+
 
 const MINUTE_CHOICES = [60, 90, 120, 150, 180, 240];
 const formatTime = (m: number) => (m < 60 ? `${m}m` : m % 60 === 0 ? `${m / 60}h` : `${Math.floor(m / 60)}h ${m % 60}m`);
