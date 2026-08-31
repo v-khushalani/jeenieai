@@ -4,7 +4,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertTriangle,
   ArrowRight,
@@ -628,49 +627,31 @@ export default function AIStudyPlanner() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col pt-2">
-        <Tabs defaultValue="mission" className="w-full flex-1 flex flex-col">
-          <TabsList className="grid w-full grid-cols-2 h-14 p-1.5 bg-muted/50 rounded-2xl border-2 border-border/50">
-            <TabsTrigger 
-              value="mission" 
-              className="text-xs font-black uppercase tracking-tighter rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:border-2 data-[state=active]:border-primary/20 transition-all flex items-center justify-center gap-2 py-2"
-            >
-              <Zap className="w-4 h-4" /> Aaj ke Challenges
-            </TabsTrigger>
-            <TabsTrigger 
-              value="ladder" 
-              className="text-xs font-black uppercase tracking-tighter rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:border-2 data-[state=active]:border-primary/20 transition-all flex items-center justify-center gap-2 py-2"
-            >
-              <Rocket className="w-4 h-4" /> Mastery Ladder
-            </TabsTrigger>
-          </TabsList>
+      <MissionChain />
 
-
-          <div className="mt-4 outline-none">
-            <TabsContent value="ladder" className="mt-0 focus-visible:ring-0">
-              {user?.id && (
-                <RoadmapView
-                  userId={user.id}
-                  exam={targetExam}
-                  classLevel={(() => {
-                    const g = Number((profile as any)?.grade);
-                    return Number.isFinite(g) && g >= 6 && g <= 12 ? g : null;
-                  })()}
-                  initialRoadmaps={planner.roadmaps}
-                  xpPoints={planner.totalAttempts * 10 + planner.coveragePct * 5}
-                  streak={signal?.streak?.current || 0}
-                  onRefresh={loadAll}
-                />
-              )}
-            </TabsContent>
-            
-            <TabsContent value="mission" className="mt-0 focus-visible:ring-0">
-              <MissionChain />
-            </TabsContent>
-
+      {/* My Journey — collapsed, never competes with today's action */}
+      {user?.id && (
+        <details className="rounded-2xl border-2 border-border/60 bg-card px-3 py-2.5">
+          <summary className="cursor-pointer flex items-center gap-2 text-xs font-black uppercase tracking-tighter">
+            <Rocket className="w-4 h-4 text-primary" /> My Journey
+          </summary>
+          <div className="mt-3">
+            <RoadmapView
+              userId={user.id}
+              exam={targetExam}
+              classLevel={(() => {
+                const g = Number((profile as any)?.grade);
+                return Number.isFinite(g) && g >= 6 && g <= 12 ? g : null;
+              })()}
+              initialRoadmaps={planner.roadmaps}
+              xpPoints={planner.totalAttempts * 10 + planner.coveragePct * 5}
+              streak={signal?.streak?.current || 0}
+              onRefresh={loadAll}
+            />
           </div>
-        </Tabs>
-      </div>
+        </details>
+      )}
+
     </div>
   );
 }

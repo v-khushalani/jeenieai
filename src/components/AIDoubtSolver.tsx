@@ -21,6 +21,8 @@ import type { JeenieMode } from "@/services/api/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDraggable } from "@/hooks/useDraggable";
 
+import jeenieMascot from '@/assets/jeenie-mascot.png';
+
 import 'katex/dist/katex.min.css';
 
 interface Message {
@@ -219,25 +221,30 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
           <AnimatePresence>
             {!internalOpen && (
               <motion.div
-                initial={{ scale: 0, opacity: 0, rotate: -20 }}
-                animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                exit={{ scale: 0, opacity: 0, rotate: 20 }}
-                whileHover={{ scale: 1.05 }}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                whileHover={{ scale: 1.08, y: -4 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 18 }}
                 onClick={() => !internalIsDragging && setInternalOpen(true)}
-                className={`w-16 h-16 rounded-full bg-[#013062] flex items-center justify-center shadow-[0_12px_40px_rgba(1,48,98,0.45)] border-2 border-white/30 relative overflow-hidden group transition-all duration-300 ${!isCurrentAnswered ? 'opacity-40 hover:opacity-100' : 'opacity-100'}`}
+                className={`w-16 h-16 rounded-full bg-[#013062] flex items-end justify-center shadow-[0_12px_40px_rgba(1,48,98,0.45)] ring-2 ring-white/40 hover:ring-4 hover:ring-blue-300/50 relative group transition-[opacity,box-shadow] duration-300 ${!isCurrentAnswered ? 'opacity-60 hover:opacity-100' : 'opacity-100'}`}
               >
-                <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/30 to-transparent animate-pulse" />
-                <Zap className={`w-8 h-8 text-white transition-transform group-hover:scale-110 group-active:scale-90 ${loading || typing ? 'animate-pulse' : ''}`} fill="currentColor" />
-                
-                {/* Visual Glow */}
-                <div className="absolute inset-0 bg-blue-400/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                
+                <img
+                  src={jeenieMascot}
+                  alt="JEEnie"
+                  loading="lazy"
+                  width={1024}
+                  height={1024}
+                  className={`w-[52px] h-[52px] object-contain object-bottom drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)] pointer-events-none ${loading || typing ? 'animate-bounce' : ''}`}
+                />
+
                 {/* Side Tag */}
                 <div className="absolute -left-28 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-apple-md text-[12px] font-bold text-[#013062] border border-blue-100/50 whitespace-nowrap opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all pointer-events-none">
                   Stuck? Pooch le! 👋
                 </div>
               </motion.div>
             )}
+
           </AnimatePresence>
         </motion.div>
       </div>
@@ -268,8 +275,8 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             {/* Header */}
             <div className="px-5 py-4 border-b border-slate-100/80 bg-white/60 flex items-center justify-between cursor-default">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[#013062] to-[#024080] flex items-center justify-center shadow-md shadow-blue-900/20 ring-4 ring-blue-50">
-                  <Zap className="w-5 h-5 text-white" fill="currentColor" />
+                <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[#013062] to-[#024080] flex items-end justify-center overflow-hidden shadow-md shadow-blue-900/20 ring-4 ring-blue-50">
+                  <img src={jeenieMascot} alt="JEEnie" loading="lazy" width={1024} height={1024} className="w-8 h-8 object-contain object-bottom" />
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-[17px] tracking-tight leading-tight">JEEnie</h3>

@@ -40,6 +40,7 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"), "NotFound");
 const GoalSelectionPage = lazyWithRetry(() => import('@/pages/GoalSelectionPage'), "GoalSelectionPage");
 
 
+const RewardsPage = lazyWithRetry(() => import('./pages/RewardsPage'), "RewardsPage");
 const AIStudyPlannerPage = lazyWithRetry(() => import('./pages/AIStudyPlannerPage'), "AIStudyPlannerPage");
 const EnhancedDashboard = lazyWithRetry(() => import("./pages/EnhancedDashboard"), "EnhancedDashboard");
 
@@ -272,6 +273,16 @@ function App() {
                 />
 
               
+                {/* Rewards */}
+                <Route
+                  path="/rewards"
+                  element={
+                    <ProtectedRoute>
+                      <RewardsPage />
+                    </ProtectedRoute>
+                  }
+                />
+
                 {/* AI Study Planner */}
                 <Route
                   path="/ai-planner"

@@ -53,15 +53,20 @@ interface Props {
   index: number;
   total: number;
   justDone?: boolean;
+  elapsedSeconds?: number;
   onStart: () => void;
   onInfo: () => void;
 }
 
-export default function MissionCard({ block, state, index, total, justDone, onStart, onInfo }: Props) {
+export default function MissionCard({ block, state, index, total, justDone, elapsedSeconds = 0, onStart, onInfo }: Props) {
   const prog = block.progress ?? { attempted: 0, correct: 0, status: 'pending' as const };
   const target = block.question_count || 10;
   const pct = Math.min(100, Math.round((prog.attempted / Math.max(1, target)) * 100));
   const points = block.xp_reward ?? 0;
+  const budget = (block.minutes || 10) * 60;
+  const remaining = Math.max(0, budget - elapsedSeconds);
+  const running = elapsedSeconds > 0;
+  const clock = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
 
   if (state === 'locked') {
     return (
@@ -113,8 +118,10 @@ export default function MissionCard({ block, state, index, total, justDone, onSt
         <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${TYPE_ACCENT[block.type]}`}>
           {TYPE_LABEL[block.type]}
         </span>
-        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-          Challenge {index + 1}/{total}
+        <span className={`text-[10px] font-black uppercase tracking-widest tabular-nums ${
+          running ? (remaining === 0 ? 'text-rose-600' : 'text-primary') : 'text-muted-foreground'
+        }`}>
+          {running ? `⏱ ${clock}` : `Step ${index + 1}/${total}`}
         </span>
       </div>
 
