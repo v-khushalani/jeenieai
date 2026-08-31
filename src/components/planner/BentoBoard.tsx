@@ -21,7 +21,7 @@ import RewardVault from './RewardVault';
 import ContractStrip from './ContractStrip';
 import ChainDots from './ChainDots';
 import ComboBar from './ComboBar';
-import JeenieCoachLine, { type CoachState } from './JeenieCoachLine';
+
 import { usePlannerMission, type PrepMode } from '@/hooks/usePlannerMission';
 
 const PREP_MODES: Array<{ value: PrepMode; label: string; desc: string }> = [
