@@ -1855,6 +1855,7 @@ export type Database = {
           numerical_answer: number | null
           numerical_tolerance: number | null
           option_a: string | null
+          option_a_image_url: string | null
           option_b: string | null
           option_c: string | null
           option_d: string | null
@@ -1905,6 +1906,7 @@ export type Database = {
           numerical_answer?: number | null
           numerical_tolerance?: number | null
           option_a?: string | null
+          option_a_image_url?: string | null
           option_b?: string | null
           option_c?: string | null
           option_d?: string | null
@@ -1955,6 +1957,7 @@ export type Database = {
           numerical_answer?: number | null
           numerical_tolerance?: number | null
           option_a?: string | null
+          option_a_image_url?: string | null
           option_b?: string | null
           option_c?: string | null
           option_d?: string | null
@@ -3419,6 +3422,7 @@ export type Database = {
           numerical_answer: number | null
           numerical_tolerance: number | null
           option_a: string | null
+          option_a_image_url: string | null
           option_b: string | null
           option_c: string | null
           option_d: string | null
