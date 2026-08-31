@@ -40,7 +40,7 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"), "NotFound");
 const GoalSelectionPage = lazyWithRetry(() => import('@/pages/GoalSelectionPage'), "GoalSelectionPage");
 
 
-const RewardsPage = lazy(() => import('./pages/RewardsPage'));
+import RewardsPage from './pages/RewardsPage';
 const AIStudyPlannerPage = lazyWithRetry(() => import('./pages/AIStudyPlannerPage'), "AIStudyPlannerPage");
 const EnhancedDashboard = lazyWithRetry(() => import("./pages/EnhancedDashboard"), "EnhancedDashboard");
 
