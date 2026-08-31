@@ -3231,6 +3231,16 @@ export type Database = {
       }
       cleanup_expired_subscriptions: { Args: never; Returns: undefined }
       close_league_cycle: { Args: never; Returns: Json }
+      count_unseen_questions: {
+        Args: {
+          p_chapter_id?: string
+          p_exam?: string
+          p_subject?: string
+          p_topic_id?: string
+          p_user_id: string
+        }
+        Returns: number
+      }
       create_referral: { Args: { p_referral_code: string }; Returns: Json }
       current_cycle_start: { Args: never; Returns: string }
       delete_duplicate_questions: { Args: never; Returns: Json }
