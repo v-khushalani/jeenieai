@@ -676,8 +676,4 @@ export default function AIStudyPlanner() {
       </Tabs>
     </div>
   );
-
-
-    </div>
-  );
 }
