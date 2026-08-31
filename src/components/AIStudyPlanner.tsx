@@ -607,37 +607,38 @@ export default function AIStudyPlanner() {
 
   return (
     <div className="space-y-4 py-3 pb-24">
-      {/* Dynamic Header */}
-      <div className="flex items-start justify-between gap-2 px-1">
+      {/* Quiet header — the board leads, not the chrome */}
+      <div className="flex items-end justify-between gap-2 px-1">
         <div className="min-w-0">
-          <h1 className="flex items-center gap-2 text-xl font-black sm:text-2xl tracking-tighter uppercase italic text-primary">
-            <Rocket className="h-6 w-6" /> JEEnie AI Planner
-          </h1>
-          <p className="mt-0.5 line-clamp-2 text-[11px] font-bold text-muted-foreground sm:text-xs">
-            Scratch se syllabus cover karwaunga — weakness bhi strength banegi.
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
           </p>
+          <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">Aaj ka plan</h1>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={`h-9 w-9 rounded-xl border-2 transition-all ${refreshing ? 'animate-spin' : 'hover:scale-110'}`} 
-            onClick={() => void loadAll()}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Refresh planner"
+          className="h-9 w-9 shrink-0 rounded-2xl"
+          onClick={() => void loadAll()}
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+        </Button>
       </div>
 
-      <MissionChain />
+      <Tabs defaultValue="today" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 rounded-2xl">
+          <TabsTrigger value="today" className="rounded-xl text-xs font-bold">Aaj</TabsTrigger>
+          <TabsTrigger value="journey" className="rounded-xl text-xs font-bold">Mastery Ladder</TabsTrigger>
+          <TabsTrigger value="rewards" className="rounded-xl text-xs font-bold">Inaam</TabsTrigger>
+        </TabsList>
 
-      {/* My Journey — collapsed, never competes with today's action */}
-      {user?.id && (
-        <details className="rounded-2xl border-2 border-border/60 bg-card px-3 py-2.5">
-          <summary className="cursor-pointer flex items-center gap-2 text-xs font-black uppercase tracking-tighter">
-            <Rocket className="w-4 h-4 text-primary" /> My Journey
-          </summary>
-          <div className="mt-3">
+        <TabsContent value="today" className="mt-3 focus-visible:outline-none">
+          <BentoBoard />
+        </TabsContent>
+
+        <TabsContent value="journey" className="mt-3 focus-visible:outline-none">
+          {user?.id && (
             <RoadmapView
               userId={user.id}
               exam={targetExam}
@@ -650,9 +651,32 @@ export default function AIStudyPlanner() {
               streak={signal?.streak?.current || 0}
               onRefresh={loadAll}
             />
+          )}
+        </TabsContent>
+
+        <TabsContent value="rewards" className="mt-3 space-y-3 focus-visible:outline-none">
+          <div className="rounded-[28px] border border-border/60 bg-card p-5">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-amber-600" />
+              <p className="text-sm font-extrabold">Points se inaam lo</p>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Daily vault, streak milestones aur Points Store — sab ek jagah.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" className="rounded-2xl" onClick={() => navigate('/rewards')}>
+                Rewards kholo <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
+              <Button size="sm" variant="outline" className="rounded-2xl" onClick={() => navigate('/badges')}>
+                Badges dekho
+              </Button>
+            </div>
           </div>
-        </details>
-      )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+
 
     </div>
   );
