@@ -292,29 +292,24 @@ export default function BentoBoard() {
                 </SheetTitle>
               </SheetHeader>
               <div className="space-y-3 py-4 text-sm leading-snug">
-                <div>
-                  <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Kyun</p>
-                  <p className="text-foreground/90">{sheetBlock.why}</p>
+                <div className="flex items-center gap-2 text-xs font-semibold">
+                  <span className="rounded-lg bg-muted px-2 py-1 tabular-nums">{sheetBlock.question_count} Q</span>
+                  <span className="rounded-lg bg-muted px-2 py-1">{sheetBlock.minutes}m</span>
+                  <span className="rounded-lg bg-amber-500/10 px-2 py-1 text-amber-600">+{sheetBlock.xp_reward ?? 0} pts</span>
                 </div>
-                <div>
-                  <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Target</p>
-                  <p className="text-foreground/90">
-                    {sheetBlock.goal || `${sheetBlock.passing_goal ?? Math.ceil(sheetBlock.question_count * 0.6)}/${sheetBlock.question_count} sahi = auto-tick`}
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Reward</p>
-                  <p className="font-bold text-amber-600">+{sheetBlock.xp_reward ?? 0} JEEnie Points</p>
-                </div>
+                <p className="text-xs font-medium text-muted-foreground">
+                  Goal: {sheetBlock.passing_goal ?? Math.ceil(sheetBlock.question_count * 0.6)}/{sheetBlock.question_count} correct
+                </p>
               </div>
               {(sheetBlock.progress?.status ?? 'pending') !== 'done' && (
                 <Button
                   className="h-11 w-full rounded-2xl font-extrabold uppercase"
                   onClick={() => { const b = sheetBlock; setSheetBlock(null); void start(b); }}
                 >
-                  <Play className="mr-1.5 h-4 w-4" /> Challenge accept
+                  <Play className="mr-1.5 h-4 w-4" /> Start
                 </Button>
               )}
+
             </>
           )}
         </SheetContent>
