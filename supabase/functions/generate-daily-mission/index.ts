@@ -138,23 +138,54 @@ serve(async (req) => {
     const adaptiveDifficulty: 'easy' | 'medium' | 'hard' =
       accuracy >= 75 ? 'hard' : accuracy >= 50 ? 'medium' : 'easy';
 
+    // Availability helpers — never emit a block we cannot fill
+    const countUnseen = async (scope: { subject?: string | null; chapter_id?: string | null; topic_id?: string | null }) => {
+      const { data, error } = await admin.rpc('count_unseen_questions', {
+        p_user_id: userId,
+        p_exam: exam,
+        p_subject: scope.subject ?? null,
+        p_chapter_id: scope.chapter_id ?? null,
+        p_topic_id: scope.topic_id ?? null,
+      });
+      if (error) { console.error('count_unseen_questions', error); return 0; }
+      return Number(data ?? 0);
+    };
+
+    const chapterCache: Record<string, { chapter_id: string; chapter_name: string; subject: string; unseen_count: number }[]> = {};
+    const availableChapters = async (subject: string, min = 8) => {
+      const key = `${subject}:${min}`;
+      if (chapterCache[key]) return chapterCache[key];
+      const { data, error } = await admin.rpc('pick_available_chapters', {
+        p_user_id: userId,
+        p_exam: exam,
+        p_subject: subject,
+        p_min_questions: min,
+        p_limit: 5,
+      });
+      if (error) { console.error('pick_available_chapters', error); return []; }
+      chapterCache[key] = (data ?? []) as any[];
+      return chapterCache[key];
+    };
+
     // Enrich weak topics with subject + chapter info so we can deep-link
     const weakTopicIds = mastery.filter(m => (m.questions_attempted ?? 0) >= 2).map(m => m.topic_id);
     let topicMeta: Record<string, { name?: string; subject?: string; chapter_id?: string; chapter_name?: string }> = {};
     if (weakTopicIds.length > 0) {
-      const { data: tRows } = await admin
+      const { data: tRows, error: tErr } = await admin
         .from('topics')
-        .select('id, name, subject, chapter_id, chapter:chapters(name)')
+        .select('id, name, topic_name, chapter_id, chapter:chapters(name, chapter_name, subject)')
         .in('id', weakTopicIds as string[]);
+      if (tErr) console.error('topic lookup', tErr);
       (tRows ?? []).forEach((t: any) => {
         topicMeta[t.id] = {
-          name: t.name,
-          subject: t.subject,
+          name: t.name ?? t.topic_name ?? undefined,
+          subject: t.chapter?.subject ?? undefined,
           chapter_id: t.chapter_id ?? undefined,
-          chapter_name: t.chapter?.name ?? undefined,
+          chapter_name: t.chapter?.chapter_name ?? t.chapter?.name ?? undefined,
         };
       });
     }
+
 
     // Count recent mistakes per topic (for weak_fix sizing)
     const mistakesByTopic: Record<string, number> = {};
