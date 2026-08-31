@@ -461,6 +461,44 @@ serve(async (req) => {
     blocks.length = 0;
     blocks.push(...validated);
 
+    // Re-top-up with chapters that actually have stock, so the chain still has 3 steps
+    let guard = 0;
+    while (blocks.length < 3 && guard < subjects.length * 3) {
+      const subj = subjects[guard % Math.max(1, subjects.length)] ?? 'Physics';
+      guard += 1;
+      const used = new Set(blocks.map(b => b.chapter_id).filter(Boolean) as string[]);
+      const pick = (await availableChapters(subj, MIN_FILL)).find(c => !used.has(c.chapter_id));
+      if (!pick) continue;
+      const qCount = Math.max(MIN_FILL, Math.min(8, Number(pick.unseen_count ?? 0)));
+      const mins = Math.max(10, Math.min(25, qCount * 2));
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'learn_practice',
+        title: `Practice — ${pick.chapter_name}`,
+        subtitle: `${qCount} questions · ~${mins} min`,
+        subject: pick.subject ?? subj,
+        chapter_id: pick.chapter_id,
+        chapter_name: pick.chapter_name,
+        minutes: mins,
+        question_count: qCount,
+        passing_goal: Math.ceil(qCount * 0.6),
+        xp_reward: xpFor('learn_practice', qCount),
+        why: '',
+        what: `${qCount} Q — ${pick.chapter_name}`,
+        goal: `${Math.ceil(qCount * 0.6)}/${qCount} correct`,
+        action_href: buildPracticeHref({
+          mode: 'chapter',
+          subject: pick.subject ?? subj,
+          chapter: pick.chapter_name,
+          chapter_id: pick.chapter_id,
+          difficulty: adaptiveDifficulty,
+          target: qCount,
+        }),
+        progress: mkProgress(),
+      });
+    }
+
+
     const totalMinutes = blocks.reduce((s, b) => s + b.minutes, 0);
 
     const reasoning = buildReasoning({
