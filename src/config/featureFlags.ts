@@ -185,6 +185,14 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
     category: 'engagement',
   },
   {
+    flag_key: 'community',
+    label: 'Community',
+    description: 'Grade-scoped student discussion feed, replies and upvotes.',
+    is_enabled: true,
+    rollout_percentage: 100,
+    category: 'engagement',
+  },
+  {
     flag_key: 'virtual_lab',
     label: 'Virtual Lab',
     description: 'Pro+ virtual lab simulations and lab entry points.',

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Home, BookOpen, User, Target } from 'lucide-react';
+import { Home, BookOpen, User, Target, Users } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
@@ -10,6 +10,7 @@ const MobileNavigation = () => {
   const { isAuthenticated } = useAuth();
   const studyEnabled = useFeatureFlag('study_now');
   const testsEnabled = useFeatureFlag('test_mode');
+  const communityEnabled = useFeatureFlag('community');
 
   useEffect(() => {
     const root = document.documentElement;
@@ -24,6 +25,7 @@ const MobileNavigation = () => {
     { icon: Home, label: 'Dashboard', path: '/dashboard', show: true },
     { icon: BookOpen, label: 'Study', path: '/study-now', show: studyEnabled },
     { icon: Target, label: 'Tests', path: '/tests', show: testsEnabled },
+    { icon: Users, label: 'Community', path: '/community', show: communityEnabled },
     { icon: User, label: 'Profile', path: '/profile', show: true }
   ].filter(i => i.show) : [
     { icon: Home, label: 'Home', path: '/' },

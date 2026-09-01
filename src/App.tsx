@@ -42,6 +42,7 @@ const GoalSelectionPage = lazyWithRetry(() => import('@/pages/GoalSelectionPage'
 
 const RewardsPage = lazyWithRetry(() => import('./pages/RewardsPage'), "RewardsPage");
 const AIStudyPlannerPage = lazyWithRetry(() => import('./pages/AIStudyPlannerPage'), "AIStudyPlannerPage");
+const Community = lazyWithRetry(() => import('./pages/Community'), "Community");
 const EnhancedDashboard = lazyWithRetry(() => import("./pages/EnhancedDashboard"), "EnhancedDashboard");
 
 const ClassRecapTest = lazyWithRetry(() => import("./pages/ClassRecapTest"), "ClassRecapTest");
@@ -273,6 +274,18 @@ function App() {
                 />
 
               
+                {/* Community */}
+                <Route
+                  path="/community"
+                  element={
+                    <ProtectedRoute>
+                      <FeatureGate flagKey="community">
+                        <Community />
+                      </FeatureGate>
+                    </ProtectedRoute>
+                  }
+                />
+
                 {/* Rewards */}
                 <Route
                   path="/rewards"

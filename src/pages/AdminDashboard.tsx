@@ -24,7 +24,7 @@ import {
   BarChart3, Users, BookOpen, Bell, FileText,
   CheckSquare, Home, Package,
   Eye, LogOut, Shield, ToggleLeft, Zap,
-  Download, CreditCard, FileSpreadsheet,
+  Download, CreditCard, FileSpreadsheet, Stethoscope,
 } from 'lucide-react';
 
 // Lazy load heavy admin components
@@ -40,6 +40,7 @@ const BulkCsvUploader = lazy(() => import('@/components/admin/BulkCsvUploader'))
 
 const EducatorContentManager = lazy(() => import('@/components/admin/EducatorContentManager'));
 const FeatureFlagManager = lazy(() => import('@/components/admin/FeatureFlagManager'));
+const QuestionHealthManager = lazy(() => import('@/components/admin/QuestionHealthManager'));
 
 
 const ReportsHub = lazy(() => import('@/components/admin/ReportsHub'));
@@ -124,6 +125,7 @@ const AdminDashboard = () => {
       { id: 'pdf-extract', label: 'PDF Extractor', icon: FileText, group: 'tools' },
       { id: 'review-queue', label: 'Review Queue', icon: Eye, badge: pendingReviewCount, group: 'tools' },
     
+      { id: 'question-health', label: 'Question Health', icon: Stethoscope, group: 'tools' },
     { id: 'feature-flags', label: 'Feature Flags', icon: ToggleLeft, group: 'tools' },
     { id: 'audit-report', label: 'Audit Report', icon: Shield, group: 'tools' },
   ];
@@ -161,6 +163,7 @@ const AdminDashboard = () => {
     'review-queue': 'Review Queue',
     'csv-upload': 'Bulk CSV Upload',
     'hf-importer': 'Hugging Face Importer',
+    'question-health': 'Question Health & Repair',
     'feature-flags': 'Feature Flags',
     'audit-report': 'System Audit Report',
   };
@@ -182,6 +185,7 @@ const AdminDashboard = () => {
       case 'review-queue': return <ExtractionReviewQueue />;
       case 'csv-upload': return <BulkCsvUploader />;
       case 'hf-importer': return <HuggingFaceImporter />;
+      case 'question-health': return <QuestionHealthManager />;
       case 'feature-flags': return <FeatureFlagManager />;
       case 'audit-report': return <AuditReportTab />;
       default: return <DashboardOverview />;
