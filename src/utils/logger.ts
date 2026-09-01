@@ -64,19 +64,20 @@ export const logger = {
     }
   },
 
-  info(msg: string, meta?: any) {
-    return this.log('info', msg, meta);
+  info(msg: string, meta?: any, ...extra: any[]) {
+    return this.log('info', msg, meta, ...extra);
   },
 
-  warn(msg: string, meta?: any) {
-    return this.log('warning', msg, meta);
+  warn(msg: string, meta?: any, ...extra: any[]) {
+    return this.log('warning', msg, meta, ...extra);
   },
 
-  error(msg: string, meta?: any) {
-    return this.log('error', msg, meta);
+  error(msg: string, meta?: any, ...extra: any[]) {
+    return this.log('error', msg, meta, ...extra);
   },
 
-  critical(msg: string, meta?: any) {
-    return this.log('critical', msg, meta);
+  critical(msg: string, meta?: any, ...extra: any[]) {
+    return this.log('critical', msg, meta, ...extra);
+
   }
 };
