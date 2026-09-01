@@ -174,6 +174,16 @@ const FeatureFlaggedLiveBanner = () => {
   return <LiveNotificationBanner />;
 };
 
+// Global floating doubt solver. Hidden on routes that mount their own
+// question-aware instance (Practice) or where it must not appear (tests).
+const GlobalDoubtSolver = () => {
+  const location = useLocation();
+  const hiddenPaths = ['/practice', '/recap', '/test-attempt', '/educator', '/admin'];
+  if (hiddenPaths.some((p) => location.pathname.startsWith(p))) return null;
+  return <AIDoubtSolver isOpen={false} onClose={() => {}} />;
+};
+
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
