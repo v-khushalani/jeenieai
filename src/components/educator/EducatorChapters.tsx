@@ -21,7 +21,8 @@ const EducatorChapters: React.FC = () => {
   const { user } = useAuth();
   const { items, loading, fetchContent, getSignedUrl } = useEducatorContent();
 
-  const [gradeFilter, setGradeFilter] = useState<number>(8);
+  // 0 = "All classes" (no grade filter) so nothing stays hidden behind a default.
+  const [gradeFilter, setGradeFilter] = useState<number>(0);
   const [subjectFilter, setSubjectFilter] = useState<string>('');
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerItem, setViewerItem] = useState<EducatorContentItem | null>(null);
@@ -29,8 +30,9 @@ const EducatorChapters: React.FC = () => {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    fetchContent({ content_type: 'presentation', grade: gradeFilter });
+    fetchContent({ content_type: 'presentation', grade: gradeFilter || undefined });
   }, [gradeFilter, fetchContent]);
+
 
   const grouped = React.useMemo(() => {
     const filtered = subjectFilter ? items.filter((i) => i.subject === subjectFilter.toLowerCase()) : items;
@@ -72,6 +74,9 @@ const EducatorChapters: React.FC = () => {
       <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
         <p className="text-sm font-semibold text-primary mb-3">Which class are you teaching today?</p>
         <div className="flex flex-wrap gap-2">
+          <Button size="default" variant={gradeFilter === 0 ? 'default' : 'outline'} onClick={() => setGradeFilter(0)} className="h-10 px-5 text-base font-semibold">
+            All classes
+          </Button>
           {GRADES.map((g) => (
             <Button key={g} size="default" variant={gradeFilter === g ? 'default' : 'outline'} onClick={() => setGradeFilter(g)} className="h-10 px-5 text-base font-semibold">
               Class {g}
@@ -98,9 +103,10 @@ const EducatorChapters: React.FC = () => {
       ) : Object.keys(grouped).length === 0 ? (
         <ComingSoonBanner
           icon={<FileText className="h-7 w-7" />}
-          subtitle={`Class ${gradeFilter} ke presentations abhi upload nahi hue. Jaldi aa rahe hain!`}
+          subtitle={gradeFilter ? `Class ${gradeFilter} ke presentations abhi upload nahi hue. Jaldi aa rahe hain!` : 'Presentations abhi upload nahi hue. Jaldi aa rahe hain!'}
         />
       ) : (
+
         <div className="space-y-4">
           {Object.entries(grouped).map(([subject, chapterMap]) => {
             const subjectKey = `${gradeFilter}-${subject}`;
