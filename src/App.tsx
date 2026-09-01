@@ -301,10 +301,13 @@ function App() {
                   path="/rewards"
                   element={
                     <ProtectedRoute>
-                      <RewardsPage />
+                      <FeatureGate flagKey="rewards_store">
+                        <RewardsPage />
+                      </FeatureGate>
                     </ProtectedRoute>
                   }
                 />
+
 
                 {/* AI Study Planner */}
                 <Route
@@ -343,10 +346,13 @@ function App() {
                   path="/recap/:classLogId"
                   element={
                     <ProtectedRoute>
-                      <ClassRecapTest />
+                      <FeatureGate flagKey="class_log">
+                        <ClassRecapTest />
+                      </FeatureGate>
                     </ProtectedRoute>
                   }
                 />
+
                 
                 
                 {/* Test Management */}

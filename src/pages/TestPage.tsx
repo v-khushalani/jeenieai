@@ -50,6 +50,7 @@ const TestPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth() as any;
   const testHistoryEnabled = useFeatureFlag('test_history');
+  const pyqEnabled = useFeatureFlag('pyq_mode');
   const [loading, setLoading] = useState(false);
   const [testMode, setTestMode] = useState<string>('');
   const [pyqExam, setPyqExam] = useState<string>('');
@@ -1265,7 +1266,8 @@ const TestPage: React.FC = () => {
                 </div>
 
               {/* PYQ Mock Test Card - Pro only */}
-              {hasProAccess && (
+              {pyqEnabled && hasProAccess && (
+
                 <div
                   className="group relative overflow-hidden rounded-2xl bg-white border-2 border-amber-200 hover:border-amber-400 hover:scale-105 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-xl dark:bg-slate-900 dark:border-slate-700"
                   onClick={() => {

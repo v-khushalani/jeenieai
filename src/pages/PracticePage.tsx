@@ -161,6 +161,7 @@ const PracticePage: React.FC = () => {
   const missionTarget = Number.isFinite(targetParam) && targetParam > 0 ? targetParam : 0;
   const isMissionBlock = !!(missionId && blockId && missionTarget > 0);
   const studyNotesEnabled = useFeatureFlag('study_notes');
+  const reportsEnabled = useFeatureFlag('question_reports');
 
 
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -896,7 +897,7 @@ const PracticePage: React.FC = () => {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base sm:text-lg">Question {currentIndex + 1}</CardTitle>
               <div className="flex items-center gap-2 flex-wrap justify-end">
-                <ReportButton onClick={() => setReportingQuestionId(currentQuestion.id)} />
+                {reportsEnabled && <ReportButton onClick={() => setReportingQuestionId(currentQuestion.id)} />}
                 {currentQuestion.is_pyq && (currentQuestion.pyq_exam || currentQuestion.pyq_year) && (
                   <Badge
                     variant="outline"

@@ -55,6 +55,7 @@ interface PromoState {
 const SubscriptionPlansPage = () => {
   const { user } = useAuth();
   const referralEnabled = useFeatureFlag('referral_system');
+  const promoEnabled = useFeatureFlag('promo_codes');
   const navigate = useNavigate();
   const { data: plans = [], isLoading } = useSubscriptionPlans();
   const [loading, setLoading] = useState<string | null>(null);
@@ -261,6 +262,7 @@ const SubscriptionPlansPage = () => {
           </div>
 
           {/* Promo input */}
+          {promoEnabled && (
           <div className="max-w-md mx-auto mb-6">
             {promo.applied ? (
               <div className="flex items-center justify-between gap-2 rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2">
@@ -293,6 +295,8 @@ const SubscriptionPlansPage = () => {
               </div>
             )}
           </div>
+          )}
+
 
           {/* Billing toggle */}
           <div className="flex justify-center mb-8">

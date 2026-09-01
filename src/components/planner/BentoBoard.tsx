@@ -23,6 +23,7 @@ import ChainDots from './ChainDots';
 import ComboBar from './ComboBar';
 
 import { usePlannerMission, type PrepMode } from '@/hooks/usePlannerMission';
+import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
 
 const PREP_MODES: Array<{ value: PrepMode; label: string; desc: string }> = [
   { value: 'guided', label: 'Full guidance', desc: 'We decide what you study' },
@@ -77,6 +78,9 @@ export default function BentoBoard() {
   const [setupMinutes, setSetupMinutes] = useState(120);
   const [sheetBlock, setSheetBlock] = useState<MissionBlock | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const contractsEnabled = useFeatureFlag('streak_contracts');
+  const vaultEnabled = useFeatureFlag('reward_vault');
+  const classLogEnabled = useFeatureFlag('class_log');
 
   const { blocks, doneCount, total, allDone, activeIndex, activeBlock, streak, points, combo } = p;
 
@@ -206,14 +210,18 @@ export default function BentoBoard() {
           </Tile>
 
           {/* CONTRACT */}
-          <div className="col-span-2 lg:col-span-2">
-            <ContractStrip />
-          </div>
+          {contractsEnabled && (
+            <div className="col-span-2 lg:col-span-2">
+              <ContractStrip />
+            </div>
+          )}
 
           {/* VAULT */}
-          <div className="col-span-2 lg:col-span-2">
-            <RewardVault unlocked={allDone} />
-          </div>
+          {vaultEnabled && (
+            <div className="col-span-2 lg:col-span-2">
+              <RewardVault unlocked={allDone} />
+            </div>
+          )}
         </div>
       )}
 
@@ -255,7 +263,7 @@ export default function BentoBoard() {
 
 
       {/* Log class */}
-      {!p.needsSetup && (p.prepMode === 'companion' || p.prepMode === 'hybrid') && (
+      {classLogEnabled && !p.needsSetup && (p.prepMode === 'companion' || p.prepMode === 'hybrid') && (
         <button
           type="button"
           onClick={() => setLogOpen(true)}

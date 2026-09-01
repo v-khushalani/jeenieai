@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { MathDisplay } from "@/components/admin/MathDisplay";
 import { QuestionReportDialog, ReportButton } from '@/components/QuestionReportDialog';
+import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
 import 'katex/dist/katex.min.css';
 
 interface Question {
@@ -98,6 +99,7 @@ const TestAttemptPage = () => {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [testSubmitted, setTestSubmitted] = useState(false);
   const [showMobilePalette, setShowMobilePalette] = useState(false);
+  const reportsEnabled = useFeatureFlag('question_reports');
   const [reportingQuestionId, setReportingQuestionId] = useState<string | null>(null);
   const submitRef = React.useRef<(() => void) | undefined>(undefined);
 
@@ -690,7 +692,7 @@ const TestAttemptPage = () => {
                     <CardTitle className="text-base sm:text-lg">
                       Question {currentQuestionIndex + 1}
                     </CardTitle>
-                    <ReportButton onClick={() => setReportingQuestionId(currentQuestion.id)} />
+                    {reportsEnabled && <ReportButton onClick={() => setReportingQuestionId(currentQuestion.id)} />}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-3">
