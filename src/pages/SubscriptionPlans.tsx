@@ -295,6 +295,8 @@ const SubscriptionPlansPage = () => {
               </div>
             )}
           </div>
+          )}
+
 
           {/* Billing toggle */}
           <div className="flex justify-center mb-8">
