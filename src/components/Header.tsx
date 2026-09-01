@@ -27,6 +27,7 @@ const Header = () => {
   const testsEnabled = useFeatureFlag('test_mode');
   const analyticsEnabled = useFeatureFlag('analytics');
   const aiPlannerEnabled = useFeatureFlag('study_planner');
+  const communityEnabled = useFeatureFlag('community');
   const badgesEnabled = useFeatureFlag('badges');
   const proPlusEnabled = useFeatureFlag('educator_content');
   const isEducator = userRole === 'educator';
