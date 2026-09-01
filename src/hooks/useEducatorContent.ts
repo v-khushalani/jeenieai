@@ -165,7 +165,9 @@ export function useEducatorContent() {
           query = query.eq('approval_status', approvalStatus);
         }
 
-        if (filters.grade) query = query.eq('grade', filters.grade);
+        // Universal content (grade IS NULL) must stay visible for every grade.
+        if (filters.grade) query = query.or(`grade.eq.${filters.grade},grade.is.null`);
+
         if (filters.subject) query = query.eq('subject', filters.subject);
         if (filters.content_type) query = query.eq('content_type', filters.content_type);
 

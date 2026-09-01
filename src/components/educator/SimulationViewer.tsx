@@ -107,10 +107,11 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           inset: -24%;
           z-index: 2147483646;
           pointer-events: none;
-          opacity: 0.055;
+          opacity: 0.03;
           display: flex;
           flex-wrap: wrap;
-          gap: 58px 76px;
+          gap: 140px 190px;
+
           padding: 42px;
           align-content: center;
           justify-content: center;
@@ -120,8 +121,9 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
         }
         #jeenie-frame-watermark span {
           font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          font-size: 19px;
-          font-weight: 800;
+          font-size: 13px;
+          font-weight: 600;
+
           letter-spacing: 0.08em;
           color: color-mix(in srgb, CanvasText 76%, transparent);
           white-space: nowrap;
@@ -147,7 +149,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
       const renderWatermark = () => {
         layer.replaceChildren();
         const currentStamp = `${institute} • ${new Date().toLocaleString()}`;
-        for (let i = 0; i < 36; i += 1) {
+        for (let i = 0; i < 6; i += 1) {
           const span = frameDocument.createElement('span');
           span.textContent = `JEEnie • ${currentStamp}`;
           layer.appendChild(span);
@@ -327,7 +329,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           inset: -20%;
           pointer-events: none;
           z-index: 1;
-          opacity: 0.07;
+          opacity: 0.035;
           background-image: repeating-linear-gradient(
             -22deg,
             transparent 0 120px,
@@ -336,7 +338,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
           animation: jeenieWatermarkDrift 24s ease-in-out infinite;
           display: flex;
           flex-wrap: wrap;
-          gap: 60px 80px;
+          gap: 140px 190px;
           padding: 40px;
           align-content: center;
           justify-content: center;
@@ -345,8 +347,9 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
         }
         .jeenie-watermark span {
           font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-          font-weight: 700;
-          font-size: 20px;
+          font-weight: 600;
+          font-size: 13px;
+
           letter-spacing: 0.08em;
           color: hsl(var(--foreground));
           white-space: nowrap;
