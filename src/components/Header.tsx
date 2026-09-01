@@ -30,6 +30,8 @@ const Header = () => {
   const communityEnabled = useFeatureFlag('community');
   const badgesEnabled = useFeatureFlag('badges');
   const proPlusEnabled = useFeatureFlag('educator_content');
+  const rewardsEnabled = useFeatureFlag('rewards_store');
+
   const isEducator = userRole === 'educator';
   
 
