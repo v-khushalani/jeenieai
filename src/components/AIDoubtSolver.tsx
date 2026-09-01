@@ -209,7 +209,11 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       {/* Floating Trigger */}
       <div 
         className="fixed z-[9999] pointer-events-none"
-        style={{ right: '24px', bottom: '100px', transform: `translate(${-position.x}px, ${-position.y}px)` }}
+        style={{
+          right: '16px',
+          bottom: 'calc(var(--app-mobile-nav-height, 0px) + 24px)',
+          transform: `translate(${-position.x}px, ${-position.y}px)`,
+        }}
       >
         <motion.div
           drag
@@ -227,7 +231,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                 whileHover={{ scale: 1.08, y: -4 }}
                 transition={{ type: 'spring', stiffness: 320, damping: 18 }}
                 onClick={() => !internalIsDragging && setInternalOpen(true)}
-                className={`w-16 h-16 rounded-full bg-[#013062] flex items-end justify-center shadow-[0_12px_40px_rgba(1,48,98,0.45)] ring-2 ring-white/40 hover:ring-4 hover:ring-blue-300/50 relative group transition-[opacity,box-shadow] duration-300 ${!isCurrentAnswered ? 'opacity-60 hover:opacity-100' : 'opacity-100'}`}
+                className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#013062] flex items-end justify-center shadow-[0_12px_40px_rgba(1,48,98,0.45)] ring-2 ring-white/40 hover:ring-4 hover:ring-blue-300/50 relative group transition-[opacity,box-shadow] duration-300 ${!isCurrentAnswered ? 'opacity-60 hover:opacity-100' : 'opacity-100'}`}
               >
                 <img
                   src={jeenieMascot}
@@ -235,11 +239,11 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                   loading="lazy"
                   width={1024}
                   height={1024}
-                  className={`w-[52px] h-[52px] object-contain object-bottom drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)] pointer-events-none ${loading || typing ? 'animate-bounce' : ''}`}
+                  className={`w-[44px] h-[44px] sm:w-[52px] sm:h-[52px] object-contain object-bottom drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)] pointer-events-none ${loading || typing ? 'animate-bounce' : ''}`}
                 />
 
                 {/* Side Tag */}
-                <div className="absolute -left-28 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-apple-md text-[12px] font-bold text-[#013062] border border-blue-100/50 whitespace-nowrap opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all pointer-events-none">
+                <div className="hidden sm:block absolute -left-28 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-apple-md text-[12px] font-bold text-[#013062] border border-blue-100/50 whitespace-nowrap opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all pointer-events-none">
                   Stuck? Pooch le! 👋
                 </div>
               </motion.div>
@@ -270,7 +274,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, scale: 0.9, y: 40, filter: 'blur(10px)' }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[400px] sm:h-[76%] max-h-[720px] bg-white/95 backdrop-blur-3xl rounded-none sm:rounded-[32px] shadow-[0_60px_160px_-40px_rgba(0,0,0,0.38)] z-[10000] flex flex-col overflow-hidden border border-white/60 ring-1 ring-black/5"
+            className="fixed inset-x-0 bottom-0 top-[12vh] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[400px] sm:h-[76%] max-h-[100dvh] sm:max-h-[720px] bg-white/95 backdrop-blur-3xl rounded-t-[28px] sm:rounded-[32px] shadow-[0_60px_160px_-40px_rgba(0,0,0,0.38)] z-[10000] flex flex-col overflow-hidden border border-white/60 ring-1 ring-black/5"
           >
             {/* Header */}
             <div className="px-5 py-4 border-b border-slate-100/80 bg-white/60 flex items-center justify-between cursor-default">
@@ -306,7 +310,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                   key={i} 
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[88%] px-4 py-3.5 rounded-[20px] text-[14.5px] leading-relaxed shadow-sm transition-all ${
+                  <div className={`max-w-[88%] min-w-0 overflow-hidden px-4 py-3.5 rounded-[20px] text-[14.5px] leading-relaxed shadow-sm transition-all ${
                     msg.role === 'user' 
                       ? 'bg-[#013062] text-white rounded-br-md shadow-[0_8px_24px_-8px_rgba(1,48,98,0.3)] font-medium' 
                       : 'bg-white border border-slate-100 text-slate-800 rounded-bl-md shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)]'
@@ -316,7 +320,10 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                         <img src={msg.imageUrl} className="w-full h-auto object-cover" />
                       </div>
                     )}
-                    <div className="prose prose-sm max-w-none prose-slate font-medium" dangerouslySetInnerHTML={{ __html: msg.content }} />
+                    <div
+                      className="prose prose-sm max-w-none prose-slate font-medium break-words [overflow-wrap:anywhere] [&_.katex-display]:overflow-x-auto [&_.katex-display]:max-w-full [&_.katex]:whitespace-normal [&_pre]:overflow-x-auto [&_table]:block [&_table]:overflow-x-auto [&_img]:max-w-full"
+                      dangerouslySetInnerHTML={{ __html: msg.content }}
+                    />
                   </div>
                 </motion.div>
               ))}
@@ -355,7 +362,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             </AnimatePresence>
 
             {/* Input Area */}
-            <div className="px-4 py-4 bg-white border-t border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+            <div className="px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-4 bg-white border-t border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
               {error && (
                 <p className="mb-2 text-[12px] font-semibold text-red-500">{error}</p>
               )}
@@ -436,7 +443,7 @@ function cleanAndFormatJeenieText(text: string): string {
 
   // 4. Handle Display Math ($$ ... $$)
   formatted = formatted.replace(/\$\$([\s\S]+?)\$\$/g, (_, latex) => {
-    return `<div class="my-6 flex justify-center overflow-x-auto py-4 bg-slate-50/80 rounded-2xl border border-slate-200/50 shadow-inner text-lg">${renderLatex(`$$${latex.trim()}$$`)}</div>`;
+    return `<div class="my-6 flex justify-center overflow-x-auto max-w-full py-4 bg-slate-50/80 rounded-2xl border border-slate-200/50 shadow-inner text-lg">${renderLatex(`$$${latex.trim()}$$`)}</div>`;
   });
 
   // 5. Handle Inline Math ($ ... $)
