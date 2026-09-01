@@ -446,10 +446,8 @@ function App() {
               </Suspense>
               <MobileZaptomNav />
               <BadgeUnlockCelebration />
-              <AIDoubtSolver 
-                isOpen={false} 
-                onClose={() => {}} 
-              />
+              <GlobalDoubtSolver />
+
             </GlobalErrorBoundary>
           </TooltipProvider>
           </FeatureFlagProvider>
