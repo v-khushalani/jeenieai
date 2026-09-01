@@ -896,7 +896,7 @@ const PracticePage: React.FC = () => {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base sm:text-lg">Question {currentIndex + 1}</CardTitle>
               <div className="flex items-center gap-2 flex-wrap justify-end">
-                <ReportButton onClick={() => setReportingQuestionId(currentQuestion.id)} />
+                {reportsEnabled && <ReportButton onClick={() => setReportingQuestionId(currentQuestion.id)} />}
                 {currentQuestion.is_pyq && (currentQuestion.pyq_exam || currentQuestion.pyq_year) && (
                   <Badge
                     variant="outline"

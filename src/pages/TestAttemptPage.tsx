@@ -690,7 +690,7 @@ const TestAttemptPage = () => {
                     <CardTitle className="text-base sm:text-lg">
                       Question {currentQuestionIndex + 1}
                     </CardTitle>
-                    <ReportButton onClick={() => setReportingQuestionId(currentQuestion.id)} />
+                    {reportsEnabled && <ReportButton onClick={() => setReportingQuestionId(currentQuestion.id)} />}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-3">
