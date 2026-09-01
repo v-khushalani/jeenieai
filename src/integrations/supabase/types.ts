@@ -3662,6 +3662,14 @@ export type Database = {
       cleanup_expired_subscriptions: { Args: never; Returns: undefined }
       close_league_cycle: { Args: never; Returns: Json }
       community_accept_reply: { Args: { p_reply_id: string }; Returns: Json }
+      community_get_authors: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          id: string
+        }[]
+      }
       community_toggle_vote: {
         Args: { p_post_id: string; p_reply_id: string }
         Returns: Json
