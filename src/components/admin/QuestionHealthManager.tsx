@@ -127,7 +127,7 @@ const QuestionHealthManager: React.FC = () => {
       update.text_quality = 'valid';
       update.is_active = true;
     }
-    const { error } = await supabase.from('questions').update(update).eq('id', draft.id);
+    const { error } = await supabase.from('questions').update(update as never).eq('id', draft.id);
     setSaving(false);
     if (error) {
       toast({ title: 'Save failed', description: error.message, variant: 'destructive' });

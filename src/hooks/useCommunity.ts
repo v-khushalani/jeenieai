@@ -43,9 +43,9 @@ export type CommunityFilter = 'latest' | 'unsolved' | 'mine';
 async function attachAuthors<T extends { user_id: string }>(rows: T[]): Promise<(T & { author?: CommunityAuthor })[]> {
   const ids = Array.from(new Set(rows.map((r) => r.user_id)));
   if (ids.length === 0) return rows;
-  const { data } = await supabase.rpc('community_get_authors', { p_user_ids: ids });
+  const { data } = await (supabase.rpc as any)('community_get_authors', { p_user_ids: ids });
   const map = new Map<string, CommunityAuthor>();
-  (data as CommunityAuthor[] | null)?.forEach((a) => map.set(a.id, a));
+  (data as unknown as CommunityAuthor[] | null)?.forEach((a) => map.set(a.id, a));
   return rows.map((r) => ({ ...r, author: map.get(r.user_id) }));
 }
 
