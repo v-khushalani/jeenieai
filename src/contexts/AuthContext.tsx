@@ -227,18 +227,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const createUserProfileIfNeeded = async (user: User) => {
     try {
-      logger.info('Checking profile for user', { userId: user.id });
-      const { error } = await supabase.functions.invoke('ensure-user-profile');
+      // Fast path: most sign-ins are returning users who already have a profile.
+      // Skipping the edge function avoids a cold start (and the aborted-fetch
+      // "FunctionsFetchError" noise when the user navigates immediately).
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (existing?.id) return;
 
-      if (error) {
-        logger.error('Profile creation failed:', error);
-      } else {
-        logger.info('Profile ensured successfully');
-      }
+      const { error } = await supabase.functions.invoke('ensure-user-profile');
+      if (error) logger.error('Profile creation failed:', error);
     } catch (error) {
       logger.error('Profile check/creation error:', error);
     }
   };
+
 
   const signInWithEmail = async (email: string, password: string): Promise<{ error?: string }> => {
     try {
