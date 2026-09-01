@@ -1,4 +1,4 @@
-# Community UI + Damaged Question Repair Console + Pre-launch Checks
+# Community UI + Damaged Question Repair Console + Mobile Pass + Pre-launch Checks
 
 ## Verified current state
 
@@ -30,7 +30,14 @@ New admin section: **Question Health** (sidebar, under Tools).
 - **Auto-repair with AI** button: runs the existing repair function on a batch (e.g. 50 at a time) with a progress bar, then drops results into the same worklist for your eyeball check before they go live. Nothing auto-publishes without a human pass.
 - A "Repaired today / remaining" counter so the 16,082 backlog is visibly shrinking.
 
-## 3. Final pre-launch suggestions
+## 3. Mobile responsiveness pass
+
+- **AI Doubt Solver on mobile**: make the dialog a full-height bottom sheet (no fixed ~400px desktop width), with a safe-area-aware input bar that stays above the keyboard, horizontally scrollable LaTeX/code blocks so long formulas never spill outside the bubble, and a smaller draggable launcher constrained inside the screen so it can't be dragged half off-screen or sit under the bottom nav.
+- **Every page checked on a real phone viewport (360x740 and 390x844)** across all roles: landing, login/signup, dashboard, planner (Today / Journey / Rewards), practice, test attempt and results, analytics, rewards, profile, settings, community, educator portal and the full admin panel. Anything that overflows horizontally, has tap targets under 44px, or hides its primary action behind a scroll gets fixed.
+- Admin panel is the most desktop-biased area — wide tables get card layouts on mobile, and the sidebar collapses to a drawer.
+- Delivered as a written list of what was broken and what was fixed, with screenshots.
+
+## 4. Final pre-launch suggestions
 
 - **Reactivate the 8 `needs_review` questions or hide them** — they are live right now and unverified. Recommend hiding until reviewed.
 - **Chapter coverage guard**: hide from practice/test any chapter with fewer than 10 usable questions, so no student ever hits "no questions available" (Class 6-10 are all at 0 questions today and will otherwise be dead ends).
