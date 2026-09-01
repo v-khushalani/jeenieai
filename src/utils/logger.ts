@@ -2,68 +2,81 @@ import { supabase } from "@/integrations/supabase/client";
 
 type LogLevel = 'info' | 'warning' | 'error' | 'critical';
 
+const LEVELS: LogLevel[] = ['info', 'warning', 'error', 'critical'];
+
+// Only these levels are persisted. `info` logs used to hit the network on every
+// call (one auth/v1/user + one insert) which flooded the console with 401s for
+// signed-out visitors and slowed every page down.
+const PERSISTED_LEVELS = new Set<LogLevel>(['error', 'critical']);
+
 export const logger = {
   async log(
     levelOrMessage: LogLevel | string,
     messageOrMetadata?: any,
     metadataOrUndefined?: any,
-    ...extra: any[]
+    ..._extra: any[]
   ) {
-    try {
-      let level: LogLevel = 'info';
-      let category = 'general';
-      let message = '';
-      let metadata: any = {};
+    let level: LogLevel = 'info';
+    const category = 'general';
+    let message = '';
+    let metadata: any = {};
 
-      // Handle logger.log('level', 'message', ...)
-      if (['info', 'warning', 'error', 'critical'].includes(levelOrMessage)) {
-        level = levelOrMessage as LogLevel;
-        if (typeof messageOrMetadata === 'string') {
-          message = messageOrMetadata;
-          metadata = metadataOrUndefined || {};
-        } else {
-          message = 'Logged object';
-          metadata = messageOrMetadata || {};
-        }
+    if (LEVELS.includes(levelOrMessage as LogLevel)) {
+      level = levelOrMessage as LogLevel;
+      if (typeof messageOrMetadata === 'string') {
+        message = messageOrMetadata;
+        metadata = metadataOrUndefined || {};
       } else {
-        // Handle logger.log('message', metadata)
-        message = levelOrMessage;
+        message = 'Logged object';
         metadata = messageOrMetadata || {};
       }
+    } else {
+      message = levelOrMessage;
+      metadata = messageOrMetadata || {};
+    }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const consoleMethod = level === 'critical' || level === 'error' ? 'error' : level === 'warning' ? 'warn' : 'log';
+    const consoleMethod =
+      level === 'critical' || level === 'error' ? 'error' : level === 'warning' ? 'warn' : 'log';
+    if (import.meta.env.DEV || consoleMethod !== 'log') {
       console[consoleMethod](`[${category.toUpperCase()}] ${message}`, metadata);
+    }
 
-      // We only insert into DB if we have a valid level string
+    if (!PERSISTED_LEVELS.has(level)) return;
+
+    try {
+      // getSession reads the cached session (no network round-trip).
+      // Signed-out visitors cannot insert (RLS is authenticated-only), so skip.
+      const { data } = await supabase.auth.getSession();
+      const userId = data.session?.user?.id;
+      if (!userId) return;
+
       await supabase.from('system_logs').insert({
-        level: level === 'warning' ? 'warning' : level, // enum mapping
+        level,
         category,
-        message,
-        metadata: typeof metadata === 'object' ? metadata : { value: metadata },
-        user_id: user?.id,
+        message: String(message).slice(0, 2000),
+        metadata: typeof metadata === 'object' && metadata !== null ? metadata : { value: metadata },
+        user_id: userId,
         route: window.location.pathname,
-        user_agent: navigator.userAgent
+        user_agent: navigator.userAgent,
       });
-    } catch (err) {
-      console.error('Failed to send log to Supabase:', err);
+    } catch {
+      // Never let logging break the app or spam the console.
     }
   },
 
-  info(msg: string, meta?: any, ...extra: any[]) {
+  info(msg: string, meta?: any) {
     return this.log('info', msg, meta);
   },
 
-  warn(msg: string, meta?: any, ...extra: any[]) {
+  warn(msg: string, meta?: any) {
     return this.log('warning', msg, meta);
   },
 
-  error(msg: string, meta?: any, ...extra: any[]) {
+  error(msg: string, meta?: any) {
     return this.log('error', msg, meta);
   },
 
-  critical(msg: string, meta?: any, ...extra: any[]) {
+  critical(msg: string, meta?: any) {
     return this.log('critical', msg, meta);
   }
 };
