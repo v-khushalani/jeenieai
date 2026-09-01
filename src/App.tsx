@@ -346,10 +346,13 @@ function App() {
                   path="/recap/:classLogId"
                   element={
                     <ProtectedRoute>
-                      <ClassRecapTest />
+                      <FeatureGate flagKey="class_log">
+                        <ClassRecapTest />
+                      </FeatureGate>
                     </ProtectedRoute>
                   }
                 />
+
                 
                 
                 {/* Test Management */}
