@@ -24,7 +24,7 @@ import {
   BarChart3, Users, BookOpen, Bell, FileText,
   CheckSquare, Home, Package,
   Eye, LogOut, Shield, ToggleLeft, Zap,
-  Download, CreditCard, FileSpreadsheet,
+  Download, CreditCard, FileSpreadsheet, Stethoscope,
 } from 'lucide-react';
 
 // Lazy load heavy admin components
@@ -40,6 +40,7 @@ const BulkCsvUploader = lazy(() => import('@/components/admin/BulkCsvUploader'))
 
 const EducatorContentManager = lazy(() => import('@/components/admin/EducatorContentManager'));
 const FeatureFlagManager = lazy(() => import('@/components/admin/FeatureFlagManager'));
+const QuestionHealthManager = lazy(() => import('@/components/admin/QuestionHealthManager'));
 
 
 const ReportsHub = lazy(() => import('@/components/admin/ReportsHub'));
