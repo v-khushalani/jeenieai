@@ -49,8 +49,39 @@ async function attachAuthors<T extends { user_id: string }>(rows: T[]): Promise<
   return rows.map((r) => ({ ...r, author: map.get(r.user_id) }));
 }
 
+export function useMyCommunityProfile() {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<{ grade: number | null; goal_exam: string | null } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setProfile(null);
+      return;
+    }
+    void (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('grade, goal_exam, target_exam')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      setProfile({
+        grade: (data as any)?.grade ?? null,
+        goal_exam: (data as any)?.goal_exam ?? (data as any)?.target_exam ?? null,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  return profile;
+}
+
 export function useCommunityFeed(filter: CommunityFilter, subject: string | null) {
-  const { user, profile } = useAuth() as any;
+  const { user } = useAuth();
+  const profile = useMyCommunityProfile();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +122,8 @@ export function useCommunityFeed(filter: CommunityFilter, subject: string | null
 }
 
 export function useCommunityActions() {
-  const { user, profile } = useAuth() as any;
+  const { user } = useAuth();
+  const profile = useMyCommunityProfile();
 
   const createPost = useCallback(
     async (input: { title: string; body: string; subject: string | null; post_type: string }) => {
@@ -105,14 +137,14 @@ export function useCommunityActions() {
           subject: input.subject,
           post_type: input.post_type,
           grade: profile?.grade ?? null,
-          goal_exam: profile?.goal_exam ?? profile?.target_exam ?? null,
+          goal_exam: profile?.goal_exam ?? null,
         })
         .select('*')
         .single();
       if (error) throw error;
       return data as CommunityPost;
     },
-    [user, profile?.grade, profile?.goal_exam, profile?.target_exam],
+    [user, profile?.grade, profile?.goal_exam],
   );
 
   const createReply = useCallback(
