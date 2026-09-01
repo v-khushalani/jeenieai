@@ -301,10 +301,13 @@ function App() {
                   path="/rewards"
                   element={
                     <ProtectedRoute>
-                      <RewardsPage />
+                      <FeatureGate flagKey="rewards_store">
+                        <RewardsPage />
+                      </FeatureGate>
                     </ProtectedRoute>
                   }
                 />
+
 
                 {/* AI Study Planner */}
                 <Route
