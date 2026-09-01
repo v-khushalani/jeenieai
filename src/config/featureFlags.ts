@@ -200,7 +200,64 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
     rollout_percentage: 100,
     category: 'content',
   },
+  {
+    flag_key: 'rewards_store',
+    label: 'Rewards Store',
+    description: 'JEEnie Points rewards page, podium prizes and points store.',
+    is_enabled: true,
+    rollout_percentage: 100,
+    category: 'engagement',
+  },
+  {
+    flag_key: 'reward_vault',
+    label: 'Daily Reward Vault',
+    description: 'Daily vault claim tile inside the planner board.',
+    is_enabled: true,
+    rollout_percentage: 100,
+    category: 'engagement',
+  },
+  {
+    flag_key: 'streak_contracts',
+    label: 'Streak Contracts',
+    description: 'Weekly commitment contracts strip in the planner.',
+    is_enabled: true,
+    rollout_percentage: 100,
+    category: 'engagement',
+  },
+  {
+    flag_key: 'class_log',
+    label: 'Class Log & Recap',
+    description: 'Log today\u2019s class and the 10-question recap test.',
+    is_enabled: true,
+    rollout_percentage: 100,
+    category: 'core',
+  },
+  {
+    flag_key: 'question_reports',
+    label: 'Question Reporting',
+    description: 'Report button on practice and test questions.',
+    is_enabled: true,
+    rollout_percentage: 100,
+    category: 'content',
+  },
+  {
+    flag_key: 'promo_codes',
+    label: 'Promo Codes',
+    description: 'Promo code field on the pricing page.',
+    is_enabled: true,
+    rollout_percentage: 100,
+    category: 'monetization',
+  },
+  {
+    flag_key: 'pyq_mode',
+    label: 'PYQ Mock Tests',
+    description: 'Past-year-paper mock tests on the tests page.',
+    is_enabled: true,
+    rollout_percentage: 100,
+    category: 'core',
+  },
 ];
+
 
 const byKey = (key: string) => FEATURE_FLAG_REGISTRY.find((flag) => flag.flag_key === key);
 
