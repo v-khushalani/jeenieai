@@ -58,6 +58,7 @@ const Header = () => {
       ...(isPremium && aiPlannerEnabled ? [
         { name: 'AI Planner', path: '/ai-planner' },
       ] : []),
+      ...(communityEnabled ? [{ name: 'Community', path: '/community' }] : []),
       { name: 'Rewards', path: '/rewards' },
       ...(isPremium && analyticsEnabled ? [
         { name: 'Analytics', path: '/analytics' },
@@ -104,6 +105,7 @@ const Header = () => {
   const mobilePrimaryNavItems = isAuthenticated && !isAdmin && !isEducator
     ? [
         ...(isPremium && aiPlannerEnabled ? [{ name: 'AI Planner', path: '/ai-planner' }] : []),
+        ...(communityEnabled ? [{ name: 'Community', path: '/community' }] : []),
         { name: 'Rewards', path: '/rewards' },
         ...(isPremium && analyticsEnabled ? [{ name: 'Analytics', path: '/analytics' }] : []),
         ...(isProPlus && proPlusEnabled ? [{ name: 'Pro+ Library', path: '/pro-plus-library' }] : []),
