@@ -50,6 +50,7 @@ const TestPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth() as any;
   const testHistoryEnabled = useFeatureFlag('test_history');
+  const pyqEnabled = useFeatureFlag('pyq_mode');
   const [loading, setLoading] = useState(false);
   const [testMode, setTestMode] = useState<string>('');
   const [pyqExam, setPyqExam] = useState<string>('');

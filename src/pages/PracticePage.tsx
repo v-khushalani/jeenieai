@@ -161,6 +161,7 @@ const PracticePage: React.FC = () => {
   const missionTarget = Number.isFinite(targetParam) && targetParam > 0 ? targetParam : 0;
   const isMissionBlock = !!(missionId && blockId && missionTarget > 0);
   const studyNotesEnabled = useFeatureFlag('study_notes');
+  const reportsEnabled = useFeatureFlag('question_reports');
 
 
   const [questions, setQuestions] = useState<Question[]>([]);
