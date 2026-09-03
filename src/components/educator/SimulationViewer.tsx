@@ -467,7 +467,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
             src={effectiveSrc}
             srcDoc={htmlContent || undefined}
             title={title}
-            className="simulation-frame w-full h-full border-0"
+            className="simulation-frame border-0"
             sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals"
             allow="fullscreen; pointer-lock"
             referrerPolicy="no-referrer"
@@ -475,7 +475,9 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
               display: 'block',
               transition: 'filter 0.3s ease',
               filter: devtoolsOpen ? 'blur(18px)' : 'none',
+              ...frameStyle,
             }}
+
             onLoad={() => {
               setIsLoaded(true);
               const injected = injectWatermarkIntoFrame();
