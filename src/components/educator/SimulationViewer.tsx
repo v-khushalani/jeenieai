@@ -190,15 +190,25 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
 
   useEffect(() => {
     const container = containerRef.current;
+    const frameArea = frameAreaRef.current;
     if (!container) return;
 
     const observer = new ResizeObserver(() => {
-      window.requestAnimationFrame(nudgeSimulationResize);
+      window.requestAnimationFrame(() => {
+        nudgeSimulationResize();
+        const area = frameAreaRef.current;
+        if (area) setFrameArea({ w: area.clientWidth, h: area.clientHeight });
+      });
     });
     observer.observe(container);
+    if (frameArea) {
+      observer.observe(frameArea);
+      setFrameArea({ w: frameArea.clientWidth, h: frameArea.clientHeight });
+    }
 
     return () => observer.disconnect();
   }, []);
+
 
   useEffect(() => () => clearResizeTimers(), []);
 
