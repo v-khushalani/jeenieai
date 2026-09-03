@@ -467,36 +467,42 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
             </div>
           )}
 
-          <iframe
-            key={reloadKey}
-            ref={iframeRef}
-            src={effectiveSrc}
-            srcDoc={htmlContent || undefined}
-            title={title}
-            className="simulation-frame border-0"
-            sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals"
-            allow="fullscreen; pointer-lock"
-            referrerPolicy="no-referrer"
-            style={{
-              display: 'block',
-              transition: 'filter 0.3s ease',
-              filter: devtoolsOpen ? 'blur(18px)' : 'none',
-              ...frameStyle,
-            }}
+          <div
+            className={cn('h-full w-full', shouldScaleFrame && 'overflow-x-auto overflow-y-hidden')}
+          >
+            <div style={shouldScaleFrame ? { width: `${scaledWidth}px`, height: '100%' } : { height: '100%' }}>
+              <iframe
+                key={reloadKey}
+                ref={iframeRef}
+                src={effectiveSrc}
+                srcDoc={htmlContent || undefined}
+                title={title}
+                className="simulation-frame border-0"
+                sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals"
+                allow="fullscreen; pointer-lock"
+                referrerPolicy="no-referrer"
+                style={{
+                  display: 'block',
+                  transition: 'filter 0.3s ease',
+                  filter: devtoolsOpen ? 'blur(18px)' : 'none',
+                  ...frameStyle,
+                }}
+                onLoad={() => {
+                  setIsLoaded(true);
+                  const injected = injectWatermarkIntoFrame();
+                  setUsesParentWatermark(!htmlContent && !injected);
+                  iframeRef.current?.focus();
+                  scheduleSimulationResizeNudges();
+                }}
+                onError={() => {
+                  setHasError(true);
+                  setErrorMessage('The simulation file could not be loaded.');
+                }}
+                onContextMenu={(e) => e.preventDefault()}
+              />
+            </div>
+          </div>
 
-            onLoad={() => {
-              setIsLoaded(true);
-              const injected = injectWatermarkIntoFrame();
-              setUsesParentWatermark(!htmlContent && !injected);
-              iframeRef.current?.focus();
-              scheduleSimulationResizeNudges();
-            }}
-            onError={() => {
-              setHasError(true);
-              setErrorMessage('The simulation file could not be loaded.');
-            }}
-            onContextMenu={(e) => e.preventDefault()}
-          />
 
           <AnnotationOverlay />
 
