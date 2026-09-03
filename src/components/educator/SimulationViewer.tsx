@@ -416,9 +416,11 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
 
         {/* iframe area */}
         <div
+          ref={frameAreaRef}
           className="relative flex-1 min-h-0 isolate"
           style={hideHeader ? undefined : { height: isFullscreen ? 'calc(100dvh - 28px)' : '600px' }}
         >
+
           {!isLoaded && !hasError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted z-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
