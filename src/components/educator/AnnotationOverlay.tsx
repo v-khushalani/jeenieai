@@ -362,7 +362,7 @@ const AnnotationOverlay: React.FC = () => {
 			)}
 
       {!isPanelVisible && (
-				<div className="absolute pointer-events-auto right-14 top-3 z-40">
+				<div className="absolute pointer-events-auto right-3 top-14 sm:right-14 sm:top-3 z-40">
 					<Button
 						size="sm"
 						variant="secondary"
@@ -372,8 +372,9 @@ const AnnotationOverlay: React.FC = () => {
 							setCollapsed(false);
 						}}
 					>
-						Open Annotation
+						Annotate
 					</Button>
+
 				</div>
 			)}
 
