@@ -22,6 +22,9 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
 }) => {
   const { user } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
+  const frameAreaRef = useRef<HTMLDivElement>(null);
+  const [frameArea, setFrameArea] = useState({ w: 0, h: 0 });
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const resizeTimersRef = useRef<number[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -190,15 +193,25 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
 
   useEffect(() => {
     const container = containerRef.current;
+    const frameArea = frameAreaRef.current;
     if (!container) return;
 
     const observer = new ResizeObserver(() => {
-      window.requestAnimationFrame(nudgeSimulationResize);
+      window.requestAnimationFrame(() => {
+        nudgeSimulationResize();
+        const area = frameAreaRef.current;
+        if (area) setFrameArea({ w: area.clientWidth, h: area.clientHeight });
+      });
     });
     observer.observe(container);
+    if (frameArea) {
+      observer.observe(frameArea);
+      setFrameArea({ w: frameArea.clientWidth, h: frameArea.clientHeight });
+    }
 
     return () => observer.disconnect();
   }, []);
+
 
   useEffect(() => () => clearResizeTimers(), []);
 
@@ -306,6 +319,29 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
 
   const stamp = `${institute} • ${now.toLocaleString()}`;
 
+  // Most uploaded animations are authored for a desktop canvas. On phones and
+  // small tablets we render the frame at a virtual desktop width and scale it
+  // down so the layout stays intact instead of collapsing into a squished
+  // column. Scale is floored so text stays readable — anything wider than the
+  // screen after that stays reachable by horizontal scroll.
+  const VIRTUAL_WIDTH = 1180;
+  const MIN_SCALE = 0.62;
+  const shouldScaleFrame = frameArea.w > 0 && frameArea.w < 900;
+  const frameScale = shouldScaleFrame
+    ? Math.max(MIN_SCALE, Math.min(1, frameArea.w / VIRTUAL_WIDTH))
+    : 1;
+  const scaledWidth = VIRTUAL_WIDTH * frameScale;
+  const frameStyle: React.CSSProperties = shouldScaleFrame
+    ? {
+        width: `${VIRTUAL_WIDTH}px`,
+        height: `${Math.max(frameArea.h, 1) / frameScale}px`,
+        transform: `scale(${frameScale})`,
+        transformOrigin: 'top left',
+      }
+    : { width: '100%', height: '100%' };
+
+
+
   return (
     <>
       <style>{`
@@ -403,9 +439,11 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
 
         {/* iframe area */}
         <div
+          ref={frameAreaRef}
           className="relative flex-1 min-h-0 isolate"
           style={hideHeader ? undefined : { height: isFullscreen ? 'calc(100dvh - 28px)' : '600px' }}
         >
+
           {!isLoaded && !hasError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted z-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -429,34 +467,42 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
             </div>
           )}
 
-          <iframe
-            key={reloadKey}
-            ref={iframeRef}
-            src={effectiveSrc}
-            srcDoc={htmlContent || undefined}
-            title={title}
-            className="simulation-frame w-full h-full border-0"
-            sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals"
-            allow="fullscreen; pointer-lock"
-            referrerPolicy="no-referrer"
-            style={{
-              display: 'block',
-              transition: 'filter 0.3s ease',
-              filter: devtoolsOpen ? 'blur(18px)' : 'none',
-            }}
-            onLoad={() => {
-              setIsLoaded(true);
-              const injected = injectWatermarkIntoFrame();
-              setUsesParentWatermark(!htmlContent && !injected);
-              iframeRef.current?.focus();
-              scheduleSimulationResizeNudges();
-            }}
-            onError={() => {
-              setHasError(true);
-              setErrorMessage('The simulation file could not be loaded.');
-            }}
-            onContextMenu={(e) => e.preventDefault()}
-          />
+          <div
+            className={cn('h-full w-full', shouldScaleFrame && 'overflow-x-auto overflow-y-hidden')}
+          >
+            <div style={shouldScaleFrame ? { width: `${scaledWidth}px`, height: '100%' } : { height: '100%' }}>
+              <iframe
+                key={reloadKey}
+                ref={iframeRef}
+                src={effectiveSrc}
+                srcDoc={htmlContent || undefined}
+                title={title}
+                className="simulation-frame border-0"
+                sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals"
+                allow="fullscreen; pointer-lock"
+                referrerPolicy="no-referrer"
+                style={{
+                  display: 'block',
+                  transition: 'filter 0.3s ease',
+                  filter: devtoolsOpen ? 'blur(18px)' : 'none',
+                  ...frameStyle,
+                }}
+                onLoad={() => {
+                  setIsLoaded(true);
+                  const injected = injectWatermarkIntoFrame();
+                  setUsesParentWatermark(!htmlContent && !injected);
+                  iframeRef.current?.focus();
+                  scheduleSimulationResizeNudges();
+                }}
+                onError={() => {
+                  setHasError(true);
+                  setErrorMessage('The simulation file could not be loaded.');
+                }}
+                onContextMenu={(e) => e.preventDefault()}
+              />
+            </div>
+          </div>
+
 
           <AnnotationOverlay />
 
