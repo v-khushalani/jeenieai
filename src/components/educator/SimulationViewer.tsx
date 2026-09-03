@@ -22,6 +22,9 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
 }) => {
   const { user } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
+  const frameAreaRef = useRef<HTMLDivElement>(null);
+  const [frameArea, setFrameArea] = useState({ w: 0, h: 0 });
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const resizeTimersRef = useRef<number[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
