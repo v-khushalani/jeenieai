@@ -319,6 +319,23 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
 
   const stamp = `${institute} • ${now.toLocaleString()}`;
 
+  // Most uploaded animations are authored for a desktop canvas. On phones and
+  // small tablets we render the frame at a virtual desktop width and scale the
+  // whole thing down, so the layout stays intact instead of collapsing into a
+  // squished, unusable column.
+  const VIRTUAL_WIDTH = 1180;
+  const shouldScaleFrame = frameArea.w > 0 && frameArea.w < 900;
+  const frameScale = shouldScaleFrame ? frameArea.w / VIRTUAL_WIDTH : 1;
+  const frameStyle: React.CSSProperties = shouldScaleFrame
+    ? {
+        width: `${VIRTUAL_WIDTH}px`,
+        height: `${Math.max(frameArea.h, 1) / frameScale}px`,
+        transform: `scale(${frameScale})`,
+        transformOrigin: 'top left',
+      }
+    : { width: '100%', height: '100%' };
+
+
   return (
     <>
       <style>{`
