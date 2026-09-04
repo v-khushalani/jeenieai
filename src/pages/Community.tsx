@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   Users,
 } from 'lucide-react';
+import BrandEmptyState from '@/components/brand/BrandEmptyState';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -207,11 +208,11 @@ const Community: React.FC = () => {
         )}
 
         {!loading && !error && posts.length === 0 && (
-          <div className="rounded-2xl border border-border bg-card p-10 text-center">
-            <MessageSquare className="w-8 h-8 mx-auto text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+          <div className="rounded-2xl border border-border bg-card">
+            <BrandEmptyState preset="community" body={emptyLabel} />
           </div>
         )}
+
 
         <div className="space-y-3">
           {posts.map((p, i) => (
