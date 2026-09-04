@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
+import { BRAND } from '@/config/brand';
 import { logger } from '@/utils/logger';
 import safeLocalStorage from '@/utils/safeStorage';
 import {
