@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   Users,
 } from 'lucide-react';
+import BrandEmptyState from '@/components/brand/BrandEmptyState';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
