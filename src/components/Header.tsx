@@ -131,10 +131,16 @@ const Header = () => {
               alt="JEEnie" 
               className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg object-contain transition-transform duration-300 group-hover:scale-110"
             />
-            <span className="font-bold text-xl lg:text-2xl text-foreground leading-none">
-              JEEnie
+            <span className="flex flex-col leading-none">
+              <span className="font-bold text-xl lg:text-2xl text-foreground leading-none">
+                JEEnie
+              </span>
+              <span className="hidden lg:block text-[10px] font-medium tracking-wide text-muted-foreground mt-0.5">
+                {BRAND.tagline}
+              </span>
             </span>
           </div>
+
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1 lg:gap-1.5">
