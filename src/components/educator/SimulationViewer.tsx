@@ -3,7 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Maximize2, Minimize2, X, Loader2, AlertTriangle,  ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AnnotationOverlay from './AnnotationOverlay';
+import MascotBadge from '@/components/brand/MascotBadge';
+import { BRAND } from '@/config/brand';
 import { useAuth } from '@/contexts/AuthContext';
+
 
 interface SimulationViewerProps {
   src: string;
@@ -528,10 +531,14 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
         </div>
 
         {/* Powered by JEEnie footer strip */}
-        <div className="flex items-center justify-between gap-3 px-3 py-1 bg-card/95 border-t border-border text-[10px] text-muted-foreground shrink-0">
-          <span className="font-semibold tracking-wide text-foreground/80">Powered by JEEnie</span>
-          <span className="truncate opacity-70">© 2026 JEEnie. All Rights Reserved.</span>
+        <div className="flex items-center justify-between gap-3 px-3 py-1.5 bg-card/95 border-t border-primary/15 text-[10px] text-muted-foreground shrink-0">
+          <span className="flex items-center gap-1.5 font-semibold tracking-wide text-foreground/80">
+            <MascotBadge mood="idle" size={14} />
+            {BRAND.poweredBy} · {BRAND.site}
+          </span>
+          <span className="truncate opacity-70">{institute}</span>
         </div>
+
       </div>
     </>
   );
