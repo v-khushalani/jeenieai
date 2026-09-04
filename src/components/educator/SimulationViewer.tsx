@@ -408,19 +408,28 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
       <div
         ref={containerRef}
         className={cn(
-          'simulation-viewer jeenie-no-select flex flex-col bg-muted rounded-lg overflow-hidden',
-          hideHeader ? 'h-full w-full rounded-none' : isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : 'w-full',
+          'simulation-viewer jeenie-no-select flex flex-col bg-muted overflow-hidden ring-1 ring-primary/20 shadow-lg shadow-primary/10',
+          hideHeader ? 'h-full w-full rounded-none' : isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : 'w-full rounded-2xl',
           className
         )}
       >
         {!hideHeader && (
-          <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border shrink-0">
+          <div className="flex items-center justify-between gap-2 px-3 py-2 bg-primary text-primary-foreground shrink-0">
             <div className="flex items-center gap-2 min-w-0">
-              
-              <span className="text-sm font-semibold text-foreground truncate">{title}</span>
+              <MascotBadge mood="idle" size={22} />
+              <span className="text-[11px] font-bold uppercase tracking-[0.16em] opacity-90 hidden xs:inline">
+                {BRAND.labName}
+              </span>
+              <span className="opacity-40 hidden xs:inline">/</span>
+              <span className="text-sm font-semibold truncate">{title}</span>
             </div>
             <div className="flex items-center gap-1">
-              <Button size="icon" variant="ghost" onClick={toggleFullscreen} className="h-8 w-8">
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={toggleFullscreen}
+                className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/15"
+              >
                 {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
               </Button>
               {onClose && (
@@ -428,7 +437,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
                   size="icon"
                   variant="ghost"
                   onClick={onClose}
-                  className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                  className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/15"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -436,6 +445,7 @@ const SimulationViewer: React.FC<SimulationViewerProps> = ({
             </div>
           </div>
         )}
+
 
         {/* iframe area */}
         <div
