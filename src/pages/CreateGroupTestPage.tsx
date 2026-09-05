@@ -567,13 +567,70 @@ const CreateGroupTestPage = () => {
                 />
               </div>
 
-              {/* Group test type */}
+              {/* Class + track picker — a teacher can build a test for ANY class */}
               <div>
                 <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
                   <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center text-white text-xs font-bold">1</div>
+                  Which class is this test for?
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {ALL_GRADES.map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => toggleGrade(g)}
+                      className={`px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
+                        selectedGrades.includes(g)
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:border-primary/40"
+                      }`}
+                    >
+                      Class {g}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Aap kisi bhi class ka test bana sakte ho — apni class se bandhe nahi ho.
+                </p>
+
+                <div className="mt-4">
+                  <Label className="text-sm font-medium">Track</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {(hasSeniorGrade
+                      ? (["JEE", "NEET", "MHT-CET", ...(hasJuniorGrade ? ["Foundation"] : [])] as Track[])
+                      : (["Foundation"] as Track[])
+                    ).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTrack(t)}
+                        className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${
+                          track === t
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/40"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {selectedGrades.length === 0 ? (
+                <div className="p-4 rounded-xl border border-dashed border-primary/30 bg-primary/5 text-sm text-muted-foreground">
+                  Class select karte hi subjects aur chapters yahin dikh jayenge.
+                </div>
+              ) : (
+              <>
+              {/* Group test type */}
+              <div>
+                <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center text-white text-xs font-bold">2</div>
                   Select Group Test Type
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div className={`grid grid-cols-1 gap-3 ${hasSeniorGrade ? "sm:grid-cols-4" : "sm:grid-cols-1"}`}>
+
                   <div
                     className={`p-3 border-2 rounded-xl cursor-pointer transition-all ${
                       groupTestType === "custom" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
