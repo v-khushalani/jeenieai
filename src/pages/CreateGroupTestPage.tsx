@@ -640,6 +640,8 @@ const CreateGroupTestPage = () => {
                     <div className="font-semibold text-sm">Custom (Subject/Chapter)</div>
                     <div className="text-xs text-muted-foreground mt-1">Your own mix of chapters and duration</div>
                   </div>
+                  {hasSeniorGrade && (
+                  <>
                   <div
                     className={`p-3 border-2 rounded-xl cursor-pointer transition-all ${
                       groupTestType === "jee_mains_full" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
@@ -667,6 +669,9 @@ const CreateGroupTestPage = () => {
                     <div className="font-semibold text-sm">MHT-CET Full Syllabus</div>
                     <div className="text-xs text-muted-foreground mt-1">Actual CET pattern, full paper simulation</div>
                   </div>
+                  </>
+                  )}
+
                 </div>
               </div>
 
