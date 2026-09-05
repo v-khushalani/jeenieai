@@ -51,14 +51,43 @@ const GROUP_TEST_PRESETS: Record<Exclude<GroupTestType, "custom">, {
   },
 };
 
+const ALL_GRADES = [6, 7, 8, 9, 10, 11, 12];
+
+type Track = "Foundation" | "JEE" | "NEET" | "MHT-CET";
+
+const TRACK_EXAM_VALUES: Record<Track, string[]> = {
+  Foundation: ["Foundation", "Scholarship"],
+  JEE: mapBatchToExamValues("JEE"),
+  NEET: mapBatchToExamValues("NEET"),
+  "MHT-CET": ["MHT-CET", "MH-CET", "MH_CET"],
+};
+
+const TRACK_SUBJECTS: Record<Track, string[]> = {
+  Foundation: ["Physics", "Chemistry", "Mathematics", "Biology"],
+  JEE: ["Physics", "Chemistry", "Mathematics"],
+  NEET: ["Physics", "Chemistry", "Biology"],
+  "MHT-CET": ["Physics", "Chemistry", "Mathematics"],
+};
+
+interface ChapterRow {
+  id: string;
+  subject: string;
+  chapter_name: string;
+  class_level: number | null;
+}
+
 const CreateGroupTestPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
   // Setup state
   const [step, setStep] = useState<"setup" | "share">("setup");
+  const [selectedGrades, setSelectedGrades] = useState<number[]>([]);
+  const [track, setTrack] = useState<Track>("JEE");
   const [subjects, setSubjects] = useState<string[]>([]);
+  const [chapterRows, setChapterRows] = useState<ChapterRow[]>([]);
   const [chapters, setChapters] = useState<Record<string, string[]>>({});
+  const [chaptersLoading, setChaptersLoading] = useState(false);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedChapters, setSelectedChapters] = useState<{ subject: string; chapter: string }[]>([]);
   const [groupTestType, setGroupTestType] = useState<GroupTestType>("custom");
@@ -76,45 +105,79 @@ const CreateGroupTestPage = () => {
   const [copied, setCopied] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
 
+  const hasSeniorGrade = selectedGrades.some((g) => g >= 11);
+  const hasJuniorGrade = selectedGrades.some((g) => g <= 10);
+
   const loadProfile = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase.from("my_profile" as any).select("*").maybeSingle();
     setProfile(data);
   }, [user]);
 
+  // The teacher's own saved class is only a convenience pre-selection — it must
+  // never restrict which classes they can build a test for.
+  useEffect(() => {
+    if (!profile || selectedGrades.length > 0) return;
+    const ownGrade = parseGrade(profile.grade || 12);
+    if (ALL_GRADES.includes(ownGrade)) setSelectedGrades([ownGrade]);
+    const exam = String(profile.target_exam || "").toUpperCase();
+    if (ownGrade <= 10) setTrack("Foundation");
+    else if (exam.includes("NEET")) setTrack("NEET");
+    else if (exam.includes("CET")) setTrack("MHT-CET");
+    else setTrack("JEE");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
+
+  // Keep track sensible when the class mix changes.
+  useEffect(() => {
+    if (hasJuniorGrade && !hasSeniorGrade && track !== "Foundation") setTrack("Foundation");
+    if (hasSeniorGrade && !hasJuniorGrade && track === "Foundation") setTrack("JEE");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasJuniorGrade, hasSeniorGrade]);
+
   const fetchSubjectsAndChapters = useCallback(async () => {
-    if (!user || !profile) return;
-    const targetExam = profile.target_exam || "JEE";
-    const userGrade = parseGrade(profile.grade || 12);
-    const batch = await getBatchForStudent(user.id, userGrade, targetExam);
-    const examSubjects = getAllowedSubjects(targetExam);
-    const subjectsToShow = batch?.subjects?.length
-      ? getFilteredSubjects(targetExam, batch.subjects)
-      : examSubjects;
+    if (!user || selectedGrades.length === 0) {
+      setSubjects([]);
+      setChapters({});
+      setChapterRows([]);
+      return;
+    }
+    setChaptersLoading(true);
+    try {
+      const subjectsToShow = TRACK_SUBJECTS[track];
 
-    let query = supabase
-      .from("chapters")
-      .select("id, subject, chapter_name, chapter_number, batch_id")
-      .in("subject", subjectsToShow)
-      .order("chapter_number");
-    if (batch?.id) query = query.eq("batch_id", batch.id);
-    const { data: chaptersData } = await query;
+      const { data: chaptersData } = await supabase
+        .from("chapters")
+        .select("id, subject, chapter_name, chapter_number, class_level")
+        .in("subject", subjectsToShow)
+        .in("class_level", selectedGrades)
+        .or("is_active.is.null,is_active.eq.true")
+        .order("chapter_number");
 
-    const bySubject: Record<string, string[]> = {};
-    subjectsToShow.forEach((s) => {
-      bySubject[s] = chaptersData?.filter((c) => c.subject === s).map((c) => c.chapter_name) || [];
-    });
-    setSubjects(subjectsToShow);
-    setChapters(bySubject);
-  }, [user, profile]);
+      const rows = (chaptersData || []) as ChapterRow[];
+      const bySubject: Record<string, string[]> = {};
+      subjectsToShow.forEach((s) => {
+        bySubject[s] = Array.from(
+          new Set(rows.filter((c) => c.subject === s).map((c) => c.chapter_name))
+        );
+      });
+      setSubjects(subjectsToShow);
+      setChapterRows(rows);
+      setChapters(bySubject);
+      setSelectedSubjects((prev) => prev.filter((s) => subjectsToShow.includes(s)));
+      setSelectedChapters((prev) => prev.filter((ch) => bySubject[ch.subject]?.includes(ch.chapter)));
+    } finally {
+      setChaptersLoading(false);
+    }
+  }, [user, selectedGrades, track]);
 
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
 
   useEffect(() => {
-    if (profile) fetchSubjectsAndChapters();
-  }, [profile, fetchSubjectsAndChapters]);
+    fetchSubjectsAndChapters();
+  }, [fetchSubjectsAndChapters]);
 
   useEffect(() => {
     if (groupTestType === "custom") return;
@@ -126,6 +189,18 @@ const CreateGroupTestPage = () => {
     setSelectedSubjects([]);
     setSelectedChapters([]);
   }, [groupTestType]);
+
+  // Full-syllabus presets only make sense for Class 11/12.
+  useEffect(() => {
+    if (!hasSeniorGrade && groupTestType !== "custom") setGroupTestType("custom");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasSeniorGrade]);
+
+  const toggleGrade = (grade: number) => {
+    setSelectedGrades((prev) =>
+      prev.includes(grade) ? prev.filter((g) => g !== grade) : [...prev, grade].sort((a, b) => a - b)
+    );
+  };
 
   const handleSubjectToggle = (subject: string) => {
     setSelectedSubjects((prev) =>
@@ -155,6 +230,10 @@ const CreateGroupTestPage = () => {
 
   const handleCreate = async () => {
     if (!user) return;
+    if (selectedGrades.length === 0) {
+      toast.error("Pehle class select karo (e.g. Class 11)");
+      return;
+    }
     if (groupTestType === "custom" && selectedChapters.length === 0 && selectedSubjects.length === 0) {
       toast.error("Please select at least one subject or chapter");
       return;
@@ -162,28 +241,54 @@ const CreateGroupTestPage = () => {
 
     setLoading(true);
     try {
-      const targetExam = profile?.target_exam || "JEE";
-
       let questionIds: string[] = [];
 
       if (groupTestType === "custom") {
+        const examValues = TRACK_EXAM_VALUES[track];
+        const examOr = `${examValues.map((v) => `exam.eq."${v}"`).join(",")},exam.is.null`;
+
+        // Class scoping happens through chapters, since questions carry no grade column.
+        const selectedChapterNames = new Set(selectedChapters.map((ch) => ch.chapter));
+        const scopedRows = selectedChapters.length > 0
+          ? chapterRows.filter((c) => selectedChapterNames.has(c.chapter_name))
+          : chapterRows.filter((c) => selectedSubjects.includes(c.subject));
+        const scopedChapterIds = scopedRows.map((c) => c.id);
+        const scopedChapterNames = Array.from(new Set(scopedRows.map((c) => c.chapter_name)));
+
         let query = supabase
           .from("questions_public")
           .select("id")
           .or('is_active.is.null,is_active.eq.true')
-          .in('exam', mapBatchToExamValues(targetExam));
+          .or(examOr);
 
-        if (selectedChapters.length > 0) {
-          query = query.in("chapter", selectedChapters.map((ch) => ch.chapter));
+        if (scopedChapterIds.length > 0) {
+          query = query.in("chapter_id", scopedChapterIds);
+        } else if (scopedChapterNames.length > 0) {
+          query = query.in("chapter", scopedChapterNames);
         } else if (selectedSubjects.length > 0) {
           query = query.in("subject", Array.from(new Set(selectedSubjects.flatMap((subject) => getSubjectAliases(subject)))));
         }
 
-        const { data: questions, error } = await query.limit(Math.max(300, questionCount * 4));
+        let { data: questions, error } = await query.limit(Math.max(300, questionCount * 4));
         if (error) throw error;
 
+        // Fallback: some rows are linked by chapter name only, not chapter_id.
+        if ((!questions || questions.length === 0) && scopedChapterNames.length > 0) {
+          const retry = await supabase
+            .from("questions_public")
+            .select("id")
+            .or('is_active.is.null,is_active.eq.true')
+            .or(examOr)
+            .in("chapter", scopedChapterNames)
+            .limit(Math.max(300, questionCount * 4));
+          if (retry.error) throw retry.error;
+          questions = retry.data;
+        }
+
         if (!questions || questions.length === 0) {
-          toast.error("No questions available for the selected chapters");
+          toast.error(
+            `Class ${selectedGrades.join(", ")} ${track} ke selected chapters mein abhi questions nahi hain. Doosra chapter ya subject try karo.`
+          );
           setLoading(false);
           return;
         }
@@ -198,6 +303,7 @@ const CreateGroupTestPage = () => {
         }
       } else {
         const preset = GROUP_TEST_PRESETS[groupTestType];
+
         const pattern = getExamPattern(preset.patternName);
         const selectedBySubject: string[] = [];
 
