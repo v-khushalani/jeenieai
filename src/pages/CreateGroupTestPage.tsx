@@ -799,11 +799,18 @@ const CreateGroupTestPage = () => {
               </div>
               )}
 
+              {groupTestType === "custom" && !chaptersLoading && selectedSubjects.length > 0 && availableChapters.length === 0 && (
+                <div className="p-4 rounded-xl border border-dashed border-primary/30 bg-primary/5 text-sm text-muted-foreground">
+                  Class {selectedGrades.join(", ")} · {track} ke in subjects ke chapters abhi add nahi hue — coming soon. Filhaal doosri class ya subject choose karo.
+                </div>
+              )}
+
               {/* Chapter Selection */}
               {groupTestType === "custom" && availableChapters.length > 0 && (
                 <div>
                   <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-bold">3</div>
+                    <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-bold">4</div>
+
                     Select Chapters
                     <Badge variant="secondary" className="ml-auto text-xs">
                       {selectedChapters.length} selected
