@@ -846,12 +846,15 @@ const CreateGroupTestPage = () => {
                   </div>
                 </div>
               )}
+              </>
+              )}
 
               <Button
                 className="w-full bg-linear-to-r from-primary to-blue-600 text-white font-semibold py-3 rounded-xl"
                 onClick={handleCreate}
-                disabled={loading || (groupTestType === "custom" && selectedSubjects.length === 0 && selectedChapters.length === 0)}
+                disabled={loading || selectedGrades.length === 0 || (groupTestType === "custom" && selectedSubjects.length === 0 && selectedChapters.length === 0)}
               >
+
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
