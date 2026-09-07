@@ -16,7 +16,6 @@ import {
 import { generateTestCode, generateQRCodeSVG } from "@/utils/qrCode";
 import { logger } from "@/utils/logger";
 import { parseGrade } from "@/utils/gradeParser";
-import { getBatchForStudent, getAllowedSubjects, getFilteredSubjects } from "@/utils/batchConfig";
 import { mapBatchToExamValues } from "@/utils/batchQueryBuilder";
 import { getExamPattern } from "@/config/examPatterns";
 import { getSubjectAliases } from "@/lib/subjectNormalization";
