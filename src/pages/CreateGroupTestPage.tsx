@@ -338,11 +338,13 @@ const CreateGroupTestPage = () => {
       }
 
       const code = generateTestCode();
+      const classTag = selectedGrades.length > 0 ? `Class ${selectedGrades.join("/")} · ` : "";
       const testTitle =
         title.trim() ||
         (groupTestType === "custom"
           ? (selectedChapters.length > 0
-              ? `${selectedChapters.map((ch) => ch.chapter).join(", ")} - Group Test`
+              ? `${classTag}${selectedChapters.map((ch) => ch.chapter).join(", ")} - Group Test`
+
               : `${selectedSubjects.join(", ")} - Group Test`)
           : `${GROUP_TEST_PRESETS[groupTestType].label} - Group Test`);
 
