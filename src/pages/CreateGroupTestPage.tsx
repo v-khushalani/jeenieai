@@ -16,7 +16,6 @@ import {
 import { generateTestCode, generateQRCodeSVG } from "@/utils/qrCode";
 import { logger } from "@/utils/logger";
 import { parseGrade } from "@/utils/gradeParser";
-import { getBatchForStudent, getAllowedSubjects, getFilteredSubjects } from "@/utils/batchConfig";
 import { mapBatchToExamValues } from "@/utils/batchQueryBuilder";
 import { getExamPattern } from "@/config/examPatterns";
 import { getSubjectAliases } from "@/lib/subjectNormalization";
@@ -339,11 +338,13 @@ const CreateGroupTestPage = () => {
       }
 
       const code = generateTestCode();
+      const classTag = selectedGrades.length > 0 ? `Class ${selectedGrades.join("/")} · ` : "";
       const testTitle =
         title.trim() ||
         (groupTestType === "custom"
           ? (selectedChapters.length > 0
-              ? `${selectedChapters.map((ch) => ch.chapter).join(", ")} - Group Test`
+              ? `${classTag}${selectedChapters.map((ch) => ch.chapter).join(", ")} - Group Test`
+
               : `${selectedSubjects.join(", ")} - Group Test`)
           : `${GROUP_TEST_PRESETS[groupTestType].label} - Group Test`);
 
@@ -766,9 +767,13 @@ const CreateGroupTestPage = () => {
               {groupTestType === "custom" && (
               <div>
                 <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center text-white text-xs font-bold">2</div>
+                  <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center text-white text-xs font-bold">3</div>
                   Select Subjects
+                  <Badge variant="outline" className="ml-auto text-[10px]">
+                    Class {selectedGrades.join(", ")} · {track}
+                  </Badge>
                 </h3>
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {subjects.map((subject) => (
                     <div
@@ -795,11 +800,18 @@ const CreateGroupTestPage = () => {
               </div>
               )}
 
+              {groupTestType === "custom" && !chaptersLoading && selectedSubjects.length > 0 && availableChapters.length === 0 && (
+                <div className="p-4 rounded-xl border border-dashed border-primary/30 bg-primary/5 text-sm text-muted-foreground">
+                  Class {selectedGrades.join(", ")} · {track} ke in subjects ke chapters abhi add nahi hue — coming soon. Filhaal doosri class ya subject choose karo.
+                </div>
+              )}
+
               {/* Chapter Selection */}
               {groupTestType === "custom" && availableChapters.length > 0 && (
                 <div>
                   <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-bold">3</div>
+                    <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-bold">4</div>
+
                     Select Chapters
                     <Badge variant="secondary" className="ml-auto text-xs">
                       {selectedChapters.length} selected
@@ -835,12 +847,15 @@ const CreateGroupTestPage = () => {
                   </div>
                 </div>
               )}
+              </>
+              )}
 
               <Button
                 className="w-full bg-linear-to-r from-primary to-blue-600 text-white font-semibold py-3 rounded-xl"
                 onClick={handleCreate}
-                disabled={loading || (groupTestType === "custom" && selectedSubjects.length === 0 && selectedChapters.length === 0)}
+                disabled={loading || selectedGrades.length === 0 || (groupTestType === "custom" && selectedSubjects.length === 0 && selectedChapters.length === 0)}
               >
+
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
