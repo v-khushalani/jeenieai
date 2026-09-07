@@ -766,9 +766,13 @@ const CreateGroupTestPage = () => {
               {groupTestType === "custom" && (
               <div>
                 <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center text-white text-xs font-bold">2</div>
+                  <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center text-white text-xs font-bold">3</div>
                   Select Subjects
+                  <Badge variant="outline" className="ml-auto text-[10px]">
+                    Class {selectedGrades.join(", ")} · {track}
+                  </Badge>
                 </h3>
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {subjects.map((subject) => (
                     <div
