@@ -189,6 +189,7 @@ const PracticePage: React.FC = () => {
   // Auto-advance
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [reportingQuestionId, setReportingQuestionId] = useState<string | null>(null);
+  const [guidedQuestionId, setGuidedQuestionId] = useState<string | null>(null);
   const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set());
   const [numericalInput, setNumericalInput] = useState('');
 
