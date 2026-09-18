@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, ArrowRight, CheckCircle, XCircle, Loader2,
-  Target, Trophy, BookOpen, RotateCcw, Zap, Lock, MessageSquare,
+  Target, Trophy, BookOpen, RotateCcw, Zap, Lock, MessageSquare, Sparkles,
 } from 'lucide-react';
 import AIDoubtSolver from '@/components/AIDoubtSolver';
+import GuidedSolve from '@/components/GuidedSolve';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
