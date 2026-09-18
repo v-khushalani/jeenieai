@@ -1124,6 +1124,26 @@ const PracticePage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Guided Solve — student derives the answer step by step */}
+            {isCurrentAnswered && currentQuestion && (
+              guidedQuestionId === currentQuestion.id ? (
+                <GuidedSolve
+                  questionId={currentQuestion.id}
+                  className="mt-4"
+                  onClose={() => setGuidedQuestionId(null)}
+                />
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full border-primary/40 text-primary hover:bg-primary/10"
+                  onClick={() => setGuidedQuestionId(currentQuestion.id)}
+                >
+                  <Sparkles className="w-4 h-4 mr-1.5" /> Samjha de — step by step
+                </Button>
+              )
+            )}
           </CardContent>
         </Card>
       </div>
