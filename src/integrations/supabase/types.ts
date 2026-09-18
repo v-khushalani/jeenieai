@@ -1687,6 +1687,7 @@ export type Database = {
           total_points: number | null
           total_questions_solved: number | null
           total_study_time: number | null
+          trial_ends_at: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1738,6 +1739,7 @@ export type Database = {
           total_points?: number | null
           total_questions_solved?: number | null
           total_study_time?: number | null
+          trial_ends_at?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1789,6 +1791,7 @@ export type Database = {
           total_points?: number | null
           total_questions_solved?: number | null
           total_study_time?: number | null
+          trial_ends_at?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -2064,6 +2067,51 @@ export type Database = {
           },
           {
             foreignKeyName: "question_reports_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_walkthroughs: {
+        Row: {
+          created_at: string
+          id: string
+          is_verified: boolean
+          model: string | null
+          question_id: string
+          steps: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          model?: string | null
+          question_id: string
+          steps: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          model?: string | null
+          question_id?: string
+          steps?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_walkthroughs_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_walkthroughs_question_id_fkey"
             columns: ["question_id"]
             isOneToOne: false
             referencedRelation: "questions_public"
