@@ -187,9 +187,8 @@ serve(async (req) => {
 
     return json({ cached: false, ...parsed });
   } catch (error) {
-    const gateway = gatewayErrorResponse?.(error, corsHeaders);
-    if (gateway) return gateway;
     console.error("generate-walkthrough failed", error);
-    return json({ error: "Kuch gadbad ho gayi. Thodi der baad try kar." }, 500);
+    const gateway = gatewayErrorResponse(error);
+    return json(gateway.body, gateway.status);
   }
 });
