@@ -6,12 +6,34 @@ export interface SubscriptionProfileFields {
   subscription_plan?: string | null;
   subscription_status?: string | null;
   subscription_tier?: string | null;
+  /** Free 7-day full-access window granted at signup. */
+  trial_ends_at?: string | null;
 }
+
+/** Columns every entitlement check needs. Keep selects in sync with this. */
+export const SUBSCRIPTION_SELECT =
+  'is_premium, subscription_end_date, subscription_plan, subscription_status, subscription_tier, trial_ends_at';
 
 const ACTIVE_STATUSES = new Set(['active', 'trialing', 'paid', 'completed', 'verified']);
 
+/** True while the signup trial window is still running. */
+export function isTrialActive(profile?: SubscriptionProfileFields | null): boolean {
+  if (!profile?.trial_ends_at) return false;
+  const ends = new Date(profile.trial_ends_at);
+  return !Number.isNaN(ends.getTime()) && ends > new Date();
+}
+
+/** Whole days left in the trial (0 when it is over). */
+export function trialDaysLeft(profile?: SubscriptionProfileFields | null): number {
+  if (!isTrialActive(profile)) return 0;
+  const ms = new Date(profile!.trial_ends_at!).getTime() - Date.now();
+  return Math.max(1, Math.ceil(ms / 86_400_000));
+}
+
 export function isSubscriptionActive(profile?: SubscriptionProfileFields | null): boolean {
   if (!profile) return false;
+
+  if (isTrialActive(profile)) return true;
 
   const status = String(profile.subscription_status || '').trim().toLowerCase();
   if (ACTIVE_STATUSES.has(status)) return true;
