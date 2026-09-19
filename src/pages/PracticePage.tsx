@@ -8,10 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, ArrowRight, CheckCircle, XCircle, Loader2,
-  Target, Trophy, BookOpen, RotateCcw, Zap, Lock, MessageSquare, Sparkles,
+  Target, Trophy, BookOpen, RotateCcw, Zap, Lock, MessageSquare,
 } from 'lucide-react';
 import AIDoubtSolver from '@/components/AIDoubtSolver';
-import GuidedSolve from '@/components/GuidedSolve';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -190,7 +189,6 @@ const PracticePage: React.FC = () => {
   // Auto-advance
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [reportingQuestionId, setReportingQuestionId] = useState<string | null>(null);
-  const [guidedQuestionId, setGuidedQuestionId] = useState<string | null>(null);
   const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set());
   const [numericalInput, setNumericalInput] = useState('');
 
@@ -1124,26 +1122,6 @@ const PracticePage: React.FC = () => {
                   })()}
                 </div>
               </div>
-            )}
-
-            {/* Guided Solve — student derives the answer step by step */}
-            {isCurrentAnswered && currentQuestion && (
-              guidedQuestionId === currentQuestion.id ? (
-                <GuidedSolve
-                  questionId={currentQuestion.id}
-                  className="mt-4"
-                  onClose={() => setGuidedQuestionId(null)}
-                />
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 w-full border-primary/40 text-primary hover:bg-primary/10"
-                  onClick={() => setGuidedQuestionId(currentQuestion.id)}
-                >
-                  <Sparkles className="w-4 h-4 mr-1.5" /> Samjha de — step by step
-                </Button>
-              )
             )}
           </CardContent>
         </Card>
