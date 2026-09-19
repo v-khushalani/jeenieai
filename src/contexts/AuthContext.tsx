@@ -4,7 +4,7 @@ import ReferralService from '@/services/referralService';
 import { User, Session } from '@supabase/supabase-js';
 import { logger } from '@/utils/logger';
 import { identifyUser, AnalyticsEvents } from '@/utils/analytics';
-import { buildSubscriptionPatch, resolveSubscriptionTier, isSubscriptionActive } from '@/utils/subscriptionEntitlement';
+import { buildSubscriptionPatch, resolveSubscriptionTier, isSubscriptionActive, SUBSCRIPTION_SELECT } from '@/utils/subscriptionEntitlement';
 
 import safeLocalStorage from '@/utils/safeStorage';
 interface AuthContextType {

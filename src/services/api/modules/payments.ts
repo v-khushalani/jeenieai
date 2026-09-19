@@ -7,7 +7,7 @@
 import { apiClient } from '../apiClient';
 import { cache, CACHE_TTL } from '../cache';
 import type { PaymentOrder, PaymentVerification, ApiResponse } from '../types';
-import { isSubscriptionActive, resolveSubscriptionTier } from '@/utils/subscriptionEntitlement';
+import { isSubscriptionActive, resolveSubscriptionTier, SUBSCRIPTION_SELECT } from '@/utils/subscriptionEntitlement';
 
 export interface SubscriptionPlan {
   id: string;

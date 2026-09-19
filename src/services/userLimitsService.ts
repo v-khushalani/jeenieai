@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import StreakService from './streakService';
 import { FREE_LIMITS } from '@/config/subscriptionPlans';
 import { logger } from '@/utils/logger';
-import { buildSubscriptionPatch, isSubscriptionActive, resolveSubscriptionTier } from '@/utils/subscriptionEntitlement';
+import { buildSubscriptionPatch, isSubscriptionActive, resolveSubscriptionTier, SUBSCRIPTION_SELECT } from '@/utils/subscriptionEntitlement';
 
 const LOCAL_MONTHLY_TEST_USAGE_KEY = 'testMonthlyUsageLocal';
 const MONTHLY_TEST_USAGE_CACHE_KEY = 'testMonthlyUsageCache';
