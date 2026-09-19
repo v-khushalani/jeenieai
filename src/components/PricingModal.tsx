@@ -73,7 +73,13 @@ const PricingModal: React.FC<PricingModalProps> = ({
   const monthlyPlan = plans?.find((p) => p.duration_days < 365 && p.tier === targetTier);
   const yearlyPlan = plans?.find((p) => p.duration_days >= 365 && p.tier === targetTier);
 
-  const defaultPricing = isProPlusUpsell
+  type DisplayPrice = {
+    price: number;
+    originalPrice?: number;
+    savings?: number;
+  };
+
+  const defaultPricing: Record<'monthly' | 'yearly', DisplayPrice> = isProPlusUpsell
     ? {
         monthly: { price: 249 },
         yearly: { price: 1999 },
@@ -83,7 +89,7 @@ const PricingModal: React.FC<PricingModalProps> = ({
         yearly: { price: 499 },
       };
 
-  const pricing = {
+  const pricing: Record<'monthly' | 'yearly', DisplayPrice> = {
     monthly: monthlyPlan
       ? {
           price: monthlyPlan.price,

@@ -479,18 +479,18 @@ export class UserLimitsService {
     switch (promptType) {
       case 'daily_limit_reached':
         return {
-          title: 'Daily Limit Reached!',
-          message: `You've crushed ${FREE_LIMITS.questionsPerDay} questions today! Upgrade for UNLIMITED.`,
+          title: 'Daily practice limit reached',
+          message: `You've completed ${FREE_LIMITS.questionsPerDay} questions today. Continue tomorrow or compare paid plans.`,
           cta: 'View Plans',
-          subtitle: 'Just ₹1.37/day'
+          subtitle: 'Your free practice allowance resets daily.'
         };
 
       case 'momentum_prompt':
         return {
           title: 'Great Progress!',
-          message: `${data.questionsCompleted} questions done! Go unlimited to keep the momentum.`,
+          message: `${data.questionsCompleted} questions completed. Paid plans include unlimited practice.`,
           cta: 'Choose a Plan',
-          subtitle: '₹1.37/day — Cheaper than a samosa!'
+          subtitle: 'Compare the included features before choosing.'
         };
 
       case 'approaching_limit':
@@ -498,23 +498,23 @@ export class UserLimitsService {
           title: 'Almost at Limit',
           message: `Only ${data.remaining} questions left today.`,
           cta: 'View Plans',
-          subtitle: '₹499/year'
+          subtitle: 'Your free practice allowance resets daily.'
         };
 
       case 'target_exceeds_limit':
         return {
-          title: 'Your Growth is Amazing!',
-          message: `Target: ${data.target} questions. FREE limit: ${FREE_LIMITS.questionsPerDay}. Upgrade to continue!`,
+          title: 'Your target exceeds the free allowance',
+          message: `Your target is ${data.target} questions. The Free plan includes ${FREE_LIMITS.questionsPerDay} per day.`,
           cta: 'Choose a Plan',
-          subtitle: 'Don\'t let limits stop you!'
+          subtitle: 'Compare plans to choose the allowance you need.'
         };
 
       case 'next_target_warning':
         return {
-          title: 'Target Increasing!',
-          message: `Next week's target: ${data.nextTarget}. Upgrade now!`,
+          title: 'Next week\'s target',
+          message: `Your next weekly target is ${data.nextTarget} questions.`,
           cta: 'View Plans',
-          subtitle: 'Stay ahead!'
+          subtitle: 'Check whether your current plan supports this target.'
         };
 
       default:
