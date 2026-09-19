@@ -143,7 +143,7 @@ export const paymentsAPI = {
     try {
       const { data: profile, error } = await apiClient.rawClient
         .from('profiles')
-        .select('is_premium, subscription_end_date, subscription_plan, subscription_status, subscription_tier')
+        .select(SUBSCRIPTION_SELECT)
         .eq('id', userId)
         .single() as unknown as { data: ProfileRow | null; error: { message: string; code: string } | null };
 

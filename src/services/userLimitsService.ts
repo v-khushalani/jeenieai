@@ -116,7 +116,7 @@ export class UserLimitsService {
   static async getDailyLimit(userId: string): Promise<number> {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_premium, subscription_end_date, subscription_plan, subscription_status, subscription_tier')
+      .select(SUBSCRIPTION_SELECT)
       .eq('id', userId)
       .single();
 
@@ -128,7 +128,7 @@ export class UserLimitsService {
   static async isPro(userId: string): Promise<boolean> {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_premium, subscription_end_date, subscription_plan, subscription_status, subscription_tier')
+      .select(SUBSCRIPTION_SELECT)
       .eq('id', userId)
       .single();
 

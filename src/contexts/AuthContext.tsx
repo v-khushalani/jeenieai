@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Get premium status from profiles
       const { data: profile } = await supabase
         .from('profiles')
-        .select('is_premium, subscription_end_date, subscription_plan, subscription_status, subscription_tier')
+        .select(SUBSCRIPTION_SELECT)
         .eq('id', userId)
         .single();
 
