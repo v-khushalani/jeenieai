@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import StreakService from './streakService';
 import { FREE_LIMITS } from '@/config/subscriptionPlans';
 import { logger } from '@/utils/logger';
-import { buildSubscriptionPatch, isSubscriptionActive, resolveSubscriptionTier } from '@/utils/subscriptionEntitlement';
+import { buildSubscriptionPatch, isSubscriptionActive, resolveSubscriptionTier, SUBSCRIPTION_SELECT } from '@/utils/subscriptionEntitlement';
 
 const LOCAL_MONTHLY_TEST_USAGE_KEY = 'testMonthlyUsageLocal';
 const MONTHLY_TEST_USAGE_CACHE_KEY = 'testMonthlyUsageCache';
@@ -116,7 +116,7 @@ export class UserLimitsService {
   static async getDailyLimit(userId: string): Promise<number> {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_premium, subscription_end_date, subscription_plan, subscription_status, subscription_tier')
+      .select(SUBSCRIPTION_SELECT)
       .eq('id', userId)
       .single();
 
@@ -128,7 +128,7 @@ export class UserLimitsService {
   static async isPro(userId: string): Promise<boolean> {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_premium, subscription_end_date, subscription_plan, subscription_status, subscription_tier')
+      .select(SUBSCRIPTION_SELECT)
       .eq('id', userId)
       .single();
 

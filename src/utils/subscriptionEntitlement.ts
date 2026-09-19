@@ -61,6 +61,9 @@ export function resolveSubscriptionTier(profile?: SubscriptionProfileFields | nu
   if (tier === 'pro_plus' || plan.includes('pro_plus')) return 'pro_plus';
   if (tier === 'pro' || plan.includes('pro')) return 'pro';
 
+  // Signup trial = full access, so the student sees everything before deciding.
+  if (isTrialActive(profile)) return 'pro_plus';
+
   if (profile?.is_premium === true) return 'pro';
 
   return 'pro';

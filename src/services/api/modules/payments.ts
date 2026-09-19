@@ -7,7 +7,7 @@
 import { apiClient } from '../apiClient';
 import { cache, CACHE_TTL } from '../cache';
 import type { PaymentOrder, PaymentVerification, ApiResponse } from '../types';
-import { isSubscriptionActive, resolveSubscriptionTier } from '@/utils/subscriptionEntitlement';
+import { isSubscriptionActive, resolveSubscriptionTier, SUBSCRIPTION_SELECT } from '@/utils/subscriptionEntitlement';
 
 export interface SubscriptionPlan {
   id: string;
@@ -143,7 +143,7 @@ export const paymentsAPI = {
     try {
       const { data: profile, error } = await apiClient.rawClient
         .from('profiles')
-        .select('is_premium, subscription_end_date, subscription_plan, subscription_status, subscription_tier')
+        .select(SUBSCRIPTION_SELECT)
         .eq('id', userId)
         .single() as unknown as { data: ProfileRow | null; error: { message: string; code: string } | null };
 

@@ -4,9 +4,11 @@
 // or dedicated API endpoints. This file retains only non-price fallbacks
 // (limits, messages, and feature flags).
 
+// Forever-free tier: generous enough to actually study daily, so the
+// first impression is the product, not a paywall.
 export const FREE_LIMITS = {
-  questionsPerDay: 15,
-  testsPerMonth: 2,
+  questionsPerDay: 50,
+  testsPerMonth: 5,
   aiDoubtSolver: true,
   aiDoubtQuotaPerDay: 5,
   aiDoubtQuotaPerMonth: 50,

@@ -4,7 +4,7 @@ import ReferralService from '@/services/referralService';
 import { User, Session } from '@supabase/supabase-js';
 import { logger } from '@/utils/logger';
 import { identifyUser, AnalyticsEvents } from '@/utils/analytics';
-import { buildSubscriptionPatch, resolveSubscriptionTier, isSubscriptionActive } from '@/utils/subscriptionEntitlement';
+import { buildSubscriptionPatch, resolveSubscriptionTier, isSubscriptionActive, SUBSCRIPTION_SELECT } from '@/utils/subscriptionEntitlement';
 
 import safeLocalStorage from '@/utils/safeStorage';
 interface AuthContextType {
@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Get premium status from profiles
       const { data: profile } = await supabase
         .from('profiles')
-        .select('is_premium, subscription_end_date, subscription_plan, subscription_status, subscription_tier')
+        .select(SUBSCRIPTION_SELECT)
         .eq('id', userId)
         .single();
 
