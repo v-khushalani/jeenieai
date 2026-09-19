@@ -12,7 +12,8 @@ export const FREE_LIMITS = {
   aiDoubtQuotaPerMonth: 50,
   aiStudyPlanner: false,
   analyticsAdvanced: false,
-  pyqAccess: false,
+  pyqAccess: true,
+  pyqYears: 2,
 };
 
 export const PRO_FEATURES = {
@@ -50,16 +51,16 @@ export const REFERRAL_CONFIG = {
 
 export const CONVERSION_MESSAGES = {
   dailyLimit: {
-    title: '🚀 Daily Limit Reached!',
-    message: "You've crushed 15 questions today! Come back tomorrow or unlock UNLIMITED practice.",
+    title: 'Daily practice limit reached',
+    message: "You've completed 15 questions today. Continue tomorrow or compare paid plans for unlimited practice.",
     cta: 'View Plans',
-    subtitle: '🔥 Just ₹2.46/day — Less than a chai!',
+    subtitle: 'Your free practice allowance resets daily.',
   },
   testLimit: {
-    title: '📝 Test Limit Reached',
-    message: "You've used all your free tests this month. Get unlimited tests with Pro or Pro Plus!",
-    cta: 'Unlock Unlimited Tests',
-    subtitle: '🎯 Practice makes perfect!',
+    title: 'Monthly test limit reached',
+    message: "You've used your free tests for this month. Pro and Pro+ include unlimited tests.",
+    cta: 'Compare Plans',
+    subtitle: 'Your free test allowance resets monthly.',
   },
   aiDoubtBlocked: {
     title: '🤖 AI Doubt Solver — Pro Feature',
@@ -80,10 +81,10 @@ export const CONVERSION_MESSAGES = {
     subtitle: '🧠 Plan smarter, not harder',
   },
   pyqBlocked: {
-    title: '📚 PYQs — Pro Feature',
-    message: 'Practice Previous Year Questions to crack JEE/NEET smarter.',
-    cta: 'Unlock PYQs',
-    subtitle: 'Pro: 5 yrs • Pro+: 10+ yrs',
+    title: 'More PYQ history',
+    message: 'Free includes the latest 2 years. Upgrade for a longer Previous Year Question archive.',
+    cta: 'Compare Plans',
+    subtitle: 'Free: 2 yrs • Pro: 5 yrs • Pro+: 10 yrs',
   },
   rankPredictorBlocked: {
     title: '🎯 Rank Predictor — Pro+ Feature',

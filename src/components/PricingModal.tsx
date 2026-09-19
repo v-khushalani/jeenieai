@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Crown, Check, Zap, Flame, Share2 } from 'lucide-react';
+import { X, Crown, Check, Zap, Share2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { FREE_LIMITS } from '@/config/subscriptionPlans';
 import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
@@ -27,43 +27,43 @@ const PricingModal: React.FC<PricingModalProps> = ({
 
   const limitMessages = {
     daily_limit: {
-      badge: "🔥 STEAL DEAL",
+      badge: "JEEnie Pro",
       title: "Choose a plan",
-      subtitle: "Unlimited access to everything!"
+      subtitle: "Compare plans and choose what fits your preparation."
     },
     daily_limit_reached: {
-      badge: "⏰ LIMIT REACHED",
+      badge: "Daily practice",
       title: "Choose a plan",
-      subtitle: "Continue practicing without limits!"
+      subtitle: "Paid plans include unlimited question practice."
     },
     test_limit: {
-      badge: "📝 TEST LIMIT",
+      badge: "Mock tests",
       title: "Choose a plan",
-      subtitle: "Unlimited mock tests await!"
+      subtitle: "Paid plans include unlimited mock tests."
     },
     ai_doubt_locked: {
-      badge: "🤖 AI FEATURE",
+      badge: "JEEnie AI",
       title: "Unlock JEEnie AI",
-      subtitle: "Your personal AI tutor 24/7"
+      subtitle: "Get a higher daily AI doubt allowance."
     },
     study_planner_blocked: {
-      badge: "📅 AI FEATURE",
+      badge: "Study Planner",
       title: "Unlock Study Planner",
-      subtitle: "Smart planning for better results"
+      subtitle: "Available with JEEnie Pro and Pro+."
     },
     almost_there: {
-      badge: "⚡ 80% USED",
-      title: "Running Low!",
-      subtitle: "Get unlimited access now"
+      badge: "Plan options",
+      title: "Compare plans",
+      subtitle: "See the limits and features included in each plan."
     }
   };
 
   const isProPlusUpsell = requiredTier === 'pro_plus';
   const message = isProPlusUpsell
     ? {
-        badge: '👑 PRO+ FEATURE',
+        badge: 'JEEnie Pro+',
         title: 'Unlock with JEEnie Pro+',
-        subtitle: 'You already have Pro — Pro+ adds PYQs, Smart Notes & deep AI.',
+        subtitle: 'Pro+ adds extended PYQs, Smart Notes and higher AI limits.',
       }
     : (limitMessages[limitType] || limitMessages.daily_limit);
 
@@ -73,30 +73,43 @@ const PricingModal: React.FC<PricingModalProps> = ({
   const monthlyPlan = plans?.find((p) => p.duration_days < 365 && p.tier === targetTier);
   const yearlyPlan = plans?.find((p) => p.duration_days >= 365 && p.tier === targetTier);
 
-  const defaultPricing = isProPlusUpsell
+  type DisplayPrice = {
+    price: number;
+    originalPrice?: number;
+    savings?: number;
+  };
+
+  const defaultPricing: Record<'monthly' | 'yearly', DisplayPrice> = isProPlusUpsell
     ? {
-        monthly: { price: 249, originalPrice: 349, perDay: '₹8.3' },
-        yearly: { price: 1999, originalPrice: 2988, perDay: '₹5.48', savings: 989 },
+        monthly: { price: 249 },
+        yearly: { price: 1999 },
       }
     : {
-        monthly: { price: 99, originalPrice: 149, perDay: '₹3.3' },
-        yearly: { price: 499, originalPrice: 1188, perDay: '₹1.37', savings: 689 },
+        monthly: { price: 99 },
+        yearly: { price: 499 },
       };
 
-  const pricing = {
+  const pricing: Record<'monthly' | 'yearly', DisplayPrice> = {
     monthly: monthlyPlan
       ? {
           price: monthlyPlan.price,
-          originalPrice: monthlyPlan.mrp_price ?? monthlyPlan.price,
-          perDay: `₹${Math.round(monthlyPlan.price / 30)}`,
+          originalPrice: monthlyPlan.mrp_price && monthlyPlan.mrp_price > monthlyPlan.price
+            ? monthlyPlan.mrp_price
+            : undefined,
+          savings: monthlyPlan.mrp_price && monthlyPlan.mrp_price > monthlyPlan.price
+            ? monthlyPlan.mrp_price - monthlyPlan.price
+            : undefined,
         }
       : defaultPricing.monthly,
     yearly: yearlyPlan
       ? {
           price: yearlyPlan.price,
-          originalPrice: yearlyPlan.mrp_price ?? yearlyPlan.price,
-          perDay: `₹${Math.round(yearlyPlan.price / 365)}`,
-          savings: (yearlyPlan.mrp_price ?? yearlyPlan.price) - yearlyPlan.price,
+          originalPrice: yearlyPlan.mrp_price && yearlyPlan.mrp_price > yearlyPlan.price
+            ? yearlyPlan.mrp_price
+            : undefined,
+          savings: yearlyPlan.mrp_price && yearlyPlan.mrp_price > yearlyPlan.price
+            ? yearlyPlan.mrp_price - yearlyPlan.price
+            : undefined,
         }
       : defaultPricing.yearly,
   };
@@ -113,7 +126,7 @@ const PricingModal: React.FC<PricingModalProps> = ({
         { feature: 'Questions/Day', free: FREE_LIMITS.questionsPerDay.toString(), pro: '∞' },
         { feature: 'Mock Tests', free: `${FREE_LIMITS.testsPerMonth}/mo`, pro: '∞' },
         { feature: 'JEEnie AI doubts/day', free: '5', pro: '20 (Pro) • 50 (Pro+)' },
-
+        { feature: 'Previous-Year Qs', free: `${FREE_LIMITS.pyqYears} recent yrs`, pro: '5 yrs (Pro) • 10 yrs (Pro+)' },
         { feature: 'Study Planner', free: false, pro: true },
         { feature: 'Analytics', free: false, pro: true },
       ];
@@ -158,17 +171,12 @@ const PricingModal: React.FC<PricingModalProps> = ({
         {/* Header */}
         <div className="text-center pt-6 pb-4 px-6 relative">
           <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full mb-3">
-            <Flame className="w-3 h-3" />
             {message.badge}
           </span>
           <h2 className="text-2xl font-bold text-foreground mb-1">
             {message.title}
           </h2>
-          <p className="text-muted-foreground text-sm">
-            {billingCycle === 'yearly' 
-              ? `Just ${pricing.yearly.perDay}/day — Cheaper than a samosa!` 
-              : `Just ${pricing.monthly.perDay}/day — Less than a chai!`}
-          </p>
+          <p className="text-muted-foreground text-sm">{message.subtitle}</p>
         </div>
 
         {/* Billing Toggle */}
@@ -193,9 +201,6 @@ const PricingModal: React.FC<PricingModalProps> = ({
               }`}
             >
               Yearly
-              <span className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded font-bold">
-                58%
-              </span>
             </button>
           </div>
         </div>
@@ -203,9 +208,11 @@ const PricingModal: React.FC<PricingModalProps> = ({
         {/* Price Display */}
         <div className="text-center px-6 mb-4">
           <div className="flex items-baseline justify-center gap-2">
-            <span className="text-muted-foreground line-through text-lg">
-              ₹{pricing[billingCycle].originalPrice}
-            </span>
+            {pricing[billingCycle].originalPrice && (
+              <span className="text-muted-foreground line-through text-lg">
+                ₹{pricing[billingCycle].originalPrice}
+              </span>
+            )}
             <span className="text-4xl font-bold text-primary">
               ₹{pricing[billingCycle].price}
             </span>
@@ -213,9 +220,9 @@ const PricingModal: React.FC<PricingModalProps> = ({
               /{billingCycle === 'yearly' ? 'yr' : 'mo'}
             </span>
           </div>
-          {billingCycle === 'yearly' && (
+          {pricing[billingCycle].savings && (
             <p className="text-sm font-medium mt-1 text-primary">
-              Save ₹{pricing.yearly.savings}
+              ₹{pricing[billingCycle].savings} less than the listed MRP
             </p>
           )}
         </div>

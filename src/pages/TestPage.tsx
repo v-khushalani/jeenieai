@@ -77,7 +77,8 @@ const TestPage: React.FC = () => {
     ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5 py-2 sm:py-4'
     : 'grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 py-2 sm:py-4';
   const currentYear = new Date().getFullYear();
-  const pyqYears = Array.from({ length: 10 }, (_, i) => (currentYear - i).toString());
+  const pyqYearLimit = hasProAccess ? 10 : FREE_LIMITS.pyqYears;
+  const pyqYears = Array.from({ length: pyqYearLimit }, (_, i) => (currentYear - i).toString());
 
   const testHistorySection = () => (
     <div className="mb-6 p-4 rounded-2xl border border-border bg-card/60 shadow-xs">
@@ -1265,8 +1266,8 @@ const TestPage: React.FC = () => {
                 </div>
                 </div>
 
-              {/* PYQ Mock Test Card - Pro only */}
-              {pyqEnabled && hasProAccess && (
+              {/* Free includes recent PYQs; paid plans include the extended archive. */}
+              {pyqEnabled && FREE_LIMITS.pyqAccess && (
 
                 <div
                   className="group relative overflow-hidden rounded-2xl bg-white border-2 border-amber-200 hover:border-amber-400 hover:scale-105 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-xl dark:bg-slate-900 dark:border-slate-700"
@@ -1278,7 +1279,7 @@ const TestPage: React.FC = () => {
                   <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
                     <Badge className="bg-linear-to-r from-amber-500 to-yellow-500 text-white border-0 shadow-md text-xs">
                       <Calendar className="w-3 h-3 mr-1" />
-                      Exam Ready
+                      {hasProAccess ? '10-year archive' : `${FREE_LIMITS.pyqYears} recent years`}
                     </Badge>
                   </div>
 
