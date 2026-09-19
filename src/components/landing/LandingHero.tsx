@@ -36,17 +36,9 @@ const LandingHero = () => {
                 India&apos;s first truly personalized JEE learning platform that adapts to your unique learning style and pace.
               </p>
 
-              <div className="mt-5 sm:mt-8 grid max-w-md mx-auto lg:mx-0 grid-cols-3 gap-2 sm:gap-3 rounded-2xl border border-border/60 bg-white/60 p-2.5 sm:p-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)] backdrop-blur-xs">
-                {[
-                  { value: '50K+', label: 'Students' },
-                  { value: '1M+', label: 'Questions' },
-                  { value: '98%', label: 'Success' },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-xl px-1 py-0.5 sm:px-2 sm:py-1 text-center">
-                    <p className="text-lg sm:text-2xl font-black tracking-[-0.03em] text-primary">{item.value}</p>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground">{item.label}</p>
-                  </div>
-                ))}
+              <div className="mt-5 sm:mt-8 inline-flex mx-auto lg:mx-0 items-center gap-3 rounded-2xl border border-border/60 bg-white/60 px-5 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)] backdrop-blur-xs">
+                <p className="text-xl sm:text-2xl font-black tracking-[-0.03em] text-primary">50,000+</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">active practice questions</p>
               </div>
 
               <div className="mt-5 sm:mt-6 flex flex-col gap-2.5 sm:flex-row sm:gap-3 sm:justify-center lg:justify-start">
