@@ -65,7 +65,7 @@ const EducatorDashboard: React.FC = () => {
 
             {/* Tabs (Desktop) */}
             <nav className="hidden sm:flex items-center gap-1">
-              {TABS.map((tab) => (
+              {visibleTabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
@@ -112,7 +112,7 @@ const EducatorDashboard: React.FC = () => {
 
         {/* Mobile Tab Bar */}
         <div className="sm:hidden flex border-t border-border">
-          {TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
