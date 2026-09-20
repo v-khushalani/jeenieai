@@ -1,5 +1,6 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -30,6 +31,13 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 const EducatorDashboard: React.FC = () => {
   const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('chapters');
+  // Group tests can be switched off centrally — never show a tab that leads nowhere.
+  const groupTestsEnabled = useFeatureFlag('group_tests');
+  const visibleTabs = TABS.filter((tab) => tab.id !== 'group-tests' || groupTestsEnabled);
+
+  useEffect(() => {
+    if (!groupTestsEnabled && activeTab === 'group-tests') setActiveTab('chapters');
+  }, [groupTestsEnabled, activeTab]);
 
   const displayName =
     (user?.user_metadata?.full_name as string | undefined) ||
