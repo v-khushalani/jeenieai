@@ -173,18 +173,21 @@ const TestResultsPage = () => {
     const incorrectAnswers = testResult.results.filter(r => !r.isCorrect && r.selectedOption).length;
     const skippedQuestions = testResult.results.filter(r => !r.selectedOption).length;
 
-    // Resolve marking scheme by exam pattern. Default to JEE Mains-style
-    // (+4 / -1) only for known competitive patterns; custom/foundation tests
-    // use raw scoring so we don't fabricate negative marks.
-    const pattern = String((testResult as any).examPattern || '').toLowerCase();
-    const marking = pattern.includes('jee') || pattern.includes('neet')
-      ? { positive: 4, negative: -1 }
-      : pattern.includes('foundation') || pattern.includes('custom') || pattern === ''
-        ? { positive: 1, negative: 0 }
-        : { positive: 4, negative: -1 };
+    // Marking scheme per exam pattern, resolved per question because CET
+    // awards +1 for Physics/Chemistry and +2 for Maths (and no negative marks).
+    const patternName = String((testResult as any).examPattern || '');
+    const marking = getSubjectMarking(patternName, null);
+    const markingFor = (subject?: string | null) => getSubjectMarking(patternName, subject);
 
-    const earnedMarks = correctAnswers * marking.positive + incorrectAnswers * marking.negative;
-    const totalMarks = testResult.totalQuestions * marking.positive;
+    let earnedMarks = 0;
+    let totalMarks = 0;
+    for (const r of testResult.results) {
+      const scheme = markingFor((r as any).subject);
+      totalMarks += scheme.correctMarks;
+      if (r.isCorrect) earnedMarks += scheme.correctMarks;
+      else if (r.selectedOption) earnedMarks += scheme.incorrectMarks;
+    }
+
     const accuracy = testResult.answeredQuestions > 0
       ? ((testResult.correctAnswers / testResult.answeredQuestions) * 100).toFixed(1) : "0";
     const attemptRate = ((testResult.answeredQuestions / testResult.totalQuestions) * 100).toFixed(1);
