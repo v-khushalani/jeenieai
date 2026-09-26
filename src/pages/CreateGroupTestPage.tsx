@@ -17,7 +17,7 @@ import { generateTestCode, generateQRCodeSVG } from "@/utils/qrCode";
 import { logger } from "@/utils/logger";
 import { parseGrade } from "@/utils/gradeParser";
 import { mapBatchToExamValues } from "@/utils/batchQueryBuilder";
-import { getExamPattern, balanceQuestionsBySubject, equalSubjectQuotas } from "@/config/examPatterns";
+import { getExamPattern, balanceQuestionsBySubject } from "@/config/examPatterns";
 import { getSubjectAliases } from "@/lib/subjectNormalization";
 
 const APP_URL = window.location.origin;
@@ -322,7 +322,9 @@ const CreateGroupTestPage = () => {
         const preset = GROUP_TEST_PRESETS[groupTestType];
 
         const pattern = getExamPattern(preset.patternName);
+        examPatternLabel = pattern.name;
         const selectedBySubject: string[] = [];
+
 
         for (const subject of pattern.subjects) {
           const perSubjectConfig = pattern.subjectConfig[subject];
