@@ -381,6 +381,7 @@ const CreateGroupTestPage = () => {
         subject: selectedSubjects[0] || null,
         chapter_names: selectedChapters.map((ch) => ch.chapter),
         ends_at: expiresAt,
+        exam_pattern: examPatternLabel,
       }).select("id").single();
 
       if (insertError) {
@@ -397,6 +398,7 @@ const CreateGroupTestPage = () => {
             subject: selectedSubjects[0] || null,
             chapter_names: selectedChapters.map((ch) => ch.chapter),
             ends_at: expiresAt,
+            exam_pattern: examPatternLabel,
           }).select("id").single();
           if (retryError) throw retryError;
           setTestCode(code2);
