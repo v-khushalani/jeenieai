@@ -281,7 +281,7 @@ const TestResultsPage = () => {
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <Trophy className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 opacity-90" />
-                  <div className="text-right"><div className="text-xs sm:text-sm opacity-75">Marking: +{stats?.marking?.positive ?? 4}{stats?.marking?.negative ? ` | ${stats.marking.negative}` : ''}</div></div>
+                  <div className="text-right"><div className="text-xs sm:text-sm opacity-75">Marking: +{stats?.marking?.correctMarks ?? 4}{stats?.marking?.incorrectMarks ? ` | ${stats.marking.incorrectMarks}` : ''}</div></div>
                 </div>
                 <div className="text-center mb-3 sm:mb-4">
                   <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">{stats?.earnedMarks} / {stats?.totalMarks}</div>
