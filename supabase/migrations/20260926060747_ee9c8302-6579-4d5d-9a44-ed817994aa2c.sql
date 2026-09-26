@@ -1,0 +1,1 @@
+ALTER TABLE public.group_tests ADD COLUMN IF NOT EXISTS exam_pattern text;
