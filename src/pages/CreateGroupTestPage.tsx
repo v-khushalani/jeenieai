@@ -241,8 +241,13 @@ const CreateGroupTestPage = () => {
     setLoading(true);
     try {
       let questionIds: string[] = [];
+      // Marking scheme label saved with the test so results score correctly
+      // (JEE/NEET +4/-1, MHT-CET +1 Phy, +1 Chem, +2 Maths with no negative).
+      let examPatternLabel: string | null = null;
 
       if (groupTestType === "custom") {
+        examPatternLabel = track === "Foundation" ? "Foundation" : getExamPattern(track).name;
+
         const examValues = TRACK_EXAM_VALUES[track];
         const examOr = `${examValues.map((v) => `exam.eq."${v}"`).join(",")},exam.is.null`;
 
