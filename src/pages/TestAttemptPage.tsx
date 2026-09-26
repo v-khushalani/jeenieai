@@ -379,6 +379,8 @@ const TestAttemptPage = () => {
 
   const handleSubmitTest = async () => {
     if (!testSession || !user) return;
+    setShowSubmitConfirm(false);
+
 
     try {
       setTestSubmitted(true);
@@ -429,6 +431,7 @@ const TestAttemptPage = () => {
 
         results.push({
           questionId: question.id,
+          subject: (question as any).subject || null,
           selectedOption: userAnswer?.selectedOption || "",
           correctOption: correctOption,
           isCorrect,
