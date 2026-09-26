@@ -17,7 +17,7 @@ import { generateTestCode, generateQRCodeSVG } from "@/utils/qrCode";
 import { logger } from "@/utils/logger";
 import { parseGrade } from "@/utils/gradeParser";
 import { mapBatchToExamValues } from "@/utils/batchQueryBuilder";
-import { getExamPattern, balanceQuestionsBySubject, equalSubjectQuotas } from "@/config/examPatterns";
+import { getExamPattern, balanceQuestionsBySubject } from "@/config/examPatterns";
 import { getSubjectAliases } from "@/lib/subjectNormalization";
 
 const APP_URL = window.location.origin;
@@ -241,8 +241,13 @@ const CreateGroupTestPage = () => {
     setLoading(true);
     try {
       let questionIds: string[] = [];
+      // Marking scheme label saved with the test so results score correctly
+      // (JEE/NEET +4/-1, MHT-CET +1 Phy, +1 Chem, +2 Maths with no negative).
+      let examPatternLabel: string | null = null;
 
       if (groupTestType === "custom") {
+        examPatternLabel = track === "Foundation" ? "Foundation" : getExamPattern(track).name;
+
         const examValues = TRACK_EXAM_VALUES[track];
         const examOr = `${examValues.map((v) => `exam.eq."${v}"`).join(",")},exam.is.null`;
 
@@ -317,7 +322,9 @@ const CreateGroupTestPage = () => {
         const preset = GROUP_TEST_PRESETS[groupTestType];
 
         const pattern = getExamPattern(preset.patternName);
+        examPatternLabel = pattern.name;
         const selectedBySubject: string[] = [];
+
 
         for (const subject of pattern.subjects) {
           const perSubjectConfig = pattern.subjectConfig[subject];
@@ -374,6 +381,7 @@ const CreateGroupTestPage = () => {
         subject: selectedSubjects[0] || null,
         chapter_names: selectedChapters.map((ch) => ch.chapter),
         ends_at: expiresAt,
+        exam_pattern: examPatternLabel,
       }).select("id").single();
 
       if (insertError) {
@@ -390,6 +398,7 @@ const CreateGroupTestPage = () => {
             subject: selectedSubjects[0] || null,
             chapter_names: selectedChapters.map((ch) => ch.chapter),
             ends_at: expiresAt,
+            exam_pattern: examPatternLabel,
           }).select("id").single();
           if (retryError) throw retryError;
           setTestCode(code2);

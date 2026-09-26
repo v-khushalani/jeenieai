@@ -173,18 +173,21 @@ const TestResultsPage = () => {
     const incorrectAnswers = testResult.results.filter(r => !r.isCorrect && r.selectedOption).length;
     const skippedQuestions = testResult.results.filter(r => !r.selectedOption).length;
 
-    // Resolve marking scheme by exam pattern. Default to JEE Mains-style
-    // (+4 / -1) only for known competitive patterns; custom/foundation tests
-    // use raw scoring so we don't fabricate negative marks.
-    const pattern = String((testResult as any).examPattern || '').toLowerCase();
-    const marking = pattern.includes('jee') || pattern.includes('neet')
-      ? { positive: 4, negative: -1 }
-      : pattern.includes('foundation') || pattern.includes('custom') || pattern === ''
-        ? { positive: 1, negative: 0 }
-        : { positive: 4, negative: -1 };
+    // Marking scheme per exam pattern, resolved per question because CET
+    // awards +1 for Physics/Chemistry and +2 for Maths (and no negative marks).
+    const patternName = String((testResult as any).examPattern || '');
+    const marking = getSubjectMarking(patternName, null);
+    const markingFor = (subject?: string | null) => getSubjectMarking(patternName, subject);
 
-    const earnedMarks = correctAnswers * marking.positive + incorrectAnswers * marking.negative;
-    const totalMarks = testResult.totalQuestions * marking.positive;
+    let earnedMarks = 0;
+    let totalMarks = 0;
+    for (const r of testResult.results) {
+      const scheme = markingFor((r as any).subject);
+      totalMarks += scheme.correctMarks;
+      if (r.isCorrect) earnedMarks += scheme.correctMarks;
+      else if (r.selectedOption) earnedMarks += scheme.incorrectMarks;
+    }
+
     const accuracy = testResult.answeredQuestions > 0
       ? ((testResult.correctAnswers / testResult.answeredQuestions) * 100).toFixed(1) : "0";
     const attemptRate = ((testResult.answeredQuestions / testResult.totalQuestions) * 100).toFixed(1);
@@ -278,7 +281,7 @@ const TestResultsPage = () => {
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <Trophy className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 opacity-90" />
-                  <div className="text-right"><div className="text-xs sm:text-sm opacity-75">Marking: +{stats?.marking?.positive ?? 4}{stats?.marking?.negative ? ` | ${stats.marking.negative}` : ''}</div></div>
+                  <div className="text-right"><div className="text-xs sm:text-sm opacity-75">Marking: +{stats?.marking?.correctMarks ?? 4}{stats?.marking?.incorrectMarks ? ` | ${stats.marking.incorrectMarks}` : ''}</div></div>
                 </div>
                 <div className="text-center mb-3 sm:mb-4">
                   <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">{stats?.earnedMarks} / {stats?.totalMarks}</div>

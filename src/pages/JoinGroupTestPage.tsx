@@ -24,6 +24,7 @@ interface GroupTest {
   subject: string | null;
   chapter_names: string[];
   expires_at: string | null;
+  exam_pattern?: string | null;
 }
 
 const JoinGroupTestPage = () => {
@@ -269,6 +270,7 @@ const JoinGroupTestPage = () => {
         groupTestId: groupTest.id,
         groupTestCode: groupTest.test_code,
         sessionId: reservation.data.id,
+        examPattern: groupTest.exam_pattern || undefined,
       };
 
       safeLocalStorage.setItem("currentTest", JSON.stringify(testSession));

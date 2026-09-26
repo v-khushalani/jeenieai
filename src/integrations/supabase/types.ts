@@ -1333,6 +1333,7 @@ export type Database = {
           created_by: string | null
           duration_minutes: number | null
           ends_at: string | null
+          exam_pattern: string | null
           host_id: string | null
           id: string
           is_active: boolean | null
@@ -1352,6 +1353,7 @@ export type Database = {
           created_by?: string | null
           duration_minutes?: number | null
           ends_at?: string | null
+          exam_pattern?: string | null
           host_id?: string | null
           id?: string
           is_active?: boolean | null
@@ -1371,6 +1373,7 @@ export type Database = {
           created_by?: string | null
           duration_minutes?: number | null
           ends_at?: string | null
+          exam_pattern?: string | null
           host_id?: string | null
           id?: string
           is_active?: boolean | null
