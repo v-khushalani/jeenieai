@@ -17,7 +17,7 @@ import { generateTestCode, generateQRCodeSVG } from "@/utils/qrCode";
 import { logger } from "@/utils/logger";
 import { parseGrade } from "@/utils/gradeParser";
 import { mapBatchToExamValues } from "@/utils/batchQueryBuilder";
-import { getExamPattern } from "@/config/examPatterns";
+import { getExamPattern, balanceQuestionsBySubject, equalSubjectQuotas } from "@/config/examPatterns";
 import { getSubjectAliases } from "@/lib/subjectNormalization";
 
 const APP_URL = window.location.origin;
@@ -256,7 +256,7 @@ const CreateGroupTestPage = () => {
 
         let query = supabase
           .from("questions_public")
-          .select("id")
+          .select("id, subject")
           .or('is_active.is.null,is_active.eq.true')
           .or(examOr);
 
@@ -268,18 +268,18 @@ const CreateGroupTestPage = () => {
           query = query.in("subject", Array.from(new Set(selectedSubjects.flatMap((subject) => getSubjectAliases(subject)))));
         }
 
-        let { data: questions, error } = await query.limit(Math.max(300, questionCount * 4));
+        let { data: questions, error } = await query.limit(Math.max(600, questionCount * 8));
         if (error) throw error;
 
         // Fallback: some rows are linked by chapter name only, not chapter_id.
         if ((!questions || questions.length === 0) && scopedChapterNames.length > 0) {
           const retry = await supabase
             .from("questions_public")
-            .select("id")
+            .select("id, subject")
             .or('is_active.is.null,is_active.eq.true')
             .or(examOr)
             .in("chapter", scopedChapterNames)
-            .limit(Math.max(300, questionCount * 4));
+            .limit(Math.max(600, questionCount * 8));
           if (retry.error) throw retry.error;
           questions = retry.data;
         }
@@ -293,13 +293,26 @@ const CreateGroupTestPage = () => {
         }
 
         const shuffled = questions.sort(() => Math.random() - 0.5);
-        questionIds = shuffled
-          .slice(0, Math.min(questionCount, questions.length))
-          .map((q) => q.id);
+
+        // Multi-subject test → equal share per subject instead of one mixed slice,
+        // otherwise the subject with the largest bank fills nearly the whole paper.
+        const paperSubjects = Array.from(new Set(
+          (selectedChapters.length > 0
+            ? selectedChapters.map((ch) => ch.subject)
+            : selectedSubjects
+          ).filter(Boolean)
+        ));
+
+        const picked = paperSubjects.length > 1
+          ? balanceQuestionsBySubject(shuffled, paperSubjects, Math.min(questionCount, shuffled.length))
+          : shuffled.slice(0, Math.min(questionCount, shuffled.length));
+
+        questionIds = picked.map((q) => q.id);
 
         if (questionIds.length < questionCount) {
           toast.info(`Only ${questionIds.length} questions available — test created with these.`);
         }
+
       } else {
         const preset = GROUP_TEST_PRESETS[groupTestType];
 
