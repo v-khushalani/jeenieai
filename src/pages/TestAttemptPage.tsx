@@ -98,6 +98,7 @@ const TestAttemptPage = () => {
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [testSubmitted, setTestSubmitted] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [showMobilePalette, setShowMobilePalette] = useState(false);
   const reportsEnabled = useFeatureFlag('question_reports');
   const [reportingQuestionId, setReportingQuestionId] = useState<string | null>(null);
@@ -835,7 +836,7 @@ const TestAttemptPage = () => {
 
                 {currentQuestionIndex === testSession.questions.length - 1 ? (
                   <Button
-                    onClick={handleSubmitTest}
+                    onClick={() => setShowSubmitConfirm(true)}
                     className="bg-green-600 hover:bg-green-700"
                     size="sm"
                     type="button"
@@ -933,7 +934,7 @@ const TestAttemptPage = () => {
 
               {/* Submit Button */}
               <Button
-                onClick={handleSubmitTest}
+                onClick={() => setShowSubmitConfirm(true)}
                 className="w-full bg-green-600 hover:bg-green-700 mt-3"
                 size="lg"
               >
@@ -1038,7 +1039,7 @@ const TestAttemptPage = () => {
               <Button
                 onClick={() => {
                   setShowMobilePalette(false);
-                  handleSubmitTest();
+                  setShowSubmitConfirm(true);
                 }}
                 className="w-full bg-green-600 hover:bg-green-700 mt-4"
                 size="lg"
