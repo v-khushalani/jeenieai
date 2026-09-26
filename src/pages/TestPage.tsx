@@ -35,7 +35,7 @@ import {
   getPracticeQuestions,
   getTestSeriesQuestions,
 } from '@/utils/batchQueryBuilder';
-import { getExamPattern, EXAM_PATTERNS } from '@/config/examPatterns';
+import { getExamPattern, EXAM_PATTERNS, balanceQuestionsBySubject, normalizeSubjectName } from '@/config/examPatterns';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import { normalizeTargetExam } from '@/config/goalConfig';
 import { formatSubjectDisplay } from '@/utils/subjectDisplay';
@@ -699,11 +699,25 @@ const TestPage: React.FC = () => {
           questionCount: rawQuestions.length,
         });
 
-        const allSelected = rawQuestions
+        // Balanced paper: every subject gets its own quota so one subject
+        // (usually Physics, which has the biggest question bank) can't dominate.
+        const freshPool = rawQuestions
           .filter((question) => !attemptedIds.has(question.id))
-          .sort(() => Math.random() - 0.5)
-          .slice(0, pattern.totalQuestions);
-        
+          .sort(() => Math.random() - 0.5);
+
+        const allSelected = balanceQuestionsBySubject(
+          freshPool,
+          pattern.subjects,
+          pattern.totalQuestions
+        );
+
+        logger.info('Full mock test subject split', {
+          split: pattern.subjects.map((subject) => ({
+            subject,
+            count: allSelected.filter((q) => normalizeSubjectName(q.subject) === normalizeSubjectName(subject)).length,
+          })),
+        });
+
         if (allSelected.length === 0) {
           toast.dismiss();
           toast.error("No new questions available! All questions already attempted.");
@@ -715,6 +729,7 @@ const TestPage: React.FC = () => {
           toast.dismiss();
           toast.info(`Only ${allSelected.length} new questions available (${pattern.totalQuestions} needed for full paper). Starting with available questions.`);
         }
+
 
         const reservedSessionId = await reserveSessionOrProceedLocally(
           user.id,
@@ -877,7 +892,10 @@ const TestPage: React.FC = () => {
       }
 
       const shuffled = filteredQuestions.sort(() => Math.random() - 0.5);
-      const selected = shuffled.slice(0, Math.min(questionLimit, filteredQuestions.length));
+      const chapterSubjects = Array.from(new Set(selectedChapters.map((ch) => ch.subject).filter(Boolean)));
+      const selected = (mode === "chapter" && chapterSubjects.length > 1)
+        ? balanceQuestionsBySubject(shuffled, chapterSubjects, Math.min(questionLimit, filteredQuestions.length))
+        : shuffled.slice(0, Math.min(questionLimit, filteredQuestions.length));
 
       const reservedSessionId = await reserveSessionOrProceedLocally(
         user.id,
