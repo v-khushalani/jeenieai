@@ -892,7 +892,10 @@ const TestPage: React.FC = () => {
       }
 
       const shuffled = filteredQuestions.sort(() => Math.random() - 0.5);
-      const selected = shuffled.slice(0, Math.min(questionLimit, filteredQuestions.length));
+      const chapterSubjects = Array.from(new Set(selectedChapters.map((ch) => ch.subject).filter(Boolean)));
+      const selected = (mode === "chapter" && chapterSubjects.length > 1)
+        ? balanceQuestionsBySubject(shuffled, chapterSubjects, Math.min(questionLimit, filteredQuestions.length))
+        : shuffled.slice(0, Math.min(questionLimit, filteredQuestions.length));
 
       const reservedSessionId = await reserveSessionOrProceedLocally(
         user.id,
