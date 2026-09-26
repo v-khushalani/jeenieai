@@ -81,8 +81,109 @@ export const EXAM_PATTERNS: Record<string, ExamPattern> = {
  * Falls back to a generic JEE Mains-like pattern.
  */
 export function getExamPattern(examName: string): ExamPattern {
-  return EXAM_PATTERNS[examName] || EXAM_PATTERNS['JEE Mains'];
+  if (EXAM_PATTERNS[examName]) return EXAM_PATTERNS[examName];
+  const upper = (examName || '').toUpperCase();
+  if (upper.includes('CET')) return EXAM_PATTERNS['MHT-CET'];
+  if (upper.includes('NEET')) return EXAM_PATTERNS['NEET'];
+  if (upper.includes('ADVANCED')) return EXAM_PATTERNS['JEE Advanced'];
+  return EXAM_PATTERNS['JEE Mains'];
 }
+
+/**
+ * Resolve the marking scheme for a single subject inside a pattern.
+ * CET is subject-dependent (+1 Physics/Chemistry, +2 Maths, no negative),
+ * JEE and NEET are uniform (+4 / -1).
+ */
+export function getSubjectMarking(
+  patternName: string | null | undefined,
+  subject?: string | null
+): { correctMarks: number; incorrectMarks: number } {
+  const name = String(patternName || '').toUpperCase();
+
+  // Foundation / custom / chapter tests: plain 1-mark scoring, no penalty.
+  if (!name || name.includes('FOUNDATION') || name.includes('CUSTOM')) {
+    return { correctMarks: 1, incorrectMarks: 0 };
+  }
+
+  const pattern = getExamPattern(String(patternName));
+  const canonical = normalizeSubjectName(subject);
+  const config = (canonical && pattern.subjectConfig[canonical]) || null;
+  if (config) return { correctMarks: config.correctMarks, incorrectMarks: config.incorrectMarks };
+
+  // Unknown subject → use the pattern's most common scheme.
+  const first = pattern.subjectConfig[pattern.subjects[0]];
+  return { correctMarks: first.correctMarks, incorrectMarks: first.incorrectMarks };
+}
+
+function normalizeSubjectName(subject?: string | null): string | null {
+  if (!subject) return null;
+  const s = subject.trim().toLowerCase();
+  if (s.includes('phys')) return 'Physics';
+  if (s.includes('chem')) return 'Chemistry';
+  if (s.includes('math')) return 'Mathematics';
+  if (s.includes('bio') || s.includes('bot') || s.includes('zoo')) return 'Biology';
+  return null;
+}
+
+export { normalizeSubjectName };
+
+/**
+ * Split a total question count equally across the given subjects.
+ * Remainder questions are handed out one-by-one from the first subject onward,
+ * so a 75/3 split is exactly 25-25-25 and a 50/3 split is 17-17-16.
+ */
+export function equalSubjectQuotas(subjects: string[], total: number): Record<string, number> {
+  const quotas: Record<string, number> = {};
+  if (subjects.length === 0 || total <= 0) return quotas;
+  const base = Math.floor(total / subjects.length);
+  let remainder = total - base * subjects.length;
+  for (const subject of subjects) {
+    quotas[subject] = base + (remainder > 0 ? 1 : 0);
+    if (remainder > 0) remainder -= 1;
+  }
+  return quotas;
+}
+
+/**
+ * Take an already-fetched mixed pool and build a balanced paper:
+ * each subject contributes at most its quota. If one subject is short,
+ * the shortfall is redistributed to subjects that still have spare questions,
+ * so the paper still reaches the requested size without one subject dominating.
+ */
+export function balanceQuestionsBySubject<T extends { subject?: string | null }>(
+  questions: T[],
+  subjects: string[],
+  total: number
+): T[] {
+  if (subjects.length <= 1) return questions.slice(0, total);
+
+  const quotas = equalSubjectQuotas(subjects, total);
+  const buckets: Record<string, T[]> = {};
+  for (const subject of subjects) buckets[subject] = [];
+
+  for (const question of questions) {
+    const canonical = normalizeSubjectName(question.subject);
+    const match = subjects.find((s) => normalizeSubjectName(s) === canonical);
+    if (match) buckets[match].push(question);
+  }
+
+  const picked: T[] = [];
+  for (const subject of subjects) {
+    picked.push(...buckets[subject].splice(0, quotas[subject]));
+  }
+
+  // Redistribute any shortfall so the paper isn't unnecessarily short.
+  let shortfall = total - picked.length;
+  while (shortfall > 0) {
+    const donor = subjects.find((s) => buckets[s].length > 0);
+    if (!donor) break;
+    picked.push(buckets[donor].shift() as T);
+    shortfall -= 1;
+  }
+
+  return picked;
+}
+
 
 /**
  * Calculate score based on exam pattern marking scheme
