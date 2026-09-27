@@ -22,6 +22,7 @@ import ReferralService from "@/services/referralService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFeatureFlag } from "@/contexts/FeatureFlagContext";
 import type { ShareCardOpts } from "@/lib/shareCard";
+import { getSubjectMarking } from "@/config/examPatterns";
 
 interface Question {
   id: string;
