@@ -1093,6 +1093,66 @@ const TestAttemptPage = () => {
         </div>
       )}
 
+      {/* Submit Confirmation Dialog */}
+      {showSubmitConfirm && testSession && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="flex items-center text-base sm:text-lg">
+                <AlertCircle className="w-5 h-5 mr-2 text-orange-500" />
+                Submit Test?
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Once submitted you can't change your answers. Please check the summary below.
+              </p>
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="bg-muted/60 dark:bg-muted/30 p-3 rounded-lg text-center">
+                  <div className="font-bold text-xl">{testSession.questions.length}</div>
+                  <div className="text-xs text-muted-foreground">Total Questions</div>
+                </div>
+                <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg text-center">
+                  <div className="font-bold text-xl text-green-600">
+                    {Object.values(userAnswers).filter(a => a.selectedOption).length}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Answered</div>
+                </div>
+                <div className="bg-orange-50 dark:bg-orange-950/30 p-3 rounded-lg text-center">
+                  <div className="font-bold text-xl text-orange-600">
+                    {testSession.questions.length - Object.values(userAnswers).filter(a => a.selectedOption).length}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Unanswered</div>
+                </div>
+                <div className="bg-yellow-50 dark:bg-yellow-950/30 p-3 rounded-lg text-center">
+                  <div className="font-bold text-xl text-yellow-600">
+                    {Object.values(userAnswers).filter(a => a.isMarkedForReview).length}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Marked for Review</div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowSubmitConfirm(false)}
+                  className="flex-1 text-sm"
+                >
+                  Continue Test
+                </Button>
+                <Button
+                  onClick={handleSubmitTest}
+                  className="flex-1 text-sm bg-green-600 hover:bg-green-700"
+                >
+                  Confirm & Submit
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+
+
       {/* Report Dialog */}
       {reportingQuestionId && (
         <QuestionReportDialog
