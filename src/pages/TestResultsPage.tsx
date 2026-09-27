@@ -300,7 +300,7 @@ const TestResultsPage = () => {
                 <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 mx-auto mb-2 sm:mb-3 text-green-600" />
                 <div className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1 text-green-700">{stats?.correctAnswers}</div>
                 <div className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">Correct</div>
-                <div className="text-xs text-green-700 font-medium">+{(stats?.correctAnswers || 0) * (stats?.marking?.positive ?? 4)} marks</div>
+                <div className="text-xs text-green-700 font-medium">+{(stats?.correctAnswers || 0) * (stats?.marking?.correctMarks ?? 4)} marks</div>
               </CardContent>
             </Card>
 
