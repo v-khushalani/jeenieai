@@ -119,6 +119,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           writePlannerCache(userId, { profile: prof, targetExam: exam, planner: data, completedHashes: [] });
 
         }, { delayMs: 1500 });
+        // Warm the code for the most-visited pages so navigation feels instant.
+        prefetch('route-chunks', async () => {
+          await Promise.allSettled([
+            import('@/pages/EnhancedDashboard'),
+            import('@/pages/PracticePage'),
+            import('@/pages/StudyNowPage'),
+            import('@/pages/TestPage'),
+            import('@/pages/AIStudyPlannerPage'),
+          ]);
+        }, { delayMs: 2500 });
       } catch (e) {
         logger.warn('planner prefetch skipped', e);
       }

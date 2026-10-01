@@ -291,7 +291,7 @@ serve(async (req) => {
 
     // History window: give every tier real conversation memory so follow-ups work.
     // Free = last 6 turns, Pro = 10, Pro+ = 16.
-    const historyWindow = userTier === "pro_plus" ? 16 : userTier === "pro" ? 10 : 6;
+    const historyWindow = userTier === "pro_plus" ? 8 : userTier === "pro" ? 6 : 4;
     const messages: GatewayMessage[] = [
       { role: "system", content: systemPrompt },
     ];
