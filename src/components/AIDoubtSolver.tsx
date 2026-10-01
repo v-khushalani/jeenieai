@@ -426,6 +426,12 @@ function cleanAndFormatJeenieText(text: string): string {
 
   let formatted = text.trim();
 
+  // Turn markdown headings into clean bold labels and drop stray hashes/rules.
+  formatted = formatted
+    .replace(/^\s{0,3}#{1,6}\s*(.+?)\s*#*\s*$/gm, '**$1**')
+    .replace(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/gm, '')
+    .replace(/(^|\s)#{2,}(?=\s)/g, '$1');
+
   // 0. Remove "Bhai" or "Bada Bhai" mentions if they slipped through
   formatted = formatted.replace(/\b(bada bhai|mentor|bhai)\b/gi, "JEEnie");
   
