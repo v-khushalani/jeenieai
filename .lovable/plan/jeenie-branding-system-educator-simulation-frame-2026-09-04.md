@@ -4,7 +4,7 @@ Goal: har screen, har share, har animation pe JEEnie visible ho — bina clutter
 
 ## 1. Brand kit (one source of truth)
 
-- Ek `src/config/brand.ts` file: brand name, tagline ("Padhai ka apna bada dimaag"), mascot image, brand navy + accent tokens, share-caption templates.
+- Ek `src/config/brand.ts` file: brand name, mascot image, brand navy + accent tokens, share-caption templates.
 - Mascot ke 3 official avatars (same character, alag mood): Idle, Cheering, Thinking — planner, rewards, loading aur empty states mein reuse honge.
 - Sab jagah wahi tokens use honge, hardcoded colors nahi.
 
@@ -34,7 +34,7 @@ Frame design:
 ## 4. Marketing (CMO view)
 
 - **Distribution beats features**: har share-able moment (streak, badge, mock rank, roast) ko one-tap "Share on WhatsApp/Instagram" banao. Har share pe branded image + link.
-- **Ek hi tagline everywhere** — app, Play Store, website, social bio. Consistency = recall.
+- **Ek hi brand identity everywhere** — app, Play Store, website, social bio. Consistency = recall.
 - **Mascot = differentiator**: baaki apps corporate lagte hain; JEEnie ek character hai. Isko har jagah bolne do (Hinglish, dost jaisa, kabhi roast).
 - **Referral loop**: share card mein referral code auto-embed, dono ko points.
 - **Play Store listing**: screenshots mein mascot + ek-ek benefit line, pehla screenshot hi hook.

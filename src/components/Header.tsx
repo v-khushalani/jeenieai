@@ -136,9 +136,6 @@ const Header = () => {
               <span className="font-bold text-xl lg:text-2xl text-foreground leading-none">
                 JEEnie
               </span>
-              <span className="hidden lg:block text-[10px] font-medium tracking-wide text-muted-foreground mt-0.5">
-                {BRAND.tagline}
-              </span>
             </span>
           </div>
 
