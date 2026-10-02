@@ -38,6 +38,9 @@ const LoadingScreen = React.forwardRef<HTMLDivElement, LoadingScreenProps>(
           <h2 className="mt-4 text-xl font-extrabold tracking-tight text-primary">
             {message || LOADING_LINES[lineIndex]}
           </h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            {BRAND.name} — {BRAND.tagline}
+          </p>
         </div>
       </div>
     );

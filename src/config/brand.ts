@@ -6,6 +6,7 @@ import mascotThink from '@/assets/jeenie-mascot-think.png';
 export const BRAND = {
   name: 'JEEnie',
   legalName: 'JEEnie AI',
+  tagline: 'Padhai ka apna bada dimaag',
   shortTagline: 'Tera AI study partner',
   site: 'jeenie.website',
   siteUrl: 'https://www.jeenie.website',
