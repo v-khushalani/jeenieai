@@ -109,7 +109,7 @@ export const RoastMemeCard = ({ weakestTopic, weakestAccuracy }: Props) => {
         },
       });
       let text = (data?.response || data?.content || '').toString();
-      text = sanitizeRoast(text, 240);
+      text = sanitizeRoast(text);
       // Strip leading "Topic:" / "<topic>:" / "<topic> —" patterns
       const topicEsc = weakestTopic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       text = text.replace(new RegExp(`^\\s*(?:topic\\s*:?\\s*)?${topicEsc}\\s*[:\\-—–|]+\\s*`, 'i'), '').trim();
