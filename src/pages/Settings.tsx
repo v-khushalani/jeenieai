@@ -320,6 +320,10 @@ const Settings = () => {
 
       if (error) throw error;
 
+      // Sync name into auth metadata so Header, dashboards, checkout etc. update instantly
+      await supabase.auth.updateUser({ data: { full_name: updateData.full_name, name: updateData.full_name } });
+      await supabase.auth.refreshSession();
+
       // daily_progress sync removed — streak logic uses question_attempts directly
 
       setSaveStatus('success');

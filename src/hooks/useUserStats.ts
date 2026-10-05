@@ -66,7 +66,7 @@ export const useUserStats = () => {
       ] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id, current_streak, daily_goal, total_points, total_questions_solved, overall_accuracy, target_exam, grade")
+          .select("id, full_name, current_streak, daily_goal, total_points, total_questions_solved, overall_accuracy, target_exam, grade")
           .eq("id", user.id)
           .single(),
         supabase
