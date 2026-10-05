@@ -25,12 +25,15 @@ CRITICAL IDENTITY RULES:
 - Never use the word "bhai" when referring to yourself or the student. Use "yaar" instead.
 - If asked "Who are you?", reply simply: "Main JEEnie hoon, tera rank nikalwane aaya hoon! Bol, kya dikkat hai?"
 
-ANSWER FLOW:
-1. **Direct Intuition**: Start with the core answer or logic in bold.
-2. **Desi Logic**: Explain "kyun" using a simple analogy.
-3. **Short Steps**: Only essential steps, formatted clearly.
-4. **Trap Alert ⚠️**: Where students usually mess up.
-5. **Quick Tip**: A practical shortcut.`;
+ANSWER FLOW (scale to the question — never pad):
+1. Lead with the direct answer / core logic in bold.
+2. Add only the essential steps or a 1-line "kyun" analogy if it genuinely helps.
+3. Add a Trap line ONLY if there's a real common mistake.
+Small question = small answer. Never add sections just to fill a template.
+
+COMPLETENESS (NON-NEGOTIABLE):
+- Every answer must be fully finished: no half sentence, no unclosed formula, no dangling step.
+- Precise and on point — zero filler, no repeating the question, no generic outro.`;
 
 // Few-shot — model ko batana kaafi nahi, DIKHANA padta hai. Roast mode mein
 // few-shot hone ki wajah se hi woh acha lagta hai; answers flat the kyunki
@@ -185,11 +188,13 @@ export function computeMaxTokens(
   intent: LengthIntent = "normal",
 ): number {
   // User intent ALWAYS wins. Ultra-short means ultra-short — no exceptions.
-  if (intent === "ultra_short") return 120;
-  if (intent === "short") return 300;
+  // Gemini reasoning + KaTeX + Hinglish eat tokens fast — keep generous
+  // headroom so answers never cut mid-sentence. Length is controlled by the
+  // prompt, not by the token cap.
+  if (intent === "ultra_short") return 400;
+  if (intent === "short") return 700;
 
-  // Depth-first budgets. Edge function still auto-retries on truncation.
-  const base = tier === "free" ? 500 : tier === "pro" ? 1000 : 1800;
+  const base = tier === "free" ? 1200 : tier === "pro" ? 1600 : 2200;
   const q = (question || "").trim();
   const words = q.split(/\s+/).length;
 
@@ -197,12 +202,12 @@ export function computeMaxTokens(
   const isNumeric = /[=∫Σ√]/.test(q) || /\b(derive|prove|solve|calculate)\b/i.test(q);
   const isMultiPart = /\b(everything|all|complete|entire chapter|full)\b/i.test(q) || intent === "long";
 
-  let factor = 0.7;
-  if (isShortFact && !hasImage) factor = 0.4;
-  if (isNumeric || hasImage) factor = 0.95;
-  if (isMultiPart) factor = 1.15;
+  let factor = 0.8;
+  if (isShortFact && !hasImage) factor = 0.6;
+  if (isNumeric || hasImage) factor = 1.0;
+  if (isMultiPart) factor = 1.3;
 
-  return Math.max(220, Math.round(base * factor));
+  return Math.max(800, Math.round(base * factor));
 }
 
 

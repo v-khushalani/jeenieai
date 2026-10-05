@@ -1,4 +1,4 @@
-export function sanitizeRoast(input?: string | null, maxLen = 220) {
+export function sanitizeRoast(input?: string | null, maxLen = 400) {
   if (!input) return '';
   let s = String(input || '');
 
@@ -22,12 +22,11 @@ export function sanitizeRoast(input?: string | null, maxLen = 220) {
   // Collapse whitespace
   s = s.replace(/\s+/g, ' ');
 
-  // Trim to max length without cutting mid-word if possible
+  // Only trim pathological outputs, and only at a sentence boundary — never mid-punchline.
   if (s.length > maxLen) {
-    s = s.slice(0, maxLen);
-    const lastSpace = s.lastIndexOf(' ');
-    if (lastSpace > Math.floor(maxLen * 0.6)) s = s.slice(0, lastSpace);
-    s = s.trim() + (s.endsWith('.') || s.endsWith('!') || s.endsWith('?') ? '' : '...');
+    const head = s.slice(0, maxLen);
+    const end = Math.max(head.lastIndexOf('. '), head.lastIndexOf('! '), head.lastIndexOf('? '));
+    if (end > maxLen * 0.4) s = head.slice(0, end + 1).trim();
   }
 
   // Final safety: remove any leading punctuation

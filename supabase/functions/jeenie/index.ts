@@ -122,14 +122,20 @@ serve(async (req) => {
       const roastPrompt = buildRoastPrompt({ topic, accuracy, excludeRoasts, seed });
       const messages = [
         { role: "system", content: roastPrompt },
-        { role: "user", content: `Roast me on "${topic}" (${Math.round(accuracy)}%). One line. Go.` },
+        { role: "user", content: `Roast me on "${topic}" (${Math.round(accuracy)}%). One complete line (max ~30 words) ending with a full punchline + punctuation. Never stop mid-sentence. Go.` },
       ];
 
-      const roastText = (await callLovableAiGateway({
+      let roastText = (await callLovableAiGateway({
         messages: messages as GatewayMessage[],
         temperature: 1.1,
-        maxTokens: 220,
-      })).text;
+        maxTokens: 600,
+      })).text || "";
+      roastText = roastText.trim();
+      // Safety: if model still ended mid-thought, trim to last complete sentence.
+      if (roastText && !/[.!?…💀🥲😂🤡🔥😭🫠]\s*$/u.test(roastText)) {
+        const m = roastText.match(/^[\s\S]*[.!?…](?=\s|$)/);
+        if (m && m[0].length > 30) roastText = m[0].trim();
+      }
 
       const latency = Date.now() - startedAt;
       console.log(`[JEENIE:roast] acc=${accuracy} topic="${topic}" ok=${!!roastText} ${latency}ms`);
