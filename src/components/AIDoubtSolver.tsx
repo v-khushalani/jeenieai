@@ -306,7 +306,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 
 
             {/* Chat Body */}
-            <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4 bg-gradient-to-b from-[#F8FAFC] to-white custom-scrollbar">
+            <div className="flex-1 min-h-0 overscroll-contain overflow-y-auto px-3 sm:px-4 py-4 sm:py-5 space-y-3 sm:space-y-4 bg-gradient-to-b from-[#F8FAFC] to-white custom-scrollbar">
               {messages.map((msg, i) => (
                 <motion.div 
                   initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -314,7 +314,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                   key={i} 
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[88%] min-w-0 overflow-hidden px-4 py-3.5 rounded-[20px] text-[14.5px] leading-relaxed shadow-sm transition-all ${
+                  <div className={`max-w-[92%] sm:max-w-[88%] min-w-0 overflow-hidden px-4 py-3.5 rounded-[20px] text-[14.5px] leading-relaxed shadow-sm transition-all ${
                     msg.role === 'user' 
                       ? 'bg-[#013062] text-white rounded-br-md shadow-[0_8px_24px_-8px_rgba(1,48,98,0.3)] font-medium' 
                       : 'bg-white border border-slate-100 text-slate-800 rounded-bl-md shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)]'
@@ -350,7 +350,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="px-4 pb-1 flex gap-2 overflow-x-auto no-scrollbar"
+                  className="shrink-0 px-3 sm:px-4 pt-2 pb-1 flex gap-2 overflow-x-auto no-scrollbar bg-white"
                 >
                   <button onClick={() => handleSendMessage(question?.option_a ? "Intuition samjha do" : "Concept intuition se samjha do", "deep")} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-[11px] font-bold rounded-full border border-emerald-100 hover:bg-emerald-100 transition-all whitespace-nowrap">
                     <Sparkles size={11} /> Desi Logic
@@ -366,7 +366,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             </AnimatePresence>
 
             {/* Input Area */}
-            <div className="px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-4 bg-white border-t border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+            <div className="shrink-0 px-3 sm:px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-4 bg-white border-t border-slate-100">
               {error && (
                 <p className="mb-2 text-[12px] font-semibold text-red-500">{error}</p>
               )}
@@ -399,7 +399,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
                     }
                   }}
                   placeholder="Kuch bhi poochho..."
-                  className="flex-1 min-w-0 h-11 bg-slate-50 border border-slate-100 focus:border-[#013062] focus:bg-white focus:ring-4 focus:ring-blue-50/50 rounded-xl px-4 text-[14.5px] transition-all placeholder:text-slate-400 outline-none font-medium"
+                  className="flex-1 min-w-0 h-11 bg-slate-50 border border-slate-100 focus:border-[#013062] focus:bg-white focus:ring-4 focus:ring-blue-50/50 rounded-full px-4 text-[16px] sm:text-[14.5px] transition-all placeholder:text-slate-400 outline-none font-medium"
                 />
                 <Button 
                   type="button"
