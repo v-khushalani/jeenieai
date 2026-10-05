@@ -274,19 +274,23 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, scale: 0.9, y: 40, filter: 'blur(10px)' }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed inset-x-0 bottom-0 top-[12vh] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[400px] sm:h-[76%] max-h-[100dvh] sm:max-h-[720px] bg-white/95 backdrop-blur-3xl rounded-t-[28px] sm:rounded-[32px] shadow-[0_60px_160px_-40px_rgba(0,0,0,0.38)] z-[10000] flex flex-col overflow-hidden border border-white/60 ring-1 ring-black/5"
+            className="fixed inset-x-0 bottom-0 h-[88dvh] max-h-[88dvh] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[400px] sm:h-[76vh] sm:max-h-[720px] bg-white rounded-t-[28px] sm:rounded-[32px] shadow-[0_-20px_60px_-20px_rgba(1,48,98,0.35)] sm:shadow-[0_60px_160px_-40px_rgba(0,0,0,0.38)] z-[10000] flex flex-col overflow-hidden ring-1 ring-black/5"
           >
+            {/* Grab handle (mobile) */}
+            <div className="sm:hidden shrink-0 pt-2.5 pb-1 flex justify-center">
+              <span className="w-10 h-1 rounded-full bg-slate-300" />
+            </div>
             {/* Header */}
-            <div className="px-5 py-4 border-b border-slate-100/80 bg-white/60 flex items-center justify-between cursor-default">
+            <div className="shrink-0 px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-100 bg-white flex items-center justify-between cursor-default">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[#013062] to-[#024080] flex items-end justify-center overflow-hidden shadow-md shadow-blue-900/20 ring-4 ring-blue-50">
+                <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[#013062] to-[#024080] flex items-end justify-center overflow-hidden shadow-md shadow-blue-900/20 ring-2 ring-sky-400/40">
                   <img src={jeenieMascot} alt="JEEnie" loading="lazy" width={1024} height={1024} className="w-8 h-8 object-contain object-bottom" />
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-[17px] tracking-tight leading-tight">JEEnie</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <p className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">Online</p>
+                    <p className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">Online · Doubt Solver</p>
                   </div>
                 </div>
               </div>

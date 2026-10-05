@@ -6,7 +6,7 @@ import mascotThink from '@/assets/jeenie-mascot-think.png';
 export const BRAND = {
   name: 'JEEnie',
   legalName: 'JEEnie AI',
-  tagline: 'Padhai ka apna bada dimaag',
+  tagline: 'AI Practice & Instant Doubt Solver',
   shortTagline: 'Tera AI study partner',
   site: 'jeenie.website',
   siteUrl: 'https://www.jeenie.website',
@@ -28,7 +28,7 @@ export const LOADING_LINES = [
   'Chai peete peete load ho raha hai…',
   'Tere liye best plan bana raha hoon…',
   'Formula dhoondh raha hoon, ruk zara…',
-  'Dimaag garam kar raha hoon…',
+  'Questions ready kar raha hoon…',
   'Aa raha hoon, ek second…',
 ] as const;
 
