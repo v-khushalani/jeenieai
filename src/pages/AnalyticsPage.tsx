@@ -472,7 +472,7 @@ const AnalyticsPage = () => {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-xl font-bold text-red-600">{topWeakness.accuracy.toFixed(0)}%</span>
-                        <Button size="sm" variant="destructive" className="h-7 px-2 text-[10px]" onClick={() => navigate("/study-now")}>Fix</Button>
+                        <Button size="sm" variant="destructive" className="h-7 px-2 text-[10px]" onClick={() => navigate(`/practice?${new URLSearchParams({ subject: topWeakness.subject, chapter: topWeakness.chapter || topWeakness.topic, mode: "weak" })}`)}>Fix</Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -632,7 +632,7 @@ const TopicCard = ({ topic, navigate, isWeak }: { topic: TopicAnalysis; navigate
         <p className={`text-base font-bold ${topic.accuracy >= 80 ? "text-emerald-600" : topic.accuracy >= 60 ? "text-amber-600" : "text-red-600"}`}>
           {topic.accuracy.toFixed(0)}%
         </p>
-        <Button size="sm" variant={isWeak ? "destructive" : "outline"} className="h-7 px-2 text-[10px]" onClick={() => navigate("/study-now")}>
+        <Button size="sm" variant={isWeak ? "destructive" : "outline"} className="h-7 px-2 text-[10px]" onClick={() => navigate(`/practice?${new URLSearchParams({ subject: topic.subject, chapter: topic.chapter || topic.topic, mode: isWeak ? "weak" : "learn" })}`)}>
           {isWeak ? "Fix" : "Practice"}
         </Button>
       </div>

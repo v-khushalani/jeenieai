@@ -31,6 +31,7 @@ import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization'
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import RoadmapView from '@/components/planner/RoadmapView';
 import BentoBoard from '@/components/planner/BentoBoard';
+import RealityCoach from '@/components/planner/RealityCoach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import {
@@ -126,7 +127,8 @@ const buildPracticeHref = (chapter: ChapterMetric, type: TaskType) => {
   params.set('subject', chapter.subject);
   params.set('chapter', chapter.title);
   params.set('mode', type);
-  return `/study-now?${params.toString()}`;
+  params.set('mode', type === 'learn' ? 'learn' : 'weak');
+  return `/practice?${params.toString()}`;
 };
 
 const buildTestHref = (chapter: ChapterMetric) => {
@@ -634,7 +636,22 @@ export default function AIStudyPlanner() {
         </TabsList>
 
         <TabsContent value="today" className="mt-4 focus-visible:outline-none">
-          <BentoBoard />
+          <RealityCoach
+            exam={targetExam}
+            daysLeft={(() => {
+              const g = Number((profile as any)?.grade);
+              const d = getDaysUntilDate(getExamDateForGrade(getExamDate(targetExam), Number.isFinite(g) ? g : null));
+              if (d) return d;
+              // Config date already passed → roll to next year's exam cycle
+              const base = new Date(getExamDate(targetExam));
+              if (Number.isNaN(base.getTime())) return null;
+              while (base.getTime() < Date.now()) base.setFullYear(base.getFullYear() + 1);
+              return getDaysUntilDate(base.toISOString().slice(0, 10));
+            })()}
+            chapters={planner.chapters}
+            doneIds={new Set(planner.chapters.filter((c) => c.lastAttemptAt && c.lastAttemptAt.slice(0, 10) === todayISO()).map((c) => c.id))}
+          />
+          <div className="mt-4"><BentoBoard /></div>
         </TabsContent>
 
         <TabsContent value="journey" className="mt-4 focus-visible:outline-none">
