@@ -641,7 +641,12 @@ export default function AIStudyPlanner() {
             daysLeft={(() => {
               const g = Number((profile as any)?.grade);
               const d = getDaysUntilDate(getExamDateForGrade(getExamDate(targetExam), Number.isFinite(g) ? g : null));
-              return d;
+              if (d) return d;
+              // Config date already passed → roll to next year's exam cycle
+              const base = new Date(getExamDate(targetExam));
+              if (Number.isNaN(base.getTime())) return null;
+              while (base.getTime() < Date.now()) base.setFullYear(base.getFullYear() + 1);
+              return getDaysUntilDate(base.toISOString().slice(0, 10));
             })()}
             chapters={planner.chapters}
             doneIds={new Set(planner.chapters.filter((c) => c.lastAttemptAt && c.lastAttemptAt.slice(0, 10) === todayISO()).map((c) => c.id))}
