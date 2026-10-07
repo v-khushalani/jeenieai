@@ -1,65 +1,111 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, Circle, Target } from 'lucide-react';
-import { buildCoachPlan, type CoachChapter } from '@/lib/adaptiveCoach';
+import { motion } from 'framer-motion';
+import { Check, ChevronRight } from 'lucide-react';
+import { buildCoachPlan, type CoachChapter, type HitTask } from '@/lib/adaptiveCoach';
+import safeLocalStorage from '@/utils/safeStorage';
 
 const PHASE: Record<string, string> = {
-  sprint: 'Phase 1 · Syllabus Sprint',
-  consolidate: 'Phase 2 · Weak-spot + Timed Tests',
-  simulate: 'Phase 3 · Mocks & Error Revision',
+  sprint: 'Syllabus sprint',
+  consolidate: 'Weak spots + timed tests',
+  simulate: 'Mocks & revision',
 };
-const KIND: Record<string, string> = { sprint: 'Sprint', drill: 'Drill', revise: 'Revise', mock: 'Mock' };
+const KIND: Record<string, string> = { sprint: 'Naya chapter', drill: 'Weak spot', revise: 'Revision', mock: 'Test' };
 
-interface Props { exam: string; daysLeft: number | null; chapters: CoachChapter[]; doneIds: Set<string> }
+const istToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
-export default function RealityCoach({ exam, daysLeft, chapters, doneIds }: Props) {
+/** Today's tasks are frozen per user + exam + IST date — refreshes never change them. */
+export function lockTasks(userId: string, exam: string, fresh: HitTask[]): HitTask[] {
+  const key = `jeenie:coach-lock:${userId}:${exam}:${istToday()}`;
+  try {
+    const raw = safeLocalStorage.getItem(key);
+    if (raw) {
+      const saved = JSON.parse(raw) as HitTask[];
+      if (Array.isArray(saved) && saved.length) return saved;
+    }
+    if (fresh.length) safeLocalStorage.setItem(key, JSON.stringify(fresh));
+  } catch { /* storage unavailable → use fresh */ }
+  return fresh;
+}
+
+interface Props {
+  userId: string;
+  exam: string;
+  daysLeft: number | null;
+  chapters: CoachChapter[];
+  todayCount: Record<string, number>;
+}
+
+export default function RealityCoach({ userId, exam, daysLeft, chapters, todayCount }: Props) {
   const navigate = useNavigate();
   const plan = useMemo(() => (daysLeft && chapters.length ? buildCoachPlan(exam, chapters, daysLeft) : null), [exam, daysLeft, chapters]);
-  if (!plan) return null;
+  const tasks = useMemo(() => (plan ? lockTasks(userId, exam, plan.tasks) : []), [plan, userId, exam]);
+
+  if (!plan) {
+    return <p className="py-16 text-center text-sm text-muted-foreground">Plan ban raha hai…</p>;
+  }
+
   const noData = chapters.every((c) => c.attempts < 10);
+  const progressOf = (t: HitTask) => (t.chapterId ? Math.min(t.target, todayCount[t.chapterId] || 0) : 0);
+  const doneCount = tasks.filter((t) => t.chapterId && progressOf(t) >= t.target).length;
 
   return (
-    <section className="space-y-3">
-      <div className="rounded-[24px] border border-border/60 bg-card p-4">
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div><p className="text-2xl font-extrabold">{plan.daysLeft}</p><p className="text-[10px] text-muted-foreground">days left</p></div>
-          <div><p className="text-2xl font-extrabold">{plan.masteredCount}<span className="text-sm text-muted-foreground">/{plan.totalChapters}</span></p><p className="text-[10px] text-muted-foreground">chapters mastered</p></div>
-          <div><p className="text-xs font-bold leading-tight text-primary pt-1">{PHASE[plan.phase]}</p></div>
-        </div>
-        <div className="mt-3 rounded-2xl bg-muted/50 p-3 text-xs leading-relaxed">
-          {noData ? (
-            <p>Abhi projection nahi — kam se kam 10 questions per chapter solve kar, tab honest marks estimate dikhega.</p>
-          ) : (
-            <p>
-              Current pace: <b>{plan.projected[0]}–{plan.projected[1]}</b>/{plan.maxMarks}. Realistic reach in {plan.daysLeft} days (6 hrs/day): <b>{plan.reachable[0]}–{plan.reachable[1]}</b>.
-              {' '}Ye estimate hai, guarantee nahi.
-            </p>
-          )}
-          {plan.skip.length > 0 && <p className="mt-1 text-muted-foreground">Abhi chhod: {plan.skip.join(', ')} — time zyada, marks kam.</p>}
+    <section className="mx-auto max-w-xl space-y-10 px-1 pt-2">
+      {/* Countdown */}
+      <div className="text-center">
+        <p className="text-6xl font-extrabold tabular-nums tracking-tight">{plan.daysLeft}</p>
+        <p className="mt-1 text-sm text-muted-foreground">din bache · {PHASE[plan.phase]}</p>
+        <div className="mt-6 flex justify-center gap-10 text-sm">
+          <div>
+            <p className="text-lg font-bold tabular-nums">{plan.masteredCount}<span className="text-muted-foreground">/{plan.totalChapters}</span></p>
+            <p className="text-xs text-muted-foreground">chapters mastered</p>
+          </div>
+          <div>
+            <p className="text-lg font-bold tabular-nums">{noData ? '—' : `${plan.reachable[0]}–${plan.reachable[1]}`}</p>
+            <p className="text-xs text-muted-foreground">{noData ? 'solve karo, estimate aayega' : 'realistic marks'}</p>
+          </div>
         </div>
       </div>
 
-      <div className="rounded-[24px] border border-border/60 bg-card p-4">
-        <p className="mb-2 flex items-center gap-1.5 text-sm font-extrabold"><Target className="h-4 w-4 text-primary" /> Aaj ka target</p>
+      {/* Today */}
+      <div>
+        <div className="mb-3 flex items-baseline justify-between px-1">
+          <h2 className="text-base font-bold">Aaj ka target</h2>
+          <span className="text-sm tabular-nums text-muted-foreground">{doneCount}/{tasks.length}</span>
+        </div>
         <ul className="space-y-2">
-          {plan.tasks.map((t) => {
-            const done = !!t.chapterId && doneIds.has(t.chapterId);
+          {tasks.map((t, i) => {
+            const got = progressOf(t);
+            const done = !!t.chapterId && got >= t.target;
             return (
-              <li key={t.kind + t.title}>
-                <button onClick={() => navigate(t.href)} className="flex w-full items-center gap-3 rounded-2xl border border-border/50 p-3 text-left transition active:scale-[0.98] hover:bg-muted/40">
-                  {done ? <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" /> : <Circle className="h-5 w-5 shrink-0 text-muted-foreground" />}
+              <motion.li key={t.kind + t.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                <button
+                  onClick={() => navigate(t.href)}
+                  className={`flex w-full items-center gap-4 rounded-3xl border p-4 text-left transition active:scale-[0.98] ${done ? 'border-primary/30 bg-primary/5' : 'border-border/50 bg-card hover:bg-muted/40'}`}
+                >
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${done ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30'}`}>
+                    {done && <Check className="h-4 w-4" strokeWidth={3} />}
+                  </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold">{KIND[t.kind]}: {t.title}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">{t.target > 1 ? `${t.target} questions · ` : ''}{t.detail}</p>
+                    <p className="text-[11px] font-medium text-muted-foreground">{KIND[t.kind]}</p>
+                    <p className={`truncate font-semibold ${done ? 'text-muted-foreground line-through' : ''}`}>{t.title}</p>
+                    {t.chapterId && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(got / t.target) * 100}%` }} />
+                        </div>
+                        <span className="text-[11px] tabular-nums text-muted-foreground">{got}/{t.target}</span>
+                      </div>
+                    )}
                   </div>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </button>
-              </li>
+              </motion.li>
             );
           })}
         </ul>
-        {plan.unlock && (
-          <p className="mt-3 text-[11px] text-muted-foreground">Next unlock: <b className="text-foreground">+{plan.unlock.marks} marks</b> if {plan.unlock.chapter} hits 80%.</p>
+        {!noData && (
+          <p className="mt-4 px-1 text-center text-[11px] text-muted-foreground">Marks estimate hai, guarantee nahi.</p>
         )}
       </div>
     </section>

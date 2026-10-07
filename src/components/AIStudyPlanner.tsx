@@ -30,7 +30,6 @@ import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import RoadmapView from '@/components/planner/RoadmapView';
-import BentoBoard from '@/components/planner/BentoBoard';
 import RealityCoach from '@/components/planner/RealityCoach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -64,6 +63,7 @@ interface ChapterMetric {
   status: ChapterStatus;
   priorityScore: number;
   lastAttemptAt: string | null;
+  todayAttempts?: number;
 }
 
 interface PlannerTask {
@@ -383,6 +383,7 @@ export async function loadPlannerData(
     if (metric) metric.totalQuestions = Number(row.count) || 0;
   });
 
+  const istTodayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   const wrongByChapter = new Map<string, Set<string>>();
   const correctedByChapter = new Map<string, Set<string>>();
 
@@ -391,6 +392,9 @@ export async function loadPlannerData(
     const metric = chapterId ? chapterMap.get(chapterId) : null;
     if (!metric) return;
     metric.attempts += 1;
+    if (attempt.attempted_at && new Date(attempt.attempted_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) === istTodayStr) {
+      metric.todayAttempts = (metric.todayAttempts || 0) + 1;
+    }
     if (attempt.is_correct) {
       metric.correct += 1;
       if (!correctedByChapter.has(chapterId)) correctedByChapter.set(chapterId, new Set());
@@ -635,23 +639,22 @@ export default function AIStudyPlanner() {
           <TabsTrigger value="rewards" className="rounded-xl text-xs font-bold data-[state=active]:shadow-sm">Rewards</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="today" className="mt-4 focus-visible:outline-none">
+        <TabsContent value="today" className="mt-6 focus-visible:outline-none">
           <RealityCoach
+            userId={user?.id || 'anon'}
             exam={targetExam}
             daysLeft={(() => {
               const g = Number((profile as any)?.grade);
               const d = getDaysUntilDate(getExamDateForGrade(getExamDate(targetExam), Number.isFinite(g) ? g : null));
               if (d) return d;
-              // Config date already passed → roll to next year's exam cycle
               const base = new Date(getExamDate(targetExam));
               if (Number.isNaN(base.getTime())) return null;
               while (base.getTime() < Date.now()) base.setFullYear(base.getFullYear() + 1);
               return getDaysUntilDate(base.toISOString().slice(0, 10));
             })()}
             chapters={planner.chapters}
-            doneIds={new Set(planner.chapters.filter((c) => c.lastAttemptAt && c.lastAttemptAt.slice(0, 10) === todayISO()).map((c) => c.id))}
+            todayCount={Object.fromEntries(planner.chapters.map((c) => [c.id, c.todayAttempts || 0]))}
           />
-          <div className="mt-4"><BentoBoard /></div>
         </TabsContent>
 
         <TabsContent value="journey" className="mt-4 focus-visible:outline-none">

@@ -60,7 +60,7 @@ export function buildCoachPlan(exam: string, chapters: CoachChapter[], daysLeft:
       const gain = chapterMarks(e.w.expectedQ * scale, 80, neg) - (e.c.attempts >= 10 ? chapterMarks(e.w.expectedQ * scale, e.c.accuracy, neg) : 0);
       return { ...e, hrs, gain, roi: gain / Math.max(1, hrs) };
     })
-    .sort((a, b) => b.roi - a.roi);
+    .sort((a, b) => b.roi - a.roi || a.c.id.localeCompare(b.c.id));
   let budget = hoursLeft; let reach = cur; const picked: typeof candidates = [];
   for (const k of candidates) { if (k.hrs <= budget) { budget -= k.hrs; reach += k.gain; picked.push(k); } }
   const skip = phase !== 'sprint' ? candidates.filter((k) => !picked.includes(k) && k.w.tier === 3).slice(0, 3).map((k) => k.c.title) : [];
@@ -78,7 +78,8 @@ export function buildCoachPlan(exam: string, chapters: CoachChapter[], daysLeft:
     const tierBoost: Record<Tier, number> = { 1: 1.5, 2: 1, 3: phase === 'sprint' ? 0.7 : 0.25 };
     return w.expectedQ * weakness * tierBoost[w.tier] * urgency;
   };
-  const open = enriched.filter(({ c }) => !isMastered(c)).sort((a, b) => score(b) - score(a));
+  // Deterministic: equal scores always break ties by chapter id, so refreshes never reshuffle
+  const open = enriched.filter(({ c }) => !isMastered(c)).sort((a, b) => score(b) - score(a) || a.c.id.localeCompare(b.c.id));
   const weak = open.filter(({ c }) => c.attempts >= 10 && c.accuracy < 60);
   const fresh = open.filter(({ c }) => c.attempts < 10);
 
@@ -92,7 +93,7 @@ export function buildCoachPlan(exam: string, chapters: CoachChapter[], daysLeft:
   // Spaced revision: chapter last touched 7+ days ago
   const stale = enriched
     .filter(({ c }) => c.attempts >= 10 && c.lastAttemptAt && (Date.now() - new Date(c.lastAttemptAt).getTime()) / 864e5 >= 7)
-    .sort((a, b) => new Date(a.c.lastAttemptAt!).getTime() - new Date(b.c.lastAttemptAt!).getTime())[0];
+    .sort((a, b) => new Date(a.c.lastAttemptAt!).getTime() - new Date(b.c.lastAttemptAt!).getTime() || a.c.id.localeCompare(b.c.id))[0];
   if (phase === 'sprint' && stale) {
     tasks.push({ kind: 'revise', title: stale.c.title, detail: '10-question recap (7+ days old)', href: practiceHref(stale.c, 'revision', 10), target: 10, chapterId: stale.c.id });
   } else if (phase !== 'sprint') {

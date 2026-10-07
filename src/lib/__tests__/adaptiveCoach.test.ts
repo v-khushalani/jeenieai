@@ -31,3 +31,12 @@ describe('adaptive coach', () => {
     expect(p.tasks[0].href.startsWith('/practice?')).toBe(true);
   });
 });
+
+describe('stable targets', () => {
+  it('same data in any order gives the same tasks (no flip on refresh)', () => {
+    const list = ['Kinematics', 'Gravitation', 'Work Energy', 'Units', 'Fluids'].map((t) => ch(t, 'Physics'));
+    const a = buildCoachPlan('JEE', list, 100).tasks.map((t) => t.title);
+    const b = buildCoachPlan('JEE', [...list].reverse(), 100).tasks.map((t) => t.title);
+    expect(b).toEqual(a);
+  });
+});
