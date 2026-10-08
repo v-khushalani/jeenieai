@@ -443,9 +443,6 @@ const EnhancedDashboard = () => {
                                 </div>
                                 <p className="text-[11px] font-medium text-muted-foreground">Today's Goal</p>
                               </div>
-                              <Badge className="text-[10px] px-2 py-0.5 bg-white/70 text-foreground border-0">
-                                {(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'Done' : 'Go'}
-                              </Badge>
                             </div>
                             <h3 className={`text-xl font-bold ${goalColors.text}`}>{Math.min(stats?.todayProgress ?? 0, stats?.todayGoal ?? 30)}/{stats?.todayGoal ?? 30}</h3>
                             <div className="mt-2"><GoalProgress got={stats?.todayProgress ?? 0} target={stats?.todayGoal ?? 30} label="q" /></div>
