@@ -1,3 +1,4 @@
+import GoalProgress from '@/components/GoalProgress';
 import safeLocalStorage from '@/utils/safeStorage';
 // src/pages/EnhancedDashboard.tsx
 import { useState, useEffect, useRef } from "react";
@@ -169,7 +170,7 @@ const EnhancedDashboard = () => {
 
   const getGoalColor = (progress: number, goal: number) => {
     const percentage = (progress / goal) * 100;
-    if (percentage >= 100) return { bg: "bg-emerald-100/90 dark:bg-emerald-950/50", border: "border-emerald-600", iconBg: "bg-emerald-600", text: "text-emerald-800 dark:text-emerald-300" };
+    if (percentage >= 100) return { bg: "bg-success/10", border: "border-success", iconBg: "bg-success", text: "text-success" };
     if (percentage >= 80) return { bg: "bg-green-50/80 dark:bg-green-950/50", border: "border-green-400", iconBg: "bg-green-500", text: "text-green-700 dark:text-green-300" };
     if (percentage >= 50) return { bg: "bg-yellow-50/80 dark:bg-yellow-950/50", border: "border-yellow-400", iconBg: "bg-yellow-500", text: "text-yellow-700 dark:text-yellow-300" };
     return { bg: "bg-red-50/80 dark:bg-red-950/50", border: "border-red-400", iconBg: "bg-red-500", text: "text-red-700 dark:text-red-300" };
@@ -446,15 +447,8 @@ const EnhancedDashboard = () => {
                                 {(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'Done' : 'Go'}
                               </Badge>
                             </div>
-                            <h3 className={`text-xl font-bold ${goalColors.text}`}>{stats?.todayProgress ?? 0}/{stats?.todayGoal ?? 30}</h3>
-                            <div className="w-full bg-muted rounded-full h-2 mt-2 mb-1.5">
-                              <div className={`h-2 rounded-full ${(stats?.todayProgress ?? 0) >= (stats?.todayGoal ?? 30) ? 'bg-emerald-500' : 'bg-orange-500'}`} style={{ width: `${Math.min(100, ((stats?.todayProgress ?? 0) / (stats?.todayGoal ?? 30)) * 100)}%` }} />
-                            </div>
-                            <p className="text-[10px] text-muted-foreground">
-                              {(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0) > 0
-                                ? `${(stats?.todayGoal ?? 30) - (stats?.todayProgress ?? 0)} questions left`
-                                : 'Goal achieved!'}
-                            </p>
+                            <h3 className={`text-xl font-bold ${goalColors.text}`}>{Math.min(stats?.todayProgress ?? 0, stats?.todayGoal ?? 30)}/{stats?.todayGoal ?? 30}</h3>
+                            <div className="mt-2"><GoalProgress got={stats?.todayProgress ?? 0} target={stats?.todayGoal ?? 30} label="q" /></div>
                           </CardContent>
                         </Card>
 
@@ -578,32 +572,8 @@ const EnhancedDashboard = () => {
                         <p className="text-xs font-medium text-muted-foreground">Today's Accuracy</p>
                       </div>
                     </div>
-                    <div className="flex items-end justify-between mb-2">
-                      <h3 className={`text-2xl sm:text-3xl font-bold ${accuracyColors.text}`}>
-                        {stats?.todayAccuracy ?? 0}%
-                      </h3>
-                      <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1">
-                        {stats?.accuracyChange == null ? (
-                          <span className="hidden sm:inline text-xs text-muted-foreground font-semibold">— new</span>
-                        ) : stats.accuracyChange > 0 ? (
-                          <span className="hidden sm:inline text-xs text-green-600 dark:text-green-400 font-semibold">↑ {Math.abs(stats.accuracyChange)}% week</span>
-                        ) : stats.accuracyChange < 0 ? (
-                          <span className="hidden sm:inline text-xs text-red-600 dark:text-red-400 font-semibold">↓ {Math.abs(stats.accuracyChange)}% week</span>
-                        ) : (
-                          <span className="hidden sm:inline text-xs text-muted-foreground font-semibold">→ same as last week</span>
-                        )}
-                        <Badge className={`text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 ${
-                          (stats?.todayAccuracy ?? 0) >= 80 ? 'bg-emerald-500 text-white' :
-                          (stats?.todayAccuracy ?? 0) >= 60 ? 'bg-orange-500 text-white' :
-                          'bg-red-500 text-white'
-                        }`}>
-                          {(stats?.todayAccuracy ?? 0) >= 80 ? 'Great!' : (stats?.todayAccuracy ?? 0) >= 60 ? 'Focus!' : 'Practice!'}
-                        </Badge>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Overall: {stats?.accuracy ?? 0}%
-                    </p>
+                    <h3 className={`text-2xl sm:text-3xl font-bold mb-2 ${goalColors.text}`}>{Math.min(stats?.todayProgress ?? 0, stats?.todayGoal ?? 30)}/{stats?.todayGoal ?? 30}</h3>
+                    <GoalProgress got={stats?.todayProgress ?? 0} target={stats?.todayGoal ?? 30} />
                   </CardContent>
                 </Card>
 
