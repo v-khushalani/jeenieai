@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { buildCoachPlan, type CoachChapter, type HitTask } from '@/lib/adaptiveCoach';
 import safeLocalStorage from '@/utils/safeStorage';
+import GoalProgress, { DoneTick } from '@/components/GoalProgress';
 
 const PHASE: Record<string, string> = {
   sprint: 'Syllabus sprint',
@@ -46,7 +47,7 @@ export default function RealityCoach({ userId, exam, daysLeft, chapters, todayCo
   }
 
   const noData = chapters.every((c) => c.attempts < 10);
-  const progressOf = (t: HitTask) => (t.chapterId ? Math.min(t.target, todayCount[t.chapterId] || 0) : 0);
+  const progressOf = (t: HitTask) => (t.chapterId ? (todayCount[t.chapterId] || 0) : 0);
   const doneCount = tasks.filter((t) => t.chapterId && progressOf(t) >= t.target).length;
 
   return (
@@ -73,6 +74,12 @@ export default function RealityCoach({ userId, exam, daysLeft, chapters, todayCo
           <h2 className="text-base font-bold">Aaj ka target</h2>
           <span className="text-sm tabular-nums text-muted-foreground">{doneCount}/{tasks.length}</span>
         </div>
+        {tasks.length > 0 && doneCount === tasks.length && (
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mb-3 flex items-center gap-3 rounded-3xl border border-success/40 bg-success/10 p-4">
+            <span className="text-3xl">😄</span>
+            <div><p className="font-bold text-success">Aaj ka target complete!</p><p className="text-xs text-muted-foreground">Shandar discipline. Kal naya target milega.</p></div>
+          </motion.div>
+        )}
         <ul className="space-y-2">
           {tasks.map((t, i) => {
             const got = progressOf(t);
@@ -81,21 +88,16 @@ export default function RealityCoach({ userId, exam, daysLeft, chapters, todayCo
               <motion.li key={t.kind + t.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                 <button
                   onClick={() => navigate(t.href)}
-                  className={`flex w-full items-center gap-4 rounded-3xl border p-4 text-left transition active:scale-[0.98] ${done ? 'border-primary/30 bg-primary/5' : 'border-border/50 bg-card hover:bg-muted/40'}`}
+                  className={`flex w-full items-center gap-4 rounded-3xl border p-4 text-left transition active:scale-[0.98] ${done ? 'border-success/40 bg-success/10' : 'border-border/50 bg-card hover:bg-muted/40'}`}
                 >
-                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${done ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30'}`}>
-                    {done && <Check className="h-4 w-4" strokeWidth={3} />}
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${done ? 'border-success bg-success text-success-foreground' : 'border-muted-foreground/30'}`}>
+                    {done && <DoneTick />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-medium text-muted-foreground">{KIND[t.kind]}</p>
-                    <p className={`truncate font-semibold ${done ? 'text-muted-foreground line-through' : ''}`}>{t.title}</p>
+                    <p className={`truncate font-semibold `}>{t.title}</p>
                     {t.chapterId && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
-                          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(got / t.target) * 100}%` }} />
-                        </div>
-                        <span className="text-[11px] tabular-nums text-muted-foreground">{got}/{t.target}</span>
-                      </div>
+                      <div className="mt-2"><GoalProgress got={got} target={t.target} /></div>
                     )}
                   </div>
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
