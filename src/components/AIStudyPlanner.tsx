@@ -384,6 +384,11 @@ export async function loadPlannerData(
   });
 
   const istTodayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const istWeekStart = (() => {
+    const t = new Date(istTodayStr + 'T00:00:00Z');
+    t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7));
+    return t.toISOString().slice(0, 10);
+  })();
   const wrongByChapter = new Map<string, Set<string>>();
   const correctedByChapter = new Map<string, Set<string>>();
 
@@ -392,8 +397,10 @@ export async function loadPlannerData(
     const metric = chapterId ? chapterMap.get(chapterId) : null;
     if (!metric) return;
     metric.attempts += 1;
-    if (attempt.attempted_at && new Date(attempt.attempted_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) === istTodayStr) {
-      metric.todayAttempts = (metric.todayAttempts || 0) + 1;
+    if (attempt.attempted_at) {
+      const d = new Date(attempt.attempted_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+      if (d === istTodayStr) metric.todayAttempts = (metric.todayAttempts || 0) + 1;
+      if (d >= istWeekStart) (metric as any).weekAttempts = ((metric as any).weekAttempts || 0) + 1;
     }
     if (attempt.is_correct) {
       metric.correct += 1;
