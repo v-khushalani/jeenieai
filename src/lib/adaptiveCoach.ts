@@ -113,3 +113,80 @@ export function buildCoachPlan(exam: string, chapters: CoachChapter[], daysLeft:
     unlock: u ? { chapter: u.c.title, marks: Math.max(1, Math.round(u.gain)) } : null,
   };
 }
+
+/* ---------------- Exam roadmap: months → weeks (derived, never stored) ---------------- */
+export interface RoadmapChapterSlot { id: string; title: string; subject: string; tier: Tier; expectedQ: number; accuracy: number; attempts: number; status: 'mastered' | 'active' | 'scheduled' | 'dropped' }
+export interface RoadmapMonth { index: number; label: string; from: string; to: string; focus: string; kind: 'learn' | 'mix' | 'mock'; chapters: RoadmapChapterSlot[] }
+export interface WeekSprint { from: string; to: string; chapters: RoadmapChapterSlot[]; questionTarget: number; test: string }
+export interface ExamRoadmap { months: RoadmapMonth[]; week: WeekSprint; dropped: RoadmapChapterSlot[]; masteredCount: number; onTrack: boolean; behindBy: number }
+
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+const addDays = (d: Date, n: number) => { const x = new Date(d); x.setUTCDate(x.getUTCDate() + n); return x; };
+
+export function buildExamRoadmap(exam: string, chapters: CoachChapter[], daysLeft: number, todayIso: string, dailyHours = 6): ExamRoadmap {
+  const today = new Date(todayIso + 'T00:00:00Z');
+  const mockDays = Math.min(daysLeft, Math.max(7, Math.round(daysLeft * 0.15)));
+  const learnDays = Math.max(0, daysLeft - mockDays);
+  const learnHoursPerDay = dailyHours * 0.7;
+
+  const slots = chapters.map((c) => {
+    const w = getWeightage(exam, c.subject, c.title);
+    const done = Math.min(1, c.attempts / MASTERED_MIN_Q);
+    const hrs = isMastered(c) ? 0 : w.effortHrs * (1 - done * 0.6);
+    const weakness = c.attempts === 0 ? 0.8 : Math.max(0.1, (100 - c.accuracy) / 100);
+    return { c, w, hrs, prio: (w.expectedQ / Math.max(1, w.effortHrs)) * (1 + weakness) * (w.tier === 1 ? 1.5 : w.tier === 2 ? 1 : 0.6) };
+  });
+  const open = slots.filter((s) => s.hrs > 0).sort((a, b) => b.prio - a.prio || a.c.id.localeCompare(b.c.id));
+
+  // Lay chapters on a timeline by effort; whatever doesn't fit before mock phase is honestly dropped.
+  let cursor = 0; // learning hours consumed
+  const capacity = learnDays * learnHoursPerDay;
+  const placed: { s: (typeof open)[number]; day: number }[] = [];
+  const dropped: typeof open = [];
+  for (const s of open) {
+    if (cursor + s.hrs <= capacity) { placed.push({ s, day: Math.floor(cursor / learnHoursPerDay) }); cursor += s.hrs; }
+    else dropped.push(s);
+  }
+  const toSlot = (s: (typeof slots)[number], status: RoadmapChapterSlot['status']): RoadmapChapterSlot => ({
+    id: s.c.id, title: s.c.title, subject: s.c.subject, tier: s.w.tier, expectedQ: Math.round(s.w.expectedQ * 10) / 10,
+    accuracy: Math.round(s.c.accuracy), attempts: s.c.attempts, status,
+  });
+
+  // Months of ~30 days; the final block is always the mock phase.
+  const months: RoadmapMonth[] = [];
+  const nLearn = Math.max(learnDays > 0 ? 1 : 0, Math.round(learnDays / 30));
+  const span = nLearn ? learnDays / nLearn : 0;
+  for (let i = 0; i < nLearn; i++) {
+    const a = Math.round(i * span), b = Math.round((i + 1) * span);
+    const inMonth = placed.filter((p) => p.day >= a && p.day < b);
+    months.push({
+      index: i, label: `Month ${i + 1}`, from: iso(addDays(today, a)), to: iso(addDays(today, b - 1)),
+      focus: i === 0 ? 'High-scoring chapters pehle' : i === nLearn - 1 ? 'Baaki core chapters + weak spots' : 'Core chapters + timed tests',
+      kind: i === 0 ? 'learn' : 'mix',
+      chapters: inMonth.map((p, k) => toSlot(p.s, i === 0 && k < 3 ? 'active' : 'scheduled')),
+    });
+  }
+  months.push({
+    index: months.length, label: nLearn ? 'Final stretch' : 'Exam mode', from: iso(addDays(today, learnDays)), to: iso(addDays(today, daysLeft - 1)),
+    focus: 'Full mocks, galtiyon ka revision — koi naya chapter nahi', kind: 'mock',
+    chapters: slots.filter((s) => s.hrs === 0).map((s) => toSlot(s, 'mastered')),
+  });
+
+  // Current week (Mon–Sun IST): first 3 placed chapters, one per subject where possible.
+  const dow = (today.getUTCDay() + 6) % 7;
+  const weekFrom = addDays(today, -dow), weekTo = addDays(weekFrom, 6);
+  const pick: (typeof placed)[number][] = [];
+  for (const p of placed) { if (pick.length < 3 && !pick.some((q) => q.s.c.subject === p.s.c.subject)) pick.push(p); }
+  for (const p of placed) { if (pick.length < 3 && !pick.includes(p)) pick.push(p); }
+  const weekChapters = pick.map((p) => toSlot(p.s, 'active'));
+  const questionTarget = learnDays > 0 ? Math.max(60, weekChapters.length * 40) : 0;
+
+  // Honesty: compare with "ideal pace" — fraction of syllabus that should be mastered by now is unknown,
+  // so we flag behind only when dropped chapters exist.
+  return {
+    months, dropped: dropped.map((s) => toSlot(s, 'dropped')),
+    week: { from: iso(weekFrom), to: iso(weekTo), chapters: weekChapters, questionTarget, test: learnDays > 0 ? 'Sunday: in chapters ka 45-min test' : 'Is hafte 2 full mocks' },
+    masteredCount: slots.filter((s) => s.hrs === 0).length,
+    onTrack: dropped.length === 0, behindBy: dropped.length,
+  };
+}
