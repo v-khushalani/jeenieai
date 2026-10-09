@@ -29,9 +29,9 @@ import { logger } from '@/utils/logger';
 import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
-import RoadmapView from '@/components/planner/RoadmapView';
+import CoachHorizons from '@/components/planner/CoachHorizons';
 import RealityCoach from '@/components/planner/RealityCoach';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import {
   buildAllSubjectRoadmaps,
@@ -482,6 +482,7 @@ export async function loadPlannerData(
 export default function AIStudyPlanner() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [view, setView] = useState<'today' | 'week' | 'plan'>('today');
   const { getExamDate } = useExamDates();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -618,90 +619,73 @@ export default function AIStudyPlanner() {
     );
   }
 
+  const daysLeft = (() => {
+    const g = Number((profile as any)?.grade);
+    const d = getDaysUntilDate(getExamDateForGrade(getExamDate(targetExam), Number.isFinite(g) ? g : null));
+    if (d) return d;
+    const base = new Date(getExamDate(targetExam));
+    if (Number.isNaN(base.getTime())) return null;
+    while (base.getTime() < Date.now()) base.setFullYear(base.getFullYear() + 1);
+    return getDaysUntilDate(base.toISOString().slice(0, 10));
+  })();
+  const VIEWS = [
+    { id: 'today', label: 'Aaj' },
+    { id: 'week', label: 'Is hafte' },
+    { id: 'plan', label: 'Exam plan' },
+  ] as const;
+
   return (
-    <div className="space-y-4 py-3 pb-24">
-      {/* Quiet header — the board leads, not the chrome */}
-      <div className="flex items-end justify-between gap-2 px-1">
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
-          </p>
-          <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">Planner</h1>
+    <div className="space-y-5 py-3 pb-24">
+      <div className="flex items-center justify-between gap-2 px-1">
+        <h1 className="text-xl font-extrabold tracking-tight">JEEnie Coach</h1>
+        <div className="flex items-center gap-2">
+          {(signal?.streak?.current || 0) > 0 && (
+            <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-bold">
+              <Flame className="h-3.5 w-3.5 text-primary" /> {signal?.streak?.current}
+            </span>
+          )}
+          <Button variant="ghost" size="icon" aria-label="Refresh planner" className="h-9 w-9 rounded-2xl" onClick={() => void loadAll()}>
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Refresh planner"
-          className="h-9 w-9 shrink-0 rounded-2xl"
-          onClick={() => void loadAll()}
-        >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-        </Button>
       </div>
 
-      <Tabs defaultValue="today" className="w-full">
-        <TabsList className="grid h-11 w-full grid-cols-3 gap-1 rounded-2xl bg-muted/60 p-1">
-          <TabsTrigger value="today" className="rounded-xl text-xs font-bold data-[state=active]:shadow-sm">Today</TabsTrigger>
-          <TabsTrigger value="journey" className="rounded-xl text-xs font-bold data-[state=active]:shadow-sm">Journey</TabsTrigger>
-          <TabsTrigger value="rewards" className="rounded-xl text-xs font-bold data-[state=active]:shadow-sm">Rewards</TabsTrigger>
-        </TabsList>
+      <div className="relative mx-auto grid h-11 max-w-xl grid-cols-3 rounded-2xl bg-muted/60 p-1">
+        {VIEWS.map((v) => (
+          <button
+            key={v.id}
+            onClick={() => setView(v.id)}
+            className={`relative z-10 rounded-xl text-xs font-bold transition-colors ${view === v.id ? 'text-foreground' : 'text-muted-foreground'}`}
+          >
+            {view === v.id && (
+              <motion.span layoutId="coach-seg" className="absolute inset-0 -z-10 rounded-xl bg-background shadow-sm" transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
+            )}
+            {v.label}
+          </button>
+        ))}
+      </div>
 
-        <TabsContent value="today" className="mt-6 focus-visible:outline-none">
-          <RealityCoach
-            userId={user?.id || 'anon'}
-            exam={targetExam}
-            daysLeft={(() => {
-              const g = Number((profile as any)?.grade);
-              const d = getDaysUntilDate(getExamDateForGrade(getExamDate(targetExam), Number.isFinite(g) ? g : null));
-              if (d) return d;
-              const base = new Date(getExamDate(targetExam));
-              if (Number.isNaN(base.getTime())) return null;
-              while (base.getTime() < Date.now()) base.setFullYear(base.getFullYear() + 1);
-              return getDaysUntilDate(base.toISOString().slice(0, 10));
-            })()}
-            chapters={planner.chapters}
-            todayCount={Object.fromEntries(planner.chapters.map((c) => [c.id, c.todayAttempts || 0]))}
-          />
-        </TabsContent>
-
-        <TabsContent value="journey" className="mt-4 focus-visible:outline-none">
-          {user?.id && (
-            <RoadmapView
-              userId={user.id}
+      <AnimatePresence mode="wait">
+        <motion.div key={view} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
+          {view === 'today' ? (
+            <RealityCoach
+              userId={user?.id || 'anon'}
               exam={targetExam}
-              classLevel={(() => {
-                const g = Number((profile as any)?.grade);
-                return Number.isFinite(g) && g >= 6 && g <= 12 ? g : null;
-              })()}
-              initialRoadmaps={planner.roadmaps}
-              xpPoints={planner.totalAttempts * 10 + planner.coveragePct * 5}
-              streak={signal?.streak?.current || 0}
-              onRefresh={loadAll}
+              daysLeft={daysLeft}
+              chapters={planner.chapters}
+              todayCount={Object.fromEntries(planner.chapters.map((c) => [c.id, c.todayAttempts || 0]))}
+            />
+          ) : (
+            <CoachHorizons
+              view={view}
+              exam={targetExam}
+              daysLeft={daysLeft}
+              chapters={planner.chapters}
+              weekCount={Object.fromEntries(planner.chapters.map((c) => [c.id, (c as any).weekAttempts || 0]))}
             />
           )}
-        </TabsContent>
-
-        <TabsContent value="rewards" className="mt-4 space-y-3 focus-visible:outline-none">
-          <div className="rounded-[28px] border border-border/60 bg-card p-5">
-            <div className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-amber-600" />
-              <p className="text-sm font-extrabold">Turn points into prizes</p>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Daily vault, streak milestones and the points store.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" className="rounded-2xl" onClick={() => navigate('/rewards')}>
-                Open rewards <ArrowRight className="ml-1 h-3.5 w-3.5" />
-              </Button>
-              <Button size="sm" variant="outline" className="rounded-2xl" onClick={() => navigate('/badges')}>
-                Badges
-              </Button>
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
-
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
