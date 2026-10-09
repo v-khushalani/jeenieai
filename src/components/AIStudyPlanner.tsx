@@ -29,9 +29,9 @@ import { logger } from '@/utils/logger';
 import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
-import RoadmapView from '@/components/planner/RoadmapView';
+import CoachHorizons from '@/components/planner/CoachHorizons';
 import RealityCoach from '@/components/planner/RealityCoach';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import {
   buildAllSubjectRoadmaps,
@@ -482,6 +482,7 @@ export async function loadPlannerData(
 export default function AIStudyPlanner() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [view, setView] = useState<'today' | 'week' | 'plan'>('today');
   const { getExamDate } = useExamDates();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
