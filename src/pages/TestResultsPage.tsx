@@ -227,23 +227,22 @@ const TestResultsPage = () => {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, "_blank");
   };
 
-  const generateQuestionPaperPDF = async () => {
+  const generateQuestionPaperPDF = async (withAnswers = false) => {
     if (!testResult?.questions?.length) {
       toast.error("Question details are not available for this test.");
       return;
     }
 
-    toast.info("Generating PDF... please wait");
+    toast.info("Paper ready ho raha hai… print window mein 'Save as PDF' chuniye");
 
     try {
       await downloadQuestionPaperPdf({
         testTitle: testResult.testTitle,
         testDate: getTestDate(),
         totalQuestions: testResult.totalQuestions,
-        questions: testResult.questions,
+        questions: testResult.questions as any,
+        withAnswers,
       });
-
-      toast.success("Question paper downloaded!");
     } catch (error) {
       logger.error("PDF generation error:", error);
       toast.error("Failed to generate PDF. Please try again.");
@@ -547,8 +546,11 @@ const TestResultsPage = () => {
                   )}
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Downloads</p>
-                    <Button variant="outline" className="w-full" onClick={generateQuestionPaperPDF}>
+                    <Button variant="outline" className="w-full" onClick={() => generateQuestionPaperPDF(false)}>
                       <FileText className="w-4 h-4 mr-2" />Question Paper (PDF)
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={() => generateQuestionPaperPDF(true)}>
+                      <FileText className="w-4 h-4 mr-2" />Paper + Answers & Solutions (PDF)
                     </Button>
                   </div>
                   <div className="space-y-2">

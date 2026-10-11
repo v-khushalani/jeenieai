@@ -576,6 +576,14 @@ export function renderMathTextForPdf(text: string): string {
 export function renderLatex(text: string): string {
   if (!text) return '';
 
+  // Restore LaTeX commands whose backslash was eaten by JS escapes (\tan → TAB+"an", \frac → FF+"rac").
+  text = text
+    .replace(/\t(?=an\b|heta|imes|au\b|ext|riangle|ilde)/g, '\\t')
+    .replace(/\f(?=rac|orall)/g, '\\f')
+    .replace(/\x08(?=eta|egin|oldsymbol)/g, '\\b')
+    .replace(/\r(?=ho\b|ight|angle)/g, '\\r')
+    .replace(/\v(?=ec\b|arepsilon|arphi)/g, '\\v');
+
   const normalizedText = normalizeOcrArtifacts(text);
 
   // Pseudo-LaTeX OCR blocks (like \[ array cc ... \]) should be rendered as normalized text,
