@@ -1,12 +1,20 @@
-import { jsPDF } from "jspdf";
-import { renderMathTextForPdf } from "@/utils/mathRenderer";
+import katexCssUrl from "katex/dist/katex.min.css?url";
+import { renderLatex } from "@/utils/mathRenderer";
 
 export interface QuestionPaperQuestion {
   question: string;
+  question_text?: string | null;
+  question_image_url?: string | null;
   option_a: string;
   option_b: string;
   option_c: string;
   option_d: string;
+  subject?: string;
+  correct_option?: string;
+  correct_options?: string[] | null;
+  question_type?: string | null;
+  numerical_answer?: number | null;
+  explanation?: string | null;
 }
 
 export interface QuestionPaperData {
@@ -14,265 +22,142 @@ export interface QuestionPaperData {
   testDate: string;
   totalQuestions: number;
   questions: QuestionPaperQuestion[];
-}
-
-// ── Layout constants (mm) ──────────────────────────────────────────
-const PAGE_W = 210;
-const PAGE_H = 297;
-const MARGIN_LEFT = 18;
-const MARGIN_RIGHT = 18;
-const MARGIN_TOP = 20;
-const MARGIN_BOTTOM = 22;
-const CONTENT_W = PAGE_W - MARGIN_LEFT - MARGIN_RIGHT;
-const MAX_Y = PAGE_H - MARGIN_BOTTOM;
-const LINE_HEIGHT = 5.5;
-const OPTION_LINE_HEIGHT = 5;
-
-function sanitizeFilename(value: string): string {
-  return value
-    .trim()
-    .replace(/\s+/g, "_")
-    .replace(/[^a-zA-Z0-9_-]/g, "") || "question_paper";
-}
-
-function cleanText(raw: string): string {
-  return renderMathTextForPdf(raw);
+  withAnswers?: boolean;
 }
 
 /**
- * Wrap `text` to fit within `maxWidth` mm at the current font.
- * Returns an array of lines.
+ * Repair LaTeX commands whose backslash got eaten by JS string escapes
+ * (e.g. "\tan" stored as TAB + "an", "\frac" as FORMFEED + "rac").
  */
-function wrapText(pdf: jsPDF, text: string, maxWidth: number): string[] {
-  return pdf.splitTextToSize(text, maxWidth) as string[];
+export function repairEscapedLatex(raw: string): string {
+  if (!raw) return "";
+  return raw
+    .replace(/\t(?=an\b|heta|imes|au\b|ext|riangle|ilde|o\b)/g, "\\t")
+    .replace(/\f(?=rac|orall)/g, "\\f")
+    .replace(/\x08(?=eta|ar\b|egin|oldsymbol)/g, "\\b")
+    .replace(/\r(?=ho\b|ight|m\b|angle)/g, "\\r")
+    .replace(/\v(?=ec\b|arepsilon|arphi)/g, "\\v")
+    .replace(/\x07(?=lpha|pprox)/g, "\\a");
 }
 
-/**
- * Predict the vertical height (mm) a question block will occupy.
- */
-function measureQuestion(
-  pdf: jsPDF,
-  q: QuestionPaperQuestion,
-  index: number,
-): number {
-  const questionText = `${index + 1}. ${cleanText(q.question)}`;
-  const qLines = wrapText(pdf, questionText, CONTENT_W);
+const esc = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-  const optColWidth = (CONTENT_W - 4) / 2;
+const math = (s?: string | null) => (s ? renderLatex(repairEscapedLatex(String(s))) : "");
 
-  const optionTexts = [
-    `(A) ${cleanText(q.option_a)}`,
-    `(B) ${cleanText(q.option_b)}`,
-    `(C) ${cleanText(q.option_c)}`,
-    `(D) ${cleanText(q.option_d)}`,
-  ];
+const isNumerical = (q: QuestionPaperQuestion) =>
+  /numer|integer/i.test(q.question_type || "") ||
+  (q.numerical_answer != null && !q.option_a && !q.option_b);
 
-  // Options in 2-column grid: row 1 = A & B, row 2 = C & D
-  let optHeight = 0;
-  for (let r = 0; r < 2; r++) {
-    const left = wrapText(pdf, optionTexts[r * 2], optColWidth);
-    const right = wrapText(pdf, optionTexts[r * 2 + 1], optColWidth);
-    const rowLines = Math.max(left.length, right.length);
-    optHeight += rowLines * OPTION_LINE_HEIGHT + 1;
-  }
-
-  return qLines.length * LINE_HEIGHT + 3 + optHeight + 6; // gap above + question + gap + options + gap below
+function answerOf(q: QuestionPaperQuestion): string {
+  if (q.numerical_answer != null) return String(q.numerical_answer);
+  if (q.correct_options?.length) return q.correct_options.join(", ").toUpperCase();
+  return (q.correct_option || "—").toUpperCase();
 }
 
-function drawHeader(
-  pdf: jsPDF,
-  data: QuestionPaperData,
-  isFirstPage: boolean,
-  pageNum: number,
-  totalPages: number,
-): number {
-  let y = MARGIN_TOP;
-
-  if (isFirstPage) {
-    // Brand
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(22);
-    pdf.setTextColor(1, 48, 98); // #013062
-    pdf.text("JEEnie", MARGIN_LEFT, y);
-    y += 6;
-
-    pdf.setFontSize(9);
-    pdf.setFont("helvetica", "normal");
-    pdf.setTextColor(100);
-    pdf.text("Question Paper Export", MARGIN_LEFT, y);
-    y += 7;
-
-    // Title
-    pdf.setFontSize(14);
-    pdf.setFont("helvetica", "bold");
-    pdf.setTextColor(30);
-    const titleLines = wrapText(pdf, data.testTitle, CONTENT_W);
-    titleLines.forEach((line: string) => {
-      pdf.text(line, MARGIN_LEFT, y);
-      y += 5.5;
-    });
-    y += 2;
-
-    // Meta row
-    pdf.setFontSize(9);
-    pdf.setFont("helvetica", "normal");
-    pdf.setTextColor(80);
-    pdf.text(`Date: ${data.testDate}`, MARGIN_LEFT, y);
-    pdf.text(`Total: ${data.totalQuestions} Qs`, PAGE_W / 2 - 10, y);
-    pdf.text(`Marks: ${data.totalQuestions * 4}`, PAGE_W - MARGIN_RIGHT, y, { align: "right" });
-    y += 4;
-
-    // Divider
-    pdf.setDrawColor(180);
-    pdf.setLineWidth(0.4);
-    pdf.line(MARGIN_LEFT, y, PAGE_W - MARGIN_RIGHT, y);
-    y += 6;
-  } else {
-    // Continuation header
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(11);
-    pdf.setTextColor(30);
-    const titleLines = wrapText(pdf, data.testTitle, CONTENT_W - 40);
-    titleLines.forEach((line: string) => {
-      pdf.text(line, MARGIN_LEFT, y);
-      y += 5;
-    });
-
-    pdf.setFontSize(8);
-    pdf.setFont("helvetica", "normal");
-    pdf.setTextColor(120);
-    pdf.text("Continued", PAGE_W - MARGIN_RIGHT, MARGIN_TOP, { align: "right" });
-    y += 3;
-
-    pdf.setDrawColor(200);
-    pdf.setLineWidth(0.25);
-    pdf.line(MARGIN_LEFT, y, PAGE_W - MARGIN_RIGHT, y);
-    y += 5;
-  }
-
-  return y;
+function optionsHtml(q: QuestionPaperQuestion): string {
+  const opts = [q.option_a, q.option_b, q.option_c, q.option_d].map((o) => o || "");
+  const longest = Math.max(...opts.map((o) => o.length));
+  const cols = longest <= 18 ? 4 : longest <= 45 ? 2 : 1;
+  return `<div class="opts c${cols}">${opts
+    .map((o, i) => `<div class="opt"><b>(${"ABCD"[i]})</b> <span>${math(o)}</span></div>`)
+    .join("")}</div>`;
 }
 
-function drawFooter(pdf: jsPDF, pageNum: number, totalPages: number): void {
-  const y = PAGE_H - 12;
-  pdf.setDrawColor(200);
-  pdf.setLineWidth(0.2);
-  pdf.line(MARGIN_LEFT, y, PAGE_W - MARGIN_RIGHT, y);
-
-  pdf.setFontSize(8);
-  pdf.setFont("helvetica", "normal");
-  pdf.setTextColor(130);
-  pdf.text("Powered by JEEnie", MARGIN_LEFT, y + 5);
-  pdf.text(`Page ${pageNum} of ${totalPages}`, PAGE_W - MARGIN_RIGHT, y + 5, { align: "right" });
-}
-
-function drawQuestion(
-  pdf: jsPDF,
-  q: QuestionPaperQuestion,
-  index: number,
-  startY: number,
-  totalQuestions: number,
-): number {
-  let y = startY;
-
-  // Question text
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(10.5);
-  pdf.setTextColor(20);
-
-  const questionText = `${index + 1}. ${cleanText(q.question)}`;
-  const qLines = wrapText(pdf, questionText, CONTENT_W);
-  qLines.forEach((line: string) => {
-    pdf.text(line, MARGIN_LEFT, y);
-    y += LINE_HEIGHT;
+export function buildQuestionPaperHtml(data: QuestionPaperData): string {
+  const groups = new Map<string, QuestionPaperQuestion[]>();
+  data.questions.forEach((q) => {
+    const k = q.subject || "General";
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k)!.push(q);
   });
-  y += 2;
 
-  // Options in 2-column grid
-  const optColWidth = (CONTENT_W - 6) / 2;
-  const colX = [MARGIN_LEFT + 6, MARGIN_LEFT + 6 + optColWidth + 6];
+  let n = 0;
+  const sections = [...groups.entries()]
+    .map(([subject, qs]) => {
+      const mcq = qs.filter((q) => !isNumerical(q));
+      const num = qs.filter(isNumerical);
+      const block = (list: QuestionPaperQuestion[]) =>
+        list
+          .map((q) => {
+            n += 1;
+            const text = q.question_text || q.question || "";
+            const img = q.question_image_url
+              ? `<img class="diag" src="${esc(q.question_image_url)}" alt="Diagram" />`
+              : "";
+            const body = isNumerical(q)
+              ? `<div class="numbox">Answer: <span></span></div>`
+              : optionsHtml(q);
+            const ans = data.withAnswers
+              ? `<div class="ans"><b>Answer:</b> ${esc(answerOf(q))}${
+                  q.explanation ? `<div class="sol"><b>Solution:</b> ${math(q.explanation)}</div>` : ""
+                }</div>`
+              : "";
+            return `<div class="q"><div class="qt"><b>Q${n}.</b> <span>${math(text)}</span></div>${img}${body}${ans}</div>`;
+          })
+          .join("");
+      return `<section><h2>${esc(subject)}</h2>${
+        mcq.length ? `<h3>Section A — Multiple Choice</h3>${block(mcq)}` : ""
+      }${num.length ? `<h3>Section B — Numerical Value</h3>${block(num)}` : ""}</section>`;
+    })
+    .join("");
 
-  const optionTexts = [
-    `(A)  ${cleanText(q.option_a)}`,
-    `(B)  ${cleanText(q.option_b)}`,
-    `(C)  ${cleanText(q.option_c)}`,
-    `(D)  ${cleanText(q.option_d)}`,
-  ];
-
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(9.5);
-  pdf.setTextColor(40);
-
-  for (let row = 0; row < 2; row++) {
-    const leftLines = wrapText(pdf, optionTexts[row * 2], optColWidth);
-    const rightLines = wrapText(pdf, optionTexts[row * 2 + 1], optColWidth);
-    const rowLines = Math.max(leftLines.length, rightLines.length);
-
-    for (let i = 0; i < rowLines; i++) {
-      if (leftLines[i]) pdf.text(leftLines[i], colX[0], y);
-      if (rightLines[i]) pdf.text(rightLines[i], colX[1], y);
-      y += OPTION_LINE_HEIGHT;
-    }
-    y += 1;
-  }
-
-  // Divider between questions
-  if (index < totalQuestions - 1) {
-    y += 1;
-    pdf.setDrawColor(220);
-    pdf.setLineWidth(0.15);
-    pdf.line(MARGIN_LEFT + 4, y, PAGE_W - MARGIN_RIGHT - 4, y);
-    y += 4;
-  } else {
-    y += 3;
-  }
-
-  return y;
+  return `<!doctype html><html><head><meta charset="utf-8"/><title>${esc(data.testTitle)}</title>
+<link rel="stylesheet" href="${katexCssUrl}"/>
+<style>
+@page{size:A4;margin:14mm 14mm 16mm}
+*{box-sizing:border-box}
+body{font-family:"Times New Roman",Georgia,serif;color:#111;font-size:11.5pt;line-height:1.45;margin:0}
+header{border-bottom:2px solid #013062;padding-bottom:8px;margin-bottom:10px}
+.brand{font:700 20pt Arial,sans-serif;color:#013062}
+.sub{font:9pt Arial,sans-serif;color:#555}
+.meta{display:flex;justify-content:space-between;font:9.5pt Arial,sans-serif;margin-top:6px}
+h1{font-size:14pt;margin:4px 0}
+h2{font:700 13pt Arial,sans-serif;background:#013062;color:#fff;padding:4px 10px;margin:14px 0 6px;break-after:avoid}
+h3{font:700 10.5pt Arial,sans-serif;color:#013062;border-bottom:1px solid #ccd;margin:8px 0;break-after:avoid}
+.q{break-inside:avoid;page-break-inside:avoid;padding:6px 0 8px;border-bottom:1px dashed #ddd}
+.diag{display:block;max-width:70%;max-height:60mm;margin:6px auto;object-fit:contain}
+.opts{display:grid;gap:4px 14px;margin:6px 0 0 18px}
+.c4{grid-template-columns:repeat(4,1fr)}.c2{grid-template-columns:repeat(2,1fr)}.c1{grid-template-columns:1fr}
+.numbox{margin:6px 0 0 18px;font:10pt Arial,sans-serif}
+.numbox span{display:inline-block;width:40mm;height:7mm;border:1px solid #333;vertical-align:middle;margin-left:6px}
+.ans{margin:6px 0 0 18px;padding:6px 8px;background:#eef4ff;border-left:3px solid #2563eb;font-size:10.5pt}
+.sol{margin-top:4px}
+.katex{font-size:1.02em}
+.katex-display{margin:4px 0;overflow-x:auto}
+footer{text-align:center;font:8pt Arial,sans-serif;color:#888;margin-top:14px}
+</style></head><body>
+<header><div class="brand">JEEnie</div><div class="sub">${data.withAnswers ? "Question Paper with Answer Key &amp; Solutions" : "Question Paper"}</div>
+<h1>${esc(data.testTitle)}</h1>
+<div class="meta"><span>Date: ${esc(data.testDate)}</span><span>Questions: ${data.totalQuestions}</span></div></header>
+${sections}
+<footer>Generated by JEEnie · jeenie.website</footer>
+</body></html>`;
 }
 
+/** Renders the paper in a hidden iframe and opens the print / Save-as-PDF dialog. */
 export async function downloadQuestionPaperPdf(data: QuestionPaperData): Promise<void> {
-  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
+  const html = buildQuestionPaperHtml(data);
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  document.body.appendChild(iframe);
+  const doc = iframe.contentDocument!;
+  doc.open();
+  doc.write(html);
+  doc.close();
 
-  // First pass: determine page breaks
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(10.5);
+  await new Promise<void>((resolve) => {
+    const imgs = Array.from(doc.images);
+    let pending = imgs.length + 1;
+    const done = () => --pending <= 0 && resolve();
+    imgs.forEach((im) => (im.complete ? done() : (im.onload = im.onerror = done)));
+    const link = doc.querySelector("link");
+    if (link) { link.addEventListener("load", done); link.addEventListener("error", done); } else done();
+    setTimeout(resolve, 4000);
+  });
+  await (doc as any).fonts?.ready;
 
-  const pageBreaks: number[] = []; // indices where new pages start
-  let simY = drawHeader(pdf, data, true, 1, 1);
-
-  for (let i = 0; i < data.questions.length; i++) {
-    const qHeight = measureQuestion(pdf, data.questions[i], i);
-
-    if (simY + qHeight > MAX_Y && i > 0) {
-      pageBreaks.push(i);
-      // Simulate new page header
-      simY = MARGIN_TOP + 18; // approximate continuation header height
-    }
-
-    simY += qHeight;
-  }
-
-  const totalPages = pageBreaks.length + 1;
-
-  // Second pass: render
-  let currentPage = 1;
-  let y = drawHeader(pdf, data, true, currentPage, totalPages);
-  let nextBreakIdx = 0;
-
-  for (let i = 0; i < data.questions.length; i++) {
-    // Check if we need a page break
-    if (nextBreakIdx < pageBreaks.length && i === pageBreaks[nextBreakIdx]) {
-      drawFooter(pdf, currentPage, totalPages);
-      pdf.addPage();
-      currentPage++;
-      nextBreakIdx++;
-      y = drawHeader(pdf, data, false, currentPage, totalPages);
-    }
-
-    y = drawQuestion(pdf, data.questions[i], i, y, data.questions.length);
-  }
-
-  drawFooter(pdf, currentPage, totalPages);
-
-  pdf.save(`${sanitizeFilename(data.testTitle)}_Question_Paper.pdf`);
+  iframe.contentWindow!.focus();
+  iframe.contentWindow!.print();
+  setTimeout(() => iframe.remove(), 60_000);
 }
