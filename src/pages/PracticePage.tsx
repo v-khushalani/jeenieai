@@ -64,34 +64,14 @@ interface AnswerRecord {
 const OPTIONS = ['A', 'B', 'C', 'D'] as const;
 const QUESTIONS_PER_BATCH = 50;
 const AUTO_ADVANCE_DELAY = 800;
+import { type Difficulty, normalizeDifficulty, orderPoolByLevel, stepLadder, loadLadder, saveLadder, LEVEL_LABEL, type LadderState } from '@/lib/difficultyLadder';
 
 // ── Adaptive difficulty (ELO-inspired) ──────────────────────────────
 // Single source of truth: a question's `difficulty` field from the DB.
 // `difficultyScore` accumulates based on actual question difficulty + outcome,
 // and `currentDifficulty` (derived) decides what to fetch next.
-type Difficulty = 'Easy' | 'Medium' | 'Hard';
-
-const DIFFICULTY_THRESHOLDS = { easy: 30, hard: 65 } as const;
-const SCORE_DELTAS: Record<Difficulty, { correct: number; wrong: number }> = {
-  Easy:   { correct: 5,  wrong: -15 },
-  Medium: { correct: 10, wrong: -10 },
-  Hard:   { correct: 15, wrong: -5 },
-};
 const POINTS_FOR_CORRECT: Record<Difficulty, number> = { Easy: 5, Medium: 10, Hard: 15 };
 const POINTS_FOR_WRONG = -2;
-
-function normalizeDifficulty(d?: string | null): Difficulty {
-  const v = (d || '').toLowerCase();
-  if (v === 'easy') return 'Easy';
-  if (v === 'hard') return 'Hard';
-  return 'Medium';
-}
-
-function getDifficultyFromScore(score: number): Difficulty {
-  if (score < DIFFICULTY_THRESHOLDS.easy) return 'Easy';
-  if (score > DIFFICULTY_THRESHOLDS.hard) return 'Hard';
-  return 'Medium';
-}
 
 function getPointsDelta(difficulty: string | undefined | null, isCorrect: boolean): number {
   if (!isCorrect) return POINTS_FOR_WRONG;
@@ -114,21 +94,6 @@ function getLevelProgress(totalPoints: number): number {
   if (totalPoints <= 20000) return ((totalPoints - 7001) / 12999) * 100;
   if (totalPoints <= 50000) return ((totalPoints - 20001) / 29999) * 100;
   return 100;
-}
-
-
-// Order a pool of questions so the user always sees their target difficulty
-// first, with lower/higher levels following naturally. Within each bucket
-// we still randomize so the order isn't predictable.
-function orderPoolByLevel<T extends { difficulty?: string | null }>(pool: T[], target: Difficulty): T[] {
-  const buckets: Record<Difficulty, T[]> = { Easy: [], Medium: [], Hard: [] };
-  pool.forEach((q) => buckets[normalizeDifficulty(q.difficulty)].push(q));
-  (['Easy', 'Medium', 'Hard'] as Difficulty[]).forEach((k) => buckets[k].sort(() => Math.random() - 0.5));
-  const order: Difficulty[] =
-    target === 'Easy' ? ['Easy', 'Medium', 'Hard']
-    : target === 'Hard' ? ['Hard', 'Medium', 'Easy']
-    : ['Medium', 'Easy', 'Hard'];
-  return order.flatMap((k) => buckets[k]);
 }
 
 
@@ -182,9 +147,10 @@ const PracticePage: React.FC = () => {
   const [answeredQuestions, setAnsweredQuestions] = useState<Map<number, AnswerRecord>>(new Map());
 
   // Adaptive difficulty — ELO score
-  const [difficultyScore, setDifficultyScore] = useState(15);
-  const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
-  const currentDifficulty = getDifficultyFromScore(difficultyScore);
+  const ladderScope = topicId ? `t:${topicId}` : chapterId ? `c:${chapterId}` : `s:${subject || 'all'}`;
+  const [ladder, setLadder] = useState<LadderState>(() => loadLadder(user?.id, ladderScope));
+  useEffect(() => { setLadder(loadLadder(user?.id, ladderScope)); }, [user?.id, ladderScope]);
+  const currentDifficulty: Difficulty = ladder.level;
 
   // Auto-advance
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -532,24 +498,14 @@ const PracticePage: React.FC = () => {
           total: prev.total + 1,
         }));
 
-        const qDiff = normalizeDifficulty(currentQuestion.difficulty);
-        const deltas = SCORE_DELTAS[qDiff];
-        let scoreDelta = result.is_correct ? deltas.correct : deltas.wrong;
-
-        const newConsecutive = result.is_correct ? consecutiveCorrect + 1 : 0;
-        setConsecutiveCorrect(newConsecutive);
-        if (result.is_correct && newConsecutive >= 5) {
-          scoreDelta = Math.round(scoreDelta * 1.5);
-        }
-
-        const newScore = Math.max(0, Math.min(100, difficultyScore + scoreDelta));
-        const oldDiff = getDifficultyFromScore(difficultyScore);
-        const newDiff = getDifficultyFromScore(newScore);
-        setDifficultyScore(newScore);
-
-        if (newDiff !== oldDiff) {
-          const isUp = newScore > difficultyScore - scoreDelta;
-          toast(isUp ? `Level up → ${newDiff} 🔥` : `Adjusting → ${newDiff}`, { duration: 1500 });
+        const { next: nextLadder, changed } = stepLadder(ladder, currentQuestion.difficulty, result.is_correct);
+        setLadder(nextLadder);
+        saveLadder(user.id, ladderScope, nextLadder);
+        if (changed) {
+          toast(changed === 'up' ? `Level up → ${LEVEL_LABEL[nextLadder.level]} 🔥` : `Thoda basics → ${LEVEL_LABEL[nextLadder.level]}`, { duration: 1800 });
+          // Re-order only upcoming (unanswered) questions so the new level shows next.
+          const idx = currentIndex;
+          setQuestions(prev => [...prev.slice(0, idx + 1), ...orderPoolByLevel(prev.slice(idx + 1), nextLadder.level)]);
         }
 
         const { error: attemptInsertError } = await supabase.from('question_attempts').insert({
