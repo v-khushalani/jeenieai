@@ -257,7 +257,10 @@ function normalizeOcrArtifacts(text: string): string {
   let normalized = repairMojibake(text);
   normalized = decodeHtmlEntities(normalized);
   // Literal escape sequences that arrive as text from CSV / JSON imports
-  normalized = normalized.replace(/\\r\\n|\\n/g, '\n').replace(/\\t/g, ' ');
+  // Only treat \n / \t as escaped whitespace when NOT the start of a LaTeX command (\nu, \neq, \tan, \theta, \times…)
+  normalized = normalized
+    .replace(/\\r\\n|\\n(?![a-zA-Z])/g, '\n')
+    .replace(/\\t(?![a-zA-Z])/g, ' ');
   // Double-escaped LaTeX (\\frac -> \frac)
   normalized = normalized.replace(/\\\\(?=[a-zA-Z]{2,})/g, '\\');
   normalized = normalizeHtmlMathTags(normalized);
