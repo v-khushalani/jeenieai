@@ -64,7 +64,7 @@ interface AnswerRecord {
 const OPTIONS = ['A', 'B', 'C', 'D'] as const;
 const QUESTIONS_PER_BATCH = 50;
 const AUTO_ADVANCE_DELAY = 800;
-import { orderPoolByLevel, stepLadder, loadLadder, saveLadder, levelLabel, tierOf, trackFor, interleaveRepair, ladderProgress, type LadderState, type Track, type Tier } from '@/lib/difficultyLadder';
+import { type Difficulty, normalizeDifficulty, orderPoolByLevel, stepLadder, loadLadder, saveLadder, levelLabel, tierOf, trackFor, interleaveRepair, ladderProgress, type LadderState, type Track, type Tier } from '@/lib/difficultyLadder';
 
 // ── Adaptive difficulty (ELO-inspired) ──────────────────────────────
 // Single source of truth: a question's `difficulty` field from the DB.
