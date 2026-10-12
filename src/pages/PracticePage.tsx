@@ -151,6 +151,8 @@ const PracticePage: React.FC = () => {
   const [ladder, setLadder] = useState<LadderState>(() => loadLadder(user?.id, ladderScope));
   useEffect(() => { setLadder(loadLadder(user?.id, ladderScope)); }, [user?.id, ladderScope]);
   const currentDifficulty: Difficulty = ladder.level;
+  const levelRef = useRef<Difficulty>(ladder.level);
+  levelRef.current = ladder.level;
 
   // Auto-advance
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -304,7 +306,7 @@ const PracticePage: React.FC = () => {
         if (!topicId && topicFilterName) q = q.ilike('topic', `%${topicFilterName}%`);
         const { data, error } = await q.limit(500);
         if (error) throw error;
-        const ordered = orderPoolByLevel(data || [], currentDifficulty).slice(0, takeCount);
+        const ordered = orderPoolByLevel(data || [], levelRef.current).slice(0, takeCount);
         setQuestions(ordered);
         setLoading(false);
         return;
@@ -369,7 +371,7 @@ const PracticePage: React.FC = () => {
         return;
       }
 
-      const ordered = orderPoolByLevel(pool as Question[], currentDifficulty).slice(0, takeCount);
+      const ordered = orderPoolByLevel(pool as Question[], levelRef.current).slice(0, takeCount);
       setQuestions(ordered);
     } catch (error) {
       logger.error('Failed to fetch practice questions:', error);
@@ -753,8 +755,6 @@ const PracticePage: React.FC = () => {
                   setCurrentIndex(0);
                   setStats({ correct: 0, wrong: 0, total: 0 });
                   setAnsweredQuestions(new Map());
-                  setDifficultyScore(15);
-                  setConsecutiveCorrect(0);
                   fetchQuestions();
                 }}>
                   <RotateCcw className="w-4 h-4 mr-2" /> More Q
@@ -772,8 +772,6 @@ const PracticePage: React.FC = () => {
                   setCurrentIndex(0);
                   setStats({ correct: 0, wrong: 0, total: 0 });
                   setAnsweredQuestions(new Map());
-                  setDifficultyScore(15);
-                  setConsecutiveCorrect(0);
                   fetchQuestions();
                 }}>
                   <RotateCcw className="w-4 h-4 mr-2" /> Retry
@@ -867,6 +865,7 @@ const PracticePage: React.FC = () => {
                     {currentQuestion.pyq_session ? ` (${currentQuestion.pyq_session})` : ''}
                   </Badge>
                 )}
+                <Badge variant="secondary" className="text-xs">{LEVEL_LABEL[currentDifficulty]}</Badge>
                 {currentQuestion.difficulty && (
                   <Badge variant="outline" className={`text-xs capitalize ${getDifficultyColor(currentQuestion.difficulty)}`}>
                     {currentQuestion.difficulty}
