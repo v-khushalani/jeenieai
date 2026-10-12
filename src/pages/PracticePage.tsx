@@ -64,7 +64,7 @@ interface AnswerRecord {
 const OPTIONS = ['A', 'B', 'C', 'D'] as const;
 const QUESTIONS_PER_BATCH = 50;
 const AUTO_ADVANCE_DELAY = 800;
-import { type Difficulty, normalizeDifficulty, orderPoolByLevel, stepLadder, loadLadder, saveLadder, LEVEL_LABEL, type LadderState } from '@/lib/difficultyLadder';
+import { orderPoolByLevel, stepLadder, loadLadder, saveLadder, levelLabel, tierOf, trackFor, interleaveRepair, ladderProgress, type LadderState, type Track, type Tier } from '@/lib/difficultyLadder';
 
 // ── Adaptive difficulty (ELO-inspired) ──────────────────────────────
 // Single source of truth: a question's `difficulty` field from the DB.
@@ -148,11 +148,14 @@ const PracticePage: React.FC = () => {
 
   // Adaptive difficulty — ELO score
   const ladderScope = topicId ? `t:${topicId}` : chapterId ? `c:${chapterId}` : `s:${subject || 'all'}`;
-  const [ladder, setLadder] = useState<LadderState>(() => loadLadder(user?.id, ladderScope));
-  useEffect(() => { setLadder(loadLadder(user?.id, ladderScope)); }, [user?.id, ladderScope]);
-  const currentDifficulty: Difficulty = ladder.level;
-  const levelRef = useRef<Difficulty>(ladder.level);
-  levelRef.current = ladder.level;
+  const [track, setTrack] = useState<Track>('main');
+  const trackRef = useRef<Track>('main');
+  trackRef.current = track;
+  const [ladder, setLadder] = useState<LadderState>(() => loadLadder(user?.id, 'main', ladderScope));
+  useEffect(() => { setLadder(loadLadder(user?.id, track, ladderScope)); }, [user?.id, track, ladderScope]);
+  const levelRef = useRef<Tier>(ladder.tier);
+  levelRef.current = ladder.tier;
+  const repairIds = useRef<Set<string>>(new Set());
 
   // Auto-advance
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -280,6 +283,11 @@ const PracticePage: React.FC = () => {
           .eq('id', user.id)
           .single();
         const profileExam = profile?.target_exam || 'JEE';
+        const t = trackFor(profileExam);
+        if (t !== trackRef.current) {
+          trackRef.current = t; setTrack(t);
+          levelRef.current = loadLadder(user.id, t, ladderScope).tier;
+        }
         examFilter = getExamFilter(profileExam, profile?.grade || 12) || mapBatchToExamField(profileExam, profile?.grade || 12);
         if (profile?.target_exam) {
           const { data: batches } = await supabase
@@ -306,7 +314,7 @@ const PracticePage: React.FC = () => {
         if (!topicId && topicFilterName) q = q.ilike('topic', `%${topicFilterName}%`);
         const { data, error } = await q.limit(500);
         if (error) throw error;
-        const ordered = orderPoolByLevel(data || [], levelRef.current).slice(0, takeCount);
+        const ordered = orderPoolByLevel(data || [], trackRef.current, levelRef.current).slice(0, takeCount);
         setQuestions(ordered);
         setLoading(false);
         return;
@@ -371,8 +379,36 @@ const PracticePage: React.FC = () => {
         return;
       }
 
-      const ordered = orderPoolByLevel(pool as Question[], levelRef.current).slice(0, takeCount);
-      setQuestions(ordered);
+      // Mistake repair: questions whose latest attempt was wrong, 1+ day ago, in this scope.
+      let repair: Question[] = [];
+      try {
+        const { data: atts } = await supabase
+          .from('question_attempts')
+          .select('question_id, is_correct, attempted_at, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(400);
+        const latest = new Map<string, { ok: boolean; at: string }>();
+        (atts || []).forEach((a) => { if (!latest.has(a.question_id)) latest.set(a.question_id, { ok: !!a.is_correct, at: a.attempted_at || a.created_at || '' }); });
+        const dayAgo = Date.now() - 864e5;
+        const wrongIds = [...latest.entries()].filter(([, v]) => !v.ok && new Date(v.at).getTime() <= dayAgo).map(([id]) => id).slice(0, 60);
+        if (wrongIds.length) {
+          let rq = supabase
+            .from('questions')
+            .select('id, question, question_text, question_image_url, option_a, option_b, option_c, option_d, options, correct_options, numerical_answer, numerical_tolerance, difficulty, question_type, topic, topic_id, chapter, chapter_id, subject, exam, is_pyq, pyq_exam, pyq_year, pyq_session')
+            .in('id', wrongIds)
+            .or('is_active.is.null,is_active.eq.true');
+          if (topicId) rq = rq.eq('topic_id', topicId);
+          else if (chapterId) rq = rq.eq('chapter_id', chapterId);
+          else if (subject) rq = rq.ilike('subject', subject);
+          const { data: rqd } = await rq;
+          repair = ((rqd || []) as Question[]).sort(() => Math.random() - 0.5);
+        }
+      } catch (e) { logger.error('Mistake repair fetch failed:', e); }
+      repairIds.current = new Set(repair.map((q) => q.id));
+
+      const fresh = orderPoolByLevel(pool as Question[], trackRef.current, levelRef.current);
+      setQuestions(interleaveRepair(fresh, repair, takeCount));
     } catch (error) {
       logger.error('Failed to fetch practice questions:', error);
       toast.error('Failed to load questions');
@@ -500,14 +536,14 @@ const PracticePage: React.FC = () => {
           total: prev.total + 1,
         }));
 
-        const { next: nextLadder, changed } = stepLadder(ladder, currentQuestion.difficulty, result.is_correct);
+        const { next: nextLadder, changed } = stepLadder(ladder, tierOf(track, currentQuestion), result.is_correct);
         setLadder(nextLadder);
-        saveLadder(user.id, ladderScope, nextLadder);
+        saveLadder(user.id, track, ladderScope, nextLadder);
         if (changed) {
-          toast(changed === 'up' ? `Level up → ${LEVEL_LABEL[nextLadder.level]} 🔥` : `Thoda basics → ${LEVEL_LABEL[nextLadder.level]}`, { duration: 1800 });
+          toast(changed === 'up' ? `Level up → ${levelLabel(track, nextLadder.tier)} 🔥` : `Thoda basics strong karte hain → ${levelLabel(track, nextLadder.tier)}`, { duration: 2200 });
           // Re-order only upcoming (unanswered) questions so the new level shows next.
           const idx = currentIndex;
-          setQuestions(prev => [...prev.slice(0, idx + 1), ...orderPoolByLevel(prev.slice(idx + 1), nextLadder.level)]);
+          setQuestions(prev => [...prev.slice(0, idx + 1), ...orderPoolByLevel(prev.slice(idx + 1), track, nextLadder.tier)]);
         }
 
         const { error: attemptInsertError } = await supabase.from('question_attempts').insert({
@@ -865,12 +901,21 @@ const PracticePage: React.FC = () => {
                     {currentQuestion.pyq_session ? ` (${currentQuestion.pyq_session})` : ''}
                   </Badge>
                 )}
-                <Badge variant="secondary" className="text-xs">{LEVEL_LABEL[currentDifficulty]}</Badge>
-                {currentQuestion.difficulty && (
-                  <Badge variant="outline" className={`text-xs capitalize ${getDifficultyColor(currentQuestion.difficulty)}`}>
-                    {currentQuestion.difficulty}
-                  </Badge>
+                {repairIds.current.has(currentQuestion.id) && (
+                  <Badge variant="outline" className="text-[10px] sm:text-xs border-destructive/40 text-destructive">Mistake repair</Badge>
                 )}
+                {(() => {
+                  const p = ladderProgress(ladder);
+                  return (
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] sm:text-xs font-semibold ${getDifficultyColor(['Easy', 'Medium', 'Hard'][ladder.tier - 1])}`}
+                      title={p.max ? 'Top level' : `Last ${p.seen} at this level: ${p.hits} right. ${p.need}/5 right = level up`}
+                    >
+                      {levelLabel(track, ladder.tier)}{!p.max && p.seen > 0 ? ` · ${p.hits}/${p.seen}` : ''}
+                    </Badge>
+                  );
+                })()}
               </div>
             </div>
           </CardHeader>
