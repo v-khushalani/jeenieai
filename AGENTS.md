@@ -1,0 +1,1 @@
+- Practice difficulty ladder (Easy→Medium→Hard) logic lives only in src/lib/difficultyLadder.ts, persisted per user+chapter/topic in localStorage — zero AI cost, deterministic and testable.
