@@ -68,7 +68,7 @@ import { type Difficulty, normalizeDifficulty, orderPoolByLevel, stepLadder, loa
 
 // ── Adaptive difficulty (ELO-inspired) ──────────────────────────────
 // Single source of truth: a question's `difficulty` field from the DB.
-// `difficultyScore` accumulates based on actual question difficulty + outcome,
+// Difficulty ladder lives in @/lib/difficultyLadder.
 // and `currentDifficulty` (derived) decides what to fetch next.
 const POINTS_FOR_CORRECT: Record<Difficulty, number> = { Easy: 5, Medium: 10, Hard: 15 };
 const POINTS_FOR_WRONG = -2;
