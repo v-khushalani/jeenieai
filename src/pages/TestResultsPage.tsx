@@ -12,6 +12,7 @@ import { MathDisplay } from "@/components/admin/MathDisplay";
 import { logger } from "@/utils/logger";
 import { testsAPI } from "@/services/api";
 import safeLocalStorage from '@/utils/safeStorage';
+import { supabase } from "@/integrations/supabase/client";
 import {
   Trophy, Target, Clock, CheckCircle, XCircle, BarChart3,
   TrendingUp, BookOpen, ArrowLeft, Eye, FileText,
@@ -150,6 +151,46 @@ const TestResultsPage = () => {
 
     loadResults();
   }, [navigate, sessionId]);
+
+  // Questions come from the answer-masked public view, so fetch the key
+  // (read-only RPC) for any question missing it — powers review + PDF answers.
+  const [answersHydrated, setAnswersHydrated] = useState(false);
+  useEffect(() => {
+    if (!testResult?.questions?.length || answersHydrated) return;
+    setAnswersHydrated(true);
+    const missing = testResult.questions.filter(
+      (q: any) => q.numerical_answer == null && !q.correct_option && !(q.correct_options?.length)
+    );
+    if (!missing.length) return;
+    (async () => {
+      const keyMap = new Map<string, any>();
+      for (let i = 0; i < missing.length; i += 10) {
+        const chunk = missing.slice(i, i + 10);
+        const res = await Promise.all(chunk.map((q: any) =>
+          supabase.rpc('validate_practice_answer', { p_question_id: q.id, p_selected_options: null, p_numerical_answer: null })
+            .then(({ data }) => [q.id, data] as const)
+            .catch(() => [q.id, null] as const)
+        ));
+        res.forEach(([id, d]) => { if (d && typeof d === 'object' && !(d as any).error) keyMap.set(id, d); });
+      }
+      if (!keyMap.size) return;
+      setTestResult((prev) => {
+        if (!prev) return prev;
+        const questions = prev.questions.map((q: any) => {
+          const k = keyMap.get(q.id);
+          return k ? { ...q, correct_option: k.correct_option, correct_options: k.correct_options, numerical_answer: k.numerical_answer, explanation: q.explanation || k.explanation } : q;
+        });
+        const results = prev.results.map((r: any) => {
+          if (r.correctOption) return r;
+          const k = keyMap.get(r.questionId);
+          if (!k) return r;
+          const c = k.numerical_answer != null ? String(k.numerical_answer) : (k.correct_options?.length ? k.correct_options.join(',') : (k.correct_option || ''));
+          return { ...r, correctOption: c };
+        });
+        return { ...prev, questions, results } as any;
+      });
+    })();
+  }, [testResult, answersHydrated]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -404,7 +445,10 @@ const TestResultsPage = () => {
                             const correctSet = new Set<string>(
                               (question?.correct_options && question.correct_options.length > 0
                                 ? question.correct_options
-                                : (question?.correct_option ? [question.correct_option] : []))
+                                : (question?.correct_option
+                                    ? String(question.correct_option).split(',')
+                                    : (result.correctOption || '').split(',')))
+                              .map(s => s.trim()).filter(Boolean)
                               .map(s => s.toUpperCase())
                             );
                             const selectedSet = new Set<string>(
