@@ -348,7 +348,7 @@ const TestResultsPage = () => {
                 <XCircle className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 mx-auto mb-2 sm:mb-3 text-red-600" />
                 <div className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1 text-red-700">{stats?.incorrectAnswers}</div>
                 <div className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1">Incorrect</div>
-                <div className="text-xs text-red-700 font-medium">{(stats?.incorrectAnswers || 0) * -1} marks</div>
+                <div className="text-xs text-red-700 font-medium">{(stats?.incorrectAnswers || 0) * (stats?.marking?.incorrectMarks ?? -1)} marks</div>
               </CardContent>
             </Card>
 
@@ -425,13 +425,13 @@ const TestResultsPage = () => {
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-medium text-sm">Question {index + 1}</span>
                             <div className="flex items-center space-x-2">
-                              {result.isCorrect ? (
-                                <Badge className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />+4 marks</Badge>
+                              {(() => { const s = getSubjectMarking(String((testResult as any).examPattern || ''), (result as any).subject); return result.isCorrect ? (
+                                <Badge className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />+{s.correctMarks} marks</Badge>
                               ) : result.selectedOption ? (
-                                <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />-1 mark</Badge>
+                                <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />{s.incorrectMarks} marks</Badge>
                               ) : (
                                 <Badge variant="secondary">0 marks</Badge>
-                              )}
+                              ); })()}
                               {result.isMarkedForReview && <Badge variant="outline">Marked</Badge>}
                             </div>
                           </div>

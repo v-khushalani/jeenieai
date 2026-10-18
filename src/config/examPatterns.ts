@@ -100,8 +100,9 @@ export function getSubjectMarking(
 ): { correctMarks: number; incorrectMarks: number } {
   const name = String(patternName || '').toUpperCase();
 
-  // Foundation / custom / chapter tests: plain 1-mark scoring, no penalty.
-  if (!name || name.includes('FOUNDATION') || name.includes('CUSTOM')) {
+  // Only Foundation (Class 6-10) uses plain 1-mark scoring. Custom/chapter
+  // tests inherit their track; unknown/missing pattern defaults to JEE (+4/-1).
+  if (name.includes('FOUNDATION') || name.includes('SCHOLARSHIP')) {
     return { correctMarks: 1, incorrectMarks: 0 };
   }
 
