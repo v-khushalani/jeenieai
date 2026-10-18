@@ -425,10 +425,10 @@ const TestResultsPage = () => {
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-medium text-sm">Question {index + 1}</span>
                             <div className="flex items-center space-x-2">
-                              {result.isCorrect ? (
-                                <Badge className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />+4 marks</Badge>
+                              {(() => { const s = getSubjectMarking(String((testResult as any).examPattern || ''), (result as any).subject); return result.isCorrect ? (
+                                <Badge className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />+{s.correctMarks} marks</Badge>
                               ) : result.selectedOption ? (
-                                <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />-1 mark</Badge>
+                                <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />{s.incorrectMarks} marks</Badge>
                               ) : (
                                 <Badge variant="secondary">0 marks</Badge>
                               )}
