@@ -167,9 +167,8 @@ const TestResultsPage = () => {
       for (let i = 0; i < missing.length; i += 10) {
         const chunk = missing.slice(i, i + 10);
         const res = await Promise.all(chunk.map((q: any) =>
-          supabase.rpc('validate_practice_answer', { p_question_id: q.id, p_selected_options: null, p_numerical_answer: null })
-            .then(({ data }) => [q.id, data] as const)
-            .catch(() => [q.id, null] as const)
+          Promise.resolve(supabase.rpc('validate_practice_answer', { p_question_id: q.id, p_selected_options: null, p_numerical_answer: null }))
+            .then(({ data }) => [q.id, data] as const, () => [q.id, null] as const)
         ));
         res.forEach(([id, d]) => { if (d && typeof d === 'object' && !(d as any).error) keyMap.set(id, d); });
       }
