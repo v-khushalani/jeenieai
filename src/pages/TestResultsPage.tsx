@@ -445,7 +445,10 @@ const TestResultsPage = () => {
                             const correctSet = new Set<string>(
                               (question?.correct_options && question.correct_options.length > 0
                                 ? question.correct_options
-                                : (question?.correct_option ? [question.correct_option] : []))
+                                : (question?.correct_option
+                                    ? String(question.correct_option).split(',')
+                                    : (result.correctOption || '').split(',')))
+                              .map(s => s.trim()).filter(Boolean)
                               .map(s => s.toUpperCase())
                             );
                             const selectedSet = new Set<string>(
