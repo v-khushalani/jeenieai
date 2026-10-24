@@ -1,11 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
-import { supabase as configuredClient } from '../../src/integrations/supabase/client';
+import fs from 'node:fs';
 
 // Read-only checks run before migration. Submission/write checks require an
 // explicit post-migration gate and existing QA accounts; never reset accounts.
-const url = configuredClient.supabaseUrl;
-const key = configuredClient.supabaseKey;
+const config = fs.readFileSync('src/integrations/supabase/client.ts', 'utf8');
+const url = config.match(/const SUPABASE_URL = "([^"]+)"/)?.[1];
+const key = config.match(/const SUPABASE_PUBLISHABLE_KEY = "([^"]+)"/)?.[1];
+if (!url || !key) throw new Error('Supabase public configuration unavailable');
 const questionId = 'f87211d7-0852-4f55-b597-153804bced96';
 const keys = ['correct_option', 'correct_options', 'correct_answer', 'numerical_answer', 'numerical_tolerance', 'explanation', 'explanation_image_url'];
 const headers = { apikey: key, Authorization: `Bearer ${key}` };
