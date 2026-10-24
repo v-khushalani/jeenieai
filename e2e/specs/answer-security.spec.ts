@@ -17,6 +17,10 @@ test('anonymous direct answer-column reads are forbidden at privilege level', as
     const response = await request.get(`${url}/rest/v1/questions?select=${column}&limit=1`, { headers });
     // An empty 200 response proves only row filtering, not column protection.
     expect(response.status(), `${column} must have no anonymous column privilege`).toBe(401);
+    const denied = await response.json();
+    expect(denied.code).toBe('42501');
+    // A failure inside an RLS helper can mask still-granted column privileges.
+    expect(denied.message).toMatch(/permission denied for (table|column).*questions/);
   }
 });
 
