@@ -23,6 +23,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { testsAPI } from "@/services/api";
+import { assessmentsAPI, selectedResponse } from "@/services/api/modules/assessments";
 import { logger } from "@/utils/logger";
 import { toast } from "sonner";
 import { formatSubjectDisplay } from '@/utils/subjectDisplay';
@@ -144,118 +145,14 @@ const TestAttemptPage = () => {
     }
 
     const locationTest = (location.state as { currentTest?: TestSession } | null)?.currentTest;
-    if (locationTest) {
-      const hydrateFromSession = async () => {
-        try {
-          const canonicalSession = locationTest.sessionId
-            ? await testsAPI.getTestSession(locationTest.sessionId)
-            : null;
-
-          const resolvedSession = canonicalSession?.data?.session
-            ? normalizeTestSession({
-                ...locationTest,
-                ...canonicalSession.data.session,
-                questions: canonicalSession.data.questions?.length ? canonicalSession.data.questions : locationTest.questions,
-              })
-            : normalizeTestSession(locationTest);
-
-          const resolvedQuestions = resolvedSession.questions || [];
-          if (resolvedQuestions.length === 0) {
-            throw new Error('No questions returned from database');
-          }
-
-          try {
-            safeLocalStorage.setItem('currentTest', JSON.stringify(resolvedSession));
-          } catch {
-            // Ignore persistence failures; router state is enough to start.
-          }
-
-          setTestSession(resolvedSession);
-
-          const startTime = new Date(resolvedSession.startTime).getTime();
-          const elapsed = Math.floor((Date.now() - startTime) / 1000);
-          const remaining = Math.max(0, resolvedSession.duration * 60 - elapsed);
-          setTimeRemaining(remaining);
-
-          if (remaining === 0) {
-            setTestSubmitted(true);
-            toast.info("Test time expired. Auto-submitting...");
-            setTimeout(() => submitRef.current?.(), 0);
-          }
-
-          setQuestionStartTime(Date.now());
-        } catch (error) {
-          logger.error('Failed to hydrate test session from database', error);
-          try {
-            safeLocalStorage.setItem('currentTest', JSON.stringify(locationTest));
-          } catch {
-            // Ignore persistence failures; router state is enough to start.
-          }
-          setTestSession(normalizeTestSession(locationTest));
-
-          const startTime = new Date(locationTest.startTime).getTime();
-          const elapsed = Math.floor((Date.now() - startTime) / 1000);
-          const remaining = Math.max(0, locationTest.duration * 60 - elapsed);
-          setTimeRemaining(remaining);
-          setQuestionStartTime(Date.now());
-        }
-      };
-
-      void hydrateFromSession();
-      return;
-    }
-
-    const savedTest = safeLocalStorage.getItem("currentTest");
-    if (savedTest) {
-      try {
-        const testData: TestSession = normalizeTestSession(JSON.parse(savedTest));
-
-        const hydrateFromSession = async () => {
-          const canonicalSession = testData.sessionId
-            ? await testsAPI.getTestSession(testData.sessionId)
-            : null;
-
-          const resolvedSession = canonicalSession?.data?.session
-            ? normalizeTestSession({
-                ...testData,
-                ...canonicalSession.data.session,
-                questions: canonicalSession.data.questions?.length ? canonicalSession.data.questions : testData.questions,
-              })
-            : testData;
-
-          if (!resolvedSession.questions || resolvedSession.questions.length === 0) {
-            throw new Error('No questions returned from database');
-          }
-
-          setTestSession(resolvedSession);
-
-          const startTime = new Date(resolvedSession.startTime).getTime();
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-          const remaining = Math.max(0, resolvedSession.duration * 60 - elapsed);
-        setTimeRemaining(remaining);
-
-        // If time has already expired, auto-submit immediately
-        if (remaining === 0) {
-          setTestSubmitted(true);
-          toast.info("Test time expired. Auto-submitting...");
-          // Defer submission to next tick so state is set
-          setTimeout(() => submitRef.current?.(), 0);
-        }
-
-          setQuestionStartTime(Date.now());
-        };
-
-        void hydrateFromSession();
-      } catch (e) {
-        logger.error('Failed to parse saved test data:', e);
-        safeLocalStorage.removeItem('currentTest');
-        toast.error("Test data was corrupted. Please start a new test.");
-        navigate("/tests");
-      }
-    } else {
-      toast.error("No test session found");
-      navigate("/tests");
-    }
+    const saved = safeLocalStorage.getItem('currentTest');
+    const id = locationTest?.sessionId || testId || (saved ? JSON.parse(saved).sessionId : null);
+    if (!id) { navigate('/tests'); return; }
+    void assessmentsAPI.get(id).then(session => {
+      setTestSession(session as unknown as TestSession);
+      setTimeRemaining(Math.max(0, Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000)));
+      setQuestionStartTime(Date.now());
+    }).catch(() => { toast.error('Verified test unavailable. Please retry.'); navigate('/tests'); });
   }, [location.state, testId, isAuthenticated, navigate]);
 
   useEffect(() => {
@@ -378,200 +275,22 @@ const TestAttemptPage = () => {
     setQuestionStartTime(Date.now());
   };
 
+  const finalRequest = React.useRef(crypto.randomUUID());
   const handleSubmitTest = async () => {
-    if (!testSession || !user) return;
+    if (!testSession?.sessionId || !user) return;
     setShowSubmitConfirm(false);
-
-
     try {
       setTestSubmitted(true);
-
-      let correctAnswers = 0;
-      let totalAnswered = 0;
-      let totalTimeSpent = 0;
-
-      const results = [];
-      
-      for (const question of testSession.questions) {
-        const userAnswer = userAnswers[question.id];
-        
-        let isCorrect = false;
-        let correctOption = '';
-        
-        if (userAnswer?.selectedOption) {
-          totalAnswered++;
-          totalTimeSpent += userAnswer.timeSpent;
-
-          try {
-            const sel = userAnswer.selectedOption;
-            let rpcArgs: { p_question_id: string; p_selected_options: string[] | null; p_numerical_answer: number | null };
-            if (isNumericalSel(sel)) {
-              const v = parseFloat(sel.slice(4));
-              rpcArgs = { p_question_id: question.id, p_selected_options: null, p_numerical_answer: Number.isFinite(v) ? v : null };
-            } else {
-              const letters = sel.split(',').map(s => s.trim()).filter(Boolean);
-              rpcArgs = { p_question_id: question.id, p_selected_options: letters, p_numerical_answer: null };
-            }
-            const { data: rpcData } = await supabase.rpc('validate_practice_answer', rpcArgs);
-
-            if (rpcData && typeof rpcData === 'object') {
-              const rpcResult = rpcData as { is_correct: boolean; correct_option?: string; correct_options?: string[]; numerical_answer?: number; explanation?: string };
-              isCorrect = rpcResult.is_correct;
-              correctOption = rpcResult.numerical_answer != null
-                ? String(rpcResult.numerical_answer)
-                : (rpcResult.correct_options && rpcResult.correct_options.length > 0
-                    ? rpcResult.correct_options.join(',')
-                    : (rpcResult.correct_option || ''));
-            }
-
-            if (isCorrect) correctAnswers++;
-          } catch (validationError) {
-            logger.error('Error validating answer:', validationError);
-          }
-        }
-
-        results.push({
-          questionId: question.id,
-          subject: (question as any).subject || null,
-          selectedOption: userAnswer?.selectedOption || "",
-          correctOption: correctOption,
-          isCorrect,
-          timeSpent: userAnswer?.timeSpent || 0,
-          isMarkedForReview: userAnswer?.isMarkedForReview || false,
-        });
-      }
-
-      const percentage = totalAnswered > 0 ? (correctAnswers / totalAnswered) * 100 : 0;
-      let persistedSessionId: string | null = null;
-      let attemptInserts: Array<{
-        user_id: string;
-        question_id: string;
-        selected_option: string;
-        is_correct: boolean;
-        time_spent: number;
-        test_session_id: string | null;
-        mode: string;
-      }> = [];
-
-      const appendLocalHistory = () => {
-        try {
-          const historyEntry = {
-            id: `local-${Date.now()}`,
-            title: testSession.title || 'Mock Test',
-            status: 'completed',
-            score: Math.round(percentage),
-            accuracy: Math.round(percentage),
-            correct_answers: correctAnswers,
-            total_questions: testSession.questions.length,
-            time_taken: totalTimeSpent,
-            group_test_id: testSession.groupTestId || null,
-            completed_at: new Date().toISOString(),
-            started_at: testSession.startTime,
-            created_at: new Date().toISOString(),
-          };
-
-          const existingRaw = safeLocalStorage.getItem(LOCAL_TEST_HISTORY_KEY);
-          const existing = existingRaw ? JSON.parse(existingRaw) : [];
-          const list = Array.isArray(existing) ? existing : [];
-          const merged = [historyEntry, ...list].slice(0, 30);
-          safeLocalStorage.setItem(LOCAL_TEST_HISTORY_KEY, JSON.stringify(merged));
-        } catch (historyError) {
-          logger.error('Failed to persist local test history:', historyError);
-        }
-      };
-
-      try {
-        // Save test session
-        const currentSessionId = testSession.sessionId || null;
-        const sessionResult = await testsAPI.saveTestSessionLegacy(
-          user.id,
-          formatSubjectDisplay(testSession.subject, testSession.title),
-          testSession.questions.length,
-          correctAnswers,
-          totalTimeSpent,
-          totalAnswered,
-          testSession.groupTestId || undefined,
-          currentSessionId || undefined
-        );
-
-        if (sessionResult.error || !sessionResult.data?.id) {
-          throw new Error(sessionResult.error?.message || 'Failed to save test session');
-        }
-
-        persistedSessionId = sessionResult.data.id;
-
-        // Save individual test_attempts so questions aren't repeated
-        attemptInserts = results
-          .filter(r => r.selectedOption)
-          .map(r => ({
-            user_id: user.id,
-            question_id: r.questionId,
-            selected_option: r.selectedOption,
-            is_correct: r.isCorrect,
-            time_spent: r.timeSpent,
-            test_session_id: persistedSessionId,
-            mode: 'test',
-          }));
-
-        if (attemptInserts.length > 0) {
-          // Upsert with ignoreDuplicates so a race / retry never breaks the batch.
-          // Unique constraint on (user_id, question_id) enforces "one attempt per question, forever".
-          const { error: attemptsError } = await supabase
-            .from('question_attempts')
-            .upsert(attemptInserts, { onConflict: 'user_id,question_id', ignoreDuplicates: true });
-          if (attemptsError) {
-            throw attemptsError;
-          }
-        }
-
-        logger.info('Test results saved to database');
-      } catch (dbError) {
-        logger.error("Database save error:", dbError);
-        testsAPI.queuePendingTestSync({
-          userId: user.id,
-          subject: formatSubjectDisplay(testSession.subject, testSession.title),
-          totalQuestions: testSession.questions.length,
-          correctAnswers,
-          totalTime: totalTimeSpent,
-          attemptedQuestions: totalAnswered,
-          groupTestId: testSession.groupTestId || undefined,
-          sessionId: persistedSessionId || testSession.sessionId || null,
-          attempts: attemptInserts,
-        });
-        appendLocalHistory();
-        toast.error("Cloud save failed. Result is stored locally and visible in Tests history.");
-      }
-
-      safeLocalStorage.removeItem("currentTest");
-
-      safeLocalStorage.setItem(
-        "testResults",
-        JSON.stringify({
-          testTitle: testSession.title,
-          totalQuestions: testSession.questions.length,
-          answeredQuestions: totalAnswered,
-          correctAnswers,
-          percentage: percentage.toFixed(1),
-          timeSpent: totalTimeSpent,
-          results,
-          questions: testSession.questions,
-          completedAt: new Date().toISOString(),
-          groupTestCode: testSession.groupTestCode || null,
-          examPattern: testSession.examPattern || null,
-          sessionId: persistedSessionId || testSession.sessionId || null,
-        })
-      );
-
-      toast.success("Test submitted successfully!");
-      navigate(persistedSessionId ? `/test-results/${persistedSessionId}` : "/test-results");
-
-    } catch (error) {
-      logger.error("Test submission failed:", error);
-      toast.error("Failed to submit test. Please check your internet connection and try again.");
+      const answers = Object.fromEntries(Object.entries(userAnswers).map(([id, answer]) => [id, { response: selectedResponse(answer.selectedOption), isMarkedForReview: answer.isMarkedForReview }]));
+      await assessmentsAPI.complete(testSession.sessionId, answers, finalRequest.current);
+      safeLocalStorage.removeItem('currentTest');
+      navigate(`/test-results/${testSession.sessionId}`);
+    } catch {
+      toast.error('Submission not confirmed. Your test remains pending; retry when connected.');
       setTestSubmitted(false);
     }
   };
-  
+
   const getQuestionStatus = (questionIndex: number) => {
     if (!testSession) return "not-visited";
 

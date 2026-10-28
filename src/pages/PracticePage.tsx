@@ -27,6 +27,7 @@ import StudyNotesPanel from '@/components/study/StudyNotesPanel';
 import StudyNotesIntro from '@/components/study/StudyNotesIntro';
 
 import confetti from 'canvas-confetti';
+import { assessmentsAPI } from '@/services/api/modules/assessments';
 
 interface Question {
   id: string;
@@ -301,114 +302,9 @@ const PracticePage: React.FC = () => {
 
       const takeCount = isMissionBlock ? missionTarget : QUESTIONS_PER_BATCH;
 
-      // Revisit mode: intentionally re-serve previously attempted questions in this scope
-      if (isRevisit) {
-        let q = supabase
-          .from('questions')
-          .select('id, question, question_text, question_image_url, option_a, option_b, option_c, option_d, options, correct_options, numerical_answer, numerical_tolerance, difficulty, question_type, topic, topic_id, chapter, subject, exam, is_pyq, pyq_exam, pyq_year, pyq_session')
-          .or('is_active.is.null,is_active.eq.true');
-        if (examFilter) q = q.eq('exam', examFilter);
-        if (topicId) q = q.eq('topic_id', topicId);
-        else if (chapterId) q = q.eq('chapter_id', chapterId);
-        else if (subject) q = q.ilike('subject', subject);
-        if (!topicId && topicFilterName) q = q.ilike('topic', `%${topicFilterName}%`);
-        const { data, error } = await q.limit(500);
-        if (error) throw error;
-        const ordered = orderPoolByLevel(data || [], trackRef.current, levelRef.current).slice(0, takeCount);
-        setQuestions(ordered);
-        setLoading(false);
-        return;
-      }
-
-      // Default: strict unseen-only via RPC (server-side NOT EXISTS on question_attempts)
-      if (!user?.id) {
-        setQuestions([]);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch a wider pool than we need so difficulty ordering has room to pick from
-      const rpcLimit = Math.max(takeCount * 4, 60);
-
-      const buildRpcArgs = (opts: {
-        useChapter?: boolean;
-        useTopic?: boolean;
-        useSubject?: boolean;
-        useBatches?: boolean;
-        useExam?: boolean;
-      }) => ({
-        p_user_id: user.id,
-        p_exam: opts.useExam !== false ? examFilter : null,
-        p_subject: opts.useSubject && subject ? subject : null,
-        p_chapter_id: opts.useChapter && chapterId ? chapterId : null,
-        p_topic_id: opts.useTopic && topicId ? topicId : null,
-        p_topic_name: !topicId && topicFilterName ? topicFilterName : null,
-        // Batch scoping is intentionally OFF: questions.batch_id is siloed per
-        // exam family (Chemistry rows sit under the NEET Class 12 batch), which
-        // made served questions disagree with displayed counts. Exam pool +
-        // class-level guard inside the RPC already scope correctly.
-        p_batch_ids: null,
-
-        p_limit: rpcLimit,
-      });
-
-      // Primary: all filters on
-      let { data: pool, error: rpcErr } = await supabase.rpc('fetch_unseen_questions', buildRpcArgs({
-        useChapter: true, useTopic: true, useSubject: true, useBatches: true, useExam: true,
-      }));
-      if (rpcErr) throw rpcErr;
-
-      // Fallback ladder: drop batch filter, then exam filter, then subject (only if no chapter/topic)
-      if ((!pool || pool.length === 0) && userBatchIds.length > 0) {
-        const r = await supabase.rpc('fetch_unseen_questions', buildRpcArgs({
-          useChapter: true, useTopic: true, useSubject: true, useBatches: false, useExam: true,
-        }));
-        pool = r.data || [];
-      }
-      if ((!pool || pool.length === 0) && examFilter) {
-        const r = await supabase.rpc('fetch_unseen_questions', buildRpcArgs({
-          useChapter: true, useTopic: true, useSubject: true, useBatches: false, useExam: false,
-        }));
-        pool = r.data || [];
-      }
-
-      if (!pool || pool.length === 0) {
-        toast.success("You've completed all questions in this section! 🎉 Try another topic.");
-        setQuestions([]);
-        setLoading(false);
-        return;
-      }
-
-      // Mistake repair: questions whose latest attempt was wrong, 1+ day ago, in this scope.
-      let repair: Question[] = [];
-      try {
-        const { data: atts } = await supabase
-          .from('question_attempts')
-          .select('question_id, is_correct, attempted_at, created_at')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(400);
-        const latest = new Map<string, { ok: boolean; at: string }>();
-        (atts || []).forEach((a) => { if (!latest.has(a.question_id)) latest.set(a.question_id, { ok: !!a.is_correct, at: a.attempted_at || a.created_at || '' }); });
-        const dayAgo = Date.now() - 864e5;
-        const wrongIds = [...latest.entries()].filter(([, v]) => !v.ok && new Date(v.at).getTime() <= dayAgo).map(([id]) => id).slice(0, 60);
-        if (wrongIds.length) {
-          let rq = supabase
-            .from('questions')
-            .select('id, question, question_text, question_image_url, option_a, option_b, option_c, option_d, options, correct_options, numerical_answer, numerical_tolerance, difficulty, question_type, topic, topic_id, chapter, chapter_id, subject, exam, is_pyq, pyq_exam, pyq_year, pyq_session')
-            .in('id', wrongIds)
-            .or('is_active.is.null,is_active.eq.true');
-          if (topicId) rq = rq.eq('topic_id', topicId);
-          else if (chapterId) rq = rq.eq('chapter_id', chapterId);
-          else if (subject) rq = rq.ilike('subject', subject);
-          const { data: rqd } = await rq;
-          repair = ((rqd || []) as Question[]).sort(() => Math.random() - 0.5);
-        }
-      } catch (e) { logger.error('Mistake repair fetch failed:', e); }
-      repairIds.current = new Set(repair.map((q) => q.id));
-
-      const fresh = orderPoolByLevel(pool as Question[], trackRef.current, levelRef.current);
-      setQuestions(interleaveRepair(fresh, repair, takeCount));
+      const issued = await assessmentsAPI.issue({ purpose: 'practice', exam: examFilter, subject: subject || undefined, chapter_id: chapterId || undefined, topic_id: topicId || undefined, count: Math.min(300, takeCount * 4), duration: 300, revisit: isRevisit });
+      repairIds.current = new Set();
+      setQuestions(orderPoolByLevel(issued.questions as unknown as Question[], trackRef.current, levelRef.current).slice(0, takeCount));
     } catch (error) {
       logger.error('Failed to fetch practice questions:', error);
       toast.error('Failed to load questions');
@@ -493,18 +389,9 @@ const PracticePage: React.FC = () => {
 
     try {
       const currentQuestion = questions[currentIndex];
-      const { data: rpcData, error: rpcError } = await supabase.rpc('validate_practice_answer', {
-        p_question_id: currentQuestion.id,
-        p_selected_options: selectedLetters.length > 0 ? selectedLetters : null,
-        p_numerical_answer: numericalValue,
-      } as any);
-      if (rpcError) {
-        logger.error('validate_practice_answer RPC error:', rpcError);
-        toast.error(`Could not validate answer: ${rpcError.message || 'try again'}`);
-        setIsValidating(false);
-        return;
-      }
-
+      const issued = currentQuestion as unknown as { assessment_id: string; item_id: string };
+      await assessmentsAPI.submit(issued, numericalValue != null ? { kind: 'numerical', value: String(numericalValue) } : { kind: 'options', values: selectedLetters }, crypto.randomUUID());
+      const rpcData = await assessmentsAPI.feedback(issued.assessment_id, currentQuestion.id);
       const result = rpcData as {
         is_correct: boolean;
         correct_options?: string[] | null;
@@ -544,20 +431,6 @@ const PracticePage: React.FC = () => {
           // Re-order only upcoming (unanswered) questions so the new level shows next.
           const idx = currentIndex;
           setQuestions(prev => [...prev.slice(0, idx + 1), ...orderPoolByLevel(prev.slice(idx + 1), track, nextLadder.tier)]);
-        }
-
-        const { error: attemptInsertError } = await supabase.from('question_attempts').insert({
-          user_id: user.id,
-          question_id: currentQuestion.id,
-          selected_option: displaySelected,
-          is_correct: result.is_correct,
-          mode: 'practice',
-          time_spent: 0,
-        });
-        // Ignore unique-violation (23505): means this (user, question) was already recorded.
-        // We treat the first attempt as the source of truth and just move on.
-        if (attemptInsertError && (attemptInsertError as { code?: string }).code !== '23505') {
-          throw attemptInsertError;
         }
 
         const pointsDelta = getPointsDelta(currentQuestion.difficulty, result.is_correct);
