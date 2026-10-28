@@ -11,6 +11,7 @@ import { downloadQuestionPaperPdf } from "@/lib/questionPaperPdf";
 import { MathDisplay } from "@/components/admin/MathDisplay";
 import { logger } from "@/utils/logger";
 import { testsAPI } from "@/services/api";
+import { assessmentsAPI } from "@/services/api/modules/assessments";
 import safeLocalStorage from '@/utils/safeStorage';
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -122,21 +123,11 @@ const TestResultsPage = () => {
   useEffect(() => {
     const loadResults = async () => {
       try {
-        // Prefer localStorage first — it has full results (selectedOption, correctOption, questions)
-        // needed for negative-marking calc and detailed review. Server-side answers table may be empty.
-        const savedResults = safeLocalStorage.getItem("testResults");
-        if (savedResults) {
-          const parsed = JSON.parse(savedResults) as TestResult & { sessionId?: string };
-          if (!sessionId || parsed.sessionId === sessionId) {
-            setTestResult(parsed);
-            return;
-          }
-        }
-
         if (sessionId) {
-          const { data, error } = await testsAPI.getTestSession(sessionId);
+          const data = await assessmentsAPI.review(sessionId);
+          const error = null;
           if (data && !error) {
-            buildSessionResult(data);
+            buildSessionResult(data as unknown as NonNullable<Awaited<ReturnType<typeof testsAPI.getTestSession>>['data']>);
             return;
           }
         }
@@ -151,45 +142,6 @@ const TestResultsPage = () => {
 
     loadResults();
   }, [navigate, sessionId]);
-
-  // Questions come from the answer-masked public view, so fetch the key
-  // (read-only RPC) for any question missing it — powers review + PDF answers.
-  const [answersHydrated, setAnswersHydrated] = useState(false);
-  useEffect(() => {
-    if (!testResult?.questions?.length || answersHydrated) return;
-    setAnswersHydrated(true);
-    const missing = testResult.questions.filter(
-      (q: any) => q.numerical_answer == null && !q.correct_option && !(q.correct_options?.length)
-    );
-    if (!missing.length) return;
-    (async () => {
-      const keyMap = new Map<string, any>();
-      for (let i = 0; i < missing.length; i += 10) {
-        const chunk = missing.slice(i, i + 10);
-        const res = await Promise.all(chunk.map((q: any) =>
-          Promise.resolve(supabase.rpc('validate_practice_answer', { p_question_id: q.id, p_selected_options: null, p_numerical_answer: null }))
-            .then(({ data }) => [q.id, data] as const, () => [q.id, null] as const)
-        ));
-        res.forEach(([id, d]) => { if (d && typeof d === 'object' && !(d as any).error) keyMap.set(id, d); });
-      }
-      if (!keyMap.size) return;
-      setTestResult((prev) => {
-        if (!prev) return prev;
-        const questions = prev.questions.map((q: any) => {
-          const k = keyMap.get(q.id);
-          return k ? { ...q, correct_option: k.correct_option, correct_options: k.correct_options, numerical_answer: k.numerical_answer, explanation: q.explanation || k.explanation } : q;
-        });
-        const results = prev.results.map((r: any) => {
-          if (r.correctOption) return r;
-          const k = keyMap.get(r.questionId);
-          if (!k) return r;
-          const c = k.numerical_answer != null ? String(k.numerical_answer) : (k.correct_options?.length ? k.correct_options.join(',') : (k.correct_option || ''));
-          return { ...r, correctOption: c };
-        });
-        return { ...prev, questions, results } as any;
-      });
-    })();
-  }, [testResult, answersHydrated]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
