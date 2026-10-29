@@ -87,7 +87,7 @@ BEGIN
  IF purpose NOT IN ('practice','recap','battle','test') THEN RAISE EXCEPTION 'Invalid purpose' USING ERRCODE='22023'; END IF;
  SELECT p.grade,coalesce(config->>'exam',p.target_exam,'JEE'),p.is_premium INTO grade,exam,premium FROM public.profiles p WHERE id=u;
  IF purpose='battle' AND NOT EXISTS(SELECT 1 FROM public.profiles WHERE id=u AND subscription_tier='pro_plus') THEN RAISE EXCEPTION 'Battle unavailable' USING ERRCODE='42501'; END IF;
- IF purpose='test' AND NOT coalesce(premium,false) AND (SELECT count(*) FROM public.assessment_issuances WHERE owner_id=u AND purpose='test' AND issued_at>=date_trunc('month',clock_timestamp()))>=2 THEN RAISE EXCEPTION 'Monthly limit' USING ERRCODE='42501'; END IF;
+ IF purpose='test' AND NOT coalesce(premium,false) AND (SELECT count(*) FROM public.assessment_issuances ai WHERE ai.owner_id=u AND ai.purpose='test' AND ai.issued_at>=date_trunc('month',clock_timestamp()))>=2 THEN RAISE EXCEPTION 'Monthly limit' USING ERRCODE='42501'; END IF;
  cnt:=coalesce((config->>'count')::integer,25); dur:=coalesce((config->>'duration')::integer,60);
  IF cnt NOT BETWEEN 1 AND 300 OR dur NOT BETWEEN 1 AND 300 THEN RAISE EXCEPTION 'Invalid configuration' USING ERRCODE='22023'; END IF;
  ch:=(config->>'chapter_id')::uuid;topic:=(config->>'topic_id')::uuid;
