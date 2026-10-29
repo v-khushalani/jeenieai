@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { MathDisplay } from '@/components/admin/MathDisplay';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { logger } from '@/utils/logger';
+import { assessmentsAPI, assessmentRpc } from '@/services/api/modules/assessments';
 
 type Phase = 'idle' | 'matching' | 'playing' | 'finished';
 type Mode = 'real' | 'bot';
@@ -31,8 +32,8 @@ interface BattleQuestion {
   option_b?: string | null;
   option_c?: string | null;
   option_d?: string | null;
-  correct_option?: string | null;
-  correct_options?: string[] | null;
+  assessment_id?: string;
+  item_id?: string;
   question_type?: string | null;
 }
 
@@ -105,28 +106,16 @@ const BattlePage: React.FC = () => {
 
   const loadQuestions = useCallback(async (ids: string[]) => {
     if (!ids.length) return [] as BattleQuestion[];
-    const { data } = await supabase
-      .from('questions')
-      .select('id, question, question_text, option_a, option_b, option_c, option_d, correct_option, correct_options, question_type')
-      .in('id', ids);
-    if (!data) return [];
-    const ordered = ids.map(id => (data as BattleQuestion[]).find(q => q.id === id)).filter(Boolean) as BattleQuestion[];
+    const ordered = await assessmentRpc<BattleQuestion[]>('get_secure_battle_questions', { p_question_ids: ids });
     setQuestions(ordered);
     return ordered;
   }, []);
 
   // ── BOT mode helpers ──
   const fetchRandomQuestionsForCPU = useCallback(async (): Promise<BattleQuestion[]> => {
-    // Grab a small batch, then randomly pick 5
-    const { data, error } = await supabase
-      .from('questions')
-      .select('id, question, question_text, option_a, option_b, option_c, option_d, correct_option, correct_options, question_type')
-      .eq('is_active', true)
-      .eq('question_type', 'single_correct')
-      .limit(80);
-    if (error || !data?.length) return [];
-    const shuffled = [...data].sort(() => Math.random() - 0.5).slice(0, 5);
-    return shuffled as BattleQuestion[];
+    const issued = await assessmentsAPI.issue({ purpose: 'battle', count: 5, duration: 5 });
+    setBattleId(issued.id);
+    return issued.questions as unknown as BattleQuestion[];
   }, []);
 
   const cleanupRealtime = useCallback(() => {
@@ -167,7 +156,7 @@ const BattlePage: React.FC = () => {
     setQuestions(qs);
 
     const meRow: PlayerRow = {
-      user_id: user!.id,
+      user_id: user?.id || '',
       display_name: 'You',
       score: 0, correct_count: 0, wrong_count: 0, streak: 0, finished_at: null,
     };
@@ -298,22 +287,13 @@ const BattlePage: React.FC = () => {
   }, [players, lastResult, currentIndex, phase]);
 
   // ── CPU-mode local scoring ──
-  const scoreLocalAnswer = (letter: string | null) => {
-    if (!currentQuestion) return { isCorrect: false, points: -20 };
-    const correctLetter = (currentQuestion.correct_option || currentQuestion.correct_options?.[0] || '').toUpperCase();
-    const isCorrect = !!letter && letter.toUpperCase() === correctLetter;
-    setPlayers(prev => prev.map(p => {
-      if (p.user_id !== user?.id) return p;
-      if (isCorrect) {
-        const streak = p.streak + 1;
-        const pts = 100 + Math.min(50, (streak - 1) * 10);
-        return { ...p, score: p.score + pts, correct_count: p.correct_count + 1, streak };
-      }
-      return { ...p, score: p.score - 20, wrong_count: p.wrong_count + 1, streak: 0 };
-    }));
-    const streakNow = (me?.streak ?? 0) + (isCorrect ? 1 : 0);
-    const pts = isCorrect ? 100 + Math.min(50, Math.max(0, streakNow - 1) * 10) : -20;
-    return { isCorrect, points: pts };
+  const scoreCPUAnswer = async (letter: string | null) => {
+    if (!currentQuestion?.assessment_id || !currentQuestion.item_id) throw new Error('Issued battle unavailable');
+    const result = await assessmentsAPI.submit({ assessment_id: currentQuestion.assessment_id, item_id: currentQuestion.item_id }, letter ? { kind: 'options', values: [letter] } : { kind: 'skip' }, crypto.randomUUID());
+    const isCorrect = result.is_correct === true;
+    const points = result.points || 0;
+    setPlayers(prev => prev.map(p => p.user_id === user?.id ? { ...p, score: p.score + points, correct_count: p.correct_count + (isCorrect ? 1 : 0), wrong_count: p.wrong_count + (isCorrect ? 0 : 1) } : p));
+    return { isCorrect, points };
   };
 
   const handleTimeout = async () => {
@@ -324,7 +304,7 @@ const BattlePage: React.FC = () => {
 
     if (modeRef.current === 'bot') {
       if (!lastResultRef.current) {
-        const res = scoreLocalAnswer(null);
+        const res = await scoreCPUAnswer(null);
         setLastResult(res);
         lastResultRef.current = res;
       }
@@ -365,7 +345,7 @@ const BattlePage: React.FC = () => {
 
     try {
       if (modeRef.current === 'bot') {
-        const res = scoreLocalAnswer(letter);
+        const res = await scoreCPUAnswer(letter);
         setLastResult(res);
         // do not auto-advance — wait for bot via effect
       } else if (battleId) {
@@ -390,7 +370,9 @@ const BattlePage: React.FC = () => {
   const finishBattle = async () => {
     clearCPUTimer();
     if (modeRef.current === 'bot') {
-      // local winner
+      if (!battleId) return;
+      await assessmentsAPI.complete(battleId, {}, crypto.randomUUID());
+      // Presentation-only CPU opponent; no trusted reward is based on this local winner.
       const sorted = [...players].sort((a, b) => b.score - a.score);
       setWinnerId(sorted[0]?.score === sorted[1]?.score ? null : sorted[0]?.user_id || null);
       setPhase('finished');
