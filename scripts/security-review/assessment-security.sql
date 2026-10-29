@@ -76,47 +76,47 @@ BEGIN
  RETURN jsonb_build_object('id',s.id,'sessionId',s.id,'title',coalesce(s.config->>'title','Test'),'duration',extract(epoch FROM s.expires_at-s.issued_at)/60,'startTime',s.issued_at,'expiresAt',s.expires_at,'examPattern',s.config->>'exam','questions',qs,'status',CASE WHEN s.completed_at IS NULL THEN 'in_progress' ELSE 'completed' END);
 END $$;
 CREATE FUNCTION public.issue_assessment(p_config jsonb,p_request_id uuid) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE u uuid:=auth.uid(); old public.assessment_issuances; config jsonb:=p_config; sid uuid; purpose text; cnt integer; dur integer; grade integer; exam text; ch uuid; topic uuid; rec record; pos integer:=0; marks numeric; negative numeric; g public.secure_group_templates; premium boolean;
+DECLARE u uuid:=auth.uid(); old public.assessment_issuances; v_config jsonb:=p_config; sid uuid; v_purpose text; cnt integer; dur integer; v_grade integer; v_exam text; ch uuid; v_topic uuid; rec record; pos integer:=0; marks numeric; negative numeric; g public.secure_group_templates; premium boolean;
 BEGIN
  IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended(u::text,0));
  SELECT * INTO old FROM public.assessment_issuances WHERE owner_id=u AND request_id=p_request_id;
  IF FOUND THEN IF old.config - 'exam' IS DISTINCT FROM p_config - 'exam' THEN RAISE EXCEPTION 'Request conflict' USING ERRCODE='22023'; END IF; RETURN public.get_assessment(old.id); END IF;
- IF jsonb_typeof(config) IS DISTINCT FROM 'object' OR config ?| ARRAY['user_id','question_ids','score','completed_at','review_after'] THEN RAISE EXCEPTION 'Invalid configuration' USING ERRCODE='22023'; END IF;
- purpose:=coalesce(config->>'purpose','test');
- IF purpose NOT IN ('practice','recap','battle','test') THEN RAISE EXCEPTION 'Invalid purpose' USING ERRCODE='22023'; END IF;
- SELECT p.grade,coalesce(config->>'exam',p.target_exam,'JEE'),p.is_premium INTO grade,exam,premium FROM public.profiles p WHERE id=u;
- IF purpose='battle' AND NOT EXISTS(SELECT 1 FROM public.profiles WHERE id=u AND subscription_tier='pro_plus') THEN RAISE EXCEPTION 'Battle unavailable' USING ERRCODE='42501'; END IF;
- IF purpose='test' AND NOT coalesce(premium,false) AND (SELECT count(*) FROM public.assessment_issuances ai WHERE ai.owner_id=u AND ai.purpose='test' AND ai.issued_at>=date_trunc('month',clock_timestamp()))>=2 THEN RAISE EXCEPTION 'Monthly limit' USING ERRCODE='42501'; END IF;
- cnt:=coalesce((config->>'count')::integer,25); dur:=coalesce((config->>'duration')::integer,60);
+ IF jsonb_typeof(v_config) IS DISTINCT FROM 'object' OR v_config ?| ARRAY['user_id','question_ids','score','completed_at','review_after'] THEN RAISE EXCEPTION 'Invalid configuration' USING ERRCODE='22023'; END IF;
+ v_purpose:=coalesce(v_config->>'purpose','test');
+ IF v_purpose NOT IN ('practice','recap','battle','test') THEN RAISE EXCEPTION 'Invalid purpose' USING ERRCODE='22023'; END IF;
+ SELECT p.grade,coalesce(v_config->>'exam',p.target_exam,'JEE'),p.is_premium INTO v_grade,v_exam,premium FROM public.profiles p WHERE id=u;
+ IF v_purpose='battle' AND NOT EXISTS(SELECT 1 FROM public.profiles WHERE id=u AND subscription_tier='pro_plus') THEN RAISE EXCEPTION 'Battle unavailable' USING ERRCODE='42501'; END IF;
+ IF v_purpose='test' AND NOT coalesce(premium,false) AND (SELECT count(*) FROM public.assessment_issuances ai WHERE ai.owner_id=u AND ai.purpose='test' AND ai.issued_at>=date_trunc('month',clock_timestamp()))>=2 THEN RAISE EXCEPTION 'Monthly limit' USING ERRCODE='42501'; END IF;
+ cnt:=coalesce((v_config->>'count')::integer,25); dur:=coalesce((v_config->>'duration')::integer,60);
  IF cnt NOT BETWEEN 1 AND 300 OR dur NOT BETWEEN 1 AND 300 THEN RAISE EXCEPTION 'Invalid configuration' USING ERRCODE='22023'; END IF;
- ch:=(config->>'chapter_id')::uuid;topic:=(config->>'topic_id')::uuid;
- IF purpose='recap' THEN
-  SELECT chapter_id,topic_id INTO ch,topic FROM public.class_logs WHERE id=(config->>'class_log_id')::uuid AND user_id=u;
+ ch:=(v_config->>'chapter_id')::uuid;v_topic:=(v_config->>'topic_id')::uuid;
+ IF v_purpose='recap' THEN
+  SELECT chapter_id,topic_id INTO ch,v_topic FROM public.class_logs WHERE id=(v_config->>'class_log_id')::uuid AND user_id=u;
   IF NOT FOUND THEN RAISE EXCEPTION 'Class unavailable' USING ERRCODE='42501'; END IF;
  END IF;
- IF config ? 'group_code' THEN
-  SELECT * INTO g FROM public.secure_group_templates WHERE code=upper(config->>'group_code') AND clock_timestamp()>=starts_at AND clock_timestamp()<ends_at;
+ IF v_config ? 'group_code' THEN
+  SELECT * INTO g FROM public.secure_group_templates WHERE code=upper(v_config->>'group_code') AND clock_timestamp()>=starts_at AND clock_timestamp()<ends_at;
   IF NOT FOUND THEN RAISE EXCEPTION 'Group unavailable' USING ERRCODE='42501'; END IF;
-  exam:=g.config->>'exam';dur:=(g.config->>'duration')::integer;
+  v_exam:=g.config->>'exam';dur:=(g.config->>'duration')::integer;
  END IF;
  sid:=gen_random_uuid();
- INSERT INTO public.assessment_issuances(id,owner_id,purpose,config,expires_at,review_after,request_id,group_id) VALUES(sid,u,purpose,p_config||jsonb_build_object('exam',exam),clock_timestamp()+make_interval(mins=>dur),CASE WHEN g.id IS NULL THEN clock_timestamp() ELSE g.ends_at END,p_request_id,g.id);
+ INSERT INTO public.assessment_issuances(id,owner_id,v_purpose,v_config,expires_at,review_after,request_id,group_id) VALUES(sid,u,v_purpose,p_config||jsonb_build_object('exam',v_exam),clock_timestamp()+make_interval(mins=>dur),CASE WHEN g.id IS NULL THEN clock_timestamp() ELSE g.ends_at END,p_request_id,g.id);
  FOR rec IN SELECT to_jsonb(q) snapshot FROM public.questions q WHERE q.is_active=true AND coalesce(q.text_quality,'ok')<>'damaged'
  AND (g.id IS NULL OR EXISTS(SELECT 1 FROM jsonb_array_elements(g.items) z WHERE z->>'id'=q.id::text))
- AND (g.id IS NOT NULL OR ((ch IS NULL OR q.chapter_id=ch) AND (topic IS NULL OR q.topic_id=topic)
- AND (config->>'subject' IS NULL OR lower(q.subject)=lower(config->>'subject'))
- AND (NOT(config ? 'subjects') OR jsonb_array_length(config->'subjects')=0 OR q.subject IN (SELECT jsonb_array_elements_text(config->'subjects')))
- AND (NOT(config ? 'chapter_ids') OR q.chapter_id::text IN (SELECT jsonb_array_elements_text(config->'chapter_ids')))
- AND (grade IS NULL OR q.class_level IS NULL OR q.class_level=grade)
- AND (public.exam_pool(exam,q.subject) IS NULL OR q.exam=ANY(public.exam_pool(exam,q.subject)))
- AND (NOT(config ? 'year') OR coalesce(q.pyq_year,q.year)=(config->>'year')::integer)))
+ AND (g.id IS NOT NULL OR ((ch IS NULL OR q.chapter_id=ch) AND (v_topic IS NULL OR q.topic_id=v_topic)
+ AND (v_config->>'subject' IS NULL OR lower(q.subject)=lower(v_config->>'subject'))
+ AND (NOT(v_config ? 'subjects') OR jsonb_array_length(v_config->'subjects')=0 OR q.subject IN (SELECT jsonb_array_elements_text(v_config->'subjects')))
+ AND (NOT(v_config ? 'chapter_ids') OR q.chapter_id::text IN (SELECT jsonb_array_elements_text(v_config->'chapter_ids')))
+ AND (v_grade IS NULL OR q.class_level IS NULL OR q.class_level=v_grade)
+ AND (public.exam_pool(v_exam,q.subject) IS NULL OR q.exam=ANY(public.exam_pool(v_exam,q.subject)))
+ AND (NOT(v_config ? 'year') OR coalesce(q.pyq_year,q.year)=(v_config->>'year')::integer)))
  AND NOT EXISTS(SELECT 1 FROM public.assessment_items i JOIN public.assessment_issuances a ON a.id=i.issuance_id WHERE a.owner_id=u AND a.completed_at IS NULL AND a.expires_at>clock_timestamp() AND a.purpose IN ('test','battle') AND i.question_id=q.id)
  ORDER BY random() LIMIT CASE WHEN g.id IS NULL THEN cnt ELSE jsonb_array_length(g.items) END LOOP
   pos:=pos+1;
   IF g.id IS NOT NULL THEN SELECT z INTO rec.snapshot FROM jsonb_array_elements(g.items) z WHERE z->>'id'=rec.snapshot->>'id'; END IF;
-  marks:=CASE WHEN upper(exam) LIKE '%CET%' THEN CASE WHEN lower(rec.snapshot->>'subject') LIKE '%math%' THEN 2 ELSE 1 END WHEN upper(exam) LIKE '%FOUNDATION%' OR upper(exam) LIKE '%SCHOLARSHIP%' THEN 1 ELSE 4 END;
-  negative:=CASE WHEN upper(exam) LIKE '%CET%' OR upper(exam) LIKE '%FOUNDATION%' OR upper(exam) LIKE '%SCHOLARSHIP%' THEN 0 ELSE -1 END;
+  marks:=CASE WHEN upper(v_exam) LIKE '%CET%' THEN CASE WHEN lower(rec.snapshot->>'subject') LIKE '%math%' THEN 2 ELSE 1 END WHEN upper(v_exam) LIKE '%FOUNDATION%' OR upper(v_exam) LIKE '%SCHOLARSHIP%' THEN 1 ELSE 4 END;
+  negative:=CASE WHEN upper(v_exam) LIKE '%CET%' OR upper(v_exam) LIKE '%FOUNDATION%' OR upper(v_exam) LIKE '%SCHOLARSHIP%' THEN 0 ELSE -1 END;
   INSERT INTO public.assessment_items(issuance_id,question_id,position,snapshot,correct_marks,incorrect_marks) VALUES(sid,(rec.snapshot->>'id')::uuid,pos,rec.snapshot,marks,negative);
  END LOOP;
  IF pos=0 THEN RAISE EXCEPTION 'No eligible questions' USING ERRCODE='22023'; END IF;
