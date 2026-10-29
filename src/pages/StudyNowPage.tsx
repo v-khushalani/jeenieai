@@ -395,7 +395,7 @@ const StudyNowPage: React.FC = () => {
         // Fallback: fetch active questions for this chapter and count by topic_id
         try {
           const { data: qRows, error: qErr } = await supabase
-            .from('questions')
+            .from('questions_public')
             .select('id, topic_id')
             .eq('chapter_id', chapter.id)
             .eq('is_active', true);

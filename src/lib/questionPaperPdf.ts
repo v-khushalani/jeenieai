@@ -46,8 +46,7 @@ const esc = (s: string) =>
 const math = (s?: string | null) => (s ? renderLatex(repairEscapedLatex(String(s))) : "");
 
 const isNumerical = (q: QuestionPaperQuestion) =>
-  /numer|integer/i.test(q.question_type || "") ||
-  (q.numerical_answer != null && !q.option_a && !q.option_b);
+  /numer|integer/i.test(q.question_type || "");
 
 function answerOf(q: QuestionPaperQuestion): string {
   if (q.numerical_answer != null) return String(q.numerical_answer);
@@ -69,7 +68,7 @@ export function buildQuestionPaperHtml(data: QuestionPaperData): string {
   data.questions.forEach((q) => {
     const k = q.subject || "General";
     if (!groups.has(k)) groups.set(k, []);
-    groups.get(k)!.push(q);
+    groups.get(k)?.push(q);
   });
 
   let n = 0;
