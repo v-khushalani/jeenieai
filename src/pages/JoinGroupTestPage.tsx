@@ -13,6 +13,7 @@ import { logger } from "@/utils/logger";
 import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { UserLimitsService } from "@/services/userLimitsService";
 import { testsAPI } from "@/services/api";
+import { assessmentsAPI, assessmentRpc } from "@/services/api/modules/assessments";
 
 import safeLocalStorage from '@/utils/safeStorage';
 interface GroupTest {
@@ -171,20 +172,7 @@ const JoinGroupTestPage = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("group_tests")
-        .select("*")
-        .eq("test_code", testCode.toUpperCase())
-        .eq("is_active", true)
-        .single();
-
-      if (error || !data) {
-        toast.error("Invalid or expired test code");
-        setGroupTest(null);
-        setLoading(false);
-        return;
-      }
-
+      const data = await assessmentRpc<GroupTest>('lookup_secure_group_test', { p_code: testCode.toUpperCase() });
       setGroupTest({
         id: data.id,
         test_code: data.test_code,
@@ -226,57 +214,11 @@ const JoinGroupTestPage = () => {
 
     setJoining(true);
     try {
-      // Fetch full question data using question_ids (excluding inactive/reported questions)
-      const questionIds = groupTest.question_ids;
-      
-      const { data: questions, error } = await supabase
-        .from("questions_public")
-        .select("*")
-        .in("id", questionIds)
-        .or('is_active.is.null,is_active.eq.true');
-
-      if (error) throw error;
-
-      if (!questions || questions.length === 0) {
-        toast.error("Questions no longer available for this test");
-        setJoining(false);
-        return;
-      }
-
-      // Preserve original order from question_ids
-      const orderedQuestions = questionIds
-        .map((id) => questions.find((q) => q.id === id))
-        .filter(Boolean);
-
-      const reservation = await testsAPI.reserveTestSessionLegacy(
-          user.id,
-          formatSubjectDisplay(groupTest.subject, groupTest.title),
-          orderedQuestions.length,
-          groupTest.title,
-          questionIds,
-          groupTest.id,
-      );
-
-      if (reservation.error || !reservation.data?.id) {
-        throw new Error(reservation.error?.message || 'Failed to reserve test session');
-      }
-
-      const testSession = {
-        id: Date.now().toString(),
-        title: groupTest.title,
-        questions: orderedQuestions,
-        duration: groupTest.duration_minutes,
-        startTime: new Date().toISOString(),
-        groupTestId: groupTest.id,
-        groupTestCode: groupTest.test_code,
-        sessionId: reservation.data.id,
-        examPattern: groupTest.exam_pattern || undefined,
-      };
-
+      const testSession = await assessmentsAPI.issue({ purpose: 'test', group_code: groupTest.test_code, count: 25, duration: groupTest.duration_minutes });
       safeLocalStorage.setItem("currentTest", JSON.stringify(testSession));
       UserLimitsService.recordMonthlyTestUsage(user.id);
 
-      toast.success(`Joining "${groupTest.title}" with ${orderedQuestions.length} questions!`);
+      toast.success(`Joining "${groupTest.title}" with ${testSession.questions.length} questions!`);
       navigate("/test-attempt", { state: { currentTest: testSession } });
     } catch (err) {
       logger.error("Failed to join group test:", err);

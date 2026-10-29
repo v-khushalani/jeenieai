@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { assessmentsAPI } from "@/services/api/modules/assessments";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import Header from "@/components/Header";
@@ -240,179 +241,12 @@ const CreateGroupTestPage = () => {
 
     setLoading(true);
     try {
-      let questionIds: string[] = [];
-      // Marking scheme label saved with the test so results score correctly
-      // (JEE/NEET +4/-1, MHT-CET +1 Phy, +1 Chem, +2 Maths with no negative).
-      let examPatternLabel: string | null = null;
-
-      if (groupTestType === "custom") {
-        examPatternLabel = track === "Foundation" ? "Foundation" : getExamPattern(track).name;
-
-        const examValues = TRACK_EXAM_VALUES[track];
-        const examOr = `${examValues.map((v) => `exam.eq."${v}"`).join(",")},exam.is.null`;
-
-        // Class scoping happens through chapters, since questions carry no grade column.
-        const selectedChapterNames = new Set(selectedChapters.map((ch) => ch.chapter));
-        const scopedRows = selectedChapters.length > 0
-          ? chapterRows.filter((c) => selectedChapterNames.has(c.chapter_name))
-          : chapterRows.filter((c) => selectedSubjects.includes(c.subject));
-        const scopedChapterIds = scopedRows.map((c) => c.id);
-        const scopedChapterNames = Array.from(new Set(scopedRows.map((c) => c.chapter_name)));
-
-        let query = supabase
-          .from("questions_public")
-          .select("id, subject")
-          .or('is_active.is.null,is_active.eq.true')
-          .or(examOr);
-
-        if (scopedChapterIds.length > 0) {
-          query = query.in("chapter_id", scopedChapterIds);
-        } else if (scopedChapterNames.length > 0) {
-          query = query.in("chapter", scopedChapterNames);
-        } else if (selectedSubjects.length > 0) {
-          query = query.in("subject", Array.from(new Set(selectedSubjects.flatMap((subject) => getSubjectAliases(subject)))));
-        }
-
-        let { data: questions, error } = await query.limit(Math.max(600, questionCount * 8));
-        if (error) throw error;
-
-        // Fallback: some rows are linked by chapter name only, not chapter_id.
-        if ((!questions || questions.length === 0) && scopedChapterNames.length > 0) {
-          const retry = await supabase
-            .from("questions_public")
-            .select("id, subject")
-            .or('is_active.is.null,is_active.eq.true')
-            .or(examOr)
-            .in("chapter", scopedChapterNames)
-            .limit(Math.max(600, questionCount * 8));
-          if (retry.error) throw retry.error;
-          questions = retry.data;
-        }
-
-        if (!questions || questions.length === 0) {
-          toast.error(
-            `Class ${selectedGrades.join(", ")} ${track} ke selected chapters mein abhi questions nahi hain. Doosra chapter ya subject try karo.`
-          );
-          setLoading(false);
-          return;
-        }
-
-        const shuffled = questions.sort(() => Math.random() - 0.5);
-
-        // Multi-subject test → equal share per subject instead of one mixed slice,
-        // otherwise the subject with the largest bank fills nearly the whole paper.
-        const paperSubjects = Array.from(new Set(
-          (selectedChapters.length > 0
-            ? selectedChapters.map((ch) => ch.subject)
-            : selectedSubjects
-          ).filter(Boolean)
-        ));
-
-        const picked = paperSubjects.length > 1
-          ? balanceQuestionsBySubject(shuffled, paperSubjects, Math.min(questionCount, shuffled.length))
-          : shuffled.slice(0, Math.min(questionCount, shuffled.length));
-
-        questionIds = picked.map((q) => q.id);
-
-        if (questionIds.length < questionCount) {
-          toast.info(`Only ${questionIds.length} questions available — test created with these.`);
-        }
-
-      } else {
-        const preset = GROUP_TEST_PRESETS[groupTestType];
-
-        const pattern = getExamPattern(preset.patternName);
-        examPatternLabel = pattern.name;
-        const selectedBySubject: string[] = [];
-
-
-        for (const subject of pattern.subjects) {
-          const perSubjectConfig = pattern.subjectConfig[subject];
-
-          const { data: subjectQuestions, error: subjectError } = await supabase
-            .from("questions_public")
-            .select("id")
-            .in("exam", preset.examAliases)
-            .eq("subject", subject)
-            .or('is_active.is.null,is_active.eq.true')
-            .limit(perSubjectConfig.questionsPerSubject * 3);
-
-          if (subjectError) throw subjectError;
-
-          const shuffledSubject = (subjectQuestions || []).sort(() => Math.random() - 0.5);
-          const picked = shuffledSubject.slice(0, perSubjectConfig.questionsPerSubject).map((q) => q.id);
-          selectedBySubject.push(...picked);
-        }
-
-        if (selectedBySubject.length === 0) {
-          toast.error("No questions available for selected full syllabus pattern");
-          setLoading(false);
-          return;
-        }
-
-        questionIds = selectedBySubject;
-
-        if (questionIds.length < pattern.totalQuestions) {
-          toast.info(`Only ${questionIds.length} questions available for ${pattern.name}. Test will start with available questions.`);
-        }
-      }
-
-      const code = generateTestCode();
-      const classTag = selectedGrades.length > 0 ? `Class ${selectedGrades.join("/")} · ` : "";
-      const testTitle =
-        title.trim() ||
-        (groupTestType === "custom"
-          ? (selectedChapters.length > 0
-              ? `${classTag}${selectedChapters.map((ch) => ch.chapter).join(", ")} - Group Test`
-
-              : `${selectedSubjects.join(", ")} - Group Test`)
-          : `${GROUP_TEST_PRESETS[groupTestType].label} - Group Test`);
-
-      const expiresAt = expiryHours ? new Date(Date.now() + expiryHours * 60 * 60 * 1000).toISOString() : null;
-
-      const { data: insertData, error: insertError } = await supabase.from("group_tests").insert({
-        code,
-        test_code: code,
-        title: testTitle,
-        question_ids: questionIds,
-        duration_minutes: duration,
-        host_id: user.id,
-        created_by: user.id,
-        subject: selectedSubjects[0] || null,
-        chapter_names: selectedChapters.map((ch) => ch.chapter),
-        ends_at: expiresAt,
-        exam_pattern: examPatternLabel,
-      }).select("id").single();
-
-      if (insertError) {
-        if (insertError.code === "23505") {
-          const code2 = generateTestCode();
-          const { data: retryData, error: retryError } = await supabase.from("group_tests").insert({
-            code: code2,
-            test_code: code2,
-            title: testTitle,
-            question_ids: questionIds,
-            duration_minutes: duration,
-            host_id: user.id,
-            created_by: user.id,
-            subject: selectedSubjects[0] || null,
-            chapter_names: selectedChapters.map((ch) => ch.chapter),
-            ends_at: expiresAt,
-            exam_pattern: examPatternLabel,
-          }).select("id").single();
-          if (retryError) throw retryError;
-          setTestCode(code2);
-          setTestId(retryData.id);
-          setQrSvg(generateQRCodeSVG(`${APP_URL}/group-test/join?code=${code2}`));
-        } else {
-          throw insertError;
-        }
-      } else {
-        setTestCode(code);
-        setTestId(insertData.id);
-        setQrSvg(generateQRCodeSVG(`${APP_URL}/group-test/join?code=${code}`));
-      }
-
+      const selectedNames = new Set(selectedChapters.map(c => c.chapter));
+      const chapterIds = chapterRows.filter(c => selectedNames.has(c.chapter_name)).map(c => c.id);
+      const pattern = groupTestType === 'custom' ? getExamPattern(track) : getExamPattern(GROUP_TEST_PRESETS[groupTestType].patternName);
+      const created = await assessmentsAPI.createGroup({ purpose: 'test', title: title.trim() || 'Group Test', exam: track === 'Foundation' ? 'Foundation' : pattern.name, chapter_ids: chapterIds.length ? chapterIds : undefined, subjects: selectedSubjects, grades: selectedGrades, count: groupTestType === 'custom' ? questionCount : pattern.totalQuestions, duration: groupTestType === 'custom' ? duration : pattern.duration, expiry_hours: expiryHours || 24 });
+      setTestCode(created.code); setTestId(created.id);
+      setQrSvg(generateQRCodeSVG(`${APP_URL}/group-test/join?code=${created.code}`));
       setStep("share");
       toast.success("Group test created!");
     } catch (err) {

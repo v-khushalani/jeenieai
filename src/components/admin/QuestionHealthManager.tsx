@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { QuestionLivePreview } from '@/components/admin/QuestionLivePreview';
 
-const REPAIR_TOKEN = 'qa-repair-latex-2026-jeenie';
+
 
 interface DamagedQuestion {
   id: string;
@@ -58,7 +58,7 @@ const QuestionHealthManager: React.FC = () => {
   const load = useCallback(async () => {
     setLoading(true);
     let q = supabase
-      .from('questions')
+      .from('questions_admin' as never)
       .select(
         'id, question, question_text, question_image_url, option_a, option_b, option_c, option_d, option_a_image_url, option_b_image_url, option_c_image_url, option_d_image_url, correct_option, explanation, explanation_image_url, subject, chapter, text_quality, is_active',
       )
@@ -154,12 +154,14 @@ const QuestionHealthManager: React.FC = () => {
   const runAiBatch = async () => {
     setAiBusy(true);
     try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) throw new Error('Sign in required');
       const url = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/repair-question-latex`;
       const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-setup-token': REPAIR_TOKEN,
+          Authorization: `Bearer ${session.session.access_token}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
         },
         body: JSON.stringify({ limit: 40 }),

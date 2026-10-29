@@ -126,19 +126,20 @@ export const QuestionReportsManager: React.FC = () => {
 
   const startEditing = async (questionId: string) => {
     const { data, error } = await supabase
-      .from('questions')
+      .from('questions_admin' as never)
       .select('question, option_a, option_b, option_c, option_d, correct_option, explanation')
       .eq('id', questionId)
       .single();
     if (error || !data) { toast.error('Failed to load question'); return; }
+    const row = data as unknown as QuestionEditData;
     setEditData({
-      question: data.question,
-      option_a: data.option_a,
-      option_b: data.option_b,
-      option_c: data.option_c,
-      option_d: data.option_d,
-      correct_option: data.correct_option,
-      explanation: data.explanation || '',
+      question: row.question,
+      option_a: row.option_a,
+      option_b: row.option_b,
+      option_c: row.option_c,
+      option_d: row.option_d,
+      correct_option: row.correct_option,
+      explanation: row.explanation || '',
     });
     setEditingQuestionId(questionId);
   };
