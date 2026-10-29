@@ -101,7 +101,7 @@ BEGIN
   v_exam:=g.config->>'exam';dur:=(g.config->>'duration')::integer;
  END IF;
  sid:=gen_random_uuid();
- INSERT INTO public.assessment_issuances(id,owner_id,v_purpose,v_config,expires_at,review_after,request_id,group_id) VALUES(sid,u,v_purpose,p_config||jsonb_build_object('exam',v_exam),clock_timestamp()+make_interval(mins=>dur),CASE WHEN g.id IS NULL THEN clock_timestamp() ELSE g.ends_at END,p_request_id,g.id);
+ INSERT INTO public.assessment_issuances(id,owner_id,purpose,config,expires_at,review_after,request_id,group_id) VALUES(sid,u,v_purpose,p_config||jsonb_build_object('exam',v_exam),clock_timestamp()+make_interval(mins=>dur),CASE WHEN g.id IS NULL THEN clock_timestamp() ELSE g.ends_at END,p_request_id,g.id);
  FOR rec IN SELECT to_jsonb(q) snapshot FROM public.questions q WHERE q.is_active=true AND coalesce(q.text_quality,'ok')<>'damaged'
  AND (g.id IS NULL OR EXISTS(SELECT 1 FROM jsonb_array_elements(g.items) z WHERE z->>'id'=q.id::text))
  AND (g.id IS NOT NULL OR ((ch IS NULL OR q.chapter_id=ch) AND (v_topic IS NULL OR q.topic_id=v_topic)
