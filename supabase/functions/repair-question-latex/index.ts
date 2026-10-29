@@ -4,13 +4,13 @@
 // Safe to re-run: it only touches rows still flagged as `text_quality = 'damaged'`.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { callLovableAiGateway } from "../_shared/ai-gateway.ts";
+import { requireAdmin } from '../_shared/require-admin.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-setup-token",
 };
 
-const SETUP_TOKEN = "qa-repair-latex-2026-jeenie";
 
 const SYSTEM = `You restore broken JEE/NEET question text.
 The text lost its superscripts, subscripts and fraction markup during a bad import, so
@@ -50,7 +50,8 @@ async function repairOne(row: any) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  if (req.headers.get("x-setup-token") !== SETUP_TOKEN) {
+  const admin = await requireAdmin(req);
+  if (!admin) {
     return new Response(JSON.stringify({ error: "forbidden" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -64,11 +65,6 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
-  const admin = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
 
   let limit = 40;
   try {
