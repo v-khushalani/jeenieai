@@ -95,6 +95,9 @@ export default function ClassRecapTest() {
   const finish = async () => {
     setSaving(true);
     try {
+      const issued = questions[0] as unknown as { assessment_id?: string };
+      if (!issued.assessment_id) throw new Error('Verified recap unavailable');
+      await assessmentsAPI.complete(issued.assessment_id, {}, crypto.randomUUID());
       // regenerate mission so this counts as done next time
       await supabase.functions.invoke('generate-daily-mission', { body: { force: true } }).catch(() => {});
     } finally {

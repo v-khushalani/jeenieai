@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { assessmentsAPI } from "@/services/api/modules/assessments";
+import { assessmentsAPI, assessmentRpc } from "@/services/api/modules/assessments";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import Header from "@/components/Header";
@@ -274,11 +274,7 @@ const CreateGroupTestPage = () => {
     if (!testId || !confirm("Are you sure? This will permanently deactivate the test code.")) return;
     setDeactivating(true);
     try {
-      const { error } = await supabase
-        .from("group_tests")
-        .update({ is_active: false })
-        .eq("id", testId);
-      if (error) throw error;
+      await assessmentRpc('deactivate_secure_group_test', { p_group_id: testId });
       toast.success("Group test deactivated");
       navigate("/tests");
     } catch (err) {
