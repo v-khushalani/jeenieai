@@ -46,7 +46,7 @@ GRANT ALL ON public.secure_group_templates TO service_role;
 ALTER TABLE public.secure_group_templates ENABLE ROW LEVEL SECURITY;
 CREATE UNIQUE INDEX assessment_group_owner ON public.assessment_issuances(owner_id,group_id) WHERE group_id IS NOT NULL;
 CREATE FUNCTION public.assessment_safe_question(q jsonb) RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS $$
- SELECT q - ARRAY['correct_option','correct_options','correct_answer','numerical_answer','numerical_tolerance','explanation','explanation_image_url'];
+ SELECT (q - ARRAY['correct_option','correct_options','correct_answer','numerical_answer','numerical_tolerance','explanation','explanation_image_url']) || jsonb_build_object('question_type',CASE WHEN q->>'numerical_answer' IS NOT NULL THEN 'numerical_decimal' ELSE coalesce(q->>'question_type','single_correct') END);
 $$;
 CREATE FUNCTION public.assessment_admin() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
  SELECT coalesce(auth.role()='service_role',false) OR EXISTS(SELECT 1 FROM public.user_roles WHERE user_id=auth.uid() AND role::text IN ('admin','super_admin'));
@@ -55,8 +55,9 @@ CREATE FUNCTION public.assessment_grade(q jsonb,a jsonb) RETURNS boolean LANGUAG
 DECLARE chosen text[]; correct text[]; numeric_value numeric;
 BEGIN
  IF jsonb_typeof(a) IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'Invalid response' USING ERRCODE='22023'; END IF;
- IF a->>'kind' IN ('skip','timeout') THEN RETURN false; END IF;
- IF q->>'question_type' IN ('numerical','numerical_int','numerical_decimal') THEN
+ IF a->>'kind' IN ('skip','timeout') THEN IF a- 'kind'<>'{}'::jsonb THEN RAISE EXCEPTION 'Invalid outcome' USING ERRCODE='22023';END IF;RETURN false; END IF;
+ IF a->>'kind' IS NULL OR a ?| ARRAY['is_correct','score','correct_option','explanation'] THEN RAISE EXCEPTION 'Invalid response' USING ERRCODE='22023';END IF;
+ IF (q->>'question_type' IN ('numerical','numerical_int','numerical_decimal') OR q->>'numerical_answer' IS NOT NULL) THEN
   IF a->>'kind'<>'numerical' OR (a->>'value') !~ '^-?([0-9]+(\.[0-9]*)?|\.[0-9]+)$' OR length(a->>'value')>64 THEN RAISE EXCEPTION 'Invalid response' USING ERRCODE='22023'; END IF;
   numeric_value:=(a->>'value')::numeric;
   RETURN abs(numeric_value-(q->>'numerical_answer')::numeric)<=coalesce((q->>'numerical_tolerance')::numeric,0);
@@ -111,14 +112,16 @@ BEGIN
  AND (v_grade IS NULL OR q.class_level IS NULL OR q.class_level=v_grade)
  AND (public.exam_pool(v_exam,q.subject) IS NULL OR q.exam=ANY(public.exam_pool(v_exam,q.subject)))
  AND (NOT(v_config ? 'year') OR coalesce(q.pyq_year,q.year)=(v_config->>'year')::integer)))
+ AND NOT EXISTS(SELECT 1 FROM public.assessment_disclosures d WHERE d.owner_id=u AND d.question_id=q.id AND v_purpose IN ('test','battle'))
  AND NOT EXISTS(SELECT 1 FROM public.assessment_items i JOIN public.assessment_issuances a ON a.id=i.issuance_id WHERE a.owner_id=u AND a.completed_at IS NULL AND a.expires_at>clock_timestamp() AND a.purpose IN ('test','battle') AND i.question_id=q.id)
- ORDER BY random() LIMIT CASE WHEN g.id IS NULL THEN cnt ELSE jsonb_array_length(g.items) END LOOP
+ ORDER BY CASE WHEN g.id IS NOT NULL THEN (SELECT ord FROM jsonb_array_elements(g.items) WITH ORDINALITY z(value,ord) WHERE value->>'id'=q.id::text) ELSE 0 END, random() LIMIT CASE WHEN g.id IS NULL THEN cnt ELSE jsonb_array_length(g.items) END LOOP
   pos:=pos+1;
   IF g.id IS NOT NULL THEN SELECT z INTO rec.snapshot FROM jsonb_array_elements(g.items) z WHERE z->>'id'=rec.snapshot->>'id'; END IF;
   marks:=CASE WHEN upper(v_exam) LIKE '%CET%' THEN CASE WHEN lower(rec.snapshot->>'subject') LIKE '%math%' THEN 2 ELSE 1 END WHEN upper(v_exam) LIKE '%FOUNDATION%' OR upper(v_exam) LIKE '%SCHOLARSHIP%' THEN 1 ELSE 4 END;
   negative:=CASE WHEN upper(v_exam) LIKE '%CET%' OR upper(v_exam) LIKE '%FOUNDATION%' OR upper(v_exam) LIKE '%SCHOLARSHIP%' THEN 0 ELSE -1 END;
   INSERT INTO public.assessment_items(issuance_id,question_id,position,snapshot,correct_marks,incorrect_marks) VALUES(sid,(rec.snapshot->>'id')::uuid,pos,rec.snapshot,marks,negative);
  END LOOP;
+ IF g.id IS NOT NULL AND pos<>jsonb_array_length(g.items) THEN RAISE EXCEPTION 'Fixed paper unavailable' USING ERRCODE='42501';END IF;
  IF pos=0 THEN RAISE EXCEPTION 'No eligible questions' USING ERRCODE='22023'; END IF;
  RETURN public.get_assessment(sid);
 END $$;
@@ -174,9 +177,15 @@ BEGIN
  SELECT * INTO s FROM public.assessment_issuances WHERE id=p_assessment_id AND owner_id=auth.uid();
  IF NOT FOUND OR (s.purpose IN ('test','battle') AND (s.completed_at IS NULL OR clock_timestamp()<s.review_after)) THEN RAISE EXCEPTION 'Review unavailable' USING ERRCODE='42501';END IF;
  IF EXISTS(SELECT 1 FROM public.assessment_items i JOIN public.assessment_items other ON other.question_id=i.question_id JOIN public.assessment_issuances active ON active.id=other.issuance_id WHERE i.issuance_id=s.id AND active.owner_id=auth.uid() AND active.id<>s.id AND active.purpose IN ('test','battle') AND active.completed_at IS NULL AND active.expires_at>clock_timestamp()) THEN RAISE EXCEPTION 'Review unavailable' USING ERRCODE='42501';END IF;
+ INSERT INTO public.assessment_disclosures(owner_id,question_id) SELECT auth.uid(),i.question_id FROM public.assessment_items i JOIN public.assessment_receipts r ON r.item_id=i.id WHERE i.issuance_id=s.id AND (s.purpose IN ('test','battle') OR r.response->>'kind' NOT IN ('skip','timeout')) ON CONFLICT DO NOTHING;
  SELECT jsonb_agg(i.snapshot ORDER BY i.position),jsonb_agg(jsonb_build_object('questionId',i.question_id,'is_correct',r.is_correct,'correct_option',i.snapshot->'correct_option','correct_options',i.snapshot->'correct_options','numerical_answer',i.snapshot->'numerical_answer','explanation',i.snapshot->'explanation','selectedOption',CASE WHEN r.response->>'kind'='options' THEN (SELECT string_agg(value,',') FROM jsonb_array_elements_text(r.response->'values')) WHEN r.response->>'kind'='numerical' THEN 'NUM:'||(r.response->>'value') ELSE '' END) ORDER BY i.position),jsonb_object_agg(i.question_id::text,jsonb_build_object('selectedOption',CASE WHEN r.response->>'kind'='options' THEN (SELECT string_agg(value,',') FROM jsonb_array_elements_text(r.response->'values')) WHEN r.response->>'kind'='numerical' THEN 'NUM:'||(r.response->>'value') ELSE '' END,'isCorrect',r.is_correct,'timeSpent',0)) INTO qs,results,answers FROM public.assessment_items i JOIN public.assessment_receipts r ON r.item_id=i.id WHERE i.issuance_id=s.id AND (s.purpose IN ('test','battle') OR r.response->>'kind' NOT IN ('skip','timeout'));
  RETURN jsonb_build_object('session',jsonb_build_object('id',s.id,'title',s.config->>'title','total_questions',coalesce((s.totals->>'total')::integer,jsonb_array_length(qs)),'correct_answers',s.totals->'correct','attempted_questions',s.totals->'attempted','completed_at',s.completed_at,'exam_pattern',s.config->>'exam'),'questions',coalesce(qs,'[]'::jsonb),'results',coalesce(results,'[]'::jsonb),'answers',coalesce(answers,'{}'::jsonb));
 END $$;
+CREATE TABLE public.assessment_disclosures (
+ owner_id uuid NOT NULL,question_id uuid NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),PRIMARY KEY(owner_id,question_id)
+);
+GRANT ALL ON public.assessment_disclosures TO service_role;
+ALTER TABLE public.assessment_disclosures ENABLE ROW LEVEL SECURITY;
 CREATE TABLE public.assessment_drafts (
  item_id uuid PRIMARY KEY REFERENCES public.assessment_items(id),response jsonb NOT NULL,revision integer NOT NULL DEFAULT 1,
  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
