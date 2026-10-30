@@ -275,20 +275,44 @@ const TestAttemptPage = () => {
     setQuestionStartTime(Date.now());
   };
 
-  const finalRequest = React.useRef(crypto.randomUUID());
+  const draftRevisions = React.useRef(new Map<string, number>());
+  const syncedDrafts = React.useRef(new Map<string, string>());
+  useEffect(() => {
+    if (!testSession || testSubmitted) return;
+    const timer = window.setTimeout(async () => {
+      for (const question of testSession.questions) {
+        const raw = userAnswers[question.id]?.selectedOption;
+        if (raw === undefined || syncedDrafts.current.get(question.id) === raw) continue;
+        try {
+          const response = selectedResponse(raw);
+          const result = await assessmentsAPI.saveDraft(question as unknown as { assessment_id: string; item_id: string }, response, draftRevisions.current.get(question.id) || 0);
+          draftRevisions.current.set(question.id, result.revision);
+          syncedDrafts.current.set(question.id, raw);
+        } catch { /* Draft stays local; no fabricated server completion. */ }
+      }
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [testSession, testSubmitted, userAnswers]);
+
+  const completing = React.useRef(false);
   const handleSubmitTest = async () => {
-    if (!testSession?.sessionId || !user) return;
+    if (!testSession?.sessionId || !user || completing.current) return;
+    completing.current = true;
     setShowSubmitConfirm(false);
+    const key = `assessment-completion:${user.id}:${testSession.sessionId}`;
     try {
       setTestSubmitted(true);
-      const answers = Object.fromEntries(Object.entries(userAnswers).map(([id, answer]) => [id, { response: selectedResponse(answer.selectedOption), isMarkedForReview: answer.isMarkedForReview }]));
-      await assessmentsAPI.complete(testSession.sessionId, answers, finalRequest.current);
+      const saved = safeLocalStorage.getItem(key);
+      const pending = saved ? JSON.parse(saved) : { requestId: crypto.randomUUID(), answers: Object.fromEntries(Object.entries(userAnswers).map(([id, answer]) => [id, { response: selectedResponse(answer.selectedOption), isMarkedForReview: answer.isMarkedForReview }])) };
+      safeLocalStorage.setItem(key, JSON.stringify(pending));
+      await assessmentsAPI.complete(testSession.sessionId, pending.answers, pending.requestId);
+      safeLocalStorage.removeItem(key);
       safeLocalStorage.removeItem('currentTest');
       navigate(`/test-results/${testSession.sessionId}`);
     } catch {
       toast.error('Submission not confirmed. Your test remains pending; retry when connected.');
       setTestSubmitted(false);
-    }
+    } finally { completing.current = false; }
   };
 
   const getQuestionStatus = (questionIndex: number) => {
