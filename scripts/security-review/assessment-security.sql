@@ -234,7 +234,9 @@ END $$;
 CREATE FUNCTION public.assessment_immutable() RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$
 BEGIN
  IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Immutable assessment evidence' USING ERRCODE='42501';END IF;
- IF TG_TABLE_NAME='assessment_issuances' AND (NEW.owner_id,NEW.purpose,NEW.config,NEW.issued_at,NEW.expires_at,NEW.review_after,NEW.group_id,NEW.request_id) IS NOT DISTINCT FROM (OLD.owner_id,OLD.purpose,OLD.config,OLD.issued_at,OLD.expires_at,OLD.review_after,OLD.group_id,OLD.request_id) THEN RETURN NEW;END IF;
+ IF TG_TABLE_NAME='assessment_issuances' THEN
+  IF (to_jsonb(NEW)-ARRAY['completed_at','totals','updated_at']) IS NOT DISTINCT FROM (to_jsonb(OLD)-ARRAY['completed_at','totals','updated_at']) THEN RETURN NEW;END IF;
+ END IF;
  RAISE EXCEPTION 'Immutable assessment evidence' USING ERRCODE='42501';
 END $$;
 CREATE TRIGGER freeze_issuance BEFORE UPDATE OR DELETE ON public.assessment_issuances FOR EACH ROW EXECUTE FUNCTION public.assessment_immutable();
