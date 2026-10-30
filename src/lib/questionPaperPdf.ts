@@ -34,9 +34,11 @@ export function repairEscapedLatex(raw: string): string {
   return raw
     .replace(/\t(?=an\b|heta|imes|au\b|ext|riangle|ilde|o\b)/g, "\\t")
     .replace(/\f(?=rac|orall)/g, "\\f")
+    // eslint-disable-next-line no-control-regex -- Deliberately repairs backspace-corrupted LaTeX.
     .replace(/\x08(?=eta|ar\b|egin|oldsymbol)/g, "\\b")
     .replace(/\r(?=ho\b|ight|m\b|angle)/g, "\\r")
     .replace(/\v(?=ec\b|arepsilon|arphi)/g, "\\v")
+    // eslint-disable-next-line no-control-regex -- Deliberately repairs bell-corrupted LaTeX.
     .replace(/\x07(?=lpha|pprox)/g, "\\a");
 }
 
