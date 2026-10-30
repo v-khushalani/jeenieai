@@ -104,9 +104,9 @@ const BattlePage: React.FC = () => {
     if (data) setPlayers(data as PlayerRow[]);
   }, []);
 
-  const loadQuestions = useCallback(async (ids: string[]) => {
-    if (!ids.length) return [] as BattleQuestion[];
-    const ordered = await assessmentRpc<BattleQuestion[]>('get_secure_battle_questions', { p_question_ids: ids });
+  const loadQuestions = useCallback(async (bId: string) => {
+    if (!bId) return [] as BattleQuestion[];
+    const ordered = await assessmentRpc<BattleQuestion[]>('get_secure_battle_questions', { p_battle_id: bId });
     setQuestions(ordered);
     return ordered;
   }, []);
@@ -209,7 +209,7 @@ const BattlePage: React.FC = () => {
         return;
       }
       setBattleId(result.battle_id);
-      await loadQuestions(result.question_ids || []);
+      await loadQuestions(result.battle_id);
       await loadPlayers(result.battle_id);
 
       const channel = supabase

@@ -242,6 +242,67 @@ CREATE TRIGGER freeze_items BEFORE UPDATE OR DELETE ON public.assessment_items F
 CREATE TRIGGER freeze_receipts BEFORE UPDATE OR DELETE ON public.assessment_receipts FOR EACH ROW EXECUTE FUNCTION public.assessment_immutable();
 CREATE TRIGGER freeze_requests BEFORE UPDATE OR DELETE ON public.assessment_requests FOR EACH ROW EXECUTE FUNCTION public.assessment_immutable();
 CREATE TRIGGER freeze_group BEFORE UPDATE OR DELETE ON public.secure_group_templates FOR EACH ROW EXECUTE FUNCTION public.assessment_immutable();
+-- Live battle membership is issued by the existing server matchmaking routine.
+-- The wrapper serializes matching and freezes keys before safe question delivery.
+CREATE TABLE public.secure_battle_items (
+ battle_id uuid NOT NULL,question_id uuid NOT NULL,position integer NOT NULL,snapshot jsonb NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),PRIMARY KEY(battle_id,question_id)
+);
+GRANT ALL ON public.secure_battle_items TO service_role;
+ALTER TABLE public.secure_battle_items ENABLE ROW LEVEL SECURITY;
+ALTER FUNCTION public.start_battle(text,text,uuid,text) RENAME TO security_legacy_start_battle;
+ALTER FUNCTION public.finish_battle(uuid) RENAME TO security_legacy_finish_battle;
+REVOKE ALL ON FUNCTION public.security_legacy_start_battle(text,text,uuid,text),public.security_legacy_finish_battle(uuid) FROM PUBLIC,anon,authenticated;
+CREATE FUNCTION public.start_battle(p_subject text DEFAULT NULL,p_chapter text DEFAULT NULL,p_topic_id uuid DEFAULT NULL,p_difficulty text DEFAULT NULL) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE result jsonb;bid uuid;
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501';END IF;
+ PERFORM pg_advisory_xact_lock(937041);
+ result:=public.security_legacy_start_battle(p_subject,p_chapter,p_topic_id,p_difficulty);
+ IF result ? 'error' THEN RETURN result;END IF;
+ bid:=(result->>'battle_id')::uuid;
+ INSERT INTO public.secure_battle_items(battle_id,question_id,position,snapshot)
+ SELECT bid,q.id,z.ord::integer,to_jsonb(q) FROM public.battle_sessions bs CROSS JOIN LATERAL unnest(bs.question_ids) WITH ORDINALITY z(qid,ord) JOIN public.questions q ON q.id=z.qid WHERE bs.id=bid ON CONFLICT DO NOTHING;
+ RETURN result;
+END $$;
+CREATE FUNCTION public.get_secure_battle_questions(p_battle_id uuid) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE result jsonb;
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM public.battle_players WHERE battle_id=p_battle_id AND user_id=auth.uid()) THEN RAISE EXCEPTION 'Battle unavailable' USING ERRCODE='42501';END IF;
+ SELECT jsonb_agg(public.assessment_safe_question(snapshot) ORDER BY position) INTO result FROM public.secure_battle_items WHERE battle_id=p_battle_id;
+ RETURN coalesce(result,'[]'::jsonb);
+END $$;
+CREATE OR REPLACE FUNCTION public.submit_battle_answer(p_battle_id uuid,p_question_id uuid,p_selected_options text[] DEFAULT NULL,p_numerical_answer numeric DEFAULT NULL) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE bs public.battle_sessions;player public.battle_players;item public.secure_battle_items;prior public.battle_answers;response jsonb;ok boolean;points integer;deadline timestamptz;
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501';END IF;
+ SELECT * INTO bs FROM public.battle_sessions WHERE id=p_battle_id FOR UPDATE;
+ SELECT * INTO player FROM public.battle_players WHERE battle_id=p_battle_id AND user_id=auth.uid() FOR UPDATE;
+ IF NOT FOUND OR bs.status<>'active' THEN RAISE EXCEPTION 'Battle unavailable' USING ERRCODE='42501';END IF;
+ SELECT * INTO item FROM public.secure_battle_items WHERE battle_id=p_battle_id AND question_id=p_question_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Item unavailable' USING ERRCODE='42501';END IF;
+ SELECT * INTO prior FROM public.battle_answers WHERE battle_id=p_battle_id AND user_id=auth.uid() AND question_id=p_question_id;
+ IF FOUND THEN IF prior.selected_options IS DISTINCT FROM p_selected_options OR prior.numerical_answer IS DISTINCT FROM p_numerical_answer THEN RAISE EXCEPTION 'Already submitted' USING ERRCODE='22023';END IF;RETURN jsonb_build_object('is_correct',prior.is_correct,'points',prior.points);END IF;
+ IF item.position<>(SELECT count(*)+1 FROM public.battle_answers WHERE battle_id=p_battle_id AND user_id=auth.uid()) THEN RAISE EXCEPTION 'Round unavailable' USING ERRCODE='42501';END IF;
+ deadline:=least(bs.expires_at,bs.started_at+make_interval(secs=>item.position*30));
+ IF p_numerical_answer IS NOT NULL THEN response:=jsonb_build_object('kind','numerical','value',p_numerical_answer::text);
+ ELSIF cardinality(p_selected_options)>0 THEN response:=jsonb_build_object('kind','options','values',to_jsonb(p_selected_options));
+ ELSE IF clock_timestamp()<deadline THEN RAISE EXCEPTION 'Timeout not eligible' USING ERRCODE='22023';END IF;response:=jsonb_build_object('kind','timeout');END IF;
+ IF clock_timestamp()>=deadline AND response->>'kind'<>'timeout' THEN RAISE EXCEPTION 'Round expired' USING ERRCODE='22023';END IF;
+ ok:=public.assessment_grade(item.snapshot,response);points:=CASE WHEN ok THEN 100+least(50,player.streak*10) ELSE -20 END;
+ INSERT INTO public.battle_answers(battle_id,user_id,question_id,selected_options,numerical_answer,is_correct,points) VALUES(p_battle_id,auth.uid(),p_question_id,p_selected_options,p_numerical_answer,ok,points);
+ UPDATE public.battle_players SET score=greatest(0,score+points),correct_count=correct_count+CASE WHEN ok THEN 1 ELSE 0 END,wrong_count=wrong_count+CASE WHEN ok THEN 0 ELSE 1 END,streak=CASE WHEN ok THEN streak+1 ELSE 0 END WHERE battle_id=p_battle_id AND user_id=auth.uid();
+ RETURN jsonb_build_object('is_correct',ok,'points',points);
+END $$;
+CREATE FUNCTION public.finish_battle(p_battle_id uuid) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE bs public.battle_sessions;
+BEGIN
+ SELECT * INTO bs FROM public.battle_sessions WHERE id=p_battle_id FOR UPDATE;
+ IF NOT EXISTS(SELECT 1 FROM public.battle_players WHERE battle_id=p_battle_id AND user_id=auth.uid()) THEN RAISE EXCEPTION 'Battle unavailable' USING ERRCODE='42501';END IF;
+ IF bs.status='completed' THEN RETURN jsonb_build_object('winner_user_id',bs.winner_user_id);END IF;
+ IF clock_timestamp()<bs.expires_at AND (SELECT count(*) FROM public.battle_answers WHERE battle_id=p_battle_id AND user_id=auth.uid())<cardinality(bs.question_ids) THEN RAISE EXCEPTION 'Battle incomplete' USING ERRCODE='22023';END IF;
+ RETURN public.security_legacy_finish_battle(p_battle_id);
+END $$;
 -- Supporting operations: role checks inside definer functions, no anonymous helper grants.
 CREATE FUNCTION public.admin_question_rows() RETURNS SETOF public.questions LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$ BEGIN IF NOT public.assessment_admin() THEN RAISE EXCEPTION 'Admin required' USING ERRCODE='42501';END IF; RETURN QUERY SELECT * FROM public.questions;END $$;
 CREATE VIEW public.questions_admin WITH(security_invoker=true) AS SELECT * FROM public.admin_question_rows();
@@ -263,8 +324,9 @@ DROP POLICY "Walkthroughs readable by signed-in users" ON public.question_walkth
 REVOKE SELECT ON public.question_walkthroughs FROM anon;
 REVOKE ALL ON FUNCTION public.backfill_text_quality(integer) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.backfill_text_quality(integer) TO authenticated,service_role;
-DO $$ DECLARE f record;BEGIN FOR f IN SELECT p.oid::regprocedure sig FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('assessment_safe_question','assessment_admin','assessment_grade','get_assessment','issue_assessment','submit_assessment_answer','complete_assessment','get_assessment_review','admin_question_rows','save_assessment_draft','create_secure_group_test','lookup_secure_group_test','assessment_immutable') LOOP EXECUTE format('ALTER FUNCTION %s OWNER TO postgres',f.sig);EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated',f.sig);EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role',f.sig);END LOOP;END $$;
+DO $$ DECLARE f record;BEGIN FOR f IN SELECT p.oid::regprocedure sig FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('assessment_safe_question','assessment_admin','assessment_grade','get_assessment','issue_assessment','submit_assessment_answer','complete_assessment','get_assessment_review','admin_question_rows','save_assessment_draft','create_secure_group_test','lookup_secure_group_test','assessment_immutable','start_battle','finish_battle','get_secure_battle_questions','submit_battle_answer') LOOP EXECUTE format('ALTER FUNCTION %s OWNER TO postgres',f.sig);EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated',f.sig);EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role',f.sig);END LOOP;END $$;
 GRANT EXECUTE ON FUNCTION public.get_assessment(uuid),public.issue_assessment(jsonb,uuid),public.submit_assessment_answer(uuid,uuid,jsonb,uuid),public.complete_assessment(uuid,jsonb,uuid),public.get_assessment_review(uuid),public.admin_question_rows() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.save_assessment_draft(uuid,uuid,jsonb,integer),public.create_secure_group_test(jsonb,uuid),public.lookup_secure_group_test(text) TO authenticated;
 REVOKE ALL ON FUNCTION public.fetch_unseen_questions(uuid,text,text,uuid,uuid,text,uuid[],integer) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.start_battle(text,text,uuid,text),public.finish_battle(uuid),public.get_secure_battle_questions(uuid),public.submit_battle_answer(uuid,uuid,text[],numeric) TO authenticated;
 COMMIT;
