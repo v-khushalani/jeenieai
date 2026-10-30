@@ -112,6 +112,7 @@ BEGIN
  AND (v_grade IS NULL OR q.class_level IS NULL OR q.class_level=v_grade)
  AND (public.exam_pool(v_exam,q.subject) IS NULL OR q.exam=ANY(public.exam_pool(v_exam,q.subject)))
  AND (NOT(v_config ? 'year') OR coalesce(q.pyq_year,q.year)=(v_config->>'year')::integer)))
+ AND (coalesce((v_config->>'revisit')::boolean,false) OR (coalesce((v_config->>'repair')::boolean,false) AND EXISTS(SELECT 1 FROM public.question_attempts qa WHERE qa.user_id=u AND qa.question_id=q.id AND qa.is_correct=false AND qa.created_at<clock_timestamp()-interval '1 day')) OR (NOT coalesce((v_config->>'repair')::boolean,false) AND NOT EXISTS(SELECT 1 FROM public.question_attempts qa WHERE qa.user_id=u AND qa.question_id=q.id)))
  AND NOT EXISTS(SELECT 1 FROM public.assessment_disclosures d WHERE d.owner_id=u AND d.question_id=q.id AND v_purpose IN ('test','battle'))
  AND NOT EXISTS(SELECT 1 FROM public.assessment_items i JOIN public.assessment_issuances a ON a.id=i.issuance_id WHERE a.owner_id=u AND a.completed_at IS NULL AND a.expires_at>clock_timestamp() AND a.purpose IN ('test','battle') AND i.question_id=q.id)
  ORDER BY CASE WHEN g.id IS NOT NULL THEN (SELECT ord FROM jsonb_array_elements(g.items) WITH ORDINALITY z(value,ord) WHERE value->>'id'=q.id::text) ELSE 0 END, random() LIMIT CASE WHEN g.id IS NULL THEN cnt ELSE jsonb_array_length(g.items) END LOOP
