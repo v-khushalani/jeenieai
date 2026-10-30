@@ -583,6 +583,7 @@ export function renderLatex(text: string): string {
   text = text
     .replace(/\t(?=an\b|heta|imes|au\b|ext|riangle|ilde)/g, '\\t')
     .replace(/\f(?=rac|orall)/g, '\\f')
+    // eslint-disable-next-line no-control-regex -- Deliberately repairs backspace-corrupted LaTeX.
     .replace(/\x08(?=eta|egin|oldsymbol)/g, '\\b')
     .replace(/\r(?=ho\b|ight|angle)/g, '\\r')
     .replace(/\v(?=ec\b|arepsilon|arphi)/g, '\\v');

@@ -303,8 +303,9 @@ const PracticePage: React.FC = () => {
       const takeCount = isMissionBlock ? missionTarget : QUESTIONS_PER_BATCH;
 
       const issued = await assessmentsAPI.issue({ purpose: 'practice', exam: examFilter, subject: subject || undefined, chapter_id: chapterId || undefined, topic_id: topicId || undefined, count: Math.min(300, takeCount * 4), duration: 300, revisit: isRevisit });
-      repairIds.current = new Set();
-      setQuestions(orderPoolByLevel(issued.questions as unknown as Question[], trackRef.current, levelRef.current).slice(0, takeCount));
+      const repair = isRevisit ? [] : (await assessmentsAPI.issue({ purpose: 'practice', exam: examFilter, subject: subject || undefined, chapter_id: chapterId || undefined, topic_id: topicId || undefined, count: Math.max(1, Math.round(takeCount * 0.3)), duration: 300, repair: true }).catch(() => ({ questions: [] }))).questions as unknown as Question[];
+      repairIds.current = new Set(repair.map(q => q.id));
+      setQuestions(interleaveRepair(orderPoolByLevel(issued.questions as unknown as Question[], trackRef.current, levelRef.current), repair, takeCount));
     } catch (error) {
       logger.error('Failed to fetch practice questions:', error);
       toast.error('Failed to load questions');
