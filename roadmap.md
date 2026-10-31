@@ -6,5 +6,6 @@
 - [ ] Implement requested complete application security diff and unexecuted SQL; run available checks, never apply production migrations in this task.
 - [ ] Apply only the newly reviewed and explicitly approved migration in the intended environment.
 - [ ] Six screen migrations/admin preservation: blocked until reviewed database contract is approved.
-- [ ] Authenticated security regressions and practice verification: blocked by unavailable managed session/secure QA password.
+- [ ] Authenticated security regressions and practice verification: blocked by externally managed Supabase session availability and unapplied reviewed contract; do not request credentials.
+- [ ] Resolve independent review blockers: server-owned entitlements, group review embargo, battle disclosure isolation, trusted attempt evidence, draft recovery, and group-grade preservation.
 - [x] Run read-only security regressions, all existing tests, and linter; deliver current NO-GO report.
