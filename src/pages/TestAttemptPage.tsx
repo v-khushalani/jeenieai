@@ -285,7 +285,7 @@ const TestAttemptPage = () => {
   useEffect(() => {
     if (!testSession || testSubmitted) return;
     const timer = window.setTimeout(async () => {
-      for (const question of testSession.questions) {
+      for (const question of timeRemaining > 0 ? testSession.questions : []) {
         const raw = userAnswers[question.id]?.selectedOption;
         if (raw === undefined) continue;
         try {

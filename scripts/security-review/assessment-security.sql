@@ -61,7 +61,17 @@ BEGIN
  RETURN NEW;
 END $$;
 CREATE TRIGGER assessment_profile_guard BEFORE INSERT OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.assessment_protect_profile();
--- Payment/admin provisioning must write this server-only evidence explicitly.
+-- Existing verified payment/admin writes populate the protected projection.
+-- No bootstrap from historical profiles is allowed without provenance review.
+CREATE FUNCTION public.assessment_sync_entitlement() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF current_setting('role',true) NOT IN ('postgres','service_role') AND NOT public.assessment_admin() THEN RETURN NEW;END IF;
+ INSERT INTO public.assessment_entitlements(owner_id,tier,valid_until)
+ VALUES(NEW.id,CASE WHEN NEW.is_premium THEN coalesce(NEW.subscription_tier,'free') ELSE 'free' END,coalesce(NEW.subscription_end_date,'-infinity'::timestamptz))
+ ON CONFLICT(owner_id) DO UPDATE SET tier=excluded.tier,valid_until=excluded.valid_until;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER assessment_entitlement_sync AFTER INSERT OR UPDATE OF is_premium,subscription_tier,subscription_end_date ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.assessment_sync_entitlement();
 CREATE FUNCTION public.assessment_safe_question(q jsonb) RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS $$
  SELECT (q - ARRAY['correct_option','correct_options','correct_answer','numerical_answer','numerical_tolerance','explanation','explanation_image_url']) || jsonb_build_object('question_type',CASE WHEN q->>'numerical_answer' IS NOT NULL THEN 'numerical_decimal' ELSE coalesce(q->>'question_type','single_correct') END);
 $$;
@@ -108,7 +118,6 @@ BEGIN
  SELECT p.grade,coalesce(v_config->>'exam',p.target_exam,'JEE') INTO v_grade,v_exam FROM public.profiles p WHERE id=u;
  premium:=EXISTS(SELECT 1 FROM public.assessment_entitlements WHERE owner_id=u AND tier IN ('pro','pro_plus') AND valid_until>clock_timestamp());
  IF v_purpose='battle' AND NOT EXISTS(SELECT 1 FROM public.assessment_entitlements WHERE owner_id=u AND tier='pro_plus' AND valid_until>clock_timestamp()) THEN RAISE EXCEPTION 'Battle unavailable' USING ERRCODE='42501'; END IF;
- IF v_purpose='test' AND NOT coalesce(premium,false) AND (SELECT count(*) FROM public.assessment_issuances ai WHERE ai.owner_id=u AND ai.purpose='test' AND ai.issued_at>=date_trunc('month',clock_timestamp()))>=2 THEN RAISE EXCEPTION 'Monthly limit' USING ERRCODE='42501'; END IF;
  cnt:=coalesce((v_config->>'count')::integer,25); dur:=coalesce((v_config->>'duration')::integer,60);
  IF cnt NOT BETWEEN 1 AND 300 OR dur NOT BETWEEN 1 AND 300 THEN RAISE EXCEPTION 'Invalid configuration' USING ERRCODE='22023'; END IF;
  ch:=(v_config->>'chapter_id')::uuid;v_topic:=(v_config->>'topic_id')::uuid;
@@ -122,6 +131,7 @@ BEGIN
   -- The code grants admission; grades are paper-selection criteria, not an identity claim.
   v_purpose:='test';v_exam:=g.config->>'exam';dur:=(g.config->>'duration')::integer;
  END IF;
+ IF v_purpose='test' AND NOT coalesce(premium,false) AND (SELECT count(*) FROM public.assessment_issuances ai WHERE ai.owner_id=u AND ai.purpose='test' AND ai.issued_at>=date_trunc('month',clock_timestamp()))>=2 THEN RAISE EXCEPTION 'Monthly limit' USING ERRCODE='42501'; END IF;
  sid:=gen_random_uuid();
  INSERT INTO public.assessment_issuances(id,owner_id,purpose,config,expires_at,review_after,request_id,group_id) VALUES(sid,u,v_purpose,p_config||jsonb_build_object('resolved_exam',v_exam),least(clock_timestamp()+make_interval(mins=>dur),coalesce(g.ends_at,'infinity'::timestamptz)),CASE WHEN g.id IS NULL THEN clock_timestamp() ELSE g.ends_at END,p_request_id,g.id);
  FOR rec IN SELECT to_jsonb(q) snapshot FROM public.questions q WHERE q.is_active=true AND coalesce(q.text_quality,'ok')<>'damaged'
