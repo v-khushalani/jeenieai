@@ -1,6 +1,9 @@
 import type { AssessmentAnswer } from './assessmentContract';
 
 export interface SavedDraft { response: AssessmentAnswer; revision: number }
+export function shouldFlushDrafts(expiresAt: string | undefined, remaining: number, pendingCompletion: boolean, now = Date.now()): boolean {
+  return !pendingCompletion && (expiresAt ? now < new Date(expiresAt).getTime() : remaining > 0);
+}
 export function draftSelection(response: AssessmentAnswer): string {
   if (response.kind === 'options') return response.values.slice().sort().join(',');
   if (response.kind === 'numerical') return `NUM:${response.value}`;

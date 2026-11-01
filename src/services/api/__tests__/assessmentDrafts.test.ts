@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AssessmentDraftQueue, draftSelection } from '../modules/assessmentDrafts';
+import { AssessmentDraftQueue, draftSelection, shouldFlushDrafts } from '../modules/assessmentDrafts';
 
 describe('trusted draft recovery', () => {
+  it('finalizes at server expiry without calling the expired draft endpoint', () => {
+    expect(shouldFlushDrafts('2026-11-01T09:00:00Z', 30, false, Date.parse('2026-11-01T09:00:00Z'))).toBe(false);
+    expect(shouldFlushDrafts('2026-11-01T09:00:00Z', 30, false, Date.parse('2026-11-01T08:59:59Z'))).toBe(true);
+  });
+  it('retries a pending completion without writing new drafts first', () => {
+    expect(shouldFlushDrafts(undefined, 30, true)).toBe(false);
+    expect(shouldFlushDrafts(undefined, 30, false)).toBe(true);
+  });
   it('restores saved answers and revision 7 instead of restarting at zero', async () => {
     const queue = new AssessmentDraftQueue();
     queue.restore({ q: { response: { kind: 'options', values: ['A'] }, revision: 7 } });

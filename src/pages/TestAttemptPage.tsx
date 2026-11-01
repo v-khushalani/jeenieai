@@ -24,7 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { testsAPI } from "@/services/api";
 import { assessmentsAPI, selectedResponse } from "@/services/api/modules/assessments";
-import { AssessmentDraftQueue, draftSelection } from '@/services/api/modules/assessmentDrafts';
+import { AssessmentDraftQueue, draftSelection, shouldFlushDrafts } from '@/services/api/modules/assessmentDrafts';
 import { logger } from "@/utils/logger";
 import { toast } from "sonner";
 import { formatSubjectDisplay } from '@/utils/subjectDisplay';
@@ -310,7 +310,7 @@ const TestAttemptPage = () => {
       const saved = safeLocalStorage.getItem(key);
       // Flush pending edits before finalization; failure leaves the attempt open.
       const expired = testSession.expiresAt ? Date.now() >= new Date(testSession.expiresAt).getTime() : timeRemaining <= 0;
-      for (const question of !saved && !expired ? testSession.questions : []) {
+      for (const question of shouldFlushDrafts(testSession.expiresAt, timeRemaining, Boolean(saved)) ? testSession.questions : []) {
         const raw = userAnswers[question.id]?.selectedOption;
         if (raw === undefined) continue;
         await draftQueue.current.enqueue(question.id, raw, revision => assessmentsAPI.saveDraft(question as unknown as { assessment_id: string; item_id: string }, selectedResponse(raw), revision));
