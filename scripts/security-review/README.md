@@ -15,3 +15,8 @@ migration while leaving legacy answer validators or dependent screens active.
 The independent review in `independent-review-blockers.md` records six unresolved
 blockers. Local synthetic tests are partial evidence, not approval or proof of
 production protection.
+
+Current remediation and per-blocker evidence are in `six-blocker-closure.md`.
+`six-blocker-regressions.sql` is gated disposable-test source, not executed SQL.
+The exact original independent findings remain preserved; all six now have code
+changes, but database-backed closure and production protection remain blocked.

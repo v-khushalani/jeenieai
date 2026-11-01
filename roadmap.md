@@ -7,7 +7,8 @@
 - [ ] Apply only the newly reviewed and explicitly approved migration in the intended environment.
 - [ ] Six screen migrations/admin preservation: blocked until reviewed database contract is approved.
 - [ ] Authenticated security regressions and practice verification: blocked by externally managed Supabase session availability and unapplied reviewed contract; do not request credentials.
-- [ ] Resolve independent review blockers: server-owned entitlements, group review embargo, battle disclosure isolation, trusted attempt evidence, draft recovery, and group-grade preservation.
+- [x] Implement changes for the six independent blockers and add client/alternative-route/database regression sources.
+- [ ] Verify all six blocker closures: blocked by unapplied reviewed contract, authenticated access, verified existing entitlement provisioning and isolated database lifecycle/concurrency evidence.
 - [x] Run read-only security regressions, all existing tests, and linter; deliver current NO-GO report.
 
-- [ ] Close the six exact independent blockers in the existing review draft and client; run non-mutating regressions and report separate live privilege/authentication gates.
+- [x] Run available non-mutating regressions and report separate live privilege/authentication gates in scripts/security-review/six-blocker-closure.md.
