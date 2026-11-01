@@ -68,14 +68,34 @@ test.describe('authenticated security checks after reviewed migration', () => {
     await client.auth.signOut();
   });
 
-  test('own fetch is key-free and empty submission cannot open answers', async () => {
+  test('all legacy validator overloads and own unseen fetch are denied', async () => {
     const { client, user } = await student();
     const result = await client.rpc('fetch_unseen_questions', { p_user_id: user.id, p_limit: 1 });
-    expect(result.error).toBeNull();
-    expect(result.data?.length).toBe(1);
-    for (const column of keys) expect(Object.hasOwn(result.data?.[0] ?? {}, column)).toBe(false);
-    const empty = await client.rpc('validate_practice_answer', { p_question_id: questionId });
-    expect(empty.error?.code).toBe('22023');
+    expect(result.error?.code).toBe('42501');
+    for (const [name, args] of [
+      ['validate_practice_answer', { p_question_id: questionId, p_selected_options: ['A'], p_numerical_answer: null }],
+      ['validate_question_answer', { p_question_id: questionId, p_selected_option: 'A' }],
+      ['validate_question_answer', { p_question_id: questionId, p_selected_options: ['A'], p_numerical_answer: null, p_exam: 'JEE' }],
+    ] as const) {
+      const denied = await client.rpc(name, args);
+      expect(denied.error?.code).toBe('42501');
+    }
+    await client.auth.signOut();
+  });
+
+  test('foreign and historical review/battle IDs cannot open alternative answer routes', async () => {
+    const { client } = await student();
+    const foreignId = '00000000-0000-4000-8000-000000000001';
+    for (const [name, args] of [
+      ['get_assessment', { p_assessment_id: foreignId }],
+      ['get_assessment_review', { p_assessment_id: foreignId }],
+      ['get_secure_battle_questions', { p_battle_id: foreignId }],
+      ['security_legacy_start_battle', { p_subject: null, p_chapter: null, p_topic_id: null, p_difficulty: null }],
+      ['security_legacy_finish_battle', { p_battle_id: foreignId }],
+    ] as const) {
+      const { error } = await client.rpc(name, args);
+      expect(error?.code).toBe('42501');
+    }
     await client.auth.signOut();
   });
 

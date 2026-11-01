@@ -111,8 +111,8 @@ BEGIN
  PERFORM pg_advisory_xact_lock(937041);
  PERFORM pg_advisory_xact_lock(hashtextextended(u::text,0));
  SELECT * INTO old FROM public.assessment_issuances WHERE owner_id=u AND request_id=p_request_id;
- IF FOUND THEN IF old.config - ARRAY['resolved_exam'] IS DISTINCT FROM p_config THEN RAISE EXCEPTION 'Request conflict' USING ERRCODE='22023'; END IF; RETURN public.get_assessment(old.id); END IF;
- IF jsonb_typeof(v_config) IS DISTINCT FROM 'object' OR v_config ?| ARRAY['user_id','question_ids','score','completed_at','review_after'] THEN RAISE EXCEPTION 'Invalid configuration' USING ERRCODE='22023'; END IF;
+ IF FOUND THEN IF old.config - ARRAY['resolved_exam','resolved_purpose','resolved_duration'] IS DISTINCT FROM p_config THEN RAISE EXCEPTION 'Request conflict' USING ERRCODE='22023'; END IF; RETURN public.get_assessment(old.id); END IF;
+ IF jsonb_typeof(v_config) IS DISTINCT FROM 'object' OR v_config ?| ARRAY['user_id','question_ids','score','completed_at','review_after','resolved_exam','resolved_purpose','resolved_duration'] THEN RAISE EXCEPTION 'Invalid configuration' USING ERRCODE='22023'; END IF;
  v_purpose:=coalesce(v_config->>'purpose','test');
  IF v_purpose NOT IN ('practice','recap','battle','test') THEN RAISE EXCEPTION 'Invalid purpose' USING ERRCODE='22023'; END IF;
  SELECT p.grade,coalesce(v_config->>'exam',p.target_exam,'JEE') INTO v_grade,v_exam FROM public.profiles p WHERE id=u;
@@ -346,6 +346,7 @@ CREATE OR REPLACE FUNCTION public.submit_battle_answer(p_battle_id uuid,p_questi
 DECLARE bs public.battle_sessions;player public.battle_players;item public.secure_battle_items;prior public.battle_answers;response jsonb;ok boolean;points integer;deadline timestamptz;
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501';END IF;
+ PERFORM pg_advisory_xact_lock(937041);
  SELECT * INTO bs FROM public.battle_sessions WHERE id=p_battle_id FOR UPDATE;
  SELECT * INTO player FROM public.battle_players WHERE battle_id=p_battle_id AND user_id=auth.uid() FOR UPDATE;
  IF NOT FOUND OR bs.status<>'active' THEN RAISE EXCEPTION 'Battle unavailable' USING ERRCODE='42501';END IF;
@@ -361,6 +362,8 @@ BEGIN
  IF clock_timestamp()>=deadline AND response->>'kind'<>'timeout' THEN RAISE EXCEPTION 'Round expired' USING ERRCODE='22023';END IF;
  ok:=public.assessment_grade(item.snapshot,response);points:=CASE WHEN ok THEN 100+least(50,player.streak*10) ELSE -20 END;
  INSERT INTO public.battle_answers(battle_id,user_id,question_id,selected_options,numerical_answer,is_correct,points) VALUES(p_battle_id,auth.uid(),p_question_id,p_selected_options,p_numerical_answer,ok,points);
+ -- Correctness feedback is itself disclosure evidence for future eligibility.
+ INSERT INTO public.assessment_disclosures(owner_id,question_id) VALUES(auth.uid(),p_question_id) ON CONFLICT DO NOTHING;
  UPDATE public.battle_players SET score=greatest(0,score+points),correct_count=correct_count+CASE WHEN ok THEN 1 ELSE 0 END,wrong_count=wrong_count+CASE WHEN ok THEN 0 ELSE 1 END,streak=CASE WHEN ok THEN streak+1 ELSE 0 END WHERE battle_id=p_battle_id AND user_id=auth.uid();
  RETURN jsonb_build_object('is_correct',ok,'points',points);
 END $$;
@@ -371,6 +374,7 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.battle_players WHERE battle_id=p_battle_id AND user_id=auth.uid()) THEN RAISE EXCEPTION 'Battle unavailable' USING ERRCODE='42501';END IF;
  IF bs.status='completed' THEN RETURN jsonb_build_object('winner_user_id',bs.winner_user_id);END IF;
  IF clock_timestamp()<bs.expires_at AND EXISTS(SELECT 1 FROM public.battle_players bp WHERE bp.battle_id=p_battle_id AND (SELECT count(*) FROM public.battle_answers ba WHERE ba.battle_id=p_battle_id AND ba.user_id=bp.user_id)<cardinality(bs.question_ids)) THEN RAISE EXCEPTION 'Battle incomplete' USING ERRCODE='22023';END IF;
+ UPDATE public.battle_players SET finished_at=coalesce(finished_at,clock_timestamp()) WHERE battle_id=p_battle_id;
  RETURN public.security_legacy_finish_battle(p_battle_id);
 END $$;
 -- Supporting operations: role checks inside definer functions, no anonymous helper grants.
@@ -394,7 +398,7 @@ DROP POLICY "Walkthroughs readable by signed-in users" ON public.question_walkth
 REVOKE SELECT ON public.question_walkthroughs FROM anon;
 REVOKE ALL ON FUNCTION public.backfill_text_quality(integer) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.backfill_text_quality(integer) TO authenticated,service_role;
-DO $$ DECLARE f record;BEGIN FOR f IN SELECT p.oid::regprocedure sig FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('assessment_protect_profile','assessment_safe_question','assessment_admin','assessment_grade','get_assessment','issue_assessment','submit_assessment_answer','complete_assessment','get_assessment_review','admin_question_rows','save_assessment_draft','create_secure_group_test','lookup_secure_group_test','assessment_immutable','deactivate_secure_group_test','start_battle','finish_battle','get_secure_battle_questions','submit_battle_answer') LOOP EXECUTE format('ALTER FUNCTION %s OWNER TO postgres',f.sig);EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated',f.sig);EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role',f.sig);END LOOP;END $$;
+DO $$ DECLARE f record;BEGIN FOR f IN SELECT p.oid::regprocedure sig FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('assessment_sync_entitlement','assessment_protect_profile','assessment_safe_question','assessment_admin','assessment_grade','get_assessment','issue_assessment','submit_assessment_answer','complete_assessment','get_assessment_review','admin_question_rows','save_assessment_draft','create_secure_group_test','lookup_secure_group_test','assessment_immutable','deactivate_secure_group_test','start_battle','finish_battle','get_secure_battle_questions','submit_battle_answer') LOOP EXECUTE format('ALTER FUNCTION %s OWNER TO postgres',f.sig);EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated',f.sig);EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role',f.sig);END LOOP;END $$;
 GRANT EXECUTE ON FUNCTION public.get_assessment(uuid),public.issue_assessment(jsonb,uuid),public.submit_assessment_answer(uuid,uuid,jsonb,uuid),public.complete_assessment(uuid,jsonb,uuid),public.get_assessment_review(uuid),public.admin_question_rows() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.save_assessment_draft(uuid,uuid,jsonb,integer),public.create_secure_group_test(jsonb,uuid),public.lookup_secure_group_test(text) TO authenticated;
 REVOKE ALL ON FUNCTION public.fetch_unseen_questions(uuid,text,text,uuid,uuid,text,uuid[],integer) FROM PUBLIC,anon,authenticated;
