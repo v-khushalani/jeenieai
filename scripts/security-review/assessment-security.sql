@@ -72,6 +72,19 @@ BEGIN
  RETURN NEW;
 END $$;
 CREATE TRIGGER assessment_entitlement_sync AFTER INSERT OR UPDATE OF is_premium,subscription_tier,subscription_end_date ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.assessment_sync_entitlement();
+CREATE OR REPLACE FUNCTION public.is_active_pro_plus(p_user_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT EXISTS(SELECT 1 FROM public.assessment_entitlements WHERE owner_id=p_user_id AND tier='pro_plus' AND valid_until>clock_timestamp());
+$$;
+ALTER FUNCTION public.cancel_subscription() RENAME TO security_legacy_cancel_subscription;
+REVOKE ALL ON FUNCTION public.security_legacy_cancel_subscription() FROM PUBLIC,anon,authenticated;
+CREATE FUNCTION public.cancel_subscription() RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501';END IF;
+ -- The old profile guard can reject self-cancellation; use only server-owned
+ -- authority here. Cancellation cannot grant premium access or another user.
+ UPDATE public.assessment_entitlements SET tier='free',valid_until=clock_timestamp() WHERE owner_id=auth.uid();
+ RETURN jsonb_build_object('success',true);
+END $$;
 CREATE FUNCTION public.assessment_safe_question(q jsonb) RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS $$
  SELECT (q - ARRAY['correct_option','correct_options','correct_answer','numerical_answer','numerical_tolerance','explanation','explanation_image_url']) || jsonb_build_object('question_type',CASE WHEN q->>'numerical_answer' IS NOT NULL THEN 'numerical_decimal' ELSE coalesce(q->>'question_type','single_correct') END);
 $$;
@@ -404,5 +417,7 @@ GRANT EXECUTE ON FUNCTION public.save_assessment_draft(uuid,uuid,jsonb,integer),
 REVOKE ALL ON FUNCTION public.fetch_unseen_questions(uuid,text,text,uuid,uuid,text,uuid[],integer) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.start_battle(text,text,uuid,text),public.finish_battle(uuid),public.get_secure_battle_questions(uuid),public.submit_battle_answer(uuid,uuid,text[],numeric) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.deactivate_secure_group_test(uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.is_active_pro_plus(uuid),public.cancel_subscription() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.is_active_pro_plus(uuid),public.cancel_subscription() TO authenticated,service_role;
 DO $$ DECLARE f record;BEGIN FOR f IN SELECT p.oid::regprocedure sig FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('validate_practice_answer','validate_question_answer','fetch_unseen_questions','security_legacy_start_battle','security_legacy_finish_battle','apply_paid_subscription') LOOP EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated',f.sig);END LOOP;END $$;
 COMMIT;
