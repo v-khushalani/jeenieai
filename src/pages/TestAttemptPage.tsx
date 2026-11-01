@@ -24,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { testsAPI } from "@/services/api";
 import { assessmentsAPI, selectedResponse } from "@/services/api/modules/assessments";
+import { AssessmentDraftQueue, draftSelection, shouldFlushDrafts } from '@/services/api/modules/assessmentDrafts';
 import { logger } from "@/utils/logger";
 import { toast } from "sonner";
 import { formatSubjectDisplay } from '@/utils/subjectDisplay';
@@ -70,6 +71,7 @@ interface TestSession {
   groupTestCode?: string;
   examPattern?: string;
   sessionId?: string;
+  expiresAt?: string;
 }
 
 interface UserAnswer {
@@ -95,6 +97,8 @@ const TestAttemptPage = () => {
   const [testSession, setTestSession] = useState<TestSession | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<{ [key: string]: UserAnswer }>({});
+  const draftQueue = React.useRef(new AssessmentDraftQueue());
+  const [draftSyncError, setDraftSyncError] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [showExitDialog, setShowExitDialog] = useState(false);
@@ -149,6 +153,11 @@ const TestAttemptPage = () => {
     const id = locationTest?.sessionId || testId || (saved ? JSON.parse(saved).sessionId : null);
     if (!id) { navigate('/tests'); return; }
     void assessmentsAPI.get(id).then(session => {
+      if (session.status === 'completed') { navigate(`/test-results/${session.id}`); return; }
+      draftQueue.current.restore(session.drafts ?? {});
+      setUserAnswers(Object.fromEntries(Object.entries(session.drafts ?? {}).map(([questionId, draft]) => [questionId, {
+        questionId, selectedOption: draftSelection(draft.response), timeSpent: 0, isMarkedForReview: false,
+      }])));
       setTestSession(session as unknown as TestSession);
       setTimeRemaining(Math.max(0, Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000)));
       setQuestionStartTime(Date.now());
@@ -275,21 +284,18 @@ const TestAttemptPage = () => {
     setQuestionStartTime(Date.now());
   };
 
-  const draftRevisions = React.useRef(new Map<string, number>());
-  const syncedDrafts = React.useRef(new Map<string, string>());
   useEffect(() => {
     if (!testSession || testSubmitted) return;
     const timer = window.setTimeout(async () => {
       for (const question of testSession.questions) {
         const raw = userAnswers[question.id]?.selectedOption;
-        if (raw === undefined || syncedDrafts.current.get(question.id) === raw) continue;
+        if (raw === undefined) continue;
         try {
           const response = selectedResponse(raw);
-          const result = await assessmentsAPI.saveDraft(question as unknown as { assessment_id: string; item_id: string }, response, draftRevisions.current.get(question.id) || 0);
-          draftRevisions.current.set(question.id, result.revision);
-          syncedDrafts.current.set(question.id, raw);
-        } catch { /* Draft stays local; no fabricated server completion. */ }
+          await draftQueue.current.enqueue(question.id, raw, revision => assessmentsAPI.saveDraft(question as unknown as { assessment_id: string; item_id: string }, response, revision));
+        } catch { setDraftSyncError(true); return; }
       }
+      setDraftSyncError(false);
     }, 400);
     return () => window.clearTimeout(timer);
   }, [testSession, testSubmitted, userAnswers]);
@@ -301,8 +307,17 @@ const TestAttemptPage = () => {
     setShowSubmitConfirm(false);
     const key = `assessment-completion:${user.id}:${testSession.sessionId}`;
     try {
-      setTestSubmitted(true);
       const saved = safeLocalStorage.getItem(key);
+      // Flush pending edits before finalization; failure leaves the attempt open.
+      const expired = testSession.expiresAt ? Date.now() >= new Date(testSession.expiresAt).getTime() : timeRemaining <= 0;
+      for (const question of shouldFlushDrafts(testSession.expiresAt, timeRemaining, Boolean(saved)) ? testSession.questions : []) {
+        const raw = userAnswers[question.id]?.selectedOption;
+        if (raw === undefined) continue;
+        await draftQueue.current.enqueue(question.id, raw, revision => assessmentsAPI.saveDraft(question as unknown as { assessment_id: string; item_id: string }, selectedResponse(raw), revision));
+      }
+      setDraftSyncError(false);
+      setTestSubmitted(true);
+      if (expired && draftSyncError) toast.warning('Time expired. Only answers saved before expiry can be counted.');
       const pending = saved ? JSON.parse(saved) : { requestId: crypto.randomUUID(), answers: Object.fromEntries(Object.entries(userAnswers).map(([id, answer]) => [id, { response: selectedResponse(answer.selectedOption), isMarkedForReview: answer.isMarkedForReview }])) };
       safeLocalStorage.setItem(key, JSON.stringify(pending));
       await assessmentsAPI.complete(testSession.sessionId, pending.answers, pending.requestId);
@@ -310,6 +325,7 @@ const TestAttemptPage = () => {
       safeLocalStorage.removeItem('currentTest');
       navigate(`/test-results/${testSession.sessionId}`);
     } catch {
+      setDraftSyncError(true);
       toast.error('Submission not confirmed. Your test remains pending; retry when connected.');
       setTestSubmitted(false);
     } finally { completing.current = false; }
@@ -365,6 +381,7 @@ const TestAttemptPage = () => {
 
   return (
     <div className="h-dvh overflow-hidden bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex flex-col">
+      {draftSyncError && <Alert variant="destructive"><AlertDescription>Some answers are not saved. Reconnect and retry before the timer expires. Submission is not confirmed.</AlertDescription></Alert>}
       {/* Header */}
       <div className="bg-white shadow-md border-b p-3 sm:p-4 shrink-0 dark:bg-slate-900 dark:border-slate-700">
         <div className="container mx-auto flex items-center justify-between">
