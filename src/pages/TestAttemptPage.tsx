@@ -71,6 +71,7 @@ interface TestSession {
   groupTestCode?: string;
   examPattern?: string;
   sessionId?: string;
+  expiresAt?: string;
 }
 
 interface UserAnswer {
@@ -152,6 +153,7 @@ const TestAttemptPage = () => {
     const id = locationTest?.sessionId || testId || (saved ? JSON.parse(saved).sessionId : null);
     if (!id) { navigate('/tests'); return; }
     void assessmentsAPI.get(id).then(session => {
+      if (session.status === 'completed') { navigate(`/test-results/${session.id}`); return; }
       draftQueue.current.restore(session.drafts ?? {});
       setUserAnswers(Object.fromEntries(Object.entries(session.drafts ?? {}).map(([questionId, draft]) => [questionId, {
         questionId, selectedOption: draftSelection(draft.response), timeSpent: 0, isMarkedForReview: false,
@@ -285,7 +287,7 @@ const TestAttemptPage = () => {
   useEffect(() => {
     if (!testSession || testSubmitted) return;
     const timer = window.setTimeout(async () => {
-      for (const question of timeRemaining > 0 ? testSession.questions : []) {
+      for (const question of testSession.questions) {
         const raw = userAnswers[question.id]?.selectedOption;
         if (raw === undefined) continue;
         try {
@@ -305,15 +307,17 @@ const TestAttemptPage = () => {
     setShowSubmitConfirm(false);
     const key = `assessment-completion:${user.id}:${testSession.sessionId}`;
     try {
+      const saved = safeLocalStorage.getItem(key);
       // Flush pending edits before finalization; failure leaves the attempt open.
-      for (const question of testSession.questions) {
+      const expired = testSession.expiresAt ? Date.now() >= new Date(testSession.expiresAt).getTime() : timeRemaining <= 0;
+      for (const question of !saved && !expired ? testSession.questions : []) {
         const raw = userAnswers[question.id]?.selectedOption;
         if (raw === undefined) continue;
         await draftQueue.current.enqueue(question.id, raw, revision => assessmentsAPI.saveDraft(question as unknown as { assessment_id: string; item_id: string }, selectedResponse(raw), revision));
       }
       setDraftSyncError(false);
       setTestSubmitted(true);
-      const saved = safeLocalStorage.getItem(key);
+      if (expired && draftSyncError) toast.warning('Time expired. Only answers saved before expiry can be counted.');
       const pending = saved ? JSON.parse(saved) : { requestId: crypto.randomUUID(), answers: Object.fromEntries(Object.entries(userAnswers).map(([id, answer]) => [id, { response: selectedResponse(answer.selectedOption), isMarkedForReview: answer.isMarkedForReview }])) };
       safeLocalStorage.setItem(key, JSON.stringify(pending));
       await assessmentsAPI.complete(testSession.sessionId, pending.answers, pending.requestId);
