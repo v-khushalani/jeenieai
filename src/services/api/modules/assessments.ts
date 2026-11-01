@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { assertKeyFreePayload, assessmentAnswerSchema } from './assessmentContract';
+import type { SavedDraft } from './assessmentDrafts';
 
 export interface AssessmentQuestion {
   id: string;
@@ -27,6 +28,7 @@ export interface AssessmentSession {
   examPattern: string;
   questions: AssessmentQuestion[];
   status: string;
+  drafts: Record<string, SavedDraft>;
   [key: string]: unknown;
 }
 export interface ReleasedAnswer {
@@ -71,7 +73,9 @@ export const assessmentsAPI = {
     return receipt;
   },
   async saveDraft(question: Pick<AssessmentQuestion, 'assessment_id' | 'item_id'>, response: unknown, revision: number) {
-    return assessmentRpc<{ accepted: boolean; revision: number }>('save_assessment_draft', { p_assessment_id: question.assessment_id, p_item_id: question.item_id, p_answer: assessmentAnswerSchema.parse(response), p_revision: revision });
+    const receipt = await assessmentRpc<{ accepted: boolean; revision: number }>('save_assessment_draft', { p_assessment_id: question.assessment_id, p_item_id: question.item_id, p_answer: assessmentAnswerSchema.parse(response), p_revision: revision });
+    assertKeyFreePayload(receipt);
+    return receipt;
   },
   async feedback(id: string, questionId: string): Promise<ReleasedAnswer> {
     const review = await this.review(id);
