@@ -12,3 +12,4 @@
 - [x] Run read-only security regressions, all existing tests, and linter; deliver current NO-GO report.
 
 - [x] Run available non-mutating regressions and report separate live privilege/authentication gates in scripts/security-review/six-blocker-closure.md.
+- [ ] Complete final database-security review package: fresh catalog evidence, idempotent proposed migration, fail-closed rollback, per-function permission inventory, and explicit verification/deployment blockers; no SQL application or production writes.
