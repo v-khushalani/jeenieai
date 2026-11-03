@@ -1,0 +1,932 @@
+[
+  {
+    "relname": "battle_answers",
+    "attnum": 1,
+    "attname": "id",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_answers",
+    "attnum": 2,
+    "attname": "battle_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_answers",
+    "attnum": 3,
+    "attname": "user_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_answers",
+    "attnum": 4,
+    "attname": "question_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_answers",
+    "attnum": 5,
+    "attname": "selected_options",
+    "type": "text[]"
+  },
+  {
+    "relname": "battle_answers",
+    "attnum": 6,
+    "attname": "numerical_answer",
+    "type": "numeric"
+  },
+  {
+    "relname": "battle_answers",
+    "attnum": 7,
+    "attname": "is_correct",
+    "type": "boolean"
+  },
+  {
+    "relname": "battle_answers",
+    "attnum": 8,
+    "attname": "points",
+    "type": "integer"
+  },
+  {
+    "relname": "battle_answers",
+    "attnum": 9,
+    "attname": "answered_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "battle_players",
+    "attnum": 1,
+    "attname": "id",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_players",
+    "attnum": 2,
+    "attname": "battle_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_players",
+    "attnum": 3,
+    "attname": "user_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_players",
+    "attnum": 4,
+    "attname": "display_name",
+    "type": "text"
+  },
+  {
+    "relname": "battle_players",
+    "attnum": 5,
+    "attname": "score",
+    "type": "integer"
+  },
+  {
+    "relname": "battle_players",
+    "attnum": 6,
+    "attname": "correct_count",
+    "type": "integer"
+  },
+  {
+    "relname": "battle_players",
+    "attnum": 7,
+    "attname": "wrong_count",
+    "type": "integer"
+  },
+  {
+    "relname": "battle_players",
+    "attnum": 8,
+    "attname": "streak",
+    "type": "integer"
+  },
+  {
+    "relname": "battle_players",
+    "attnum": 9,
+    "attname": "finished_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "battle_players",
+    "attnum": 10,
+    "attname": "joined_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "battle_rewards",
+    "attnum": 1,
+    "attname": "id",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_rewards",
+    "attnum": 2,
+    "attname": "battle_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_rewards",
+    "attnum": 3,
+    "attname": "user_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_rewards",
+    "attnum": 4,
+    "attname": "reward_type",
+    "type": "text"
+  },
+  {
+    "relname": "battle_rewards",
+    "attnum": 5,
+    "attname": "points",
+    "type": "integer"
+  },
+  {
+    "relname": "battle_rewards",
+    "attnum": 6,
+    "attname": "title",
+    "type": "text"
+  },
+  {
+    "relname": "battle_rewards",
+    "attnum": 7,
+    "attname": "claimed_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "battle_rewards",
+    "attnum": 8,
+    "attname": "created_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 1,
+    "attname": "id",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 2,
+    "attname": "status",
+    "type": "text"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 3,
+    "attname": "subject",
+    "type": "text"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 4,
+    "attname": "chapter",
+    "type": "text"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 5,
+    "attname": "topic_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 6,
+    "attname": "difficulty",
+    "type": "text"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 7,
+    "attname": "question_ids",
+    "type": "uuid[]"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 8,
+    "attname": "max_players",
+    "type": "integer"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 9,
+    "attname": "started_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 10,
+    "attname": "expires_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 11,
+    "attname": "completed_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 12,
+    "attname": "winner_user_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 13,
+    "attname": "created_by",
+    "type": "uuid"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 14,
+    "attname": "created_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "battle_sessions",
+    "attnum": 15,
+    "attname": "updated_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "points_log",
+    "attnum": 1,
+    "attname": "id",
+    "type": "uuid"
+  },
+  {
+    "relname": "points_log",
+    "attnum": 2,
+    "attname": "user_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "points_log",
+    "attnum": 3,
+    "attname": "action_type",
+    "type": "text"
+  },
+  {
+    "relname": "points_log",
+    "attnum": 4,
+    "attname": "points",
+    "type": "integer"
+  },
+  {
+    "relname": "points_log",
+    "attnum": 5,
+    "attname": "description",
+    "type": "text"
+  },
+  {
+    "relname": "points_log",
+    "attnum": 6,
+    "attname": "reference_id",
+    "type": "text"
+  },
+  {
+    "relname": "points_log",
+    "attnum": 7,
+    "attname": "created_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 1,
+    "attname": "id",
+    "type": "uuid"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 2,
+    "attname": "email",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 3,
+    "attname": "full_name",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 4,
+    "attname": "avatar_url",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 5,
+    "attname": "phone",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 6,
+    "attname": "city",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 7,
+    "attname": "state",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 8,
+    "attname": "grade",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 9,
+    "attname": "target_exam",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 10,
+    "attname": "goal_exam",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 11,
+    "attname": "target_rank",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 12,
+    "attname": "target_exam_date",
+    "type": "date"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 13,
+    "attname": "subjects",
+    "type": "text[]"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 14,
+    "attname": "daily_goal",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 15,
+    "attname": "daily_question_limit",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 16,
+    "attname": "questions_today",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 17,
+    "attname": "smart_goal_enabled",
+    "type": "boolean"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 18,
+    "attname": "goal_locked",
+    "type": "boolean"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 19,
+    "attname": "is_premium",
+    "type": "boolean"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 20,
+    "attname": "subscription_plan",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 21,
+    "attname": "subscription_status",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 22,
+    "attname": "subscription_end_date",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 23,
+    "attname": "total_points",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 24,
+    "attname": "current_streak",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 25,
+    "attname": "longest_streak",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 26,
+    "attname": "last_activity_date",
+    "type": "date"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 27,
+    "attname": "last_activity",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 28,
+    "attname": "last_streak_date",
+    "type": "date"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 29,
+    "attname": "streak_freeze_available",
+    "type": "boolean"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 30,
+    "attname": "onboarding_completed",
+    "type": "boolean"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 31,
+    "attname": "created_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 32,
+    "attname": "updated_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 33,
+    "attname": "total_study_time",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 34,
+    "attname": "total_questions_solved",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 35,
+    "attname": "overall_accuracy",
+    "type": "numeric"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 36,
+    "attname": "badges",
+    "type": "jsonb"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 37,
+    "attname": "goal_locked_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 38,
+    "attname": "level",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 39,
+    "attname": "level_progress",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 40,
+    "attname": "referral_code",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 41,
+    "attname": "educator_approved",
+    "type": "boolean"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 42,
+    "attname": "subscription_tier",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 43,
+    "attname": "prep_mode",
+    "type": "text"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 44,
+    "attname": "daily_study_minutes",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 45,
+    "attname": "prep_mode_set_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 46,
+    "attname": "daily_xp",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 47,
+    "attname": "daily_xp_date",
+    "type": "date"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 48,
+    "attname": "pending_streak_repair",
+    "type": "integer"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 49,
+    "attname": "pending_streak_repair_date",
+    "type": "date"
+  },
+  {
+    "relname": "profiles",
+    "attnum": 50,
+    "attname": "trial_ends_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "question_walkthroughs",
+    "attnum": 1,
+    "attname": "id",
+    "type": "uuid"
+  },
+  {
+    "relname": "question_walkthroughs",
+    "attnum": 2,
+    "attname": "question_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "question_walkthroughs",
+    "attnum": 3,
+    "attname": "steps",
+    "type": "jsonb"
+  },
+  {
+    "relname": "question_walkthroughs",
+    "attnum": 4,
+    "attname": "model",
+    "type": "text"
+  },
+  {
+    "relname": "question_walkthroughs",
+    "attnum": 5,
+    "attname": "is_verified",
+    "type": "boolean"
+  },
+  {
+    "relname": "question_walkthroughs",
+    "attnum": 6,
+    "attname": "created_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "question_walkthroughs",
+    "attnum": 7,
+    "attname": "updated_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "questions",
+    "attnum": 1,
+    "attname": "id",
+    "type": "uuid"
+  },
+  {
+    "relname": "questions",
+    "attnum": 2,
+    "attname": "question",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 3,
+    "attname": "question_text",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 4,
+    "attname": "question_image_url",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 5,
+    "attname": "option_a",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 6,
+    "attname": "option_b",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 7,
+    "attname": "option_c",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 8,
+    "attname": "option_d",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 9,
+    "attname": "options",
+    "type": "jsonb"
+  },
+  {
+    "relname": "questions",
+    "attnum": 10,
+    "attname": "correct_option",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 11,
+    "attname": "correct_options",
+    "type": "text[]"
+  },
+  {
+    "relname": "questions",
+    "attnum": 12,
+    "attname": "correct_answer",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 13,
+    "attname": "numerical_answer",
+    "type": "numeric"
+  },
+  {
+    "relname": "questions",
+    "attnum": 14,
+    "attname": "numerical_tolerance",
+    "type": "numeric"
+  },
+  {
+    "relname": "questions",
+    "attnum": 15,
+    "attname": "question_type",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 16,
+    "attname": "difficulty",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 17,
+    "attname": "difficulty_jee_mains",
+    "type": "difficulty_level"
+  },
+  {
+    "relname": "questions",
+    "attnum": 18,
+    "attname": "difficulty_neet",
+    "type": "difficulty_level"
+  },
+  {
+    "relname": "questions",
+    "attnum": 19,
+    "attname": "explanation",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 20,
+    "attname": "subject",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 21,
+    "attname": "subject_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "questions",
+    "attnum": 22,
+    "attname": "chapter",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 23,
+    "attname": "chapter_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "questions",
+    "attnum": 24,
+    "attname": "topic_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "questions",
+    "attnum": 25,
+    "attname": "concept_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "questions",
+    "attnum": 26,
+    "attname": "batch_id",
+    "type": "uuid"
+  },
+  {
+    "relname": "questions",
+    "attnum": 27,
+    "attname": "exam",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 28,
+    "attname": "exam_relevance",
+    "type": "exam_code[]"
+  },
+  {
+    "relname": "questions",
+    "attnum": 29,
+    "attname": "year",
+    "type": "integer"
+  },
+  {
+    "relname": "questions",
+    "attnum": 30,
+    "attname": "pyq_year",
+    "type": "integer"
+  },
+  {
+    "relname": "questions",
+    "attnum": 31,
+    "attname": "is_pyq",
+    "type": "boolean"
+  },
+  {
+    "relname": "questions",
+    "attnum": 32,
+    "attname": "source",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 33,
+    "attname": "source_row_id",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 34,
+    "attname": "is_active",
+    "type": "boolean"
+  },
+  {
+    "relname": "questions",
+    "attnum": 35,
+    "attname": "is_verified",
+    "type": "boolean"
+  },
+  {
+    "relname": "questions",
+    "attnum": 36,
+    "attname": "created_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "questions",
+    "attnum": 37,
+    "attname": "updated_at",
+    "type": "timestamp with time zone"
+  },
+  {
+    "relname": "questions",
+    "attnum": 38,
+    "attname": "topic",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 39,
+    "attname": "content_hash",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 40,
+    "attname": "pyq_session",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 41,
+    "attname": "pyq_exam",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 42,
+    "attname": "language",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 43,
+    "attname": "class_level",
+    "type": "smallint"
+  },
+  {
+    "relname": "questions",
+    "attnum": 44,
+    "attname": "text_quality",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 45,
+    "attname": "option_a_image_url",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 46,
+    "attname": "option_b_image_url",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 47,
+    "attname": "option_c_image_url",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 48,
+    "attname": "option_d_image_url",
+    "type": "text"
+  },
+  {
+    "relname": "questions",
+    "attnum": 49,
+    "attname": "explanation_image_url",
+    "type": "text"
+  }
+]
