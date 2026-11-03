@@ -1,0 +1,1584 @@
+[
+  {
+    "signature": "admin_get_profiles_by_ids(uuid[])",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "TABLE(id uuid, full_name text, email text)",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.admin_get_profiles_by_ids(p_user_ids uuid[])\n RETURNS TABLE(id uuid, full_name text, email text)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NOT (public.has_role(auth.uid(), 'admin'::app_role) OR public.has_role(auth.uid(), 'super_admin'::app_role)) THEN\n    RAISE EXCEPTION 'forbidden';\n  END IF;\n  RETURN QUERY\n    SELECT p.id, p.full_name, p.email\n    FROM public.profiles p\n    WHERE p.id = ANY(p_user_ids);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "admin_list_profiles()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "TABLE(id uuid, email text, full_name text, phone text, created_at timestamp with time zone, grade integer, target_exam text, is_premium boolean, subscription_end_date timestamp with time zone, subscription_tier text, subscription_status text, subscription_plan text, educator_approved boolean)",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.admin_list_profiles()\n RETURNS TABLE(id uuid, email text, full_name text, phone text, created_at timestamp with time zone, grade integer, target_exam text, is_premium boolean, subscription_end_date timestamp with time zone, subscription_tier text, subscription_status text, subscription_plan text, educator_approved boolean)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NOT (public.has_role(auth.uid(), 'admin'::app_role) OR public.has_role(auth.uid(), 'super_admin'::app_role)) THEN\n    RAISE EXCEPTION 'forbidden';\n  END IF;\n  RETURN QUERY\n    SELECT p.id, p.email, p.full_name, p.phone, p.created_at, p.grade, p.target_exam,\n           p.is_premium, p.subscription_end_date, p.subscription_tier,\n           p.subscription_status, p.subscription_plan, p.educator_approved\n    FROM public.profiles p\n    ORDER BY p.created_at DESC;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "apply_paid_subscription(text,text,text,uuid,text,text,timestamp with time zone)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "void",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.apply_paid_subscription(p_razorpay_order_id text, p_razorpay_payment_id text, p_razorpay_signature text, p_user_id uuid, p_plan_id text, p_tier text, p_end_date timestamp with time zone)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  -- Both writes happen in the same implicit transaction. If either fails,\n  -- the whole function aborts and nothing is persisted.\n  UPDATE public.payments\n     SET razorpay_payment_id = p_razorpay_payment_id,\n         razorpay_signature  = p_razorpay_signature,\n         status              = 'paid'\n   WHERE razorpay_order_id = p_razorpay_order_id;\n\n  UPDATE public.profiles\n     SET subscription_end_date = p_end_date,\n         is_premium            = true,\n         subscription_tier     = p_tier,\n         subscription_plan     = p_plan_id,\n         subscription_status   = 'active'\n   WHERE id = p_user_id;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "assign_referral_code_on_insert()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.assign_referral_code_on_insert()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NEW.referral_code IS NULL OR length(trim(NEW.referral_code)) = 0 THEN\n    NEW.referral_code := public.generate_referral_code();\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "award_badge(uuid,uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "uuid",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.award_badge(_user_id uuid, _badge_id uuid)\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_id uuid;\n  v_points int;\n  v_required int;\n  v_user_points int;\nBEGIN\n  -- Verify badge exists and user meets points requirement\n  SELECT points_required INTO v_required FROM public.badges WHERE id = _badge_id AND is_active = true;\n  IF v_required IS NULL THEN\n    RAISE EXCEPTION 'Badge not found or inactive';\n  END IF;\n\n  SELECT total_points INTO v_user_points FROM public.profiles WHERE id = _user_id;\n  IF COALESCE(v_user_points, 0) < v_required THEN\n    RAISE EXCEPTION 'User does not meet points requirement';\n  END IF;\n\n  INSERT INTO public.user_badges (user_id, badge_id)\n  VALUES (_user_id, _badge_id)\n  ON CONFLICT DO NOTHING\n  RETURNING id INTO v_id;\n\n  RETURN v_id;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "award_mission_points(uuid,text)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.award_mission_points(p_mission_id uuid, p_block_id text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_uid uuid := auth.uid();\n  v_blocks jsonb;\n  v_block jsonb;\n  v_points int := 0;\n  v_ref text := p_mission_id::text || ':' || p_block_id;\n  v_total int;\nBEGIN\n  IF v_uid IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'unauthenticated'); END IF;\n\n  SELECT blocks INTO v_blocks FROM public.daily_missions\n  WHERE id = p_mission_id AND user_id = v_uid;\n  IF v_blocks IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'mission_not_found'); END IF;\n\n  SELECT b INTO v_block FROM jsonb_array_elements(v_blocks) b\n  WHERE b->>'id' = p_block_id LIMIT 1;\n  IF v_block IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'block_not_found'); END IF;\n\n  IF COALESCE(v_block->'progress'->>'status', 'pending') <> 'done' THEN\n    RETURN jsonb_build_object('ok', false, 'error', 'block_not_done');\n  END IF;\n\n  IF EXISTS (SELECT 1 FROM public.points_log WHERE user_id = v_uid AND reference_id = v_ref) THEN\n    RETURN jsonb_build_object('ok', true, 'points', 0, 'already_claimed', true);\n  END IF;\n\n  v_points := GREATEST(0, LEAST(500, COALESCE((v_block->>'xp_reward')::int, 20)));\n\n  INSERT INTO public.points_log (user_id, action_type, points, description, reference_id)\n  VALUES (v_uid, 'mission_block', v_points, COALESCE(v_block->>'title', 'Challenge complete'), v_ref);\n\n  UPDATE public.profiles\n  SET total_points = COALESCE(total_points, 0) + v_points\n  WHERE id = v_uid\n  RETURNING total_points INTO v_total;\n\n  RETURN jsonb_build_object('ok', true, 'points', v_points, 'total_points', v_total);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "award_xp(boolean,integer,integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.award_xp(p_is_correct boolean, p_combo integer DEFAULT 0, p_amount integer DEFAULT NULL::integer)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_uid uuid := auth.uid();\n  v_today date := (now() AT TIME ZONE 'Asia/Kolkata')::date;\n  v_xp integer := 0;\n  v_daily integer := 0;\n  v_goal integer := 15;\n  v_streak integer := 0;\n  v_league uuid;\nBEGIN\n  IF v_uid IS NULL THEN RETURN jsonb_build_object('error','Unauthorized'); END IF;\n\n  IF p_amount IS NOT NULL THEN\n    v_xp := GREATEST(p_amount, 0);\n  ELSIF p_is_correct THEN\n    v_xp := 10\n      + CASE WHEN p_combo >= 10 THEN 20\n             WHEN p_combo >= 5 THEN 10\n             WHEN p_combo >= 3 THEN 5\n             ELSE 0 END;\n  ELSE\n    v_xp := 0;\n  END IF;\n\n  UPDATE public.profiles\n  SET daily_xp = CASE WHEN daily_xp_date IS DISTINCT FROM v_today THEN v_xp ELSE COALESCE(daily_xp,0) + v_xp END,\n      daily_xp_date = v_today,\n      updated_at = now()\n  WHERE id = v_uid\n  RETURNING daily_xp, COALESCE(daily_goal,15), COALESCE(current_streak,0)\n  INTO v_daily, v_goal, v_streak;\n\n  IF v_xp > 0 THEN\n    v_league := public.join_current_league();\n    IF v_league IS NOT NULL THEN\n      UPDATE public.league_members\n      SET xp = xp + v_xp, updated_at = now()\n      WHERE league_id = v_league AND user_id = v_uid;\n    END IF;\n  END IF;\n\n  RETURN jsonb_build_object(\n    'success', true,\n    'xp_awarded', v_xp,\n    'daily_xp', COALESCE(v_daily,0),\n    'xp_goal', GREATEST(v_goal,1) * 10,\n    'streak', v_streak\n  );\nEND;\n$function$\n"
+  },
+  {
+    "signature": "backfill_text_quality(integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,service_role=X/postgres}",
+    "returns": "integer",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.backfill_text_quality(p_limit integer DEFAULT 5000)\n RETURNS integer\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE n integer;\nBEGIN\n  WITH batch AS (\n    SELECT id FROM public.questions WHERE text_quality IS NULL LIMIT GREATEST(p_limit,1)\n  )\n  UPDATE public.questions q\n    SET text_quality = public.classify_question_text(q.question_text)\n  FROM batch b WHERE q.id = b.id;\n  GET DIAGNOSTICS n = ROW_COUNT;\n  RETURN n;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "bump_mission_block_progress(uuid,text,boolean,uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.bump_mission_block_progress(p_mission_id uuid, p_block_id text, p_is_correct boolean, p_question_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  m RECORD;\n  new_blocks jsonb;\n  block_obj jsonb;\n  block_idx INT := -1;\n  i INT;\n  target INT;\n  passing_goal INT;\n  attempted INT;\n  correct_count INT;\n  seen_ids jsonb;\n  block_status TEXT;\n  is_now_done BOOLEAN := FALSE;\n  new_completed INT;\n  new_status TEXT;\n  xp_reward INT := 0;\n  xp_awarded INT := 0;\n  bonus_awarded INT := 0;\n  today_ist DATE := (now() AT TIME ZONE 'Asia/Kolkata')::date;\nBEGIN\n  SELECT * INTO m FROM public.daily_missions WHERE id = p_mission_id;\n  IF NOT FOUND THEN RETURN jsonb_build_object('ok', false, 'error', 'mission_not_found'); END IF;\n  IF m.user_id <> auth.uid() THEN RETURN jsonb_build_object('ok', false, 'error', 'forbidden'); END IF;\n\n  new_blocks := m.blocks;\n  FOR i IN 0 .. jsonb_array_length(new_blocks) - 1 LOOP\n    IF (new_blocks -> i ->> 'id') = p_block_id THEN\n      block_idx := i;\n      EXIT;\n    END IF;\n  END LOOP;\n  IF block_idx < 0 THEN RETURN jsonb_build_object('ok', false, 'error', 'block_not_found'); END IF;\n\n  block_obj := new_blocks -> block_idx;\n  target := COALESCE((block_obj ->> 'question_count')::INT, 10);\n  passing_goal := COALESCE((block_obj ->> 'passing_goal')::INT, GREATEST(1, (target * 0.6)::INT));\n  attempted := COALESCE((block_obj -> 'progress' ->> 'attempted')::INT, 0);\n  correct_count := COALESCE((block_obj -> 'progress' ->> 'correct')::INT, 0);\n  seen_ids := COALESCE(block_obj -> 'progress' -> 'seen_ids', '[]'::jsonb);\n  block_status := COALESCE(block_obj -> 'progress' ->> 'status', 'pending');\n  xp_reward := COALESCE((block_obj ->> 'xp_reward')::INT, target * 10);\n\n  IF seen_ids @> to_jsonb(p_question_id::TEXT) THEN\n    RETURN jsonb_build_object('ok', true, 'skipped', true, 'block', block_obj);\n  END IF;\n\n  attempted := attempted + 1;\n  IF p_is_correct THEN correct_count := correct_count + 1; END IF;\n  seen_ids := seen_ids || to_jsonb(p_question_id::TEXT);\n\n  IF block_status <> 'done' AND (attempted >= target OR correct_count >= passing_goal) THEN\n    block_status := 'done';\n    is_now_done := TRUE;\n  ELSIF block_status = 'pending' THEN\n    block_status := 'in_progress';\n  END IF;\n\n  block_obj := jsonb_set(block_obj, '{progress}', jsonb_build_object(\n    'attempted', attempted,\n    'correct', correct_count,\n    'status', block_status,\n    'seen_ids', seen_ids\n  ));\n  new_blocks := jsonb_set(new_blocks, ARRAY[block_idx::TEXT], block_obj);\n\n  new_completed := 0;\n  FOR i IN 0 .. jsonb_array_length(new_blocks) - 1 LOOP\n    IF (new_blocks -> i -> 'progress' ->> 'status') = 'done' THEN\n      new_completed := new_completed + 1;\n    END IF;\n  END LOOP;\n\n  new_status := m.status;\n  IF new_completed >= jsonb_array_length(new_blocks) THEN\n    new_status := 'completed';\n  ELSIF new_status = 'pending' THEN\n    new_status := 'in_progress';\n  END IF;\n\n  -- XP: award on block completion + bonus on full mission\n  IF is_now_done THEN\n    xp_awarded := xp_reward;\n  END IF;\n  IF is_now_done AND new_status = 'completed' AND m.status <> 'completed' THEN\n    bonus_awarded := 100;\n  END IF;\n\n  IF (xp_awarded + bonus_awarded) > 0 THEN\n    UPDATE public.profiles\n    SET total_points = COALESCE(total_points, 0) + xp_awarded + bonus_awarded,\n        daily_xp = CASE WHEN daily_xp_date = today_ist\n                        THEN COALESCE(daily_xp, 0) + xp_awarded + bonus_awarded\n                        ELSE xp_awarded + bonus_awarded END,\n        daily_xp_date = today_ist,\n        updated_at = now()\n    WHERE id = m.user_id;\n  END IF;\n\n  UPDATE public.daily_missions\n  SET blocks = new_blocks,\n      completed_blocks = new_completed,\n      status = new_status,\n      started_at = COALESCE(started_at, now()),\n      completed_at = CASE WHEN new_status = 'completed' THEN now() ELSE completed_at END,\n      updated_at = now()\n  WHERE id = p_mission_id;\n\n  RETURN jsonb_build_object(\n    'ok', true,\n    'block', block_obj,\n    'block_done', is_now_done,\n    'completed_blocks', new_completed,\n    'mission_status', new_status,\n    'xp_awarded', xp_awarded,\n    'bonus_awarded', bonus_awarded\n  );\nEND;\n$function$\n"
+  },
+  {
+    "signature": "bump_mission_progress_by_chapter(uuid,boolean,uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.bump_mission_progress_by_chapter(p_chapter_id uuid, p_is_correct boolean, p_question_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  m RECORD;\n  matched_block_id TEXT;\n  today_ist DATE;\nBEGIN\n  today_ist := (now() AT TIME ZONE 'Asia/Kolkata')::date;\n\n  SELECT * INTO m\n  FROM public.daily_missions\n  WHERE user_id = auth.uid()\n    AND mission_date = today_ist\n  LIMIT 1;\n\n  IF NOT FOUND THEN\n    RETURN jsonb_build_object('ok', false, 'error', 'no_mission_today');\n  END IF;\n\n  -- Find first non-done block matching this chapter\n  FOR i IN 0 .. jsonb_array_length(m.blocks) - 1 LOOP\n    IF (m.blocks -> i ->> 'chapter_id') = p_chapter_id::TEXT\n       AND COALESCE(m.blocks -> i -> 'progress' ->> 'status', 'pending') <> 'done' THEN\n      matched_block_id := m.blocks -> i ->> 'id';\n      EXIT;\n    END IF;\n  END LOOP;\n\n  IF matched_block_id IS NULL THEN\n    RETURN jsonb_build_object('ok', false, 'error', 'no_matching_block');\n  END IF;\n\n  RETURN public.bump_mission_block_progress(m.id, matched_block_id, p_is_correct, p_question_id);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "cancel_subscription()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.cancel_subscription()\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF auth.uid() IS NULL THEN\n    RETURN jsonb_build_object('error', 'Not authenticated');\n  END IF;\n\n  UPDATE profiles SET\n    is_premium = false,\n    subscription_end_date = NULL,\n    updated_at = now()\n  WHERE id = auth.uid();\n\n  RETURN jsonb_build_object('success', true);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "change_user_goal(uuid,text,integer,text,boolean)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.change_user_goal(p_user_id uuid, p_new_goal text, p_new_grade integer, p_new_target_exam text, p_confirm_reset boolean DEFAULT false)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_old_exam TEXT;\n  v_old_grade INTEGER;\n  v_reset_result JSONB;\nBEGIN\n  SELECT target_exam, grade INTO v_old_exam, v_old_grade FROM profiles WHERE id = p_user_id;\n  \n  IF v_old_exam = p_new_target_exam AND v_old_grade = p_new_grade THEN\n    RETURN jsonb_build_object('success', false, 'reason', 'Same goal selected');\n  END IF;\n  \n  IF NOT p_confirm_reset THEN\n    RETURN jsonb_build_object('success', false, 'requires_confirmation', true, 'warning', 'Changing your goal will reset all progress.', 'old_exam', v_old_exam, 'new_exam', p_new_target_exam);\n  END IF;\n  \n  v_reset_result := public.reset_user_progress(p_user_id);\n  \n  UPDATE profiles SET\n    grade = p_new_grade, target_exam = p_new_target_exam,\n    goal_locked = false, goal_locked_at = NULL, updated_at = now()\n  WHERE id = p_user_id;\n  \n  RETURN jsonb_build_object('success', true, 'old_exam', v_old_exam, 'new_exam', p_new_target_exam, 'data_reset', v_reset_result);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "chapters_legacy_sync()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.chapters_legacy_sync()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_subject_id uuid;\nBEGIN\n  -- Sync name <-> chapter_name (whichever is provided)\n  IF NEW.name IS NULL AND NEW.chapter_name IS NOT NULL THEN\n    NEW.name := NEW.chapter_name;\n  ELSIF NEW.chapter_name IS NULL AND NEW.name IS NOT NULL THEN\n    NEW.chapter_name := NEW.name;\n  END IF;\n\n  -- Resolve subject_id from subject text if missing\n  IF NEW.subject_id IS NULL AND NEW.subject IS NOT NULL THEN\n    SELECT id INTO v_subject_id\n    FROM public.subjects\n    WHERE LOWER(name) = LOWER(NEW.subject)\n    LIMIT 1;\n    IF v_subject_id IS NOT NULL THEN\n      NEW.subject_id := v_subject_id;\n    END IF;\n  END IF;\n\n  -- Resolve subject text from subject_id if missing\n  IF NEW.subject IS NULL AND NEW.subject_id IS NOT NULL THEN\n    SELECT name INTO NEW.subject FROM public.subjects WHERE id = NEW.subject_id;\n  END IF;\n\n  -- Generate slug if missing\n  IF NEW.slug IS NULL OR NEW.slug = '' THEN\n    NEW.slug := lower(regexp_replace(COALESCE(NEW.name, NEW.chapter_name, 'chapter'), '[^a-zA-Z0-9]+', '-', 'g'));\n  END IF;\n\n  -- Default class_level if missing\n  IF NEW.class_level IS NULL THEN\n    NEW.class_level := 11;\n  END IF;\n\n  -- Default exam_relevance if missing\n  IF NEW.exam_relevance IS NULL OR array_length(NEW.exam_relevance, 1) IS NULL THEN\n    NEW.exam_relevance := ARRAY['JEE_MAINS']::exam_code[];\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "chapters_propagate_class_level()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.chapters_propagate_class_level()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NEW.class_level IS DISTINCT FROM OLD.class_level THEN\n    UPDATE public.questions SET class_level = NEW.class_level WHERE chapter_id = NEW.id;\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "check_and_award_badges(uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "TABLE(badge_id uuid, code text, name text)",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.check_and_award_badges(_user_id uuid)\n RETURNS TABLE(badge_id uuid, code text, name text)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_streak INT := 0;\n  v_total_q INT := 0;\n  v_total_correct INT := 0;\n  v_best_correct_streak INT := 0;\n  v_max_daily INT := 0;\n  v_perfect_tests INT := 0;\n  v_morning INT := 0;\n  v_night INT := 0;\n  v_shares INT := 0;\n  v_badge RECORD;\n  v_qualifies BOOLEAN;\nBEGIN\n  -- Pull user snapshot\n  SELECT COALESCE(current_streak, 0) INTO v_streak FROM public.profiles WHERE id = _user_id;\n\n  SELECT COUNT(*), COUNT(*) FILTER (WHERE is_correct)\n    INTO v_total_q, v_total_correct\n    FROM public.question_attempts WHERE user_id = _user_id;\n\n  -- Longest consecutive correct-answer streak (window walk)\n  WITH ordered AS (\n    SELECT is_correct,\n           ROW_NUMBER() OVER (ORDER BY attempted_at) -\n           ROW_NUMBER() OVER (PARTITION BY is_correct ORDER BY attempted_at) AS grp\n    FROM public.question_attempts WHERE user_id = _user_id\n  )\n  SELECT COALESCE(MAX(cnt), 0) INTO v_best_correct_streak\n  FROM (SELECT COUNT(*) AS cnt FROM ordered WHERE is_correct GROUP BY grp) s;\n\n  -- Max questions in a single day\n  SELECT COALESCE(MAX(cnt), 0) INTO v_max_daily\n  FROM (\n    SELECT COUNT(*) AS cnt\n    FROM public.question_attempts\n    WHERE user_id = _user_id\n    GROUP BY date_trunc('day', attempted_at)\n  ) d;\n\n  -- Perfect test count\n  SELECT COUNT(*) INTO v_perfect_tests\n  FROM public.test_sessions\n  WHERE user_id = _user_id AND score = 100 AND total_questions >= 5;\n\n  -- Morning sessions (before 8am local UTC approx) \u2014 count distinct days\n  SELECT COUNT(DISTINCT date_trunc('day', attempted_at)) INTO v_morning\n  FROM public.question_attempts\n  WHERE user_id = _user_id AND EXTRACT(HOUR FROM attempted_at) < 8;\n\n  SELECT COUNT(DISTINCT date_trunc('day', attempted_at)) INTO v_night\n  FROM public.question_attempts\n  WHERE user_id = _user_id AND EXTRACT(HOUR FROM attempted_at) >= 23;\n\n  -- Shares from points_log\n  SELECT COUNT(*) INTO v_shares\n  FROM public.points_log\n  WHERE user_id = _user_id AND action_type IN ('badge_share', 'result_share', 'share');\n\n  -- Iterate badges and award missing\n  FOR v_badge IN\n    SELECT b.id, b.code, b.name, b.requirement_type, b.requirement_value\n    FROM public.badges b\n    WHERE b.is_active = true\n      AND NOT EXISTS (\n        SELECT 1 FROM public.user_badges ub\n        WHERE ub.user_id = _user_id AND ub.badge_id = b.id\n      )\n  LOOP\n    v_qualifies := CASE v_badge.requirement_type\n      WHEN 'day_streak'       THEN v_streak            >= v_badge.requirement_value\n      WHEN 'answer_streak'    THEN v_best_correct_streak >= v_badge.requirement_value\n      WHEN 'total_questions'  THEN v_total_q           >= v_badge.requirement_value\n      WHEN 'total_correct'    THEN v_total_correct     >= v_badge.requirement_value\n      WHEN 'daily_questions'  THEN v_max_daily         >= v_badge.requirement_value\n      WHEN 'perfect_test'     THEN v_perfect_tests     >= v_badge.requirement_value\n      WHEN 'morning_sessions' THEN v_morning           >= v_badge.requirement_value\n      WHEN 'night_sessions'   THEN v_night             >= v_badge.requirement_value\n      WHEN 'shares'           THEN v_shares            >= v_badge.requirement_value\n      ELSE FALSE\n    END;\n\n    IF v_qualifies THEN\n      INSERT INTO public.user_badges (user_id, badge_id, earned_at)\n      VALUES (_user_id, v_badge.id, now())\n      ON CONFLICT DO NOTHING;\n      badge_id := v_badge.id; code := v_badge.code; name := v_badge.name;\n      RETURN NEXT;\n    END IF;\n  END LOOP;\nEND $function$\n"
+  },
+  {
+    "signature": "check_and_reset_streak(uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.check_and_reset_streak(p_user_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_profile RECORD;\n  v_today text;\n  v_yesterday text;\n  v_days_since integer;\nBEGIN\n  IF auth.uid() IS NULL OR auth.uid() != p_user_id THEN\n    RETURN jsonb_build_object('error', 'Unauthorized');\n  END IF;\n\n  v_today := to_char(now() AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD');\n  v_yesterday := to_char((now() AT TIME ZONE 'Asia/Kolkata' - interval '1 day'), 'YYYY-MM-DD');\n\n  SELECT current_streak, last_activity_date, last_streak_date, streak_freeze_available\n  INTO v_profile FROM public.profiles WHERE id = p_user_id;\n\n  IF NOT FOUND OR v_profile.last_activity_date IS NULL THEN\n    RETURN jsonb_build_object('success', true, 'streak', 0, 'reset', false);\n  END IF;\n\n  IF v_profile.last_streak_date IS NOT NULL AND\n     (v_profile.last_streak_date::text = v_today OR v_profile.last_streak_date::text = v_yesterday) THEN\n    RETURN jsonb_build_object('success', true, 'streak', COALESCE(v_profile.current_streak, 0), 'reset', false);\n  END IF;\n\n  IF v_profile.last_streak_date IS NOT NULL THEN\n    v_days_since := (v_today::date - v_profile.last_streak_date)::integer;\n  ELSE\n    v_days_since := 999;\n  END IF;\n\n  IF v_days_since = 2 AND COALESCE(v_profile.streak_freeze_available, false) THEN\n    RETURN jsonb_build_object('success', true, 'streak', COALESCE(v_profile.current_streak, 0), 'reset', false, 'freeze_available', true);\n  END IF;\n\n  IF COALESCE(v_profile.current_streak, 0) > 0 THEN\n    UPDATE public.profiles\n    SET current_streak = 0,\n        pending_streak_repair = v_profile.current_streak,\n        pending_streak_repair_date = (now() AT TIME ZONE 'Asia/Kolkata')::date,\n        updated_at = now()\n    WHERE id = p_user_id;\n    RETURN jsonb_build_object('success', true, 'streak', 0, 'reset', true, 'previous_streak', v_profile.current_streak, 'repair_available', true);\n  END IF;\n\n  RETURN jsonb_build_object('success', true, 'streak', 0, 'reset', false);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "claim_daily_vault()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.claim_daily_vault()\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_uid uuid := auth.uid();\n  v_today date := (now() AT TIME ZONE 'Asia/Kolkata')::date;\n  v_blocks jsonb;\n  v_done int;\n  v_total int;\n  v_roll numeric;\n  v_rarity text;\n  v_type text;\n  v_points int;\n  v_payload jsonb;\n  v_new_total int;\nBEGIN\n  IF v_uid IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'unauthenticated'); END IF;\n\n  IF EXISTS (SELECT 1 FROM public.reward_vault_claims WHERE user_id = v_uid AND claim_date = v_today) THEN\n    RETURN jsonb_build_object('ok', false, 'error', 'already_claimed');\n  END IF;\n\n  SELECT blocks INTO v_blocks FROM public.daily_missions\n  WHERE user_id = v_uid AND mission_date = v_today;\n  IF v_blocks IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'chain_incomplete'); END IF;\n\n  SELECT count(*) FILTER (WHERE COALESCE(b->'progress'->>'status','pending') = 'done'), count(*)\n  INTO v_done, v_total FROM jsonb_array_elements(v_blocks) b;\n\n  IF v_total = 0 OR v_done < v_total THEN\n    RETURN jsonb_build_object('ok', false, 'error', 'chain_incomplete');\n  END IF;\n\n  v_roll := random();\n  IF v_roll < 0.55 THEN\n    v_rarity := 'common'; v_type := 'points'; v_points := 25 + floor(random()*26)::int;\n    v_payload := jsonb_build_object('label', '+' || v_points || ' JEEnie Points');\n  ELSIF v_roll < 0.83 THEN\n    v_rarity := 'rare'; v_type := 'points'; v_points := 75 + floor(random()*51)::int;\n    v_payload := jsonb_build_object('label', '+' || v_points || ' JEEnie Points');\n  ELSIF v_roll < 0.96 THEN\n    v_rarity := 'epic'; v_type := 'streak_freeze'; v_points := 50;\n    v_payload := jsonb_build_object('label', 'Streak Freeze', 'code', 'streak_freeze');\n  ELSE\n    v_rarity := 'legendary'; v_type := 'title'; v_points := 150;\n    v_payload := jsonb_build_object('label', 'Title: Chain Breaker', 'code', 'chain_breaker');\n  END IF;\n\n  INSERT INTO public.reward_vault_claims (user_id, claim_date, reward_type, rarity, points_awarded, payload)\n  VALUES (v_uid, v_today, v_type, v_rarity, v_points, v_payload);\n\n  IF v_type <> 'points' THEN\n    INSERT INTO public.user_inventory (user_id, item_type, item_code, label, quantity)\n    VALUES (v_uid, v_type, v_payload->>'code', v_payload->>'label', 1)\n    ON CONFLICT DO NOTHING;\n  END IF;\n\n  INSERT INTO public.points_log (user_id, action_type, points, description, reference_id)\n  VALUES (v_uid, 'daily_vault', v_points, 'Daily Vault (' || v_rarity || ')', 'vault:' || v_today::text);\n\n  UPDATE public.profiles SET total_points = COALESCE(total_points,0) + v_points\n  WHERE id = v_uid RETURNING total_points INTO v_new_total;\n\n  RETURN jsonb_build_object('ok', true, 'rarity', v_rarity, 'reward_type', v_type,\n    'points', v_points, 'payload', v_payload, 'total_points', v_new_total);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "classify_question_text(text)",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "text",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.classify_question_text(p_text text)\n RETURNS text\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\n  SELECT CASE\n    WHEN p_text IS NULL OR length(btrim(p_text)) = 0 THEN 'damaged'\n    WHEN p_text ~ '[\u00c2\u00c3]|\\uFFFD' THEN 'damaged'\n    WHEN p_text ~ '\\$|\\\\frac|\\^|_\\{' THEN 'ok'\n    WHEN p_text ~ '[A-Za-z] [0-9]( |$|,|\\.|\\))' THEN 'damaged'\n    WHEN p_text ~ '(log|sin|cos|tan|sec|cosec|cot) [0-9]' THEN 'damaged'\n    ELSE 'ok'\n  END;\n$function$\n"
+  },
+  {
+    "signature": "classify_questions_batch(integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public",
+      "statement_timeout=120s"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.classify_questions_batch(p_batch_size integer DEFAULT 5000)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\n SET statement_timeout TO '120s'\nAS $function$\nDECLARE\n  v_easy int := 0;\n  v_hard int := 0;\n  v_remaining int := 0;\nBEGIN\n  -- HARD classification: reclassify from Easy or Medium \u2192 Hard\n  WITH hard_ids AS (\n    SELECT id FROM questions\n    WHERE difficulty IN ('Easy', 'Medium')\n      AND (\n        exam ILIKE '%advanced%'\n        OR question ~* '(prove\\s+that|derive\\s+(an\\s+)?expression|evaluate\\s+the\\s+integral|differential\\s+equation|if\\s+and\\s+only\\s+if|moment\\s+of\\s+inertia|potential\\s+energy\\s+function)'\n        OR (LENGTH(question) > 250 AND (LENGTH(option_a) + LENGTH(option_b) + LENGTH(option_c) + LENGTH(option_d)) > 200)\n        OR (question ~* '(given\\s+that.*find|if.*and.*then.*find|calculate.*given|determine.*when.*and)' AND LENGTH(question) > 150)\n        OR question_type IN ('numerical', 'assertion_reason')\n        OR (LENGTH(question) > 350 AND question ~* '(=|\\+|\\-|\\times|\\div|\\\\frac|\\\\int|\\\\sum|\\\\sqrt|equation|formula|coefficient)')\n        OR (subject = 'Physics' AND question ~* '(circuit.*resistor|carnot|lens.*mirror.*combination|magnetic\\s+field.*moving|angular\\s+momentum.*conservation)')\n        OR (subject = 'Chemistry' AND question ~* '(mechanism|order\\s+of\\s+reaction|equilibrium\\s+constant.*calculate|electrochemical\\s+cell|coordination\\s+number)')\n        OR (subject = 'Mathematics' AND question ~* '(integrate|\\\\bdy/dx\\\\b|tangent.*normal.*curve|locus|eccentricity|skew\\s+lines)')\n        OR (subject = 'Biology' AND LENGTH(question) > 200 AND question ~* '(explain\\s+the\\s+mechanism|sequence\\s+of\\s+events|distinguish\\s+between.*and.*with|comparative\\s+account)')\n      )\n    LIMIT p_batch_size\n  )\n  UPDATE questions SET difficulty = 'Hard'\n  WHERE id IN (SELECT id FROM hard_ids) AND difficulty != 'Hard';\n  GET DIAGNOSTICS v_hard = ROW_COUNT;\n\n  -- Reclassify overly-easy Hard questions back to Medium\n  -- (Hard questions that are actually simple/short)\n  WITH not_hard AS (\n    SELECT id FROM questions\n    WHERE difficulty = 'Hard'\n      AND LENGTH(question) < 100\n      AND COALESCE(exam, '') NOT ILIKE '%advanced%'\n      AND question_type NOT IN ('numerical', 'assertion_reason')\n      AND NOT question ~* '(prove|derive|evaluate|integrate|differentiate)'\n    LIMIT p_batch_size\n  )\n  UPDATE questions SET difficulty = 'Medium'\n  WHERE id IN (SELECT id FROM not_hard);\n\n  -- EASY: reclassify from Medium \u2192 Easy (never demote Hard to Easy)\n  WITH easy_ids AS (\n    SELECT id FROM questions\n    WHERE difficulty = 'Medium'\n      AND (\n        (LENGTH(question) < 80)\n        OR (LENGTH(question) < 200 AND question ~* '(which\\s+of\\s+the\\s+following\\s+is|name\\s+the|is\\s+known\\s+as|is\\s+called|full\\s+form\\s+of|stands\\s+for|the\\s+formula\\s+(of|for)|si\\s+unit\\s+of|unit\\s+of|dimension\\s+of|chemical\\s+name|common\\s+name|belongs\\s+to|is\\s+a\\s+type\\s+of|symbol\\s+of|define\\s|what\\s+is\\s+the\\s+)')\n        OR (LENGTH(question) < 150 AND question ~* '(true\\s+or\\s+false|identify\\s+the|select\\s+the\\s+correct|choose\\s+the\\s+correct\\s+option|pick\\s+the\\s+odd)')\n        OR (LENGTH(question) < 120 AND (LENGTH(option_a) + LENGTH(option_b) + LENGTH(option_c) + LENGTH(option_d)) < 60)\n        OR (subject = 'Biology' AND LENGTH(question) < 150 AND question ~* '(scientific\\s+name|commonly\\s+known|discovered\\s+by|father\\s+of|coined\\s+by|proposed\\s+by)')\n        OR (subject = 'Chemistry' AND LENGTH(question) < 120 AND question ~* '(atomic\\s+number|electronic\\s+configuration|valency|hybridization\\s+of|IUPAC\\s+name\\s+of|colour\\s+of|oxidation\\s+state)')\n      )\n      AND NOT question ~* '(prove|derive|evaluate|integrate|differentiate|matrix|determinant|differential\\s+equation)'\n      AND COALESCE(exam, '') NOT ILIKE '%advanced%'\n    LIMIT p_batch_size\n  )\n  UPDATE questions SET difficulty = 'Easy'\n  WHERE id IN (SELECT id FROM easy_ids);\n  GET DIAGNOSTICS v_easy = ROW_COUNT;\n\n  SELECT COUNT(*) INTO v_remaining FROM questions WHERE difficulty = 'Medium';\n\n  RETURN jsonb_build_object(\n    'success', true,\n    'easy_classified', v_easy,\n    'hard_classified', v_hard,\n    'remaining_medium', v_remaining,\n    'has_more', (v_easy + v_hard) > 0\n  );\nEND;\n$function$\n"
+  },
+  {
+    "signature": "cleanup_expired_subscriptions()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "void",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.cleanup_expired_subscriptions()\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  UPDATE public.profiles SET is_premium = false, updated_at = now()\n  WHERE is_premium = true AND subscription_end_date IS NOT NULL AND subscription_end_date < now();\nEND $function$\n"
+  },
+  {
+    "signature": "close_league_cycle()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.close_league_cycle()\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_today date := (now() AT TIME ZONE 'Asia/Kolkata')::date;\n  v_settled integer := 0;\nBEGIN\n  WITH ranked AS (\n    SELECT m.id,\n           l.tier,\n           (SELECT count(*) FROM public.league_members x WHERE x.league_id = m.league_id) AS size,\n           RANK() OVER (PARTITION BY m.league_id ORDER BY m.xp DESC, m.joined_at ASC) AS rnk\n    FROM public.league_members m\n    JOIN public.leagues l ON l.id = m.league_id\n    WHERE l.cycle_end < v_today AND m.next_tier IS NULL\n  )\n  UPDATE public.league_members m\n  SET final_rank = r.rnk::integer,\n      next_tier = CASE\n        WHEN r.size < 5 THEN r.tier\n        WHEN r.rnk <= 7 THEN public.tier_shift(r.tier, 1)\n        WHEN r.rnk > GREATEST(7, r.size - 5) THEN public.tier_shift(r.tier, -1)\n        ELSE r.tier\n      END,\n      updated_at = now()\n  FROM ranked r\n  WHERE m.id = r.id;\n\n  GET DIAGNOSTICS v_settled = ROW_COUNT;\n  RETURN jsonb_build_object('settled_members', v_settled, 'closed_on', v_today);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "community_accept_reply(uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.community_accept_reply(p_reply_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE v_post community_posts%ROWTYPE; v_reply community_replies%ROWTYPE; v_points integer := 25;\nBEGIN\n  SELECT * INTO v_reply FROM community_replies WHERE id = p_reply_id;\n  IF NOT FOUND THEN RETURN jsonb_build_object('error','reply_not_found'); END IF;\n  SELECT * INTO v_post FROM community_posts WHERE id = v_reply.post_id;\n  IF v_post.user_id <> auth.uid() THEN RETURN jsonb_build_object('error','not_owner'); END IF;\n  UPDATE community_replies SET is_accepted = false WHERE post_id = v_post.id;\n  UPDATE community_replies SET is_accepted = true WHERE id = p_reply_id;\n  UPDATE community_posts SET is_solved = true, accepted_reply_id = p_reply_id, updated_at = now() WHERE id = v_post.id;\n  IF NOT v_reply.points_awarded AND v_reply.user_id <> v_post.user_id THEN\n    UPDATE community_replies SET points_awarded = true WHERE id = p_reply_id;\n    UPDATE profiles SET total_points = COALESCE(total_points,0) + v_points WHERE id = v_reply.user_id;\n    INSERT INTO points_log (user_id, action_type, points, description, reference_id)\n    VALUES (v_reply.user_id, 'community_accepted_answer', v_points, 'Answer accepted in community', p_reply_id::text);\n  END IF;\n  RETURN jsonb_build_object('ok', true, 'points', v_points);\nEND; $function$\n"
+  },
+  {
+    "signature": "community_apply_report()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.community_apply_report()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NEW.post_id IS NOT NULL THEN\n    UPDATE community_posts SET report_count = report_count + 1, is_hidden = (report_count + 1) >= 3 WHERE id = NEW.post_id;\n  ELSIF NEW.reply_id IS NOT NULL THEN\n    UPDATE community_replies SET report_count = report_count + 1, is_hidden = (report_count + 1) >= 3 WHERE id = NEW.reply_id;\n  END IF;\n  RETURN NEW;\nEND; $function$\n"
+  },
+  {
+    "signature": "community_bump_reply_count()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.community_bump_reply_count()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  UPDATE community_posts SET reply_count = (SELECT count(*) FROM community_replies WHERE post_id = NEW.post_id AND is_hidden = false), updated_at = now() WHERE id = NEW.post_id;\n  RETURN NEW;\nEND; $function$\n"
+  },
+  {
+    "signature": "community_get_authors(uuid[])",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "TABLE(id uuid, full_name text, avatar_url text)",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.community_get_authors(p_user_ids uuid[])\n RETURNS TABLE(id uuid, full_name text, avatar_url text)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT p.id,\n         COALESCE(NULLIF(p.full_name, ''), 'Student') AS full_name,\n         p.avatar_url\n  FROM public.profiles p\n  WHERE p.id = ANY(p_user_ids)\n    AND auth.uid() IS NOT NULL\n$function$\n"
+  },
+  {
+    "signature": "community_toggle_vote(uuid,uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.community_toggle_vote(p_post_id uuid, p_reply_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE v_existing uuid; v_count integer;\nBEGIN\n  IF auth.uid() IS NULL THEN RETURN jsonb_build_object('error','not_authenticated'); END IF;\n  IF p_post_id IS NOT NULL THEN\n    SELECT id INTO v_existing FROM community_votes WHERE user_id = auth.uid() AND post_id = p_post_id;\n    IF v_existing IS NOT NULL THEN DELETE FROM community_votes WHERE id = v_existing;\n    ELSE INSERT INTO community_votes (user_id, post_id) VALUES (auth.uid(), p_post_id); END IF;\n    SELECT count(*) INTO v_count FROM community_votes WHERE post_id = p_post_id;\n    UPDATE community_posts SET upvotes = v_count WHERE id = p_post_id;\n    RETURN jsonb_build_object('upvotes', v_count, 'voted', v_existing IS NULL);\n  ELSIF p_reply_id IS NOT NULL THEN\n    SELECT id INTO v_existing FROM community_votes WHERE user_id = auth.uid() AND reply_id = p_reply_id;\n    IF v_existing IS NOT NULL THEN DELETE FROM community_votes WHERE id = v_existing;\n    ELSE INSERT INTO community_votes (user_id, reply_id) VALUES (auth.uid(), p_reply_id); END IF;\n    SELECT count(*) INTO v_count FROM community_votes WHERE reply_id = p_reply_id;\n    UPDATE community_replies SET upvotes = v_count WHERE id = p_reply_id;\n    RETURN jsonb_build_object('upvotes', v_count, 'voted', v_existing IS NULL);\n  END IF;\n  RETURN jsonb_build_object('error','no_target');\nEND; $function$\n"
+  },
+  {
+    "signature": "count_unseen_questions(uuid,text,text,uuid,uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "integer",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.count_unseen_questions(p_user_id uuid, p_exam text DEFAULT NULL::text, p_subject text DEFAULT NULL::text, p_chapter_id uuid DEFAULT NULL::uuid, p_topic_id uuid DEFAULT NULL::uuid)\n RETURNS integer\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_subject text;\n  v_grade integer;\n  v_pool text[];\n  v_scope text;\n  v_count integer;\nBEGIN\n  v_subject := COALESCE(\n    p_subject,\n    (SELECT c.subject FROM public.chapters c WHERE c.id = p_chapter_id),\n    (SELECT c2.subject FROM public.topics t JOIN public.chapters c2 ON c2.id = t.chapter_id WHERE t.id = p_topic_id)\n  );\n  SELECT pr.grade INTO v_grade FROM public.profiles pr WHERE pr.id = p_user_id;\n  v_pool := public.exam_pool(p_exam, v_subject);\n\n  IF p_topic_id IS NOT NULL THEN v_scope := 'topic';\n  ELSIF p_chapter_id IS NOT NULL THEN v_scope := 'chapter';\n  ELSIF p_subject IS NOT NULL THEN v_scope := 'subject';\n  ELSE v_scope := 'all';\n  END IF;\n\n  SELECT count(*) INTO v_count FROM (\n    SELECT 1\n    FROM public.questions q\n    WHERE (q.is_active IS NULL OR q.is_active = true)\n      AND (q.text_quality IS NULL OR q.text_quality <> 'damaged')\n      AND (v_scope <> 'topic'   OR q.topic_id = p_topic_id)\n      AND (v_scope <> 'chapter' OR q.chapter_id = p_chapter_id)\n      AND (v_scope <> 'subject' OR lower(q.subject) = lower(p_subject))\n      AND (v_pool IS NULL OR q.exam = ANY(v_pool))\n      AND (v_scope IN ('topic','chapter') OR v_grade IS NULL OR q.class_level IS NULL OR q.class_level = v_grade)\n      AND NOT EXISTS (\n        SELECT 1 FROM public.question_attempts qa\n        WHERE qa.user_id = p_user_id AND qa.question_id = q.id\n      )\n    LIMIT 500\n  ) s;\n\n  RETURN COALESCE(v_count, 0);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "create_referral(text)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.create_referral(p_referral_code text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_referrer_id uuid;\n  v_user_id uuid;\nBEGIN\n  v_user_id := auth.uid();\n  IF v_user_id IS NULL THEN\n    RETURN jsonb_build_object('error', 'Not authenticated');\n  END IF;\n\n  -- Find the actual owner of the referral code\n  SELECT id INTO v_referrer_id FROM profiles WHERE referral_code = p_referral_code;\n  IF v_referrer_id IS NULL THEN\n    RETURN jsonb_build_object('error', 'Invalid referral code');\n  END IF;\n\n  -- Can't refer yourself\n  IF v_referrer_id = v_user_id THEN\n    RETURN jsonb_build_object('error', 'Cannot refer yourself');\n  END IF;\n\n  -- Check if already referred\n  IF EXISTS (SELECT 1 FROM referrals WHERE referred_id = v_user_id) THEN\n    RETURN jsonb_build_object('error', 'Already used a referral');\n  END IF;\n\n  INSERT INTO referrals (referrer_id, referred_id, referral_code, status)\n  VALUES (v_referrer_id, v_user_id, p_referral_code, 'completed');\n\n  RETURN jsonb_build_object('success', true, 'referrer_id', v_referrer_id);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "current_cycle_start()",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "date",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.current_cycle_start()\n RETURNS date\n LANGUAGE sql\n STABLE\n SET search_path TO 'public'\nAS $function$\n  SELECT (date_trunc('week', (now() AT TIME ZONE 'Asia/Kolkata')))::date;\n$function$\n"
+  },
+  {
+    "signature": "delete_duplicate_questions()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.delete_duplicate_questions()\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\r\nDECLARE\r\n  v_total   bigint := 0;\r\n  v_deleted bigint := 0;\r\nBEGIN\r\n  SELECT COUNT(*) INTO v_total FROM questions;\r\n\r\n  WITH ranked AS (\r\n    SELECT\r\n      id,\r\n      ROW_NUMBER() OVER (\r\n        PARTITION BY LEFT(LOWER(TRIM(REGEXP_REPLACE(question, '\\s+', ' ', 'g'))), 100)\r\n        ORDER BY created_at ASC NULLS LAST, id ASC\r\n      ) AS rn\r\n    FROM questions\r\n  )\r\n  DELETE FROM questions\r\n  WHERE id IN (SELECT id FROM ranked WHERE rn > 1);\r\n\r\n  GET DIAGNOSTICS v_deleted = ROW_COUNT;\r\n\r\n  RETURN jsonb_build_object(\r\n    'success',          true,\r\n    'total_scanned',    v_total,\r\n    'deleted',          v_deleted,\r\n    'unique_questions', v_total - v_deleted\r\n  );\r\nEND;\r\n$function$\n"
+  },
+  {
+    "signature": "enforce_question_integrity()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.enforce_question_integrity()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NEW.source IS NULL OR length(trim(NEW.source)) = 0 THEN\n    RAISE EXCEPTION 'questions.source is required (no untagged imports allowed)';\n  END IF;\n  IF NEW.chapter_id IS NULL THEN\n    RAISE EXCEPTION 'questions.chapter_id is required (no orphan questions allowed)';\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "ensure_daily_progress(uuid,integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.ensure_daily_progress(p_user_id uuid, p_daily_target integer DEFAULT NULL::integer)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE v_today date := (now() AT TIME ZONE 'Asia/Kolkata')::date; v_target int; v_pg int;\nBEGIN\n  IF auth.uid() IS NULL OR auth.uid() <> p_user_id THEN RAISE EXCEPTION 'unauthorized'; END IF;\n  SELECT COALESCE(daily_goal,15) INTO v_pg FROM public.profiles WHERE id = p_user_id;\n  v_target := GREATEST(COALESCE(p_daily_target,15), COALESCE(v_pg,15));\n  INSERT INTO public.daily_progress (user_id, date, daily_target, questions_completed, target_met)\n  VALUES (p_user_id, v_today, v_target, 0, false) ON CONFLICT (user_id, date) DO NOTHING;\n  RETURN jsonb_build_object('success', true);\nEND $function$\n"
+  },
+  {
+    "signature": "ensure_policy(text,text,text)",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "void",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.ensure_policy(p_table text, p_name text, p_cmd text)\n RETURNS void\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NOT EXISTS (\n    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = p_table AND policyname = p_name\n  ) THEN\n    EXECUTE p_cmd;\n  END IF;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "exam_family(text)",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "text[]",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.exam_family(p_exam text)\n RETURNS text[]\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\n  SELECT CASE\n    WHEN p_exam IS NULL OR btrim(p_exam) = '' THEN NULL::text[]\n    WHEN p_exam ILIKE '%jee%' THEN ARRAY['JEE','JEE Main','JEE Mains','JEE Advanced']\n    WHEN p_exam ILIKE '%neet%' THEN ARRAY['NEET']\n    ELSE ARRAY[p_exam]\n  END;\n$function$\n"
+  },
+  {
+    "signature": "exam_pool(text,text)",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "text[]",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.exam_pool(p_exam text, p_subject text)\n RETURNS text[]\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\n  SELECT CASE\n    WHEN public.exam_family(p_exam) IS NULL THEN NULL::text[]\n    WHEN p_subject IS NULL OR lower(btrim(p_subject)) NOT IN ('physics','chemistry')\n      THEN public.exam_family(p_exam)\n    WHEN p_exam ILIKE '%jee%'\n      THEN ARRAY['JEE','JEE Main','JEE Mains','JEE Advanced','NEET']\n    WHEN p_exam ILIKE '%neet%'\n      THEN ARRAY['NEET','JEE','JEE Main','JEE Mains']\n    ELSE public.exam_family(p_exam)\n  END;\n$function$\n"
+  },
+  {
+    "signature": "fetch_unseen_questions(uuid,text,text,uuid,uuid,text,uuid[],integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "SETOF questions",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.fetch_unseen_questions(p_user_id uuid, p_exam text DEFAULT NULL::text, p_subject text DEFAULT NULL::text, p_chapter_id uuid DEFAULT NULL::uuid, p_topic_id uuid DEFAULT NULL::uuid, p_topic_name text DEFAULT NULL::text, p_batch_ids uuid[] DEFAULT NULL::uuid[], p_limit integer DEFAULT 100)\n RETURNS SETOF questions\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_subject text;\n  v_grade integer;\n  v_native text[];\n  v_pool text[];\n  v_scope text;\nBEGIN\n  v_subject := COALESCE(\n    p_subject,\n    (SELECT c.subject FROM public.chapters c WHERE c.id = p_chapter_id),\n    (SELECT c2.subject FROM public.topics t JOIN public.chapters c2 ON c2.id = t.chapter_id WHERE t.id = p_topic_id)\n  );\n  SELECT pr.grade INTO v_grade FROM public.profiles pr WHERE pr.id = p_user_id;\n  v_native := public.exam_family(p_exam);\n  v_pool := public.exam_pool(p_exam, v_subject);\n\n  IF p_topic_id IS NOT NULL THEN v_scope := 'topic';\n  ELSIF p_chapter_id IS NOT NULL THEN v_scope := 'chapter';\n  ELSIF p_subject IS NOT NULL THEN v_scope := 'subject';\n  ELSE v_scope := 'all';\n  END IF;\n\n  RETURN QUERY\n  WITH candidates AS (\n    SELECT q.id, q.exam\n    FROM public.questions q\n    WHERE (q.is_active IS NULL OR q.is_active = true)\n      AND (q.text_quality IS NULL OR q.text_quality <> 'damaged')\n      AND (v_scope <> 'topic'   OR q.topic_id = p_topic_id)\n      AND (v_scope <> 'chapter' OR q.chapter_id = p_chapter_id)\n      AND (v_scope <> 'subject' OR lower(q.subject) = lower(p_subject))\n      AND (v_pool IS NULL OR q.exam = ANY(v_pool))\n      AND (\n        v_scope IN ('topic','chapter')\n        OR v_grade IS NULL\n        OR q.class_level IS NULL\n        OR q.class_level = v_grade\n      )\n      AND (p_topic_name IS NULL OR q.topic ILIKE '%' || p_topic_name || '%')\n      AND (p_batch_ids IS NULL OR array_length(p_batch_ids, 1) IS NULL OR q.batch_id = ANY(p_batch_ids))\n      AND NOT EXISTS (\n        SELECT 1 FROM public.question_attempts qa\n        WHERE qa.user_id = p_user_id AND qa.question_id = q.id\n      )\n    LIMIT 4000\n  ),\n  picked AS (\n    SELECT c.id FROM candidates c\n    ORDER BY\n      (CASE WHEN v_native IS NULL OR c.exam = ANY(v_native) THEN 0 ELSE 1 END),\n      random()\n    LIMIT GREATEST(p_limit, 1)\n  )\n  SELECT q.* FROM public.questions q JOIN picked p ON p.id = q.id;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "finish_battle(uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.finish_battle(p_battle_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_user uuid := auth.uid();\n  v_winner uuid;\n  v_player record;\n  v_reward_points integer;\nBEGIN\n  IF v_user IS NULL THEN\n    RETURN jsonb_build_object('error', 'not_authenticated');\n  END IF;\n\n  IF NOT EXISTS (SELECT 1 FROM public.battle_players WHERE battle_id = p_battle_id AND user_id = v_user) THEN\n    RETURN jsonb_build_object('error', 'not_in_battle');\n  END IF;\n\n  UPDATE public.battle_players\n  SET finished_at = COALESCE(finished_at, now())\n  WHERE battle_id = p_battle_id AND user_id = v_user;\n\n  SELECT user_id INTO v_winner\n  FROM public.battle_players\n  WHERE battle_id = p_battle_id\n  ORDER BY score DESC, correct_count DESC, joined_at ASC\n  LIMIT 1;\n\n  IF NOT EXISTS (\n    SELECT 1\n    FROM public.battle_players bp\n    WHERE bp.battle_id = p_battle_id AND bp.finished_at IS NULL\n  ) OR EXISTS (\n    SELECT 1 FROM public.battle_sessions bs WHERE bs.id = p_battle_id AND bs.expires_at <= now()\n  ) THEN\n    UPDATE public.battle_sessions\n    SET status = 'completed', completed_at = COALESCE(completed_at, now()), winner_user_id = v_winner, updated_at = now()\n    WHERE id = p_battle_id;\n\n    FOR v_player IN SELECT * FROM public.battle_players WHERE battle_id = p_battle_id LOOP\n      v_reward_points := CASE WHEN v_player.user_id = v_winner THEN 250 ELSE 75 END;\n      INSERT INTO public.battle_rewards (battle_id, user_id, points, title)\n      VALUES (p_battle_id, v_player.user_id, v_reward_points, CASE WHEN v_player.user_id = v_winner THEN 'Battle Champion' ELSE 'Battle Finisher' END)\n      ON CONFLICT (battle_id, user_id, reward_type) DO NOTHING;\n\n      UPDATE public.profiles\n      SET total_points = COALESCE(total_points, 0) + v_reward_points,\n          updated_at = now()\n      WHERE id = v_player.user_id;\n\n      INSERT INTO public.points_log (user_id, action_type, points, description, reference_id)\n      VALUES (v_player.user_id, 'battle_reward', v_reward_points, CASE WHEN v_player.user_id = v_winner THEN 'Won a Pro+ battle' ELSE 'Completed a Pro+ battle' END, p_battle_id::text);\n    END LOOP;\n  END IF;\n\n  RETURN jsonb_build_object('battle_id', p_battle_id, 'winner_user_id', v_winner);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "fix_chapter_batch_distribution()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.fix_chapter_batch_distribution()\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_moved int := 0;\n  v_chapter record;\n  v_correct_grade int;\n  v_current_batch record;\n  v_target_batch record;\n  v_target_chapter_id uuid;\n  v_moved_count int;\n  v_moves jsonb := '[]'::jsonb;\nBEGIN\n  -- Process each chapter\n  FOR v_chapter IN\n    SELECT c.id, c.chapter_name, c.subject, c.batch_id, b.exam_type, b.grade\n    FROM chapters c\n    JOIN batches b ON c.batch_id = b.id\n    WHERE b.is_active = true\n  LOOP\n    -- Determine correct grade based on NCERT syllabus\n    v_correct_grade := NULL;\n    \n    -- Physics mapping\n    IF LOWER(v_chapter.subject) = 'physics' THEN\n      IF LOWER(v_chapter.chapter_name) ~* '(units and measure|motion in a straight|motion in a plane|laws of motion|work.*(power|energy)|rotational|gravitation|mechanical properties|thermal properties|thermodynamics|kinetic theory|oscillation|waves|simple harmonic|physical world|fluid)' THEN\n        v_correct_grade := 11;\n      ELSIF LOWER(v_chapter.chapter_name) ~* '(electr|current electricity|magnet|electromagnetic|alternating|ray optic|wave optic|optic|dual nature|atoms|nucle|semiconductor|communication|capacitance)' THEN\n        v_correct_grade := 12;\n      END IF;\n    END IF;\n\n    -- Chemistry mapping\n    IF LOWER(v_chapter.subject) = 'chemistry' THEN\n      IF LOWER(v_chapter.chapter_name) ~* '(basic concepts|structure of atom|atomic structure|classification of elements|periodicity|chemical bonding|states of matter|thermodynamics|chemical thermodynamics|equilibrium|redox|hydrogen|s.block|p.block.*1[34]|organic.*basic|general organic|hydrocarbons|environmental chemistry)' THEN\n        v_correct_grade := 11;\n      ELSIF LOWER(v_chapter.chapter_name) ~* '(solid state|solutions|electrochemistry|chemical kinetics|surface chemistry|metallurgy|isolation of elements|p.block|d.and.f|d.block|transition|coordination|haloalkane|alcohol|phenol|ether|aldehyde|ketone|carboxylic|amine|nitrogen|biomolecule|polymer|chemistry in everyday|haloarene)' THEN\n        v_correct_grade := 12;\n      END IF;\n    END IF;\n\n    -- Mathematics mapping\n    IF LOWER(v_chapter.subject) = 'mathematics' THEN\n      IF LOWER(v_chapter.chapter_name) ~* '(^sets|trigonometric function|mathematical induction|complex number|quadratic|linear inequalit|permutation|combination|binomial|sequence|series|straight line|coordinate geometry|conic section|limits|derivatives$|mathematical reasoning|statistics|^probability$)' THEN\n        v_correct_grade := 11;\n      ELSIF LOWER(v_chapter.chapter_name) ~* '(inverse trigon|matri|determinant|continuity|differentiab|differentiation|application.*(deriv|integr)|integral|integration|area under|differential equation|vector|three dimensional|3d geometry|linear programming|probability.*(distrib|advanced)|circle|parabola|ellipse|hyperbola)' THEN\n        v_correct_grade := 12;\n      END IF;\n    END IF;\n\n    -- Biology mapping\n    IF LOWER(v_chapter.subject) = 'biology' THEN\n      IF LOWER(v_chapter.chapter_name) ~* '(living world|biological classification|plant kingdom|animal kingdom|morphology|anatomy.*plant|structural organisation|cell.*(unit|biology|structure)|biomolecule|cell.*(cycle|division)|transport in plant|mineral nutrition|photosynthesis|respiration in plant|plant growth|digestion|breathing|body fluid|circulation|excret|locomotion|neural|nervous|chemical coordination|endocrine)' THEN\n        v_correct_grade := 11;\n      ELSIF LOWER(v_chapter.chapter_name) ~* '(reproduction|sexual reproduction|human reproduction|reproductive health|inheritance|variation|genetics|molecular.*(basis|biology)|evolution|human health|disease|food production|microbes|biotechnology|organisms and population|ecology|ecosystem|biodiversity|environmental issue)' THEN\n        v_correct_grade := 12;\n      END IF;\n    END IF;\n\n    -- Skip if no mapping found or already correct\n    IF v_correct_grade IS NULL OR v_chapter.grade = v_correct_grade THEN\n      CONTINUE;\n    END IF;\n\n    -- Find target batch\n    SELECT * INTO v_target_batch\n    FROM batches\n    WHERE exam_type = v_chapter.exam_type\n      AND grade = v_correct_grade\n      AND is_active = true\n    LIMIT 1;\n\n    IF v_target_batch IS NULL THEN\n      CONTINUE;\n    END IF;\n\n    -- Find or create target chapter\n    SELECT id INTO v_target_chapter_id\n    FROM chapters\n    WHERE LOWER(chapter_name) = LOWER(v_chapter.chapter_name)\n      AND LOWER(subject) = LOWER(v_chapter.subject)\n      AND batch_id = v_target_batch.id\n    LIMIT 1;\n\n    IF v_target_chapter_id IS NULL THEN\n      INSERT INTO chapters (chapter_name, subject, batch_id, is_active)\n      VALUES (v_chapter.chapter_name, v_chapter.subject, v_target_batch.id, true)\n      RETURNING id INTO v_target_chapter_id;\n    END IF;\n\n    -- Move questions\n    UPDATE questions\n    SET batch_id = v_target_batch.id, chapter_id = v_target_chapter_id\n    WHERE chapter_id = v_chapter.id;\n    GET DIAGNOSTICS v_moved_count = ROW_COUNT;\n\n    v_moved := v_moved + v_moved_count;\n\n    v_moves := v_moves || jsonb_build_object(\n      'chapter', v_chapter.chapter_name,\n      'subject', v_chapter.subject,\n      'from_grade', v_chapter.grade,\n      'to_grade', v_correct_grade,\n      'questions', v_moved_count\n    );\n\n    -- Deactivate empty source chapter\n    IF v_moved_count > 0 THEN\n      UPDATE chapters SET is_active = false\n      WHERE id = v_chapter.id\n        AND NOT EXISTS (SELECT 1 FROM questions WHERE chapter_id = v_chapter.id LIMIT 1);\n    END IF;\n  END LOOP;\n\n  RETURN jsonb_build_object(\n    'success', true,\n    'total_questions_moved', v_moved,\n    'chapters_processed', jsonb_array_length(v_moves),\n    'moves', v_moves\n  );\nEND;\n$function$\n"
+  },
+  {
+    "signature": "fix_mojibake(text)",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "text",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.fix_mojibake(t text)\n RETURNS text\n LANGUAGE plpgsql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  res text := '';\n  pos int := 1;\n  len int;\n  ch  text;\n  code int;\n  run text;\n  dec text;\n  bytes bytea;\n  b int;\n  k int;\n  ok boolean;\nBEGIN\n  IF t IS NULL THEN RETURN NULL; END IF;\n  len := length(t);\n  WHILE pos <= len LOOP\n    ch := substr(t, pos, 1);\n    code := ascii(ch);\n    IF code >= 128 THEN\n      run := '';\n      WHILE pos <= len LOOP\n        ch := substr(t, pos, 1);\n        code := ascii(ch);\n        EXIT WHEN code < 128;\n        run := run || ch;\n        pos := pos + 1;\n      END LOOP;\n\n      ok := true;\n      bytes := ''::bytea;\n      FOR k IN 1..length(run) LOOP\n        b := public.mojibake_byte(substr(run, k, 1));\n        IF b IS NULL THEN ok := false; EXIT; END IF;\n        bytes := bytes || set_byte('\\x00'::bytea, 0, b);\n      END LOOP;\n\n      dec := NULL;\n      IF ok THEN\n        BEGIN\n          dec := convert_from(bytes, 'UTF8');\n        EXCEPTION WHEN OTHERS THEN\n          dec := NULL;\n        END;\n      END IF;\n      res := res || COALESCE(dec, run);\n    ELSE\n      res := res || ch;\n      pos := pos + 1;\n    END IF;\n  END LOOP;\n  RETURN res;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "fn_auto_deactivate_on_report()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.fn_auto_deactivate_on_report()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  UPDATE questions SET is_active = false WHERE id = NEW.question_id;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "fn_expire_batch_subscriptions()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "void",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.fn_expire_batch_subscriptions()\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  UPDATE user_batch_subscriptions\n    SET status = 'expired'\n  WHERE status = 'active'\n    AND expires_at < now();\nEND;\n$function$\n"
+  },
+  {
+    "signature": "fn_log_payment_status_change()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.fn_log_payment_status_change()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF OLD.status IS DISTINCT FROM NEW.status THEN\n    INSERT INTO payment_audit (\n      payment_table, payment_id, razorpay_order_id, status_from, status_to, changed_by_user\n    ) VALUES (\n      TG_TABLE_NAME, NEW.id::text, NEW.razorpay_order_id, OLD.status, NEW.status, auth.uid()\n    );\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "fn_record_question_edit()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.fn_record_question_edit()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF (OLD.question IS DISTINCT FROM NEW.question)\n     OR (OLD.options IS DISTINCT FROM NEW.options)\n     OR (OLD.correct_answer IS DISTINCT FROM NEW.correct_answer)\n     OR (OLD.explanation IS DISTINCT FROM NEW.explanation)\n  THEN\n    INSERT INTO question_edit_history (\n      question_id, previous_question, previous_options, previous_answer, previous_explanation, edited_by\n    ) VALUES (\n      OLD.id, OLD.question, OLD.options, OLD.correct_answer, OLD.explanation, auth.uid()\n    );\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "fn_update_last_activity()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.fn_update_last_activity()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  UPDATE profiles\n    SET last_activity = now(), updated_at = now()\n  WHERE id = NEW.user_id;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "generate_referral_code()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "text",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.generate_referral_code()\n RETURNS text\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  alphabet TEXT := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';\n  candidate TEXT;\n  raw TEXT;\n  ch TEXT;\n  i INT;\n  attempt INT := 0;\nBEGIN\n  LOOP\n    candidate := 'JN';\n    raw := upper(md5(random()::text || clock_timestamp()::text));\n    FOR i IN 1..length(raw) LOOP\n      ch := substring(raw from i for 1);\n      IF position(ch in alphabet) > 0 THEN\n        candidate := candidate || ch;\n        EXIT WHEN length(candidate) >= 8;\n      END IF;\n    END LOOP;\n    -- pad if too short\n    WHILE length(candidate) < 8 LOOP\n      candidate := candidate || substring(alphabet from (floor(random() * length(alphabet))::int + 1) for 1);\n    END LOOP;\n    candidate := substring(candidate from 1 for 8);\n    EXIT WHEN NOT EXISTS (SELECT 1 FROM public.profiles WHERE referral_code = candidate);\n    attempt := attempt + 1;\n    EXIT WHEN attempt > 12;\n  END LOOP;\n  RETURN candidate;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "get_all_subject_question_counts(uuid[],text,integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "TABLE(subject text, question_count bigint, chapter_count bigint)",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.get_all_subject_question_counts(p_batch_ids uuid[] DEFAULT NULL::uuid[], p_exam text DEFAULT NULL::text, p_class_level integer DEFAULT NULL::integer)\n RETURNS TABLE(subject text, question_count bigint, chapter_count bigint)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nbegin\n  return query\n  with filtered_chapters as (\n    select id, c.subject\n    from public.chapters c\n    where is_active = true\n      and (p_class_level is null or c.class_level = p_class_level)\n      and (p_batch_ids is null or c.batch_id = any(p_batch_ids))\n      and (p_exam is null or exam_relevance @> array[p_exam]::public.exam_code[])\n  ),\n  chapter_stats as (\n    select \n      fc.subject,\n      count(distinct fc.id) as chapters,\n      count(q.id) as questions\n    from filtered_chapters fc\n    left join public.questions q on q.chapter_id = fc.id and q.is_active = true\n    group by fc.subject\n  )\n  select \n    cs.subject,\n    cs.questions,\n    cs.chapters\n  from chapter_stats cs;\nend;\n$function$\n"
+  },
+  {
+    "signature": "get_chapter_difficulty_distribution(uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "TABLE(difficulty text, count bigint)",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.get_chapter_difficulty_distribution(p_chapter_id uuid)\n RETURNS TABLE(difficulty text, count bigint)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$SELECT COALESCE(difficulty, 'Unknown')::text AS difficulty, COUNT(*)::bigint FROM questions WHERE is_active = true AND chapter_id = p_chapter_id GROUP BY COALESCE(difficulty, 'Unknown')::text;$function$\n"
+  },
+  {
+    "signature": "get_chapter_question_counts(text,uuid[],text)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "TABLE(chapter_id uuid, count bigint)",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.get_chapter_question_counts(p_subject text, p_batch_ids uuid[] DEFAULT NULL::uuid[], p_exam text DEFAULT NULL::text)\n RETURNS TABLE(chapter_id uuid, count bigint)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  WITH batch_scope AS (\n    SELECT DISTINCT b.grade FROM public.batches b\n    WHERE p_batch_ids IS NOT NULL AND cardinality(p_batch_ids) > 0 AND b.id = ANY(p_batch_ids)\n  )\n  SELECT q.chapter_id, COUNT(*)::bigint\n  FROM public.questions q\n  JOIN public.chapters c ON c.id = q.chapter_id\n  WHERE q.is_active = true\n    AND (q.text_quality IS NULL OR q.text_quality <> 'damaged')\n    AND c.is_active = true\n    AND q.chapter_id IS NOT NULL\n    AND c.subject ILIKE p_subject\n    AND (\n      p_batch_ids IS NULL OR cardinality(p_batch_ids) = 0\n      OR q.batch_id = ANY(p_batch_ids) OR c.batch_id = ANY(p_batch_ids)\n      OR c.class_level IN (SELECT grade FROM batch_scope)\n    )\n    AND (\n      public.exam_family(p_exam) IS NULL\n      OR q.exam = ANY(public.exam_pool(p_exam, c.subject))\n    )\n  GROUP BY q.chapter_id;\n$function$\n"
+  },
+  {
+    "signature": "get_chapter_question_counts(uuid[],text)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "TABLE(chapter_id uuid, count bigint)",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.get_chapter_question_counts(p_chapter_ids uuid[], p_exam text DEFAULT NULL::text)\n RETURNS TABLE(chapter_id uuid, count bigint)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  WITH ids AS (\n    SELECT c.id, c.subject FROM public.chapters c WHERE c.id = ANY(p_chapter_ids)\n  ),\n  p AS (\n    SELECT public.exam_family(p_exam) AS fam,\n           public.exam_pool(p_exam, 'physics') AS pool_shared,\n           public.exam_pool(p_exam, 'other') AS pool_other\n  )\n  SELECT q.chapter_id, COUNT(*)::bigint\n  FROM public.questions q\n  JOIN ids ON ids.id = q.chapter_id\n  CROSS JOIN p\n  WHERE q.is_active = true\n    AND (q.text_quality IS NULL OR q.text_quality <> 'damaged')\n    AND (\n      p.fam IS NULL\n      OR q.exam = ANY(\n        CASE WHEN lower(COALESCE(ids.subject, '')) IN ('physics', 'chemistry')\n             THEN p.pool_shared ELSE p.pool_other END\n      )\n    )\n  GROUP BY q.chapter_id;\n$function$\n"
+  },
+  {
+    "signature": "get_contract_status()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.get_contract_status()\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_uid uuid := auth.uid();\n  v_today date := (now() AT TIME ZONE 'Asia/Kolkata')::date;\n  c public.user_contracts%ROWTYPE;\n  v_attempted int := 0;\n  v_correct int := 0;\n  v_span int;\n  v_elapsed int;\nBEGIN\n  IF v_uid IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'unauthenticated'); END IF;\n\n  SELECT * INTO c FROM public.user_contracts\n  WHERE user_id = v_uid AND status = 'active' AND ends_on >= v_today\n  ORDER BY created_at DESC LIMIT 1;\n\n  IF c.id IS NULL THEN RETURN jsonb_build_object('ok', true, 'contract', NULL); END IF;\n\n  SELECT count(*), count(*) FILTER (WHERE is_correct)\n  INTO v_attempted, v_correct\n  FROM public.question_attempts\n  WHERE user_id = v_uid\n    AND COALESCE(mode, 'practice') <> 'test'\n    AND (attempted_at AT TIME ZONE 'Asia/Kolkata')::date BETWEEN c.starts_on AND c.ends_on;\n\n  v_span := GREATEST(1, (c.ends_on - c.starts_on));\n  v_elapsed := GREATEST(1, LEAST(v_span, (v_today - c.starts_on) + 1));\n\n  RETURN jsonb_build_object('ok', true, 'contract', jsonb_build_object(\n    'id', c.id,\n    'target_questions', c.target_questions,\n    'target_accuracy', c.target_accuracy,\n    'reward_points', c.reward_points,\n    'starts_on', c.starts_on,\n    'ends_on', c.ends_on,\n    'status', c.status,\n    'attempted', v_attempted,\n    'accuracy', CASE WHEN v_attempted > 0 THEN round((v_correct::numeric / v_attempted) * 100) ELSE 0 END,\n    'expected_by_now', ceil(c.target_questions::numeric * v_elapsed / v_span)::int,\n    'days_left', GREATEST(0, c.ends_on - v_today)\n  ));\nEND;\n$function$\n"
+  },
+  {
+    "signature": "get_leaderboard_with_stats(integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres,anon=X/postgres}",
+    "returns": "TABLE(id uuid, full_name text, avatar_url text, total_points integer, current_streak integer, total_questions bigint, accuracy numeric)",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.get_leaderboard_with_stats(limit_count integer DEFAULT 100)\n RETURNS TABLE(id uuid, full_name text, avatar_url text, total_points integer, current_streak integer, total_questions bigint, accuracy numeric)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  RETURN QUERY\n  SELECT p.id, p.full_name, p.avatar_url,\n    COALESCE(p.total_points,0)::int AS total_points,\n    COALESCE(p.current_streak,0) AS current_streak,\n    COALESCE(qa.total_questions,0)::bigint AS total_questions,\n    COALESCE(qa.accuracy,0) AS accuracy\n  FROM public.profiles p\n  LEFT JOIN LATERAL (\n    SELECT COUNT(*)::bigint AS total_questions,\n      CASE WHEN COUNT(*) > 0\n        THEN ROUND((COUNT(*) FILTER (WHERE is_correct)::numeric / COUNT(*)::numeric)*100, 1)\n        ELSE 0 END AS accuracy\n    FROM public.question_attempts qa2 WHERE qa2.user_id = p.id\n  ) qa ON true\n  WHERE COALESCE(p.total_points,0) > 0\n     OR COALESCE(qa.total_questions,0) > 0\n  ORDER BY COALESCE(p.total_points,0) DESC,\n           COALESCE(qa.total_questions,0) DESC\n  LIMIT limit_count;\nEND $function$\n"
+  },
+  {
+    "signature": "get_my_league()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "TABLE(league_id uuid, tier text, cycle_start date, cycle_end date, user_id uuid, full_name text, avatar_url text, xp integer, rank bigint, is_me boolean)",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.get_my_league()\n RETURNS TABLE(league_id uuid, tier text, cycle_start date, cycle_end date, user_id uuid, full_name text, avatar_url text, xp integer, rank bigint, is_me boolean)\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_uid uuid := auth.uid();\n  v_league uuid;\nBEGIN\n  IF v_uid IS NULL THEN RETURN; END IF;\n\n  SELECT lm.league_id INTO v_league\n  FROM public.league_members lm\n  JOIN public.leagues l ON l.id = lm.league_id\n  WHERE lm.user_id = v_uid AND l.cycle_start = public.current_cycle_start()\n  LIMIT 1;\n\n  IF v_league IS NULL THEN RETURN; END IF;\n\n  RETURN QUERY\n  SELECT l.id, l.tier, l.cycle_start, l.cycle_end,\n         m.user_id,\n         COALESCE(p.full_name, 'Student'),\n         p.avatar_url,\n         m.xp,\n         RANK() OVER (ORDER BY m.xp DESC, m.joined_at ASC),\n         (m.user_id = v_uid)\n  FROM public.league_members m\n  JOIN public.leagues l ON l.id = m.league_id\n  LEFT JOIN public.profiles p ON p.id = m.user_id\n  WHERE m.league_id = v_league\n  ORDER BY m.xp DESC, m.joined_at ASC;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "get_questions_for_remap(integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "TABLE(id uuid, question_text text, subject text, chapter_id uuid)",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.get_questions_for_remap(batch_size integer DEFAULT 100)\n RETURNS TABLE(id uuid, question_text text, subject text, chapter_id uuid)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT q.id, q.question_text, q.subject, q.chapter_id\n  FROM public.questions q\n  WHERE q.is_active = true\n    AND NOT EXISTS (\n      SELECT 1 FROM public.question_chapter_remap r\n      WHERE r.question_id = q.id\n    )\n  ORDER BY q.id\n  LIMIT batch_size;\n$function$\n"
+  },
+  {
+    "signature": "get_subject_question_counts(uuid[],text)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "TABLE(subject text, count bigint)",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.get_subject_question_counts(p_batch_ids uuid[] DEFAULT NULL::uuid[], p_exam text DEFAULT NULL::text)\n RETURNS TABLE(subject text, count bigint)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  WITH batch_scope AS (\n    SELECT DISTINCT b.grade FROM public.batches b\n    WHERE p_batch_ids IS NOT NULL AND cardinality(p_batch_ids) > 0 AND b.id = ANY(p_batch_ids)\n  )\n  SELECT COALESCE(c.subject, q.subject) AS subject, COUNT(*)::bigint\n  FROM public.questions q\n  LEFT JOIN public.chapters c ON c.id = q.chapter_id\n  WHERE q.is_active = true\n    AND (q.text_quality IS NULL OR q.text_quality <> 'damaged')\n    AND (c.id IS NULL OR c.is_active = true)\n    AND COALESCE(c.subject, q.subject) IS NOT NULL\n    AND (\n      p_batch_ids IS NULL OR cardinality(p_batch_ids) = 0\n      OR q.batch_id = ANY(p_batch_ids) OR c.batch_id = ANY(p_batch_ids)\n      OR c.class_level IN (SELECT grade FROM batch_scope)\n    )\n    AND (\n      public.exam_family(p_exam) IS NULL\n      OR q.exam = ANY(public.exam_pool(p_exam, COALESCE(c.subject, q.subject)))\n    )\n  GROUP BY COALESCE(c.subject, q.subject);\n$function$\n"
+  },
+  {
+    "signature": "get_system_health_status()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.get_system_health_status()\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare\n    error_count int;\nbegin\n    select count(*) into error_count from public.system_logs where level in ('error', 'critical') and created_at > now() - interval '24 hours';\n    \n    return jsonb_build_object(\n        'status', case when error_count > 50 then 'degraded' else 'healthy' end,\n        'recent_errors_24h', error_count,\n        'timestamp', now()\n    );\nend;\n$function$\n"
+  },
+  {
+    "signature": "get_topic_question_counts(uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "TABLE(topic_id uuid, count bigint)",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.get_topic_question_counts(p_chapter_id uuid)\n RETURNS TABLE(topic_id uuid, count bigint)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT topic_id, COUNT(*)::bigint\n  FROM public.questions\n  WHERE is_active = true AND chapter_id = p_chapter_id AND topic_id IS NOT NULL\n    AND (text_quality IS NULL OR text_quality <> 'damaged')\n  GROUP BY topic_id;\n$function$\n"
+  },
+  {
+    "signature": "get_topic_question_counts(uuid,uuid[],text)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "TABLE(topic_id uuid, count bigint)",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.get_topic_question_counts(p_chapter_id uuid, p_batch_ids uuid[] DEFAULT NULL::uuid[], p_exam text DEFAULT NULL::text)\n RETURNS TABLE(topic_id uuid, count bigint)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT topic_id, COUNT(*)::bigint\n  FROM public.questions\n  WHERE is_active = true\n    AND chapter_id = p_chapter_id\n    AND topic_id IS NOT NULL\n    AND (text_quality IS NULL OR text_quality <> 'damaged')\n    AND (p_batch_ids IS NULL OR cardinality(p_batch_ids) = 0 OR batch_id = ANY(p_batch_ids) OR batch_id IS NULL)\n    AND (\n      p_exam IS NULL\n      OR (p_exam ILIKE '%jee%'  AND exam ILIKE '%jee%')\n      OR (p_exam ILIKE '%neet%' AND exam ILIKE '%neet%')\n      OR (p_exam NOT ILIKE '%jee%' AND p_exam NOT ILIKE '%neet%' AND exam = p_exam)\n    )\n  GROUP BY topic_id;\n$function$\n"
+  },
+  {
+    "signature": "get_xp_status()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.get_xp_status()\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_uid uuid := auth.uid();\n  v_today date := (now() AT TIME ZONE 'Asia/Kolkata')::date;\n  v_p RECORD;\nBEGIN\n  IF v_uid IS NULL THEN RETURN jsonb_build_object('error','Unauthorized'); END IF;\n  SELECT daily_xp, daily_xp_date, COALESCE(daily_goal,15) AS daily_goal,\n         COALESCE(current_streak,0) AS current_streak,\n         COALESCE(streak_freeze_available,false) AS freeze,\n         COALESCE(pending_streak_repair,0) AS repair,\n         pending_streak_repair_date\n  INTO v_p FROM public.profiles WHERE id = v_uid;\n\n  RETURN jsonb_build_object(\n    'daily_xp', CASE WHEN v_p.daily_xp_date IS DISTINCT FROM v_today THEN 0 ELSE COALESCE(v_p.daily_xp,0) END,\n    'xp_goal', GREATEST(v_p.daily_goal,1) * 10,\n    'daily_goal', v_p.daily_goal,\n    'streak', v_p.current_streak,\n    'freeze_available', v_p.freeze,\n    'repair_available', (v_p.repair > 0 AND v_p.pending_streak_repair_date = v_today),\n    'repair_streak_value', v_p.repair\n  );\nEND;\n$function$\n"
+  },
+  {
+    "signature": "guard_referral_update()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.guard_referral_update()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'super_admin'::app_role) THEN\n    RETURN NEW;\n  END IF;\n  IF NEW.reward_granted IS DISTINCT FROM OLD.reward_granted\n     OR NEW.status IS DISTINCT FROM OLD.status\n     OR NEW.referrer_id IS DISTINCT FROM OLD.referrer_id\n     OR NEW.referred_id IS DISTINCT FROM OLD.referred_id THEN\n    RAISE EXCEPTION 'Cannot modify protected referral fields';\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "handle_new_educator_signup_notification()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.handle_new_educator_signup_notification()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\r\nDECLARE\r\n  requested_account_type text;\r\nBEGIN\r\n  requested_account_type := COALESCE(new.raw_user_meta_data->>'account_type', 'student');\r\n\r\n  IF requested_account_type = 'educator' THEN\r\n    UPDATE public.profiles\r\n    SET educator_approved = false,\r\n        updated_at = now()\r\n    WHERE id = new.id;\r\n\r\n    INSERT INTO public.user_roles (user_id, role)\r\n    VALUES (new.id, 'educator'::public.app_role)\r\n    ON CONFLICT (user_id)\r\n    DO UPDATE SET role = 'educator'::public.app_role;\r\n\r\n    INSERT INTO public.admin_notifications (title, message, target_audience, status, sent_by)\r\n    VALUES (\r\n      'Priority: New Educator Approval Request',\r\n      format('%s (%s) signed up as educator and is waiting for manual approval.', COALESCE(new.raw_user_meta_data->>'full_name', 'Educator'), COALESCE(new.email, 'no-email')),\r\n      'admins',\r\n      'sent',\r\n      new.id\r\n    );\r\n  END IF;\r\n\r\n  RETURN new;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "signature": "handle_new_user()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.handle_new_user()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  INSERT INTO public.profiles (id, email, full_name, avatar_url)\n  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'avatar_url')\n  ON CONFLICT (id) DO NOTHING;\n  INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, 'student') ON CONFLICT DO NOTHING;\n  RETURN NEW;\nEND $function$\n"
+  },
+  {
+    "signature": "handle_profile_deleted()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.handle_profile_deleted()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  DELETE FROM public.user_roles WHERE user_id = OLD.id;\n  DELETE FROM auth.users WHERE id = OLD.id;\n  RETURN OLD;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "handle_question_report_hide()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.handle_question_report_hide()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  -- Only hide if currently active. Skip if already inactive (no-op).\n  UPDATE public.questions\n  SET is_active = false,\n      updated_at = now()\n  WHERE id = NEW.question_id\n    AND is_active = true;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "has_role(uuid,app_role)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "boolean",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);\n$function$\n"
+  },
+  {
+    "signature": "increment_promo_redemption(uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "void",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.increment_promo_redemption(p_promo_id uuid)\n RETURNS void\n LANGUAGE sql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  UPDATE public.promo_codes\n  SET current_redemptions = current_redemptions + 1\n  WHERE id = p_promo_id;\n$function$\n"
+  },
+  {
+    "signature": "is_active_pro_plus(uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "boolean",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.is_active_pro_plus(p_user_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (\n    SELECT 1\n    FROM public.profiles p\n    WHERE p.id = p_user_id\n      AND COALESCE(p.is_premium, false) = true\n      AND COALESCE(p.subscription_plan, '') IN ('pro_plus', 'pro_plus_monthly', 'pro_plus_yearly')\n      AND (p.subscription_end_date IS NULL OR p.subscription_end_date > now())\n  );\n$function$\n"
+  },
+  {
+    "signature": "join_current_league()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "uuid",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.join_current_league()\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_uid uuid := auth.uid();\n  v_start date := public.current_cycle_start();\n  v_end date := v_start + 6;\n  v_tier text := 'bronze';\n  v_league uuid;\nBEGIN\n  IF v_uid IS NULL THEN RETURN NULL; END IF;\n\n  SELECT lm.league_id INTO v_league\n  FROM public.league_members lm\n  JOIN public.leagues l ON l.id = lm.league_id\n  WHERE lm.user_id = v_uid AND l.cycle_start = v_start\n  LIMIT 1;\n  IF v_league IS NOT NULL THEN RETURN v_league; END IF;\n\n  SELECT COALESCE(lm.next_tier, l.tier) INTO v_tier\n  FROM public.league_members lm\n  JOIN public.leagues l ON l.id = lm.league_id\n  WHERE lm.user_id = v_uid\n  ORDER BY l.cycle_start DESC LIMIT 1;\n  v_tier := COALESCE(v_tier, 'bronze');\n\n  SELECT l.id INTO v_league\n  FROM public.leagues l\n  WHERE l.cycle_start = v_start AND l.tier = v_tier\n    AND (SELECT count(*) FROM public.league_members m WHERE m.league_id = l.id) < 30\n  ORDER BY l.created_at\n  LIMIT 1;\n\n  IF v_league IS NULL THEN\n    INSERT INTO public.leagues (tier, cycle_start, cycle_end)\n    VALUES (v_tier, v_start, v_end)\n    RETURNING id INTO v_league;\n  END IF;\n\n  INSERT INTO public.league_members (league_id, user_id)\n  VALUES (v_league, v_uid)\n  ON CONFLICT (league_id, user_id) DO NOTHING;\n\n  RETURN v_league;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "log_points(uuid,text,integer,text,uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "uuid",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.log_points(p_user_id uuid, p_action_type text, p_points integer, p_description text DEFAULT NULL::text, p_reference_id uuid DEFAULT NULL::uuid)\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_id uuid;\n  v_allowed_actions text[] := ARRAY[\n    'correct_answer', 'streak_bonus', 'daily_goal', 'badge_earned',\n    'referral_reward', 'first_login', 'topic_mastery', 'test_completion'\n  ];\n  v_max_points integer := 100; -- Max points per single action\nBEGIN\n  -- Only allow logging for the authenticated user\n  IF auth.uid() IS NULL OR auth.uid() != p_user_id THEN\n    RAISE EXCEPTION 'Unauthorized';\n  END IF;\n\n  -- Validate action type\n  IF NOT (p_action_type = ANY(v_allowed_actions)) THEN\n    RAISE EXCEPTION 'Invalid action type: %', p_action_type;\n  END IF;\n\n  -- Cap points to prevent inflation\n  IF p_points > v_max_points OR p_points < 0 THEN\n    RAISE EXCEPTION 'Points must be between 0 and %', v_max_points;\n  END IF;\n\n  INSERT INTO points_log (user_id, action_type, points, description, reference_id)\n  VALUES (p_user_id, p_action_type, p_points, p_description, p_reference_id)\n  RETURNING id INTO v_id;\n\n  RETURN v_id;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "log_points(uuid,integer,text,text,text)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "uuid",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.log_points(p_user_id uuid, p_points integer, p_action_type text, p_description text DEFAULT NULL::text, p_reference_id text DEFAULT NULL::text)\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE v_id uuid;\nBEGIN\n  INSERT INTO public.points_log (user_id, points, action_type, description, reference_id)\n  VALUES (p_user_id, p_points, p_action_type, p_description, p_reference_id) RETURNING id INTO v_id;\n  UPDATE public.profiles SET total_points = COALESCE(total_points,0) + p_points, updated_at = now() WHERE id = p_user_id;\n  RETURN v_id;\nEND $function$\n"
+  },
+  {
+    "signature": "mojibake_byte(text)",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": null,
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "integer",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.mojibake_byte(ch text)\n RETURNS integer\n LANGUAGE sql\n IMMUTABLE\nAS $function$\n  SELECT CASE ascii(ch)\n    WHEN 8364 THEN 128 WHEN 8218 THEN 130 WHEN 402 THEN 131 WHEN 8222 THEN 132\n    WHEN 8230 THEN 133 WHEN 8224 THEN 134 WHEN 8225 THEN 135 WHEN 710 THEN 136\n    WHEN 8240 THEN 137 WHEN 352 THEN 138 WHEN 8249 THEN 139 WHEN 338 THEN 140\n    WHEN 381 THEN 142 WHEN 8216 THEN 145 WHEN 8217 THEN 146 WHEN 8220 THEN 147\n    WHEN 8221 THEN 148 WHEN 8226 THEN 149 WHEN 8211 THEN 150 WHEN 8212 THEN 151\n    WHEN 732 THEN 152 WHEN 8482 THEN 153 WHEN 353 THEN 154 WHEN 8250 THEN 155\n    WHEN 339 THEN 156 WHEN 382 THEN 158 WHEN 376 THEN 159\n    ELSE CASE WHEN ascii(ch) < 256 THEN ascii(ch) ELSE NULL END\n  END;\n$function$\n"
+  },
+  {
+    "signature": "next_damaged_questions(integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,service_role=X/postgres}",
+    "returns": "TABLE(id uuid, question_text text, options jsonb, explanation text)",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.next_damaged_questions(p_limit integer DEFAULT 20)\n RETURNS TABLE(id uuid, question_text text, options jsonb, explanation text)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT q.id, q.question_text, q.options, q.explanation\n  FROM public.questions q\n  WHERE q.text_quality = 'damaged'\n  LIMIT GREATEST(p_limit, 1);\n$function$\n"
+  },
+  {
+    "signature": "normalize_promo_code()",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.normalize_promo_code()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN NEW.code = upper(trim(NEW.code)); RETURN NEW; END;\n$function$\n"
+  },
+  {
+    "signature": "pick_available_chapters(uuid,text,text,integer,integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "TABLE(chapter_id uuid, chapter_name text, subject text, unseen_count bigint)",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.pick_available_chapters(p_user_id uuid, p_exam text DEFAULT NULL::text, p_subject text DEFAULT NULL::text, p_min_questions integer DEFAULT 8, p_limit integer DEFAULT 5)\n RETURNS TABLE(chapter_id uuid, chapter_name text, subject text, unseen_count bigint)\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_grade integer;\n  v_pool text[];\nBEGIN\n  SELECT pr.grade INTO v_grade FROM public.profiles pr WHERE pr.id = p_user_id;\n  v_pool := public.exam_pool(p_exam, p_subject);\n\n  RETURN QUERY\n  SELECT c.id,\n         COALESCE(c.chapter_name, c.name) AS chapter_name,\n         c.subject,\n         count(q.id) AS unseen_count\n  FROM public.chapters c\n  JOIN public.questions q ON q.chapter_id = c.id\n  WHERE (c.is_active IS NULL OR c.is_active = true)\n    AND (p_subject IS NULL OR lower(c.subject) = lower(p_subject))\n    AND (v_grade IS NULL OR c.class_level IS NULL OR c.class_level = v_grade)\n    AND (q.is_active IS NULL OR q.is_active = true)\n    AND (q.text_quality IS NULL OR q.text_quality <> 'damaged')\n    AND (v_pool IS NULL OR q.exam = ANY(v_pool))\n    AND NOT EXISTS (\n      SELECT 1 FROM public.question_attempts qa\n      WHERE qa.user_id = p_user_id AND qa.question_id = q.id\n    )\n  GROUP BY c.id, COALESCE(c.chapter_name, c.name), c.subject\n  HAVING count(q.id) >= p_min_questions\n  ORDER BY count(q.id) DESC\n  LIMIT GREATEST(p_limit, 1);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "prevent_self_subscription_escalation()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.prevent_self_subscription_escalation()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  current_role text := current_setting('role', true);\n  jwt_role text := coalesce(current_setting('request.jwt.claim.role', true), '');\nBEGIN\n  -- Allow service_role (edge functions) and postgres/superuser to change anything\n  IF jwt_role = 'service_role' OR current_role IN ('service_role','postgres') THEN\n    RETURN NEW;\n  END IF;\n\n  -- For anon/authenticated, reject changes to subscription/premium columns\n  IF NEW.is_premium IS DISTINCT FROM OLD.is_premium\n     OR NEW.subscription_tier IS DISTINCT FROM OLD.subscription_tier\n     OR NEW.subscription_plan IS DISTINCT FROM OLD.subscription_plan\n     OR NEW.subscription_status IS DISTINCT FROM OLD.subscription_status\n     OR NEW.subscription_end_date IS DISTINCT FROM OLD.subscription_end_date\n  THEN\n    RAISE EXCEPTION 'Not authorized to modify subscription fields'\n      USING ERRCODE = '42501';\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "protect_premium_fields()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.protect_premium_fields()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  -- Allow SECURITY DEFINER functions (which run as the function owner) to pass through\n  IF current_user IN ('postgres', 'supabase_admin') THEN\n    RETURN NEW;\n  END IF;\n\n  -- If the caller is NOT an admin, block changes to sensitive fields\n  IF NOT (has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'super_admin'::app_role)) THEN\n    NEW.is_premium := OLD.is_premium;\n    NEW.subscription_end_date := OLD.subscription_end_date;\n    NEW.daily_question_limit := OLD.daily_question_limit;\n    NEW.total_points := OLD.total_points;\n    NEW.current_streak := OLD.current_streak;\n    NEW.longest_streak := OLD.longest_streak;\n    NEW.questions_completed := OLD.questions_completed;\n    NEW.total_questions_solved := OLD.total_questions_solved;\n    NEW.overall_accuracy := OLD.overall_accuracy;\n    NEW.level := OLD.level;\n    NEW.level_progress := OLD.level_progress;\n    NEW.referral_code := OLD.referral_code;\n    NEW.goal_locked := OLD.goal_locked;\n    NEW.goal_locked_at := OLD.goal_locked_at;\n    -- Lock grade and target_exam once set (goal_locked = true)\n    IF OLD.goal_locked = true THEN\n      NEW.grade := OLD.grade;\n      NEW.target_exam := OLD.target_exam;\n    END IF;\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "questions_legacy_backfill()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.questions_legacy_backfill()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_chapter RECORD;\n  v_topic_id uuid;\n  v_correct_letter text;\n  v_correct_index int;\n  v_diff difficulty_level;\nBEGIN\n  -- question_text from question\n  IF NEW.question_text IS NULL AND NEW.question IS NOT NULL THEN\n    NEW.question_text := NEW.question;\n  ELSIF NEW.question IS NULL AND NEW.question_text IS NOT NULL THEN\n    NEW.question := NEW.question_text;\n  END IF;\n\n  -- options jsonb from option_a..d\n  IF NEW.options IS NULL AND NEW.option_a IS NOT NULL THEN\n    NEW.options := jsonb_build_array(\n      jsonb_build_object('label', 'A', 'text', NEW.option_a),\n      jsonb_build_object('label', 'B', 'text', COALESCE(NEW.option_b, '')),\n      jsonb_build_object('label', 'C', 'text', COALESCE(NEW.option_c, '')),\n      jsonb_build_object('label', 'D', 'text', COALESCE(NEW.option_d, ''))\n    );\n  END IF;\n\n  -- correct_options from correct_option letter\n  IF (NEW.correct_options IS NULL OR array_length(NEW.correct_options, 1) IS NULL) \n     AND NEW.correct_option IS NOT NULL THEN\n    v_correct_letter := upper(trim(NEW.correct_option));\n    -- Strip OPTION_ prefix if present\n    v_correct_letter := regexp_replace(v_correct_letter, '^OPTION_', '');\n    IF v_correct_letter IN ('A', 'B', 'C', 'D') THEN\n      NEW.correct_options := ARRAY[v_correct_letter];\n    END IF;\n  END IF;\n\n  -- exam_relevance from exam text\n  IF NEW.exam_relevance IS NULL OR array_length(NEW.exam_relevance, 1) IS NULL THEN\n    IF upper(COALESCE(NEW.exam, '')) = 'NEET' THEN\n      NEW.exam_relevance := ARRAY['NEET']::exam_code[];\n    ELSIF upper(COALESCE(NEW.exam, '')) IN ('JEE', 'JEE_MAINS', 'JEE-MAINS') THEN\n      NEW.exam_relevance := ARRAY['JEE_MAINS']::exam_code[];\n    ELSIF upper(COALESCE(NEW.exam, '')) IN ('JEE_ADVANCED', 'JEE-ADVANCED') THEN\n      NEW.exam_relevance := ARRAY['JEE_ADVANCED']::exam_code[];\n    ELSE\n      NEW.exam_relevance := ARRAY['JEE_MAINS']::exam_code[];\n    END IF;\n  END IF;\n\n  -- pyq_year from year\n  IF NEW.pyq_year IS NULL AND NEW.year IS NOT NULL THEN\n    NEW.pyq_year := NEW.year;\n    NEW.is_pyq := true;\n  END IF;\n\n  -- Resolve chapter row (gives us subject_id too)\n  IF NEW.chapter_id IS NOT NULL THEN\n    SELECT id, subject_id, subject, name INTO v_chapter\n    FROM public.chapters WHERE id = NEW.chapter_id;\n    \n    IF FOUND THEN\n      IF NEW.subject_id IS NULL THEN NEW.subject_id := v_chapter.subject_id; END IF;\n      IF NEW.subject IS NULL THEN NEW.subject := v_chapter.subject; END IF;\n      IF NEW.chapter IS NULL THEN NEW.chapter := v_chapter.name; END IF;\n    END IF;\n  END IF;\n\n  -- Resolve subject_id from subject text if still missing\n  IF NEW.subject_id IS NULL AND NEW.subject IS NOT NULL THEN\n    SELECT id INTO NEW.subject_id\n    FROM public.subjects WHERE LOWER(name) = LOWER(NEW.subject) LIMIT 1;\n  END IF;\n\n  -- Ensure topic_id: pick first topic of chapter, or create one\n  IF NEW.topic_id IS NULL AND NEW.chapter_id IS NOT NULL THEN\n    SELECT id INTO v_topic_id\n    FROM public.topics WHERE chapter_id = NEW.chapter_id ORDER BY display_order LIMIT 1;\n    \n    IF v_topic_id IS NULL THEN\n      INSERT INTO public.topics (chapter_id, name, slug, display_order, is_active)\n      VALUES (NEW.chapter_id, 'General', 'general-' || substr(NEW.chapter_id::text, 1, 8), 0, true)\n      RETURNING id INTO v_topic_id;\n    END IF;\n    NEW.topic_id := v_topic_id;\n  END IF;\n\n  -- Difficulty mapping\n  IF NEW.difficulty_jee_mains IS NULL AND NEW.difficulty IS NOT NULL THEN\n    v_diff := CASE upper(NEW.difficulty)\n      WHEN 'EASY' THEN 'EASY'::difficulty_level\n      WHEN 'HARD' THEN 'HARD'::difficulty_level\n      ELSE 'MEDIUM'::difficulty_level\n    END;\n    NEW.difficulty_jee_mains := v_diff;\n    NEW.difficulty_neet := v_diff;\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "questions_set_text_quality()",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.questions_set_text_quality()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  NEW.text_quality := public.classify_question_text(NEW.question_text);\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "questions_sync_class_level()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.questions_sync_class_level()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NEW.chapter_id IS NOT NULL THEN\n    SELECT class_level INTO NEW.class_level\n    FROM public.chapters\n    WHERE id = NEW.chapter_id;\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "recalc_user_accuracy()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.recalc_user_accuracy()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  target_user_id uuid;\n  v_total bigint;\n  v_correct bigint;\n  v_accuracy numeric;\nBEGIN\n  target_user_id := COALESCE(NEW.user_id, OLD.user_id);\n  IF target_user_id IS NULL THEN RETURN NULL; END IF;\n\n  SELECT COUNT(*), COUNT(*) FILTER (WHERE is_correct = true)\n  INTO v_total, v_correct\n  FROM public.question_attempts\n  WHERE user_id = target_user_id\n    AND mode = 'practice'\n    AND is_correct IS NOT NULL;\n\n  IF v_total = 0 THEN\n    v_accuracy := 0;\n  ELSE\n    v_accuracy := ROUND((v_correct::numeric / v_total::numeric) * 100, 2);\n  END IF;\n\n  UPDATE public.profiles\n  SET overall_accuracy = v_accuracy,\n      total_questions_solved = v_total,\n      updated_at = now()\n  WHERE id = target_user_id;\n\n  RETURN NULL;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "redeem_referral(text)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.redeem_referral(_code text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  referrer_uid UUID;\n  me UUID := auth.uid();\n  my_created TIMESTAMPTZ;\n  existing_row RECORD;\nBEGIN\n  IF me IS NULL THEN\n    RETURN jsonb_build_object('ok', false, 'error', 'unauthenticated');\n  END IF;\n\n  IF _code IS NULL OR length(trim(_code)) < 4 THEN\n    RETURN jsonb_build_object('ok', false, 'error', 'invalid_code');\n  END IF;\n\n  SELECT id INTO referrer_uid\n    FROM public.profiles WHERE referral_code = upper(trim(_code)) LIMIT 1;\n\n  IF referrer_uid IS NULL THEN\n    RETURN jsonb_build_object('ok', false, 'error', 'code_not_found');\n  END IF;\n\n  IF referrer_uid = me THEN\n    RETURN jsonb_build_object('ok', false, 'error', 'cannot_refer_self');\n  END IF;\n\n  SELECT created_at INTO my_created FROM public.profiles WHERE id = me;\n  IF my_created IS NOT NULL AND my_created < now() - interval '30 days' THEN\n    RETURN jsonb_build_object('ok', false, 'error', 'redemption_window_expired');\n  END IF;\n\n  SELECT * INTO existing_row FROM public.referrals\n    WHERE referred_user_id = me OR referred_id = me LIMIT 1;\n  IF existing_row.id IS NOT NULL THEN\n    RETURN jsonb_build_object('ok', false, 'error', 'already_referred');\n  END IF;\n\n  INSERT INTO public.referrals (referrer_id, referred_user_id, referred_id, referral_code, status, reward_granted)\n  VALUES (referrer_uid, me, me, upper(trim(_code)), 'pending', false);\n\n  RETURN jsonb_build_object('ok', true, 'referrer_id', referrer_uid);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "repair_mojibake_batch(integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public",
+      "statement_timeout=120s"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "integer",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.repair_mojibake_batch(p_limit integer DEFAULT 500)\n RETURNS integer\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\n SET statement_timeout TO '120s'\nAS $function$\nDECLARE n int;\nBEGIN\n  WITH target AS (\n    SELECT id FROM public.questions\n    WHERE question ~ '[\u00c2\u00c3\u00e2]' OR question_text ~ '[\u00c2\u00c3\u00e2]' OR option_a ~ '[\u00c2\u00c3\u00e2]'\n       OR option_b ~ '[\u00c2\u00c3\u00e2]' OR option_c ~ '[\u00c2\u00c3\u00e2]' OR option_d ~ '[\u00c2\u00c3\u00e2]' OR explanation ~ '[\u00c2\u00c3\u00e2]'\n    LIMIT p_limit\n  ), upd AS (\n    UPDATE public.questions q SET\n      question = public.fix_mojibake(question),\n      question_text = public.fix_mojibake(question_text),\n      option_a = public.fix_mojibake(option_a),\n      option_b = public.fix_mojibake(option_b),\n      option_c = public.fix_mojibake(option_c),\n      option_d = public.fix_mojibake(option_d),\n      explanation = public.fix_mojibake(explanation)\n    FROM target t WHERE q.id = t.id\n    RETURNING q.id\n  )\n  SELECT count(*) INTO n FROM upd;\n  RETURN n;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "repair_streak()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.repair_streak()\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_uid uuid := auth.uid();\n  v_today date := (now() AT TIME ZONE 'Asia/Kolkata')::date;\n  v_start timestamptz := (date_trunc('day', now() AT TIME ZONE 'Asia/Kolkata') AT TIME ZONE 'Asia/Kolkata');\n  v_count bigint;\n  v_p RECORD;\nBEGIN\n  IF v_uid IS NULL THEN RETURN jsonb_build_object('error','Unauthorized'); END IF;\n\n  SELECT COALESCE(pending_streak_repair,0) AS repair, pending_streak_repair_date\n  INTO v_p FROM public.profiles WHERE id = v_uid;\n\n  IF v_p.repair <= 0 OR v_p.pending_streak_repair_date IS DISTINCT FROM v_today THEN\n    RETURN jsonb_build_object('success', false, 'reason', 'no_repair_available');\n  END IF;\n\n  SELECT count(*) INTO v_count\n  FROM public.question_attempts\n  WHERE user_id = v_uid AND COALESCE(mode,'practice') <> 'test' AND created_at >= v_start;\n\n  IF v_count < 10 THEN\n    RETURN jsonb_build_object('success', false, 'reason', 'not_enough', 'solved', v_count, 'needed', 10);\n  END IF;\n\n  UPDATE public.profiles\n  SET current_streak = v_p.repair,\n      longest_streak = GREATEST(COALESCE(longest_streak,0), v_p.repair),\n      last_streak_date = v_today,\n      pending_streak_repair = 0,\n      pending_streak_repair_date = NULL,\n      updated_at = now()\n  WHERE id = v_uid;\n\n  RETURN jsonb_build_object('success', true, 'streak', v_p.repair);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "reset_user_progress(uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.reset_user_progress(p_user_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_qa INT := 0;\n  v_ta INT := 0;\n  v_pl INT := 0;\nBEGIN\n  DELETE FROM public.question_attempts WHERE user_id = p_user_id;\n  GET DIAGNOSTICS v_qa = ROW_COUNT;\n  DELETE FROM public.test_attempts WHERE user_id = p_user_id;\n  GET DIAGNOSTICS v_ta = ROW_COUNT;\n  DELETE FROM public.test_sessions WHERE user_id = p_user_id;\n  DELETE FROM public.points_log WHERE user_id = p_user_id;\n  GET DIAGNOSTICS v_pl = ROW_COUNT;\n  DELETE FROM public.topic_mastery WHERE user_id = p_user_id;\n  DELETE FROM public.user_content_access WHERE user_id = p_user_id;\n  \n  UPDATE public.profiles SET\n    questions_completed = 0,\n    total_questions_solved = 0,\n    overall_accuracy = 0,\n    total_points = 0,\n    current_streak = 0,\n    level = 'BEGINNER',\n    level_progress = 0,\n    last_activity = now(),\n    updated_at = now()\n  WHERE id = p_user_id;\n  \n  RETURN jsonb_build_object('question_attempts', v_qa, 'test_attempts', v_ta, 'points_log', v_pl, 'profile_reset', true);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "rls_auto_enable()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=pg_catalog"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "event_trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.rls_auto_enable()\n RETURNS event_trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE\n  cmd record;\nBEGIN\n  FOR cmd IN\n    SELECT *\n    FROM pg_event_trigger_ddl_commands()\n    WHERE command_tag IN ('CREATE TABLE', 'CREATE TABLE AS', 'SELECT INTO')\n      AND object_type IN ('table','partitioned table')\n  LOOP\n     IF cmd.schema_name IS NOT NULL AND cmd.schema_name IN ('public') AND cmd.schema_name NOT IN ('pg_catalog','information_schema') AND cmd.schema_name NOT LIKE 'pg_toast%' AND cmd.schema_name NOT LIKE 'pg_temp%' THEN\n      BEGIN\n        EXECUTE format('alter table if exists %s enable row level security', cmd.object_identity);\n        RAISE LOG 'rls_auto_enable: enabled RLS on %', cmd.object_identity;\n      EXCEPTION\n        WHEN OTHERS THEN\n          RAISE LOG 'rls_auto_enable: failed to enable RLS on %', cmd.object_identity;\n      END;\n     ELSE\n        RAISE LOG 'rls_auto_enable: skip % (either system schema or not in enforced list: %.)', cmd.object_identity, cmd.schema_name;\n     END IF;\n  END LOOP;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "set_updated_at()",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.set_updated_at()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  NEW.updated_at = now();\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "sign_contract(integer,integer,integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.sign_contract(p_target_questions integer, p_target_accuracy integer, p_days integer DEFAULT 7)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_uid uuid := auth.uid();\n  v_today date := (now() AT TIME ZONE 'Asia/Kolkata')::date;\n  v_q int := GREATEST(20, LEAST(1000, COALESCE(p_target_questions, 100)));\n  v_a int := GREATEST(30, LEAST(95, COALESCE(p_target_accuracy, 60)));\n  v_d int := GREATEST(3, LEAST(14, COALESCE(p_days, 7)));\n  v_id uuid;\nBEGIN\n  IF v_uid IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'unauthenticated'); END IF;\n\n  IF EXISTS (SELECT 1 FROM public.user_contracts\n             WHERE user_id = v_uid AND status = 'active' AND ends_on >= v_today) THEN\n    RETURN jsonb_build_object('ok', false, 'error', 'active_contract_exists');\n  END IF;\n\n  INSERT INTO public.user_contracts (user_id, kind, target_questions, target_accuracy, reward_points, starts_on, ends_on, status)\n  VALUES (v_uid, 'weekly', v_q, v_a, v_q * 2, v_today, v_today + v_d, 'active')\n  RETURNING id INTO v_id;\n\n  RETURN jsonb_build_object('ok', true, 'contract_id', v_id);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "start_battle(text,text,uuid,text)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.start_battle(p_subject text DEFAULT NULL::text, p_chapter text DEFAULT NULL::text, p_topic_id uuid DEFAULT NULL::uuid, p_difficulty text DEFAULT NULL::text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_user uuid := auth.uid();\n  v_battle public.battle_sessions%ROWTYPE;\n  v_profile record;\n  v_question_ids uuid[];\nBEGIN\n  IF v_user IS NULL THEN\n    RETURN jsonb_build_object('error', 'not_authenticated');\n  END IF;\n\n  IF NOT public.is_active_pro_plus(v_user) THEN\n    RETURN jsonb_build_object('error', 'pro_plus_required');\n  END IF;\n\n  SELECT full_name, email, target_exam INTO v_profile\n  FROM public.profiles\n  WHERE id = v_user;\n\n  SELECT bs.* INTO v_battle\n  FROM public.battle_sessions bs\n  WHERE bs.status = 'waiting'\n    AND bs.expires_at > now()\n    AND COALESCE(bs.subject, '') = COALESCE(p_subject, bs.subject, '')\n    AND COALESCE(bs.chapter, '') = COALESCE(p_chapter, bs.chapter, '')\n    AND (p_topic_id IS NULL OR bs.topic_id = p_topic_id)\n    AND NOT EXISTS (\n      SELECT 1 FROM public.battle_players bp\n      WHERE bp.battle_id = bs.id AND bp.user_id = v_user\n    )\n    AND (SELECT count(*) FROM public.battle_players bp WHERE bp.battle_id = bs.id) < bs.max_players\n  ORDER BY bs.created_at ASC\n  LIMIT 1;\n\n  IF NOT FOUND THEN\n    SELECT array_agg(id) INTO v_question_ids\n    FROM (\n      SELECT q.id\n      FROM public.questions q\n      WHERE COALESCE(q.is_active, true) = true\n        AND (p_subject IS NULL OR q.subject ILIKE p_subject)\n        AND (p_chapter IS NULL OR q.chapter ILIKE p_chapter)\n        AND (p_topic_id IS NULL OR q.topic_id = p_topic_id)\n        AND (p_difficulty IS NULL OR q.difficulty ILIKE p_difficulty)\n        AND (q.correct_options IS NOT NULL OR q.correct_option IS NOT NULL OR q.numerical_answer IS NOT NULL)\n      ORDER BY random()\n      LIMIT 5\n    ) picked;\n\n    IF COALESCE(array_length(v_question_ids, 1), 0) = 0 THEN\n      SELECT array_agg(id) INTO v_question_ids\n      FROM (\n        SELECT q.id\n        FROM public.questions q\n        WHERE COALESCE(q.is_active, true) = true\n          AND (q.correct_options IS NOT NULL OR q.correct_option IS NOT NULL OR q.numerical_answer IS NOT NULL)\n        ORDER BY random()\n        LIMIT 5\n      ) picked;\n    END IF;\n\n    INSERT INTO public.battle_sessions (status, subject, chapter, topic_id, difficulty, question_ids, created_by)\n    VALUES ('waiting', p_subject, p_chapter, p_topic_id, COALESCE(p_difficulty, 'Medium'), COALESCE(v_question_ids, ARRAY[]::uuid[]), v_user)\n    RETURNING * INTO v_battle;\n  END IF;\n\n  INSERT INTO public.battle_players (battle_id, user_id, display_name)\n  VALUES (v_battle.id, v_user, COALESCE(NULLIF(v_profile.full_name, ''), split_part(v_profile.email, '@', 1), 'Student'))\n  ON CONFLICT (battle_id, user_id) DO NOTHING;\n\n  IF (SELECT count(*) FROM public.battle_players WHERE battle_id = v_battle.id) >= v_battle.max_players THEN\n    UPDATE public.battle_sessions\n    SET status = 'active', started_at = COALESCE(started_at, now()), updated_at = now()\n    WHERE id = v_battle.id\n    RETURNING * INTO v_battle;\n  END IF;\n\n  RETURN jsonb_build_object('battle_id', v_battle.id, 'status', v_battle.status, 'question_ids', v_battle.question_ids);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "submit_battle_answer(uuid,uuid,text[],numeric)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.submit_battle_answer(p_battle_id uuid, p_question_id uuid, p_selected_options text[] DEFAULT NULL::text[], p_numerical_answer numeric DEFAULT NULL::numeric)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_user uuid := auth.uid();\n  v_validation jsonb;\n  v_is_correct boolean;\n  v_points integer;\n  v_player public.battle_players%ROWTYPE;\n  v_already_answered boolean := false;\nBEGIN\n  IF v_user IS NULL THEN\n    RETURN jsonb_build_object('error', 'not_authenticated');\n  END IF;\n\n  SELECT * INTO v_player\n  FROM public.battle_players\n  WHERE battle_id = p_battle_id AND user_id = v_user;\n\n  IF NOT FOUND THEN\n    RETURN jsonb_build_object('error', 'not_in_battle');\n  END IF;\n\n  IF NOT EXISTS (\n    SELECT 1 FROM public.battle_sessions\n    WHERE id = p_battle_id\n      AND status IN ('waiting', 'active')\n      AND expires_at > now()\n      AND p_question_id = ANY(question_ids)\n  ) THEN\n    RETURN jsonb_build_object('error', 'battle_not_active');\n  END IF;\n\n  -- Check if this question was already answered by this user (re-submission guard)\n  SELECT EXISTS (\n    SELECT 1 FROM public.battle_answers\n    WHERE battle_id = p_battle_id AND user_id = v_user AND question_id = p_question_id\n  ) INTO v_already_answered;\n\n  -- If already answered, do NOT re-grade or update counters; return the original result.\n  IF v_already_answered THEN\n    SELECT jsonb_build_object('is_correct', is_correct, 'points', points, 'already_answered', true)\n    INTO v_validation\n    FROM public.battle_answers\n    WHERE battle_id = p_battle_id AND user_id = v_user AND question_id = p_question_id;\n    RETURN v_validation;\n  END IF;\n\n  v_validation := public.validate_practice_answer(p_question_id, p_selected_options, p_numerical_answer);\n  v_is_correct := COALESCE((v_validation->>'is_correct')::boolean, false);\n  v_points := CASE WHEN v_is_correct THEN 100 + LEAST(50, v_player.streak * 10) ELSE -20 END;\n\n  INSERT INTO public.battle_answers (battle_id, user_id, question_id, selected_options, numerical_answer, is_correct, points)\n  VALUES (p_battle_id, v_user, p_question_id, p_selected_options, p_numerical_answer, v_is_correct, v_points);\n\n  UPDATE public.battle_players\n  SET score = GREATEST(0, score + v_points),\n      correct_count = correct_count + CASE WHEN v_is_correct THEN 1 ELSE 0 END,\n      wrong_count = wrong_count + CASE WHEN v_is_correct THEN 0 ELSE 1 END,\n      streak = CASE WHEN v_is_correct THEN streak + 1 ELSE 0 END\n  WHERE battle_id = p_battle_id AND user_id = v_user;\n\n  RETURN v_validation || jsonb_build_object('points', v_points);\nEND;\n$function$\n"
+  },
+  {
+    "signature": "sync_daily_progress(uuid,boolean,integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.sync_daily_progress(p_user_id uuid, p_is_correct boolean, p_points_delta integer)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE v_today date := (now() AT TIME ZONE 'Asia/Kolkata')::date; v_goal int; v_points int;\nBEGIN\n  IF auth.uid() IS NULL OR auth.uid() <> p_user_id THEN RAISE EXCEPTION 'unauthorized'; END IF;\n  v_points := GREATEST(0, LEAST(COALESCE(p_points_delta,0), 100));\n  SELECT COALESCE(daily_goal,15) INTO v_goal FROM public.profiles WHERE id = p_user_id;\n  INSERT INTO public.daily_progress (user_id, date, questions_completed, questions_attempted, questions_correct, points_earned, daily_target, target_met)\n  VALUES (p_user_id, v_today, 1, 1, CASE WHEN p_is_correct THEN 1 ELSE 0 END, v_points, v_goal, 1 >= v_goal)\n  ON CONFLICT (user_id, date) DO UPDATE SET\n    questions_completed = public.daily_progress.questions_completed + 1,\n    questions_attempted = public.daily_progress.questions_attempted + 1,\n    questions_correct = public.daily_progress.questions_correct + CASE WHEN p_is_correct THEN 1 ELSE 0 END,\n    points_earned = public.daily_progress.points_earned + v_points,\n    daily_target = v_goal,\n    target_met = (public.daily_progress.questions_completed + 1) >= v_goal,\n    updated_at = now();\n  RETURN jsonb_build_object('success', true, 'date', v_today);\nEND $function$\n"
+  },
+  {
+    "signature": "sync_profile_total_points()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.sync_profile_total_points()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  affected_user uuid;\nBEGIN\n  affected_user := COALESCE(NEW.user_id, OLD.user_id);\n  UPDATE public.profiles\n    SET total_points = COALESCE((SELECT SUM(points)::int FROM public.points_log WHERE user_id = affected_user), 0)\n    WHERE id = affected_user;\n  RETURN NULL;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "sync_question_text_columns()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.sync_question_text_columns()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NEW.question IS NULL AND NEW.question_text IS NOT NULL THEN\n    NEW.question := NEW.question_text;\n  ELSIF NEW.question_text IS NULL AND NEW.question IS NOT NULL THEN\n    NEW.question_text := NEW.question;\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "sync_questions_on_chapter_update()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.sync_questions_on_chapter_update()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\r\nBEGIN\r\n  UPDATE public.questions\r\n  SET\r\n    batch_id = NEW.batch_id,\r\n    subject = NEW.subject,\r\n    chapter = COALESCE(NEW.chapter_name, NEW.name, chapter)\r\n  WHERE chapter_id = NEW.id\r\n    AND (\r\n      batch_id IS DISTINCT FROM NEW.batch_id\r\n      OR subject IS DISTINCT FROM NEW.subject\r\n      OR chapter IS DISTINCT FROM COALESCE(NEW.chapter_name, NEW.name, chapter)\r\n    );\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "signature": "tier_shift(text,integer)",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "text",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.tier_shift(p_tier text, p_delta integer)\n RETURNS text\n LANGUAGE sql\n IMMUTABLE\n SET search_path TO 'public'\nAS $function$\n  WITH t AS (SELECT ARRAY['bronze','silver','gold','platinum','diamond'] AS arr)\n  SELECT (SELECT arr FROM t)[\n    GREATEST(1, LEAST(5, COALESCE(array_position((SELECT arr FROM t), COALESCE(p_tier,'bronze')), 1) + p_delta))\n  ];\n$function$\n"
+  },
+  {
+    "signature": "topics_legacy_sync()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.topics_legacy_sync()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NEW.name IS NULL AND NEW.topic_name IS NOT NULL THEN NEW.name := NEW.topic_name; END IF;\n  IF NEW.topic_name IS NULL AND NEW.name IS NOT NULL THEN NEW.topic_name := NEW.name; END IF;\n  IF NEW.slug IS NULL OR NEW.slug = '' THEN\n    NEW.slug := lower(regexp_replace(COALESCE(NEW.name, NEW.topic_name, 'topic'), '[^a-zA-Z0-9]+', '-', 'g'));\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "touch_daily_missions_updated_at()",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.touch_daily_missions_updated_at()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  NEW.updated_at = now();\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "touch_updated_at()",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.touch_updated_at()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN NEW.updated_at = now(); RETURN NEW; END;\n$function$\n"
+  },
+  {
+    "signature": "trg_award_badges_on_attempt()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.trg_award_badges_on_attempt()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  PERFORM public.check_and_award_badges(NEW.user_id);\n  RETURN NEW;\nEXCEPTION WHEN OTHERS THEN\n  -- never block attempt insert\n  RETURN NEW;\nEND $function$\n"
+  },
+  {
+    "signature": "trg_award_badges_on_streak()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.trg_award_badges_on_streak()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NEW.current_streak IS DISTINCT FROM OLD.current_streak AND NEW.current_streak > 0 THEN\n    PERFORM public.check_and_award_badges(NEW.id);\n  END IF;\n  RETURN NEW;\nEXCEPTION WHEN OTHERS THEN\n  RETURN NEW;\nEND $function$\n"
+  },
+  {
+    "signature": "update_daily_accuracy(uuid,numeric)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.update_daily_accuracy(p_user_id uuid, p_accuracy numeric)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE v_today date := (now() AT TIME ZONE 'Asia/Kolkata')::date; v_acc numeric;\nBEGIN\n  IF auth.uid() IS NULL OR auth.uid() <> p_user_id THEN RAISE EXCEPTION 'unauthorized'; END IF;\n  v_acc := GREATEST(0, LEAST(COALESCE(p_accuracy,0), 100));\n  INSERT INTO public.daily_progress (user_id, date, accuracy_7day) VALUES (p_user_id, v_today, v_acc)\n  ON CONFLICT (user_id, date) DO UPDATE SET accuracy_7day = EXCLUDED.accuracy_7day, updated_at = now();\n  RETURN jsonb_build_object('success', true);\nEND $function$\n"
+  },
+  {
+    "signature": "update_educator_content_updated_at()",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.update_educator_content_updated_at()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  NEW.updated_at = NOW();\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "update_own_profile(text,text,text,text,text,integer,boolean,text,integer,date,text[])",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "void",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.update_own_profile(p_full_name text DEFAULT NULL::text, p_avatar_url text DEFAULT NULL::text, p_phone text DEFAULT NULL::text, p_city text DEFAULT NULL::text, p_state text DEFAULT NULL::text, p_daily_goal integer DEFAULT NULL::integer, p_smart_goal_enabled boolean DEFAULT NULL::boolean, p_target_exam text DEFAULT NULL::text, p_grade integer DEFAULT NULL::integer, p_target_exam_date date DEFAULT NULL::date, p_subjects text[] DEFAULT NULL::text[])\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  UPDATE public.profiles SET\n    full_name = COALESCE(p_full_name, full_name),\n    avatar_url = COALESCE(p_avatar_url, avatar_url),\n    phone = COALESCE(p_phone, phone),\n    city = COALESCE(p_city, city),\n    state = COALESCE(p_state, state),\n    daily_goal = COALESCE(p_daily_goal, daily_goal),\n    smart_goal_enabled = COALESCE(p_smart_goal_enabled, smart_goal_enabled),\n    target_exam = COALESCE(p_target_exam, target_exam),\n    grade = COALESCE(p_grade, grade),\n    target_exam_date = COALESCE(p_target_exam_date, target_exam_date),\n    subjects = COALESCE(p_subjects, subjects),\n    updated_at = now()\n  WHERE id = auth.uid();\nEND $function$\n"
+  },
+  {
+    "signature": "update_practice_stats(uuid,integer,boolean)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.update_practice_stats(p_user_id uuid, p_points_delta integer, p_is_correct boolean)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  v_profile RECORD;\n  v_new_total_points integer;\n  v_new_total_solved integer;\n  v_new_accuracy numeric;\n  v_new_level text;\n  v_new_level_progress numeric;\nBEGIN\n  IF auth.uid() IS NULL OR auth.uid() != p_user_id THEN\n    RETURN jsonb_build_object('error', 'Unauthorized');\n  END IF;\n\n  SELECT total_points, total_questions_solved, overall_accuracy\n  INTO v_profile\n  FROM profiles WHERE id = p_user_id;\n\n  IF NOT FOUND THEN\n    RETURN jsonb_build_object('error', 'Profile not found');\n  END IF;\n\n  v_new_total_points := GREATEST(0, COALESCE(v_profile.total_points, 0) + p_points_delta);\n  v_new_total_solved := COALESCE(v_profile.total_questions_solved, 0) + 1;\n\n  IF v_new_total_solved > 0 THEN\n    v_new_accuracy := ROUND(\n      ((COALESCE(v_profile.overall_accuracy, 0) * (v_new_total_solved - 1)) +\n        (CASE WHEN p_is_correct THEN 100 ELSE 0 END))::numeric / v_new_total_solved,\n      1\n    );\n  ELSE\n    v_new_accuracy := 0;\n  END IF;\n\n  v_new_level := CASE\n    WHEN v_new_total_points <= 1000 THEN 'BEGINNER'\n    WHEN v_new_total_points <= 3000 THEN 'LEARNER'\n    WHEN v_new_total_points <= 7000 THEN 'ACHIEVER'\n    WHEN v_new_total_points <= 20000 THEN 'EXPERT'\n    WHEN v_new_total_points <= 50000 THEN 'MASTER'\n    ELSE 'LEGEND'\n  END;\n\n  v_new_level_progress := CASE\n    WHEN v_new_total_points <= 1000 THEN (v_new_total_points::numeric / 1000) * 100\n    WHEN v_new_total_points <= 3000 THEN ((v_new_total_points - 1001)::numeric / 1999) * 100\n    WHEN v_new_total_points <= 7000 THEN ((v_new_total_points - 3001)::numeric / 3999) * 100\n    WHEN v_new_total_points <= 20000 THEN ((v_new_total_points - 7001)::numeric / 12999) * 100\n    WHEN v_new_total_points <= 50000 THEN ((v_new_total_points - 20001)::numeric / 29999) * 100\n    ELSE 100\n  END;\n\n  UPDATE profiles SET\n    total_points = v_new_total_points,\n    total_questions_solved = v_new_total_solved,\n    overall_accuracy = v_new_accuracy,\n    level = v_new_level,\n    level_progress = LEAST(v_new_level_progress, 100),\n    last_activity = now(),\n    updated_at = now()\n  WHERE id = p_user_id;\n\n  IF p_is_correct AND p_points_delta > 0 THEN\n    INSERT INTO points_log (user_id, action_type, points, description)\n    VALUES (p_user_id, 'correct_answer', LEAST(p_points_delta, 100), 'Correct answer');\n  ELSIF NOT p_is_correct AND p_points_delta < 0 THEN\n    INSERT INTO points_log (user_id, action_type, points, description)\n    VALUES (p_user_id, 'wrong_answer', GREATEST(p_points_delta, -100), 'Wrong answer penalty');\n  END IF;\n\n  RETURN jsonb_build_object(\n    'success', true,\n    'total_points', v_new_total_points,\n    'total_questions_solved', v_new_total_solved,\n    'overall_accuracy', v_new_accuracy,\n    'level', v_new_level,\n    'level_progress', LEAST(v_new_level_progress, 100)\n  );\nEND;\n$function$\n"
+  },
+  {
+    "signature": "update_question_reports_updated_at()",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.update_question_reports_updated_at()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\r\nBEGIN\r\n  NEW.updated_at = NOW();\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+  },
+  {
+    "signature": "update_revision_from_attempt()",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": true,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.update_revision_from_attempt()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  q_chapter UUID;\n  q_topic UUID;\n  q_subject TEXT;\n  new_interval NUMERIC;\n  new_ease NUMERIC;\n  new_streak INT;\n  existing public.revision_schedule%ROWTYPE;\nBEGIN\n  SELECT chapter_id, topic_id, subject INTO q_chapter, q_topic, q_subject\n  FROM public.questions WHERE id = NEW.question_id;\n\n  IF q_chapter IS NULL AND q_topic IS NULL THEN\n    RETURN NEW;\n  END IF;\n\n  SELECT * INTO existing FROM public.revision_schedule\n   WHERE user_id = NEW.user_id\n     AND COALESCE(topic_id, '00000000-0000-0000-0000-000000000000'::uuid) = COALESCE(q_topic, '00000000-0000-0000-0000-000000000000'::uuid)\n     AND COALESCE(chapter_id, '00000000-0000-0000-0000-000000000000'::uuid) = COALESCE(q_chapter, '00000000-0000-0000-0000-000000000000'::uuid)\n   LIMIT 1;\n\n  IF NEW.is_correct THEN\n    new_streak := COALESCE(existing.correct_streak, 0) + 1;\n    new_ease := LEAST(2.8, COALESCE(existing.ease_factor, 2.5) + 0.05);\n    new_interval := CASE\n      WHEN new_streak = 1 THEN 1\n      WHEN new_streak = 2 THEN 3\n      WHEN new_streak = 3 THEN 7\n      ELSE LEAST(60, COALESCE(existing.interval_days, 1) * new_ease)\n    END;\n  ELSE\n    new_streak := 0;\n    new_ease := GREATEST(1.5, COALESCE(existing.ease_factor, 2.5) - 0.2);\n    new_interval := 1;\n  END IF;\n\n  INSERT INTO public.revision_schedule (\n    user_id, subject, chapter_id, topic_id,\n    next_due_at, interval_days, ease_factor,\n    last_reviewed_at, reviews_count, correct_streak, last_accuracy, updated_at\n  ) VALUES (\n    NEW.user_id, q_subject, q_chapter, q_topic,\n    now() + (new_interval || ' days')::interval, new_interval, new_ease,\n    now(), 1, new_streak, CASE WHEN NEW.is_correct THEN 1 ELSE 0 END, now()\n  )\n  ON CONFLICT (user_id, COALESCE(topic_id, '00000000-0000-0000-0000-000000000000'::uuid), COALESCE(chapter_id, '00000000-0000-0000-0000-000000000000'::uuid))\n  DO UPDATE SET\n    next_due_at = now() + (new_interval || ' days')::interval,\n    interval_days = new_interval,\n    ease_factor = new_ease,\n    last_reviewed_at = now(),\n    reviews_count = revision_schedule.reviews_count + 1,\n    correct_streak = new_streak,\n    last_accuracy = 0.7 * COALESCE(revision_schedule.last_accuracy, 0.5) + 0.3 * (CASE WHEN NEW.is_correct THEN 1 ELSE 0 END),\n    subject = COALESCE(q_subject, revision_schedule.subject),\n    updated_at = now();\n\n  RETURN NEW;\nEND;\n$function$\n"
+  },
+  {
+    "signature": "update_streak_stats(uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.update_streak_stats(p_user_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare\n  v_profile record;\n  v_today text;\n  v_yesterday text;\n  v_today_start timestamptz;\n  v_tomorrow_start timestamptz;\n  v_new_streak integer;\n  v_new_longest integer;\n  v_days_since integer;\n  v_used_freeze boolean := false;\n  v_today_count bigint;\n  v_daily_goal integer;\n  v_reference_date date;\nbegin\n  if auth.uid() is null or auth.uid() != p_user_id then\n    return jsonb_build_object('error', 'Unauthorized');\n  end if;\n\n  v_today := to_char(now() at time zone 'Asia/Kolkata', 'YYYY-MM-DD');\n  v_yesterday := to_char((now() at time zone 'Asia/Kolkata' - interval '1 day'), 'YYYY-MM-DD');\n\n  v_today_start := (date_trunc('day', now() at time zone 'Asia/Kolkata') at time zone 'Asia/Kolkata');\n  v_tomorrow_start := v_today_start + interval '1 day';\n\n  select current_streak, longest_streak, last_activity_date, streak_freeze_available, daily_goal, last_streak_date\n  into v_profile\n  from profiles where id = p_user_id;\n\n  if not found then\n    return jsonb_build_object('error', 'Profile not found');\n  end if;\n\n  v_daily_goal := coalesce(v_profile.daily_goal, 15);\n\n  -- IMPORTANT: capture reference date BEFORE we overwrite last_activity_date\n  v_reference_date := coalesce(v_profile.last_streak_date, v_profile.last_activity_date);\n\n  select count(*) into v_today_count\n  from question_attempts\n  where user_id = p_user_id\n    and mode = 'practice'\n    and created_at >= v_today_start\n    and created_at < v_tomorrow_start;\n\n  -- Always update activity timestamp\n  update profiles set\n    last_activity_date = v_today::date,\n    last_activity = now(),\n    updated_at = now()\n  where id = p_user_id;\n\n  -- Daily goal not met yet -> no streak change\n  if v_today_count < v_daily_goal then\n    return jsonb_build_object(\n      'success', true,\n      'streak', coalesce(v_profile.current_streak, 0),\n      'daily_goal_met', false,\n      'today_count', v_today_count,\n      'daily_goal', v_daily_goal\n    );\n  end if;\n\n  -- Already credited streak for today -> idempotent\n  if v_profile.last_streak_date = v_today::date then\n    v_new_streak := greatest(coalesce(v_profile.current_streak, 0), 1);\n    v_new_longest := greatest(v_new_streak, coalesce(v_profile.longest_streak, 0));\n\n    update profiles set\n      current_streak = v_new_streak,\n      longest_streak = v_new_longest,\n      last_streak_date = v_today::date,\n      updated_at = now()\n    where id = p_user_id;\n\n    return jsonb_build_object(\n      'success', true,\n      'streak', v_new_streak,\n      'longest_streak', v_new_longest,\n      'daily_goal_met', true,\n      'already_updated', true\n    );\n  end if;\n\n  -- New streak day: decide based on reference date (last_streak_date preferred)\n  v_new_streak := coalesce(v_profile.current_streak, 0);\n\n  if v_reference_date = v_yesterday::date then\n    -- Continued from yesterday -> increment\n    v_new_streak := greatest(1, v_new_streak + 1);\n  elsif v_reference_date is not null then\n    v_days_since := (v_today::date - v_reference_date)::integer;\n    if v_days_since = 2 and coalesce(v_profile.streak_freeze_available, false) then\n      v_new_streak := greatest(1, v_new_streak + 1);\n      v_used_freeze := true;\n    else\n      -- Gap > 1 day, no freeze -> restart at 1\n      v_new_streak := 1;\n    end if;\n  else\n    -- First ever streak\n    v_new_streak := 1;\n  end if;\n\n  v_new_longest := greatest(v_new_streak, coalesce(v_profile.longest_streak, 0));\n\n  update profiles set\n    current_streak = v_new_streak,\n    longest_streak = v_new_longest,\n    last_streak_date = v_today::date,\n    streak_freeze_available = case when v_used_freeze then false else streak_freeze_available end,\n    updated_at = now()\n  where id = p_user_id;\n\n  return jsonb_build_object(\n    'success', true,\n    'streak', v_new_streak,\n    'longest_streak', v_new_longest,\n    'daily_goal_met', true,\n    'used_freeze', v_used_freeze\n  );\nend;\n$function$\n"
+  },
+  {
+    "signature": "update_updated_at_column()",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.update_updated_at_column()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN NEW.updated_at = now(); RETURN NEW; END;\n$function$\n"
+  },
+  {
+    "signature": "upsert_topic_mastery(uuid,uuid,boolean)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.upsert_topic_mastery(p_user_id uuid, p_topic_id uuid, p_is_correct boolean)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE v_row public.topic_mastery%ROWTYPE;\nBEGIN\n  IF auth.uid() IS NULL OR auth.uid() <> p_user_id THEN RAISE EXCEPTION 'unauthorized'; END IF;\n  INSERT INTO public.topic_mastery (user_id, topic_id, questions_attempted, questions_correct, last_attempted)\n  VALUES (p_user_id, p_topic_id, 1, CASE WHEN p_is_correct THEN 1 ELSE 0 END, now())\n  ON CONFLICT (user_id, topic_id) DO UPDATE SET\n    questions_attempted = public.topic_mastery.questions_attempted + 1,\n    questions_correct = public.topic_mastery.questions_correct + CASE WHEN p_is_correct THEN 1 ELSE 0 END,\n    last_attempted = now(),\n    mastery_level = LEAST(100, ROUND(((public.topic_mastery.questions_correct + CASE WHEN p_is_correct THEN 1 ELSE 0 END)::numeric / GREATEST(public.topic_mastery.questions_attempted + 1, 1)) * 100, 2)),\n    updated_at = now()\n  RETURNING * INTO v_row;\n  RETURN jsonb_build_object('success', true, 'mastery_level', v_row.mastery_level);\nEND $function$\n"
+  },
+  {
+    "signature": "users_needing_reminder(integer)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "TABLE(user_id uuid, full_name text, daily_xp integer, xp_goal integer, current_streak integer)",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.users_needing_reminder(p_min_streak integer DEFAULT 0)\n RETURNS TABLE(user_id uuid, full_name text, daily_xp integer, xp_goal integer, current_streak integer)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT p.id,\n         COALESCE(p.full_name,'Student'),\n         CASE WHEN p.daily_xp_date IS DISTINCT FROM (now() AT TIME ZONE 'Asia/Kolkata')::date THEN 0 ELSE COALESCE(p.daily_xp,0) END,\n         GREATEST(COALESCE(p.daily_goal,15),1) * 10,\n         COALESCE(p.current_streak,0)\n  FROM public.profiles p\n  WHERE COALESCE(p.current_streak,0) >= p_min_streak\n    AND (\n      CASE WHEN p.daily_xp_date IS DISTINCT FROM (now() AT TIME ZONE 'Asia/Kolkata')::date THEN 0 ELSE COALESCE(p.daily_xp,0) END\n      < GREATEST(COALESCE(p.daily_goal,15),1) * 10\n    )\n    AND EXISTS (SELECT 1 FROM public.push_subscriptions s WHERE s.user_id = p.id);\n$function$\n"
+  },
+  {
+    "signature": "validate_practice_answer(uuid,text[],numeric)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.validate_practice_answer(p_question_id uuid, p_selected_options text[] DEFAULT NULL::text[], p_numerical_answer numeric DEFAULT NULL::numeric)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  q public.questions%ROWTYPE;\n  v_selected text[];\n  v_correct text[];\n  v_is_correct boolean := false;\nBEGIN\n  SELECT * INTO q\n  FROM public.questions\n  WHERE id = p_question_id\n    AND COALESCE(is_active, true) = true;\n\n  IF NOT FOUND THEN\n    RETURN jsonb_build_object('error', 'question_not_found', 'is_correct', false);\n  END IF;\n\n  IF q.question_type IN ('numerical_int', 'numerical_decimal') OR q.numerical_answer IS NOT NULL THEN\n    v_is_correct := p_numerical_answer IS NOT NULL\n      AND q.numerical_answer IS NOT NULL\n      AND ABS(p_numerical_answer - q.numerical_answer) <= COALESCE(q.numerical_tolerance, 0);\n  ELSE\n    SELECT array_agg(upper(trim(x)) ORDER BY upper(trim(x))) INTO v_selected\n    FROM unnest(COALESCE(p_selected_options, ARRAY[]::text[])) AS x\n    WHERE trim(x) <> '';\n\n    SELECT array_agg(upper(trim(x)) ORDER BY upper(trim(x))) INTO v_correct\n    FROM unnest(\n      CASE\n        WHEN q.correct_options IS NOT NULL AND array_length(q.correct_options, 1) > 0 THEN q.correct_options\n        WHEN q.correct_option IS NOT NULL AND trim(q.correct_option) <> '' THEN string_to_array(q.correct_option, ',')\n        ELSE ARRAY[]::text[]\n      END\n    ) AS x\n    WHERE trim(x) <> '';\n\n    v_is_correct := COALESCE(array_length(v_selected, 1), 0) > 0\n      AND COALESCE(array_length(v_correct, 1), 0) > 0\n      AND v_selected = v_correct;\n  END IF;\n\n  RETURN jsonb_build_object(\n    'is_correct', COALESCE(v_is_correct, false),\n    'correct_options', COALESCE(v_correct, q.correct_options),\n    'correct_option', COALESCE(array_to_string(v_correct, ','), q.correct_option),\n    'numerical_answer', q.numerical_answer,\n    'explanation', COALESCE(q.explanation, '')\n  );\nEND;\n$function$\n"
+  },
+  {
+    "signature": "validate_promo_code(text,text,uuid)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.validate_promo_code(p_code text, p_plan_id text, p_user_id uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE v_code public.promo_codes%ROWTYPE; v_plan public.subscription_plans%ROWTYPE;\n  v_user_uses int; v_discount numeric; v_final numeric;\nBEGIN\n  SELECT * INTO v_plan FROM public.subscription_plans WHERE id = p_plan_id AND is_active = true;\n  IF NOT FOUND THEN RETURN jsonb_build_object('valid', false, 'reason','Plan not found'); END IF;\n  SELECT * INTO v_code FROM public.promo_codes WHERE code = upper(trim(p_code));\n  IF NOT FOUND THEN RETURN jsonb_build_object('valid', false, 'reason','Invalid promo code'); END IF;\n  IF NOT v_code.is_active THEN RETURN jsonb_build_object('valid', false, 'reason','This code is no longer active'); END IF;\n  IF v_code.starts_at IS NOT NULL AND v_code.starts_at > now() THEN RETURN jsonb_build_object('valid', false, 'reason','Not active yet'); END IF;\n  IF v_code.expires_at IS NOT NULL AND v_code.expires_at < now() THEN RETURN jsonb_build_object('valid', false, 'reason','Expired'); END IF;\n  IF v_code.max_redemptions IS NOT NULL AND v_code.current_redemptions >= v_code.max_redemptions THEN RETURN jsonb_build_object('valid', false, 'reason','Fully redeemed'); END IF;\n  IF array_length(v_code.applicable_plan_ids,1) > 0 AND NOT (p_plan_id = ANY(v_code.applicable_plan_ids)) THEN RETURN jsonb_build_object('valid', false, 'reason','Not valid for selected plan'); END IF;\n  IF v_code.min_amount > 0 AND v_plan.price < v_code.min_amount THEN RETURN jsonb_build_object('valid', false, 'reason','Plan price below minimum'); END IF;\n  SELECT COUNT(*) INTO v_user_uses FROM public.promo_redemptions WHERE promo_code_id = v_code.id AND user_id = p_user_id;\n  IF v_user_uses >= v_code.max_per_user THEN RETURN jsonb_build_object('valid', false, 'reason','Already used'); END IF;\n  IF v_code.discount_type = 'percent' THEN v_discount := ROUND(v_plan.price * v_code.discount_value / 100);\n  ELSE v_discount := LEAST(v_code.discount_value, v_plan.price); END IF;\n  v_final := GREATEST(v_plan.price - v_discount, 1);\n  RETURN jsonb_build_object('valid', true, 'promo_code_id', v_code.id, 'code', v_code.code,\n    'discount_type', v_code.discount_type, 'discount_value', v_code.discount_value,\n    'discount_applied', v_discount, 'original_price', v_plan.price, 'final_price', v_final);\nEND $function$\n"
+  },
+  {
+    "signature": "validate_question_answer(uuid,text[],numeric,exam_code)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.validate_question_answer(p_question_id uuid, p_selected_options text[] DEFAULT NULL::text[], p_numerical_answer numeric DEFAULT NULL::numeric, p_exam exam_code DEFAULT NULL::exam_code)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  q public.questions%ROWTYPE;\n  v_is_correct boolean := false;\nBEGIN\n  SELECT * INTO q FROM public.questions WHERE id = p_question_id AND is_active = true;\n  IF NOT FOUND THEN\n    RETURN jsonb_build_object('error', 'question_not_found');\n  END IF;\n\n  IF q.question_type IN ('numerical_int','numerical_decimal') THEN\n    v_is_correct := p_numerical_answer IS NOT NULL\n                    AND ABS(p_numerical_answer - q.numerical_answer) <= COALESCE(q.numerical_tolerance, 0);\n  ELSE\n    v_is_correct := p_selected_options IS NOT NULL\n      AND (SELECT array_agg(x ORDER BY x) FROM unnest(p_selected_options) x)\n        = (SELECT array_agg(x ORDER BY x) FROM unnest(q.correct_options) x);\n  END IF;\n\n  RETURN jsonb_build_object(\n    'is_correct', v_is_correct,\n    'correct_options', q.correct_options,\n    'numerical_answer', q.numerical_answer,\n    'explanation', q.explanation,\n    'marking', jsonb_build_object(\n      'correct', q.marking_correct,\n      'incorrect', q.marking_incorrect,\n      'unattempted', q.marking_unattempted\n    )\n  );\nEND;\n$function$\n"
+  },
+  {
+    "signature": "validate_question_answer(uuid,text)",
+    "owner": "postgres",
+    "prosecdef": true,
+    "proconfig": [
+      "search_path=public"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+    "returns": "jsonb",
+    "anon_execute": false,
+    "authenticated_execute": true,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.validate_question_answer(p_question_id uuid, p_selected_option text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE q public.questions%ROWTYPE; v_is_correct boolean := false; v_correct text;\nBEGIN\n  SELECT * INTO q FROM public.questions WHERE id = p_question_id AND is_active = true;\n  IF NOT FOUND THEN RETURN jsonb_build_object('error','question_not_found'); END IF;\n  IF q.correct_options IS NOT NULL AND array_length(q.correct_options,1) >= 1 THEN v_correct := q.correct_options[1];\n  ELSE v_correct := q.correct_option; END IF;\n  v_is_correct := p_selected_option IS NOT NULL AND v_correct IS NOT NULL AND upper(p_selected_option) = upper(v_correct);\n  RETURN jsonb_build_object('is_correct', v_is_correct, 'correct_option', v_correct, 'explanation', COALESCE(q.explanation,''));\nEND $function$\n"
+  },
+  {
+    "signature": "validate_question_hierarchy()",
+    "owner": "postgres",
+    "prosecdef": false,
+    "proconfig": [
+      "search_path=public, pg_temp"
+    ],
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "anon_execute": false,
+    "authenticated_execute": false,
+    "service_execute": true,
+    "definition": "CREATE OR REPLACE FUNCTION public.validate_question_hierarchy()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public', 'pg_temp'\nAS $function$\nDECLARE\n  v_topic_chapter uuid;\n  v_chapter_subject uuid;\n  v_concept_topic uuid;\nBEGIN\n  SELECT chapter_id INTO v_topic_chapter FROM public.topics WHERE id = NEW.topic_id;\n  IF v_topic_chapter IS DISTINCT FROM NEW.chapter_id THEN\n    RAISE EXCEPTION 'Topic % does not belong to chapter %', NEW.topic_id, NEW.chapter_id;\n  END IF;\n  SELECT subject_id INTO v_chapter_subject FROM public.chapters WHERE id = NEW.chapter_id;\n  IF v_chapter_subject IS DISTINCT FROM NEW.subject_id THEN\n    RAISE EXCEPTION 'Chapter % does not belong to subject %', NEW.chapter_id, NEW.subject_id;\n  END IF;\n  IF NEW.concept_id IS NOT NULL THEN\n    SELECT topic_id INTO v_concept_topic FROM public.concepts WHERE id = NEW.concept_id;\n    IF v_concept_topic IS DISTINCT FROM NEW.topic_id THEN\n      RAISE EXCEPTION 'Concept % does not belong to topic %', NEW.concept_id, NEW.topic_id;\n    END IF;\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n"
+  }
+]
