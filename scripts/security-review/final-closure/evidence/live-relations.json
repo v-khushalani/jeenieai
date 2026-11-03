@@ -1,0 +1,622 @@
+[
+  {
+    "relname": "_backup_questions_chapter_reconcile",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "admin_notifications",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "ai_request_log",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "badges",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "batch_subjects",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "batches",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "battle_answers",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "battle_players",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "battle_rewards",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "battle_sessions",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "chapters",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "class_logs",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "community_posts",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "community_replies",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "community_reports",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "community_votes",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "concept_maps",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "concepts",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "content_health",
+    "relkind": "v",
+    "owner": "postgres",
+    "relrowsecurity": false,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": " SELECT COALESCE(c.class_level, q.class_level::integer) AS class_level,\n    COALESCE(c.subject, q.subject) AS subject,\n    c.id AS chapter_id,\n    COALESCE(c.chapter_name, c.name, q.chapter) AS chapter_name,\n    count(*) FILTER (WHERE q.is_active) AS usable_questions,\n    count(*) FILTER (WHERE NOT q.is_active) AS hidden_questions,\n    count(*) AS total_questions\n   FROM questions q\n     LEFT JOIN chapters c ON c.id = q.chapter_id\n  GROUP BY (COALESCE(c.class_level, q.class_level::integer)), (COALESCE(c.subject, q.subject)), c.id, (COALESCE(c.chapter_name, c.name, q.chapter));"
+  },
+  {
+    "relname": "conversion_prompts",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "daily_missions",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "daily_progress",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "draw_entries",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "educator_content",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "exam_config",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "extracted_questions_queue",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "feature_flags",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "group_tests",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "import_jobs",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "league_members",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "leagues",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "my_profile",
+    "relkind": "v",
+    "owner": "postgres",
+    "relrowsecurity": false,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": [
+      "security_invoker=true"
+    ],
+    "view_definition": " SELECT id,\n    email,\n    full_name,\n    avatar_url,\n    phone,\n    city,\n    state,\n    grade,\n    target_exam,\n    goal_exam,\n    target_rank,\n    target_exam_date,\n    subjects,\n    daily_goal,\n    daily_question_limit,\n    questions_today,\n    smart_goal_enabled,\n    goal_locked,\n    is_premium,\n    subscription_plan,\n    subscription_status,\n    subscription_end_date,\n    total_points,\n    current_streak,\n    longest_streak,\n    last_activity_date,\n    last_activity,\n    last_streak_date,\n    streak_freeze_available,\n    onboarding_completed,\n    created_at,\n    updated_at,\n    total_study_time,\n    total_questions_solved,\n    overall_accuracy,\n    badges,\n    goal_locked_at,\n    level,\n    level_progress,\n    referral_code,\n    educator_approved,\n    subscription_tier\n   FROM profiles\n  WHERE id = auth.uid();"
+  },
+  {
+    "relname": "payment_audit",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "payments",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "points_log",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "profiles",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "profiles_public",
+    "relkind": "v",
+    "owner": "postgres",
+    "relrowsecurity": false,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": [
+      "security_invoker=true"
+    ],
+    "view_definition": " SELECT id,\n    full_name,\n    avatar_url,\n    total_points,\n    current_streak,\n    longest_streak,\n    total_questions_solved,\n    overall_accuracy,\n    level,\n    level_progress,\n    badges\n   FROM profiles;"
+  },
+  {
+    "relname": "promo_codes",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "promo_redemptions",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "push_subscriptions",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "question_attempts",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "question_edit_history",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "question_reports",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "question_walkthroughs",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "questions",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "questions_public",
+    "relkind": "v",
+    "owner": "postgres",
+    "relrowsecurity": false,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": [
+      "security_invoker=true"
+    ],
+    "view_definition": " SELECT id,\n    question,\n    question_text,\n    option_a,\n    option_b,\n    option_c,\n    option_d,\n    options,\n    question_image_url,\n    subject,\n    chapter,\n    topic,\n    subject_id,\n    chapter_id,\n    topic_id,\n    difficulty,\n    exam,\n    exam_relevance,\n    question_type,\n    is_active,\n    is_verified,\n    is_pyq,\n    pyq_year,\n    year,\n    created_at,\n    updated_at\n   FROM questions\n  WHERE is_active = true;"
+  },
+  {
+    "relname": "referrals",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "referrals_safe",
+    "relkind": "v",
+    "owner": "postgres",
+    "relrowsecurity": false,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": [
+      "security_invoker=true"
+    ],
+    "view_definition": " SELECT id,\n    referrer_id,\n    referred_user_id,\n    referral_code,\n    status,\n    reward_granted,\n    created_at,\n    completed_at\n   FROM referrals;"
+  },
+  {
+    "relname": "revision_schedule",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "reward_claims",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "reward_store_items",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "reward_vault_claims",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "study_notes",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "study_plan_progress",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "study_plans",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "subjects",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "subscription_plans",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "system_logs",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "test_attempt_violations",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "test_sessions",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "topic_mastery",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "topics",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "user_badges",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "user_batch_subscriptions",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "user_contracts",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "user_inventory",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "user_notifications",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  },
+  {
+    "relname": "user_roles",
+    "relkind": "r",
+    "owner": "postgres",
+    "relrowsecurity": true,
+    "relacl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "reloptions": null,
+    "view_definition": null
+  }
+]
