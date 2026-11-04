@@ -34,11 +34,9 @@ export function repairEscapedLatex(raw: string): string {
   return raw
     .replace(/\t(?=an\b|heta|imes|au\b|ext|riangle|ilde|o\b)/g, "\\t")
     .replace(/\f(?=rac|orall)/g, "\\f")
-    // eslint-disable-next-line no-control-regex -- Deliberately repairs backspace-corrupted LaTeX.
     .replace(/\x08(?=eta|ar\b|egin|oldsymbol)/g, "\\b")
     .replace(/\r(?=ho\b|ight|m\b|angle)/g, "\\r")
     .replace(/\v(?=ec\b|arepsilon|arphi)/g, "\\v")
-    // eslint-disable-next-line no-control-regex -- Deliberately repairs bell-corrupted LaTeX.
     .replace(/\x07(?=lpha|pprox)/g, "\\a");
 }
 
@@ -48,7 +46,8 @@ const esc = (s: string) =>
 const math = (s?: string | null) => (s ? renderLatex(repairEscapedLatex(String(s))) : "");
 
 const isNumerical = (q: QuestionPaperQuestion) =>
-  /numer|integer/i.test(q.question_type || "");
+  /numer|integer/i.test(q.question_type || "") ||
+  (q.numerical_answer != null && !q.option_a && !q.option_b);
 
 function answerOf(q: QuestionPaperQuestion): string {
   if (q.numerical_answer != null) return String(q.numerical_answer);
@@ -70,7 +69,7 @@ export function buildQuestionPaperHtml(data: QuestionPaperData): string {
   data.questions.forEach((q) => {
     const k = q.subject || "General";
     if (!groups.has(k)) groups.set(k, []);
-    groups.get(k)?.push(q);
+    groups.get(k)!.push(q);
   });
 
   let n = 0;

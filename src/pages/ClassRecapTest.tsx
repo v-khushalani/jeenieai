@@ -5,7 +5,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { assessmentsAPI } from '@/services/api/modules/assessments';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -55,8 +54,25 @@ export default function ClassRecapTest() {
       if (clErr || !cl) throw clErr ?? new Error('Class log nahi mili');
       setLog(cl);
 
-      const issued = await assessmentsAPI.issue({ purpose: 'recap', class_log_id: classLogId, count: RECAP_SIZE, duration: 300 });
-      setQuestions(issued.questions as unknown as Q[]);
+      let qb = supabase
+        .from('questions')
+        .select('id, question_text, option_a, option_b, option_c, option_d, correct_option, correct_answer, explanation, difficulty')
+        .eq('is_active', true)
+        .limit(60);
+
+      if (cl.chapter_id) qb = qb.eq('chapter_id', cl.chapter_id);
+      else if (cl.chapter_name) qb = qb.ilike('chapter', `%${cl.chapter_name}%`);
+      else qb = qb.ilike('subject', cl.subject);
+
+      const { data: qs, error: qErr } = await qb;
+      if (qErr) throw qErr;
+
+      const valid = (qs ?? []).filter(q => q.question_text && (q.option_a || q.correct_answer));
+      const shuffled = valid.sort(() => Math.random() - 0.5).slice(0, RECAP_SIZE);
+      if (shuffled.length === 0) {
+        toast.error('Is chapter ke questions abhi nahi hain — dusra chapter try karo');
+      }
+      setQuestions(shuffled);
     } catch (e: any) {
       toast.error(e?.message ?? 'Recap load nahi hua');
     } finally {
@@ -73,14 +89,28 @@ export default function ClassRecapTest() {
 
   const submit = async () => {
     if (!current || !picked) return;
-    try {
-      const item = current as unknown as { assessment_id: string; item_id: string };
-      await assessmentsAPI.submit(item, { kind: 'options', values: [picked] }, crypto.randomUUID());
-      const feedback = await assessmentsAPI.feedback(item.assessment_id, current.id);
-      setQuestions(prev => prev.map(q => q.id === current.id ? { ...q, ...feedback } : q));
-      setRevealed(true);
-      setAnswers(prev => [...prev, { q: current, picked, correct: feedback.is_correct }]);
-    } catch { toast.error('Answer not confirmed. Please retry.'); }
+    const correct = picked.toUpperCase() === (current.correct_option ?? '').toUpperCase();
+    setRevealed(true);
+    setAnswers((prev) => [...prev, { q: current, picked, correct }]);
+    if (user?.id) {
+      const points = correct ? 5 : 0;
+      void (async () => {
+        await supabase.from('question_attempts').insert({
+          user_id: user.id, question_id: current.id, is_correct: correct,
+          selected_option: picked, time_spent: 0, mode: 'class_recap',
+        } as any);
+        // Count recap questions towards daily goal / streak / points (tests are excluded, this is not a test).
+        await Promise.all([
+          supabase.rpc('sync_daily_progress', {
+            p_user_id: user.id, p_is_correct: correct, p_points_delta: points,
+          } as any),
+          supabase.rpc('update_practice_stats', {
+            p_user_id: user.id, p_points_delta: points, p_is_correct: correct,
+          } as any),
+          supabase.rpc('update_streak_stats', { p_user_id: user.id } as any),
+        ]);
+      })();
+    }
   };
 
   const next = async () => {
@@ -95,9 +125,6 @@ export default function ClassRecapTest() {
   const finish = async () => {
     setSaving(true);
     try {
-      const issued = questions[0] as unknown as { assessment_id?: string };
-      if (!issued.assessment_id) throw new Error('Verified recap unavailable');
-      await assessmentsAPI.complete(issued.assessment_id, {}, crypto.randomUUID());
       // regenerate mission so this counts as done next time
       await supabase.functions.invoke('generate-daily-mission', { body: { force: true } }).catch(() => {});
     } finally {
