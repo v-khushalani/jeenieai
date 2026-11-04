@@ -10,6 +10,25 @@ DO $$ BEGIN
  IF to_regclass('public.questions') IS NULL OR to_regclass('public.profiles') IS NULL OR to_regprocedure('public.has_role(uuid,public.app_role)') IS NULL THEN RAISE EXCEPTION 'Missing required production schema';END IF;
  IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname IN ('anon','authenticated') AND (rolsuper OR rolbypassrls)) THEN RAISE EXCEPTION 'Unsafe client role';END IF;
 END $$;
+-- IF NOT EXISTS is permitted only for an exact known evidence shape.
+DO $$ DECLARE expected record;actual text[];BEGIN
+ FOR expected IN SELECT * FROM (VALUES
+ ('assessment_issuances',ARRAY['id','owner_id','purpose','config','issued_at','expires_at','review_after','group_id','request_id','completed_at','totals','created_at','updated_at']),
+ ('assessment_items',ARRAY['id','issuance_id','question_id','position','snapshot','correct_marks','incorrect_marks','created_at','updated_at']),
+ ('assessment_receipts',ARRAY['id','issuance_id','item_id','response','is_correct','marks','request_id','created_at','updated_at']),
+ ('assessment_requests',ARRAY['owner_id','request_id','operation','input','receipt','created_at','updated_at']),
+ ('assessment_entitlements',ARRAY['owner_id','tier','valid_until']),
+ ('assessment_disclosures',ARRAY['owner_id','question_id','created_at','updated_at']),
+ ('assessment_drafts',ARRAY['item_id','response','revision','created_at','updated_at']),
+ ('secure_group_templates',ARRAY['id','owner_id','code','is_active','config','items','starts_at','ends_at','request_id','created_at','updated_at']),
+ ('secure_battle_items',ARRAY['battle_id','question_id','position','snapshot','created_at','updated_at'])
+ ) e(name,columns) LOOP
+  IF to_regclass('public.'||expected.name) IS NOT NULL THEN
+   SELECT array_agg(attname::text ORDER BY attnum) INTO actual FROM pg_attribute WHERE attrelid=to_regclass('public.'||expected.name) AND attnum>0 AND NOT attisdropped;
+   IF actual IS DISTINCT FROM expected.columns THEN RAISE EXCEPTION 'Incompatible evidence table: %',expected.name;END IF;
+  END IF;
+ END LOOP;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.assessment_issuances (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid NOT NULL,
@@ -465,7 +484,16 @@ DO $$ DECLARE cols text;BEGIN SELECT string_agg(quote_ident(attname),',') INTO c
 GRANT SELECT(id,question,question_text,question_image_url,option_a,option_b,option_c,option_d,options,question_type,difficulty,difficulty_jee_mains,difficulty_neet,subject,subject_id,chapter,chapter_id,topic_id,concept_id,batch_id,exam,exam_relevance,year,pyq_year,is_pyq,source,source_row_id,is_active,is_verified,created_at,updated_at,topic,content_hash,pyq_session,pyq_exam,language,class_level,text_quality,option_a_image_url,option_b_image_url,option_c_image_url,option_d_image_url) ON public.questions TO authenticated;
 REVOKE ALL ON public.questions_public FROM PUBLIC,anon;
 GRANT SELECT ON public.questions_public TO authenticated,service_role;
-ALTER VIEW public.content_health SET(security_invoker=true);
+-- Preserve content-health shape while requiring verified staff authorization.
+CREATE OR REPLACE FUNCTION public.admin_content_health() RETURNS TABLE(class_level integer,subject text,chapter_id uuid,chapter_name text,usable_questions bigint,hidden_questions bigint,total_questions bigint)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$ BEGIN
+ IF NOT public.assessment_admin() THEN RAISE EXCEPTION 'Admin required' USING ERRCODE='42501';END IF;
+ RETURN QUERY SELECT coalesce(c.class_level,q.class_level::integer),coalesce(c.subject,q.subject),c.id,coalesce(c.chapter_name,c.name,q.chapter),count(*) FILTER(WHERE q.is_active),count(*) FILTER(WHERE NOT q.is_active),count(*) FROM public.questions q LEFT JOIN public.chapters c ON c.id=q.chapter_id GROUP BY coalesce(c.class_level,q.class_level::integer),coalesce(c.subject,q.subject),c.id,coalesce(c.chapter_name,c.name,q.chapter);
+END $$;
+CREATE OR REPLACE VIEW public.content_health WITH(security_invoker=true) AS SELECT * FROM public.admin_content_health();
+ALTER FUNCTION public.admin_content_health() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.admin_content_health() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_content_health() TO authenticated,service_role;
 REVOKE ALL ON public.content_health FROM PUBLIC,anon;
 GRANT SELECT ON public.content_health TO authenticated,service_role;
 ALTER POLICY "admin manage questions" ON public.questions TO authenticated;
@@ -495,6 +523,13 @@ DO $$ DECLARE f record;BEGIN
 END $$;
 -- Ordinary callers never write server scores, membership, or rewards directly.
 REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON public.battle_sessions,public.battle_players,public.battle_answers,public.battle_rewards FROM PUBLIC,anon,authenticated;
+-- Clear column ACLs too: table REVOKE does not clear independent column grants.
+DO $$ DECLARE t record;cols text;BEGIN
+ FOR t IN SELECT c.oid,c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('assessment_issuances','assessment_items','assessment_receipts','assessment_requests','assessment_entitlements','assessment_drafts','assessment_disclosures','secure_group_templates','secure_battle_items') LOOP
+  SELECT string_agg(quote_ident(attname),',') INTO cols FROM pg_attribute WHERE attrelid=t.oid AND attnum>0 AND NOT attisdropped;
+  EXECUTE format('REVOKE SELECT (%s),INSERT (%s),UPDATE (%s),REFERENCES (%s) ON public.%I FROM PUBLIC,anon,authenticated',cols,cols,cols,cols,t.relname);
+ END LOOP;
+END $$;
 -- Admin writes remain guarded by the existing role policy; no answer SELECT grant.
 GRANT INSERT,UPDATE,DELETE ON public.questions TO authenticated;
 -- Postcondition checks catch inherited/PUBLIC/default privilege regressions.
