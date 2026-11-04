@@ -10,6 +10,25 @@ DO $$ BEGIN
  IF to_regclass('public.questions') IS NULL OR to_regclass('public.profiles') IS NULL OR to_regprocedure('public.has_role(uuid,public.app_role)') IS NULL THEN RAISE EXCEPTION 'Missing required production schema';END IF;
  IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname IN ('anon','authenticated') AND (rolsuper OR rolbypassrls)) THEN RAISE EXCEPTION 'Unsafe client role';END IF;
 END $$;
+-- IF NOT EXISTS is permitted only for an exact known evidence shape.
+DO $$ DECLARE expected record;actual text[];BEGIN
+ FOR expected IN SELECT * FROM (VALUES
+ ('assessment_issuances',ARRAY['id','owner_id','purpose','config','issued_at','expires_at','review_after','group_id','request_id','completed_at','totals','created_at','updated_at']),
+ ('assessment_items',ARRAY['id','issuance_id','question_id','position','snapshot','correct_marks','incorrect_marks','created_at','updated_at']),
+ ('assessment_receipts',ARRAY['id','issuance_id','item_id','response','is_correct','marks','request_id','created_at','updated_at']),
+ ('assessment_requests',ARRAY['owner_id','request_id','operation','input','receipt','created_at','updated_at']),
+ ('assessment_entitlements',ARRAY['owner_id','tier','valid_until']),
+ ('assessment_disclosures',ARRAY['owner_id','question_id','created_at','updated_at']),
+ ('assessment_drafts',ARRAY['item_id','response','revision','created_at','updated_at']),
+ ('secure_group_templates',ARRAY['id','owner_id','code','is_active','config','items','starts_at','ends_at','request_id','created_at','updated_at']),
+ ('secure_battle_items',ARRAY['battle_id','question_id','position','snapshot','created_at','updated_at'])
+ ) e(name,columns) LOOP
+  IF to_regclass('public.'||expected.name) IS NOT NULL THEN
+   SELECT array_agg(attname::text ORDER BY attnum) INTO actual FROM pg_attribute WHERE attrelid=to_regclass('public.'||expected.name) AND attnum>0 AND NOT attisdropped;
+   IF actual IS DISTINCT FROM expected.columns THEN RAISE EXCEPTION 'Incompatible evidence table: %',expected.name;END IF;
+  END IF;
+ END LOOP;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.assessment_issuances (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid NOT NULL,
@@ -20,7 +39,6 @@ CREATE TABLE IF NOT EXISTS public.assessment_issuances (
  UNIQUE(owner_id,request_id)
 );
 -- No direct owner-table SELECT: totals disclose answers before group embargo.
-REVOKE ALL ON public.assessment_issuances FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON public.assessment_issuances FROM PUBLIC,anon,authenticated;
 GRANT ALL ON public.assessment_issuances TO service_role;
 ALTER TABLE public.assessment_issuances ENABLE ROW LEVEL SECURITY;
@@ -94,7 +112,7 @@ END $$;
 DROP TRIGGER IF EXISTS assessment_entitlement_sync ON public.profiles;
 CREATE TRIGGER assessment_entitlement_sync AFTER INSERT OR UPDATE OF is_premium,subscription_tier,subscription_end_date ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.assessment_sync_entitlement();
 CREATE OR REPLACE FUNCTION public.is_active_pro_plus(p_user_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
- SELECT (p_user_id=auth.uid() OR public.assessment_admin()) AND EXISTS(SELECT 1 FROM public.assessment_entitlements WHERE owner_id=p_user_id AND tier='pro_plus' AND valid_until>clock_timestamp());
+ SELECT (p_user_id=auth.uid() OR coalesce(auth.role()='service_role',false) OR EXISTS(SELECT 1 FROM public.user_roles WHERE user_id=auth.uid() AND role::text IN ('admin','super_admin'))) AND EXISTS(SELECT 1 FROM public.assessment_entitlements WHERE owner_id=p_user_id AND tier='pro_plus' AND valid_until>clock_timestamp());
 $$;
 DO $$ BEGIN IF to_regprocedure('public.security_legacy_cancel_subscription()') IS NULL THEN ALTER FUNCTION public.cancel_subscription() RENAME TO security_legacy_cancel_subscription;END IF;END $$;
 REVOKE ALL ON FUNCTION public.security_legacy_cancel_subscription() FROM PUBLIC,anon,authenticated;
@@ -220,7 +238,7 @@ BEGIN
   IF p_answer->>'kind'='timeout' AND clock_timestamp()<least(s.expires_at,s.issued_at+make_interval(secs=>i.position*30)) THEN RAISE EXCEPTION 'Timeout not eligible' USING ERRCODE='22023';END IF;
   IF p_answer->>'kind' IS DISTINCT FROM 'timeout' AND clock_timestamp()>=least(s.expires_at,s.issued_at+make_interval(secs=>i.position*30)) THEN RAISE EXCEPTION 'Round expired' USING ERRCODE='22023';END IF;
  END IF;
- IF p_answer->>'kind'='timeout' AND clock_timestamp()<s.expires_at THEN RAISE EXCEPTION 'Timeout not eligible' USING ERRCODE='22023'; END IF;
+ IF s.purpose<>'battle' AND p_answer->>'kind'='timeout' AND clock_timestamp()<s.expires_at THEN RAISE EXCEPTION 'Timeout not eligible' USING ERRCODE='22023'; END IF;
  IF clock_timestamp()>=s.expires_at AND p_answer->>'kind'<>'timeout' THEN RAISE EXCEPTION 'Expired' USING ERRCODE='22023'; END IF;
  ok:=public.assessment_grade(i.snapshot,p_answer);
  INSERT INTO public.assessment_receipts(issuance_id,item_id,response,is_correct,marks,request_id) VALUES(s.id,i.id,p_answer,ok,CASE WHEN ok THEN i.correct_marks WHEN p_answer->>'kind' IN ('skip','timeout') THEN 0 ELSE i.incorrect_marks END,p_request_id);
@@ -240,6 +258,7 @@ BEGIN
  SELECT * INTO s FROM public.assessment_issuances WHERE id=p_assessment_id AND owner_id=auth.uid() FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Assessment unavailable' USING ERRCODE='42501';END IF;
  IF s.completed_at IS NOT NULL THEN RETURN jsonb_build_object('accepted',true,'id',s.id);END IF;
+ IF jsonb_typeof(p_answers) IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'Invalid answers' USING ERRCODE='22023';END IF;
  IF s.purpose<>'test' AND (p_answers IS DISTINCT FROM '{}'::jsonb OR EXISTS(SELECT 1 FROM public.assessment_items ai WHERE ai.issuance_id=s.id AND NOT EXISTS(SELECT 1 FROM public.assessment_receipts ar WHERE ar.item_id=ai.id))) THEN RAISE EXCEPTION 'Submit issued items first' USING ERRCODE='42501';END IF;
  IF clock_timestamp()<s.expires_at AND EXISTS(SELECT 1 FROM jsonb_each(p_answers) e WHERE e.value->'response'->>'kind'='timeout') THEN RAISE EXCEPTION 'Timeout not eligible' USING ERRCODE='22023';END IF;
  IF jsonb_typeof(p_answers) IS DISTINCT FROM 'object' OR EXISTS(SELECT 1 FROM jsonb_object_keys(p_answers) k WHERE NOT EXISTS(SELECT 1 FROM public.assessment_items WHERE issuance_id=s.id AND question_id::text=k)) THEN RAISE EXCEPTION 'Invalid answers' USING ERRCODE='22023';END IF;
@@ -323,7 +342,7 @@ BEGIN
  AND (NOT(p_config ? 'chapter_ids') OR q.chapter_id::text IN (SELECT jsonb_array_elements_text(p_config->'chapter_ids')))
  AND (public.exam_pool(p_config->>'exam',q.subject) IS NULL OR q.exam=ANY(public.exam_pool(p_config->>'exam',q.subject)))
  AND NOT EXISTS(SELECT 1 FROM public.assessment_disclosures d WHERE d.question_id=q.id)
- AND NOT EXISTS(SELECT 1 FROM public.assessment_items i JOIN public.assessment_issuances a ON a.id=i.issuance_id WHERE i.question_id=q.id AND a.completed_at IS NULL AND a.expires_at>clock_timestamp())
+ AND NOT EXISTS(SELECT 1 FROM public.assessment_items i JOIN public.assessment_issuances a ON a.id=i.issuance_id WHERE i.question_id=q.id AND (a.completed_at IS NULL OR a.purpose IN ('practice','recap')))
  AND NOT EXISTS(SELECT 1 FROM public.secure_battle_items b JOIN public.battle_sessions bs ON bs.id=b.battle_id WHERE b.question_id=q.id AND bs.status IN ('waiting','active') AND bs.expires_at>clock_timestamp())
  AND NOT EXISTS(SELECT 1 FROM public.battle_sessions bs WHERE bs.status IN ('waiting','active') AND bs.expires_at>clock_timestamp() AND q.id=ANY(bs.question_ids))
  ORDER BY random() LIMIT cnt) selected;
@@ -368,17 +387,19 @@ CREATE TRIGGER freeze_group BEFORE UPDATE OR DELETE ON public.secure_group_templ
 -- Live battle membership is issued by the existing server matchmaking routine.
 -- The wrapper serializes matching and freezes keys before safe question delivery.
 CREATE TABLE IF NOT EXISTS public.secure_battle_items (
- battle_id uuid NOT NULL,question_id uuid NOT NULL,position integer NOT NULL,snapshot jsonb NOT NULL,
- created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),PRIMARY KEY(battle_id,question_id)
+ battle_id uuid NOT NULL REFERENCES public.battle_sessions(id),question_id uuid NOT NULL,position integer NOT NULL,snapshot jsonb NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),PRIMARY KEY(battle_id,question_id),UNIQUE(battle_id,position)
 );
 REVOKE ALL ON public.secure_battle_items FROM PUBLIC,anon,authenticated;
 GRANT ALL ON public.secure_battle_items TO service_role;
 ALTER TABLE public.secure_battle_items ENABLE ROW LEVEL SECURITY;
+DROP TRIGGER IF EXISTS freeze_battle_items ON public.secure_battle_items;
+CREATE TRIGGER freeze_battle_items BEFORE UPDATE OR DELETE ON public.secure_battle_items FOR EACH ROW EXECUTE FUNCTION public.assessment_immutable();
 DO $$ BEGIN IF to_regprocedure('public.security_legacy_start_battle(text,text,uuid,text)') IS NULL THEN ALTER FUNCTION public.start_battle(text,text,uuid,text) RENAME TO security_legacy_start_battle;END IF;END $$;
 DO $$ BEGIN IF to_regprocedure('public.security_legacy_finish_battle(uuid)') IS NULL THEN ALTER FUNCTION public.finish_battle(uuid) RENAME TO security_legacy_finish_battle;END IF;END $$;
 REVOKE ALL ON FUNCTION public.security_legacy_start_battle(text,text,uuid,text),public.security_legacy_finish_battle(uuid) FROM PUBLIC,anon,authenticated;
 CREATE OR REPLACE FUNCTION public.start_battle(p_subject text DEFAULT NULL,p_chapter text DEFAULT NULL,p_topic_id uuid DEFAULT NULL,p_difficulty text DEFAULT NULL) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE result jsonb;bid uuid;
+DECLARE result jsonb;bid uuid;frozen_ids uuid[];live_ids uuid[];
 BEGIN
  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501';END IF;
  PERFORM pg_advisory_xact_lock(937041);
@@ -386,11 +407,19 @@ BEGIN
  result:=public.security_legacy_start_battle(p_subject,p_chapter,p_topic_id,p_difficulty);
  IF result ? 'error' THEN RETURN result;END IF;
  bid:=(result->>'battle_id')::uuid;
- INSERT INTO public.secure_battle_items(battle_id,question_id,position,snapshot)
- SELECT bid,q.id,z.ord::integer,to_jsonb(q) FROM public.battle_sessions bs CROSS JOIN LATERAL unnest(bs.question_ids) WITH ORDINALITY z(qid,ord) JOIN public.questions q ON q.id=z.qid WHERE bs.id=bid ON CONFLICT DO NOTHING;
+ SELECT question_ids INTO live_ids FROM public.battle_sessions WHERE id=bid FOR UPDATE;
+ IF bid IS NULL OR coalesce(cardinality(live_ids),0)=0 THEN RAISE EXCEPTION 'Battle paper unavailable' USING ERRCODE='42501';END IF;
+ SELECT array_agg(question_id ORDER BY position) INTO frozen_ids FROM public.secure_battle_items WHERE battle_id=bid;
+ IF frozen_ids IS NULL THEN
+  INSERT INTO public.secure_battle_items(battle_id,question_id,position,snapshot)
+  SELECT bid,q.id,z.ord::integer,to_jsonb(q) FROM unnest(live_ids) WITH ORDINALITY z(qid,ord) JOIN public.questions q ON q.id=z.qid;
+  SELECT array_agg(question_id ORDER BY position) INTO frozen_ids FROM public.secure_battle_items WHERE battle_id=bid;
+ END IF;
+ IF frozen_ids IS DISTINCT FROM live_ids THEN RAISE EXCEPTION 'Battle membership changed' USING ERRCODE='42501';END IF;
  IF EXISTS(SELECT 1 FROM public.secure_battle_items b WHERE b.battle_id=bid AND (
  EXISTS(SELECT 1 FROM public.assessment_disclosures d JOIN public.battle_players bp ON bp.user_id=d.owner_id WHERE bp.battle_id=bid AND d.question_id=b.question_id)
- OR EXISTS(SELECT 1 FROM public.assessment_items i JOIN public.assessment_issuances a ON a.id=i.issuance_id WHERE i.question_id=b.question_id AND a.completed_at IS NULL AND a.expires_at>clock_timestamp())
+ OR EXISTS(SELECT 1 FROM public.assessment_items i JOIN public.assessment_issuances a ON a.id=i.issuance_id WHERE i.question_id=b.question_id AND (a.completed_at IS NULL OR a.purpose IN ('practice','recap')))
+ OR EXISTS(SELECT 1 FROM public.battle_sessions other WHERE other.id<>bid AND other.status IN ('waiting','active') AND other.expires_at>clock_timestamp() AND b.question_id=ANY(other.question_ids))
  OR EXISTS(SELECT 1 FROM public.secure_group_templates g CROSS JOIN LATERAL jsonb_array_elements(g.items) z WHERE g.ends_at>clock_timestamp() AND z->>'id'=b.question_id::text))) THEN RAISE EXCEPTION 'Battle paper unavailable' USING ERRCODE='42501';END IF;
  RETURN result;
 END $$;
@@ -398,6 +427,7 @@ CREATE OR REPLACE FUNCTION public.get_secure_battle_questions(p_battle_id uuid) 
 DECLARE result jsonb;
 BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.battle_players WHERE battle_id=p_battle_id AND user_id=auth.uid()) THEN RAISE EXCEPTION 'Battle unavailable' USING ERRCODE='42501';END IF;
+ IF (SELECT array_agg(question_id ORDER BY position) FROM public.secure_battle_items WHERE battle_id=p_battle_id) IS DISTINCT FROM (SELECT question_ids FROM public.battle_sessions WHERE id=p_battle_id) THEN RAISE EXCEPTION 'Battle membership changed' USING ERRCODE='42501';END IF;
  SELECT jsonb_agg(public.assessment_safe_question(snapshot) ORDER BY position) INTO result FROM public.secure_battle_items WHERE battle_id=p_battle_id;
  RETURN coalesce(result,'[]'::jsonb);
 END $$;
@@ -435,7 +465,7 @@ DECLARE bs public.battle_sessions;
 BEGIN
  PERFORM pg_advisory_xact_lock(937041);
  SELECT * INTO bs FROM public.battle_sessions WHERE id=p_battle_id FOR UPDATE;
- IF bs.status NOT IN ('active','completed') THEN RAISE EXCEPTION 'Battle unavailable' USING ERRCODE='42501';END IF;
+ IF bs.id IS NULL OR bs.status NOT IN ('active','completed') THEN RAISE EXCEPTION 'Battle unavailable' USING ERRCODE='42501';END IF;
  IF NOT EXISTS(SELECT 1 FROM public.battle_players WHERE battle_id=p_battle_id AND user_id=auth.uid()) THEN RAISE EXCEPTION 'Battle unavailable' USING ERRCODE='42501';END IF;
  IF bs.status='completed' THEN RETURN jsonb_build_object('winner_user_id',bs.winner_user_id);END IF;
  IF clock_timestamp()<bs.expires_at AND EXISTS(SELECT 1 FROM public.battle_players bp WHERE bp.battle_id=p_battle_id AND (SELECT count(*) FROM public.battle_answers ba WHERE ba.battle_id=p_battle_id AND ba.user_id=bp.user_id)<cardinality(bs.question_ids)) THEN RAISE EXCEPTION 'Battle incomplete' USING ERRCODE='22023';END IF;
@@ -448,13 +478,22 @@ CREATE OR REPLACE VIEW public.questions_admin WITH(security_invoker=true) AS SEL
 REVOKE ALL ON public.questions_admin FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON public.questions_admin FROM PUBLIC,anon;
 GRANT SELECT ON public.questions_admin TO authenticated,service_role;
-CREATE OR REPLACE FUNCTION public.backfill_text_quality(p_limit integer DEFAULT 5000) RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$ DECLARE n integer;BEGIN IF NOT public.assessment_admin() THEN RAISE EXCEPTION 'Admin required' USING ERRCODE='42501';END IF;IF p_limit NOT BETWEEN 1 AND 5000 THEN RAISE EXCEPTION 'Invalid limit' USING ERRCODE='22023';END IF;WITH b AS(SELECT id FROM public.questions WHERE text_quality IS NULL LIMIT p_limit) UPDATE public.questions q SET text_quality=public.classify_question_text(q.question_text) FROM b WHERE q.id=b.id;GET DIAGNOSTICS n=ROW_COUNT;RETURN n;END $$;
+CREATE OR REPLACE FUNCTION public.backfill_text_quality(p_limit integer DEFAULT 5000) RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$ DECLARE n integer;BEGIN IF NOT public.assessment_admin() THEN RAISE EXCEPTION 'Admin required' USING ERRCODE='42501';END IF;IF p_limit IS NULL OR p_limit NOT BETWEEN 1 AND 5000 THEN RAISE EXCEPTION 'Invalid limit' USING ERRCODE='22023';END IF;WITH b AS(SELECT id FROM public.questions WHERE text_quality IS NULL LIMIT p_limit) UPDATE public.questions q SET text_quality=public.classify_question_text(q.question_text) FROM b WHERE q.id=b.id;GET DIAGNOSTICS n=ROW_COUNT;RETURN n;END $$;
 REVOKE SELECT ON public.questions FROM PUBLIC,anon,authenticated;
 DO $$ DECLARE cols text;BEGIN SELECT string_agg(quote_ident(attname),',') INTO cols FROM pg_attribute WHERE attrelid='public.questions'::regclass AND attnum>0 AND NOT attisdropped;EXECUTE 'REVOKE SELECT ('||cols||') ON public.questions FROM PUBLIC,anon,authenticated';END $$;
 GRANT SELECT(id,question,question_text,question_image_url,option_a,option_b,option_c,option_d,options,question_type,difficulty,difficulty_jee_mains,difficulty_neet,subject,subject_id,chapter,chapter_id,topic_id,concept_id,batch_id,exam,exam_relevance,year,pyq_year,is_pyq,source,source_row_id,is_active,is_verified,created_at,updated_at,topic,content_hash,pyq_session,pyq_exam,language,class_level,text_quality,option_a_image_url,option_b_image_url,option_c_image_url,option_d_image_url) ON public.questions TO authenticated;
 REVOKE ALL ON public.questions_public FROM PUBLIC,anon;
 GRANT SELECT ON public.questions_public TO authenticated,service_role;
-ALTER VIEW public.content_health SET(security_invoker=true);
+-- Preserve content-health shape while requiring verified staff authorization.
+CREATE OR REPLACE FUNCTION public.admin_content_health() RETURNS TABLE(class_level integer,subject text,chapter_id uuid,chapter_name text,usable_questions bigint,hidden_questions bigint,total_questions bigint)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$ BEGIN
+ IF NOT public.assessment_admin() THEN RAISE EXCEPTION 'Admin required' USING ERRCODE='42501';END IF;
+ RETURN QUERY SELECT coalesce(c.class_level,q.class_level::integer),coalesce(c.subject,q.subject),c.id,coalesce(c.chapter_name,c.name,q.chapter),count(*) FILTER(WHERE q.is_active),count(*) FILTER(WHERE NOT q.is_active),count(*) FROM public.questions q LEFT JOIN public.chapters c ON c.id=q.chapter_id GROUP BY coalesce(c.class_level,q.class_level::integer),coalesce(c.subject,q.subject),c.id,coalesce(c.chapter_name,c.name,q.chapter);
+END $$;
+CREATE OR REPLACE VIEW public.content_health WITH(security_invoker=true) AS SELECT * FROM public.admin_content_health();
+ALTER FUNCTION public.admin_content_health() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.admin_content_health() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_content_health() TO authenticated,service_role;
 REVOKE ALL ON public.content_health FROM PUBLIC,anon;
 GRANT SELECT ON public.content_health TO authenticated,service_role;
 ALTER POLICY "admin manage questions" ON public.questions TO authenticated;
@@ -484,6 +523,13 @@ DO $$ DECLARE f record;BEGIN
 END $$;
 -- Ordinary callers never write server scores, membership, or rewards directly.
 REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON public.battle_sessions,public.battle_players,public.battle_answers,public.battle_rewards FROM PUBLIC,anon,authenticated;
+-- Clear column ACLs too: table REVOKE does not clear independent column grants.
+DO $$ DECLARE t record;cols text;BEGIN
+ FOR t IN SELECT c.oid,c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('assessment_issuances','assessment_items','assessment_receipts','assessment_requests','assessment_entitlements','assessment_drafts','assessment_disclosures','secure_group_templates','secure_battle_items') LOOP
+  SELECT string_agg(quote_ident(attname),',') INTO cols FROM pg_attribute WHERE attrelid=t.oid AND attnum>0 AND NOT attisdropped;
+  EXECUTE format('REVOKE SELECT (%s),INSERT (%s),UPDATE (%s),REFERENCES (%s) ON public.%I FROM PUBLIC,anon,authenticated',cols,cols,cols,cols,t.relname);
+ END LOOP;
+END $$;
 -- Admin writes remain guarded by the existing role policy; no answer SELECT grant.
 GRANT INSERT,UPDATE,DELETE ON public.questions TO authenticated;
 -- Postcondition checks catch inherited/PUBLIC/default privilege regressions.
@@ -497,4 +543,7 @@ DO $$ DECLARE r record;BEGIN
  END LOOP;
 END $$;
 NOTIFY pgrst,'reload schema';
+-- Future columns never receive a broad student grant in this proposal. Existing
+-- global default privileges are NOT altered: every new private relation has its
+-- inherited defaults cleared above and all effective privileges asserted.
 COMMIT;

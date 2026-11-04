@@ -12,4 +12,5 @@
 - [x] Run read-only security regressions, all existing tests, and linter; deliver current NO-GO report.
 
 - [x] Run available non-mutating regressions and report separate live privilege/authentication gates in scripts/security-review/six-blocker-closure.md.
-- [ ] Complete final database-security review package: fresh catalog evidence, idempotent proposed migration, fail-closed rollback, per-function permission inventory, and explicit verification/deployment blockers; no SQL application or production writes.
+- [x] Deliver consolidated database-security candidate, fail-closed rollback, full live function/ACL inventory, fresh privilege checks and separate passed/failed/blocked evidence; no SQL executed.
+- [ ] Final database closure: blocked by explicit prohibition on any migration execution, unavailable isolated Supabase/authenticated QA access, and unverified battle review/walkthrough/provisioning compatibility. Final recommendation remains NO-GO.

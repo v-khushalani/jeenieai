@@ -1,0 +1,11 @@
+migration.sql: SQL parsed 128 statements; NOT executed
+migration.sql: PL/pgSQL syntax parsed; NOT database-compiled or executed
+rollback.sql: SQL parsed 8 statements; NOT executed
+verification.sql: SQL parsed 5 statements; NOT executed
+regressions.sql: SQL parsed 15 statements; NOT executed
+Unit tests: 147 passed, 16 files.
+Lint: 0 errors, 4 pre-existing warnings.
+Live E2E: 2 passed, 1 failed, 5 authenticated skipped.
+Live effective answer-column checks: 14/14 remain enabled.
+Supabase linter: 110 findings, unchanged.
+No migration executed anywhere. No production writes.

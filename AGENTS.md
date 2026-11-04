@@ -5,3 +5,4 @@
 - Assessment callers use the shared assessments API and server issuance IDs; legacy test rows, cached keys and locally calculated outcomes never authorize review.
 - Assessment eligibility uses immutable receipts and server-only entitlement evidence; group papers are template snapshots, never practice issuances, and selected grades constrain paper content rather than asserting a participant's identity.
 - Formal-test draft writes are serialized per item and resume from server revisions; synchronization failures remain visible and cannot be treated as successful finalization.
+- Final database-security candidates and evidence remain isolated under the review workspace; fail-closed rollback revokes assessment entry points without restoring answer grants, because availability rollback must not reopen key exposure.
