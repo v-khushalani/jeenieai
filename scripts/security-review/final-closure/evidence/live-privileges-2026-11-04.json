@@ -1,0 +1,103 @@
+{
+  "source": "Supabase read_query effective PostgreSQL privileges, 2026-11-04",
+  "checks": [
+    {
+      "role": "anon",
+      "column": "correct_option",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    },
+    {
+      "role": "anon",
+      "column": "correct_options",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    },
+    {
+      "role": "anon",
+      "column": "correct_answer",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    },
+    {
+      "role": "anon",
+      "column": "numerical_answer",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    },
+    {
+      "role": "anon",
+      "column": "numerical_tolerance",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    },
+    {
+      "role": "anon",
+      "column": "explanation",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    },
+    {
+      "role": "anon",
+      "column": "explanation_image_url",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    },
+    {
+      "role": "authenticated",
+      "column": "correct_option",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    },
+    {
+      "role": "authenticated",
+      "column": "correct_options",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    },
+    {
+      "role": "authenticated",
+      "column": "correct_answer",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    },
+    {
+      "role": "authenticated",
+      "column": "numerical_answer",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    },
+    {
+      "role": "authenticated",
+      "column": "numerical_tolerance",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    },
+    {
+      "role": "authenticated",
+      "column": "explanation",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    },
+    {
+      "role": "authenticated",
+      "column": "explanation_image_url",
+      "table_select": true,
+      "column_select": true,
+      "column_acl": null
+    }
+  ]
+}
