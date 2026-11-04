@@ -1,0 +1,17 @@
+{
+  "migration.sql": "4a3c58f540a9ddc13f40e1943e45e472f7d2eda70a4624a8ae8b1c97dfff39c4",
+  "rollback.sql": "0417713d9cdcc87f9e87e6b9af629e99c6ef3fb3bd78d96f38af7c13a38a2592",
+  "verification.sql": "25b4ad1eadc7e91d8ffb47ead5f4155bc65c06afe2da66df96ed4107e035390f",
+  "regressions.sql": "fb71f83bf92f9cf3d0bb6b64c1f92261fd78a42014946877ebc176080f556c00",
+  "function-permissions.md": "bd5d33fe5be9237b2268ad7b625929109876eea7fa65ec19f59e67802749e799",
+  "README.md": "a75847ae3817bba8821935f7db64fdf1fff70b9746e85b2b526e29d30b2c72f8",
+  "evidence/live-columns.json": "d7c8e0e379892e4942d7df82b745fcaf6d04fb5665c3e418de2ca0e8108951da",
+  "evidence/live-functions.json": "c5de09d55afb5e516e6192655ed2d605ab8659c4d1670094da770599376857b9",
+  "evidence/live-policies.json": "16801e80b90ffa803e2d7e544f1ed37391b14db7f5f351c3a4410a0c6b5a3c1c",
+  "evidence/live-relations.json": "d32fb78f40701bee1661c63124124b09a5ded16c09c5eee9cbfd487394ffdaca",
+  "evidence/live-privileges-2026-11-04.json": "74fa90e9d207bb99a53a3175db68344212bc51f8fe95de59edfacfa360b19c38",
+  "evidence/validation.txt": "950f8a6c3c50efcf1258ee5c9bd96da7a9902cab7d9ff1cba945596a53456fdf",
+  "evidence/unit-tests.log": "6dc2b231c01a08ca57c1eb0a63aeab41ca1221d9d0dcfff219b4d1e6a3be09d5",
+  "evidence/lint.log": "303d3a1319bb25052366ded89e75e988045fa1aa66b1e4d1f93233f6aa6bf308",
+  "evidence/live-e2e.log": "91368aec7feb1dcffa792a01d461729804e77c39170ec28e99586f8102623efe"
+}
