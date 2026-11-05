@@ -449,7 +449,8 @@ const StudyNowPage: React.FC = () => {
   const handleTopicClick = (topic: Topic) => {
     const baseUrl = `/practice?subject=${encodeURIComponent(selectedSubject)}&chapter=${encodeURIComponent(getChapterTitle(selectedChapter))}`;
     const topicIdParam = isUuid(topic.id) ? `&topic_id=${topic.id}` : '';
-    navigate(`${baseUrl}${topicIdParam}&topic=${encodeURIComponent(topic.topic_name)}&source=studyNow`);
+    const chapterIdParam = selectedChapter?.id && isUuid(selectedChapter.id) ? `&chapter_id=${selectedChapter.id}` : '';
+    navigate(`${baseUrl}${chapterIdParam}${topicIdParam}&topic=${encodeURIComponent(topic.topic_name)}&source=studyNow`);
   };
   const handlePracticeChapter = (chapter: Chapter) => {
     navigate(`/practice?subject=${encodeURIComponent(selectedSubject)}&chapter=${encodeURIComponent(getChapterTitle(chapter))}&chapter_id=${chapter.id}&source=studyNow`);
