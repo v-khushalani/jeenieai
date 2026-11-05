@@ -115,7 +115,9 @@ const PracticePage: React.FC = () => {
   const subject = searchParams.get('subject') || '';
   const chapter = searchParams.get('chapter') || '';
   const chapterId = searchParams.get('chapter_id') || '';
-  const topicId = searchParams.get('topic_id') || searchParams.get('topic') || '';
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const rawTopicId = searchParams.get('topic_id') || '';
+  const topicId = UUID_RE.test(rawTopicId) ? rawTopicId : '';
   const topicName = searchParams.get('topic') || '';
   const topicFilterName = /^[0-9a-f-]{20,}$/i.test(topicName) ? '' : topicName.trim();
   const mode = (searchParams.get('mode') || '').toLowerCase();
@@ -373,7 +375,23 @@ const PracticePage: React.FC = () => {
       }
 
       if (!pool || pool.length === 0) {
-        toast.success("You've completed all questions in this section! 🎉 Try another topic.");
+        // All unseen questions done → recycle already-attempted ones instead of a dead end.
+        let rq = supabase
+          .from('questions')
+          .select('id, question, question_text, question_image_url, option_a, option_b, option_c, option_d, options, correct_options, numerical_answer, numerical_tolerance, difficulty, question_type, topic, topic_id, chapter, chapter_id, subject, exam, is_pyq, pyq_exam, pyq_year, pyq_session')
+          .or('is_active.is.null,is_active.eq.true');
+        if (topicId) rq = rq.eq('topic_id', topicId);
+        else if (chapterId) rq = rq.eq('chapter_id', chapterId);
+        else if (subject) rq = rq.ilike('subject', subject);
+        if (!topicId && topicFilterName) rq = rq.ilike('topic', `%${topicFilterName}%`);
+        const { data: recycled } = await rq.limit(300);
+        if (recycled && recycled.length > 0) {
+          toast.info('Saare naye questions ho gaye — ab revision round chal raha hai.');
+          const shuffled = [...recycled].sort(() => Math.random() - 0.5);
+          setQuestions(orderPoolByLevel(shuffled as Question[], trackRef.current, levelRef.current).slice(0, takeCount));
+          setLoading(false);
+          return;
+        }
         setQuestions([]);
         setLoading(false);
         return;
@@ -1140,11 +1158,14 @@ const PracticePage: React.FC = () => {
 
           <Button
             size="sm"
+            variant={!isCurrentAnswered && currentIndex < questions.length - 1 ? 'outline' : 'default'}
             onClick={() => { cancelAutoAdvance(); handleNext(); }}
-            disabled={!isCurrentAnswered && currentIndex < questions.length - 1}
+            title={!isCurrentAnswered ? 'Skip — accuracy pe asar nahi padega' : undefined}
           >
             {currentIndex < questions.length - 1 ? (
-              <>Next <ArrowRight className="w-4 h-4 ml-1" /></>
+              isCurrentAnswered
+                ? <>Next <ArrowRight className="w-4 h-4 ml-1" /></>
+                : <>Skip <ArrowRight className="w-4 h-4 ml-1" /></>
             ) : (
               <>Results <Trophy className="w-4 h-4 ml-1" /></>
             )}
