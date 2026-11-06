@@ -214,6 +214,61 @@ function collapseOcrLetterSpacing(text: string): string {
   });
 }
 
+// ── MathML → LaTeX ($...$) ──
+function splitMathmlChildren(str: string): string[] {
+  const children: string[] = [];
+  let depth = 0;
+  let cur = '';
+  const tokens = str.match(/<[^>]+>|[^<]+/g) || [];
+  for (const t of tokens) {
+    cur += t;
+    if (t.startsWith('</')) {
+      depth--;
+      if (depth === 0) { children.push(cur.trim()); cur = ''; }
+    } else if (t.startsWith('<') && !t.endsWith('/>')) {
+      depth++;
+    } else if (depth === 0 && t.trim()) {
+      children.push(cur.trim()); cur = '';
+    }
+  }
+  if (cur.trim()) children.push(cur.trim());
+  return children.filter(Boolean);
+}
+
+function stripOuter(node: string): { tag: string; inner: string } | null {
+  const m = node.match(/^<([a-z]+)\b[^>]*>([\s\S]*)<\/\1>$/i);
+  return m ? { tag: m[1].toLowerCase(), inner: m[2] } : null;
+}
+
+function mathmlNodeToLatex(xml: string): string {
+  return splitMathmlChildren(xml).map((child) => {
+    const n = stripOuter(child);
+    if (!n) return child.replace(/<[^>]+>/g, '').trim();
+    const kids = () => splitMathmlChildren(n.inner).map(mathmlNodeToLatex);
+    switch (n.tag) {
+      case 'mfrac': { const [a = '', b = ''] = kids(); return `\\frac{${a}}{${b}}`; }
+      case 'msqrt': return `\\sqrt{${mathmlNodeToLatex(n.inner)}}`;
+      case 'mroot': { const [a = '', b = ''] = kids(); return `\\sqrt[${b}]{${a}}`; }
+      case 'msup': { const [a = '', b = ''] = kids(); return `{${a}}^{${b}}`; }
+      case 'msub': { const [a = '', b = ''] = kids(); return `{${a}}_{${b}}`; }
+      case 'msubsup': { const [a = '', b = '', c = ''] = kids(); return `{${a}}_{${b}}^{${c}}`; }
+      case 'mover': { const [a = '', b = ''] = kids(); return b.trim() === '→' ? `\\vec{${a}}` : `\\overset{${b}}{${a}}`; }
+      case 'mtext': return `\\text{${n.inner.replace(/<[^>]+>/g, '')}}`;
+      case 'mn': case 'mi': case 'mo': case 'ms': return n.inner.replace(/<[^>]+>/g, '').trim();
+      default: return mathmlNodeToLatex(n.inner);
+    }
+  }).join(' ');
+}
+
+export function convertMathmlToLatex(text: string): string {
+  if (!text || !/<math\b/i.test(text)) return text;
+  return text.replace(/<math\b[^>]*>([\s\S]*?)<\/math>/gi, (_, inner: string) => {
+    const latex = mathmlNodeToLatex(inner)
+      .replace(/π/g, '\\pi ').replace(/−/g, '-').replace(/\s+/g, ' ').trim();
+    return latex ? `$${latex}$` : '';
+  });
+}
+
 // ── HTML entities that commonly survive imports ──
 const HTML_ENTITY_MAP: Record<string, string> = {
   '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"',
@@ -255,7 +310,7 @@ export function detectTextGlitches(text: string): string[] {
 
 function normalizeOcrArtifacts(text: string): string {
   let normalized = repairMojibake(text);
-  normalized = decodeHtmlEntities(normalized);
+  normalized = convertMathmlToLatex(decodeHtmlEntities(normalized));
   // Literal escape sequences that arrive as text from CSV / JSON imports
   // Only treat \n / \t as escaped whitespace when NOT the start of a LaTeX command (\nu, \neq, \tan, \theta, \times…)
   normalized = normalized
@@ -386,7 +441,7 @@ const LATEX_PATTERNS = [
 export function containsLatex(text: string): boolean {
   if (!text) return false;
 
-  if (/\$|\\\(|\\\[/.test(text)) {
+  if (/\$|\\\(|\\\[|<math\b/i.test(text)) {
     return true;
   }
   

@@ -86,16 +86,16 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       return `<div class="p-1"><p class="font-bold text-lg mb-2 text-[#013062]">Oye! 👋</p><p class="text-slate-600 leading-relaxed">Bol, kya dikkat aa rahi hai? Sharmayiye mat, khul ke puchiye! 😉</p></div>`;
     } else {
       const options = [
-        question.option_a && `A) ${escapeHtml(question.option_a)}`,
-        question.option_b && `B) ${escapeHtml(question.option_b)}`,
-        question.option_c && `C) ${escapeHtml(question.option_c)}`,
-        question.option_d && `D) ${escapeHtml(question.option_d)}`,
+        question.option_a && `A) ${renderSafe(question.option_a)}`,
+        question.option_b && `B) ${renderSafe(question.option_b)}`,
+        question.option_c && `C) ${renderSafe(question.option_c)}`,
+        question.option_d && `D) ${renderSafe(question.option_d)}`,
       ].filter(Boolean).join('<br>');
 
       return `
 <div class="space-y-4">
   <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50 text-[13px] font-medium text-slate-800 shadow-inner">
-    <p class="mb-2 font-bold text-[#013062]">${escapeHtml(question.question)}</p>
+    <p class="mb-2 font-bold text-[#013062]">${renderSafe(question.question)}</p>
     <div class="space-y-1.5 opacity-90">${options}</div>
   </div>
   <p class="text-[14.5px] font-medium text-slate-700">Isme kya phas raha hai? Logic samjhaun ya full solution chahiye? 😉</p>
