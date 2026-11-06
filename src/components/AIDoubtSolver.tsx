@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { aiAPI } from "@/services/api/modules/ai";
 import { aiQueue } from "@/services/api/queue";
-import { renderLatex } from "@/utils/mathRenderer";
+import { renderLatex, convertMathmlToLatex } from "@/utils/mathRenderer";
 import { useAuth } from "@/contexts/AuthContext";
 import PricingModal from "@/components/PricingModal";
 import type { JeenieMode } from "@/services/api/types";
@@ -79,6 +79,9 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+
+  // Same rendering path as MathDisplay in Practice (MathML/LaTeX → KaTeX).
+  const renderSafe = (value: string) => renderLatex(String(value || ''));
 
   const initialMessage = useMemo(() => {
     const isGeneral = !question?.option_a || question?.question?.includes("koi bhi");
@@ -169,7 +172,12 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       let prompt: string;
       if (currentImage) prompt = `Image doubt: ${effectiveInput || "Analyze this image"}`;
       else if (isGeneral) prompt = userMsg.content;
-      else prompt = `Question: ${question.question}\nStudent says: ${userMsg.content}`;
+      else {
+        const opts = (['a', 'b', 'c', 'd'] as const)
+          .map((k) => question[`option_${k}`] && `${k.toUpperCase()}) ${convertMathmlToLatex(question[`option_${k}`]!)}`)
+          .filter(Boolean).join('\n');
+        prompt = `Question: ${convertMathmlToLatex(question.question)}\n${opts}\nStudent says: ${userMsg.content}`;
+      }
 
       setTyping(true);
       const { data, error: apiError } = await aiAPI.askJeenie({
