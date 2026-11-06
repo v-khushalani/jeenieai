@@ -109,3 +109,18 @@ describe('mathRenderer artifact fixes', () => {
     expect(output).toContain('Coen2BrClNO₃');
   });
 });
+
+import { convertMathmlToLatex as _mml, renderLatex as _rl } from '../mathRenderer';
+describe('MathML conversion', () => {
+  it('converts sqrt and minus', () => {
+    expect(_mml('<math xmlns="http://www.w3.org/1998/Math/MathML"><msqrt><mn>3</mn></msqrt><mo>-</mo><msqrt><mn>2</mn></msqrt></math>')).toBe('$\\sqrt{3} - \\sqrt{2}$');
+  });
+  it('converts fractions with mrow', () => {
+    expect(_mml('<math><mfrac><mrow><mn>2</mn></mrow><mrow><msqrt><mn>3</mn></msqrt></mrow></mfrac></math>')).toBe('$\\frac{2}{\\sqrt{3}}$');
+  });
+  it('renders MathML through KaTeX with no raw tags', () => {
+    const out = _rl('If A &gt; 0 then <math><mn>2</mn><mo>-</mo><msqrt><mn>3</mn></msqrt></math>');
+    expect(out).toContain('katex');
+    expect(out).not.toContain('<msqrt>');
+  });
+});
