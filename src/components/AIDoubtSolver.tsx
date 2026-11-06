@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { aiAPI } from "@/services/api/modules/ai";
 import { aiQueue } from "@/services/api/queue";
-import { renderLatex } from "@/utils/mathRenderer";
+import { renderLatex, convertMathmlToLatex } from "@/utils/mathRenderer";
 import { useAuth } from "@/contexts/AuthContext";
 import PricingModal from "@/components/PricingModal";
 import type { JeenieMode } from "@/services/api/types";
@@ -80,22 +80,25 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+  // Same rendering path as MathDisplay in Practice (MathML/LaTeX → KaTeX).
+  const renderSafe = (value: string) => renderLatex(String(value || ''));
+
   const initialMessage = useMemo(() => {
     const isGeneral = !question?.option_a || question?.question?.includes("koi bhi");
     if (isGeneral) {
       return `<div class="p-1"><p class="font-bold text-lg mb-2 text-[#013062]">Oye! 👋</p><p class="text-slate-600 leading-relaxed">Bol, kya dikkat aa rahi hai? Sharmayiye mat, khul ke puchiye! 😉</p></div>`;
     } else {
       const options = [
-        question.option_a && `A) ${escapeHtml(question.option_a)}`,
-        question.option_b && `B) ${escapeHtml(question.option_b)}`,
-        question.option_c && `C) ${escapeHtml(question.option_c)}`,
-        question.option_d && `D) ${escapeHtml(question.option_d)}`,
+        question.option_a && `A) ${renderSafe(question.option_a)}`,
+        question.option_b && `B) ${renderSafe(question.option_b)}`,
+        question.option_c && `C) ${renderSafe(question.option_c)}`,
+        question.option_d && `D) ${renderSafe(question.option_d)}`,
       ].filter(Boolean).join('<br>');
 
       return `
 <div class="space-y-4">
   <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50 text-[13px] font-medium text-slate-800 shadow-inner">
-    <p class="mb-2 font-bold text-[#013062]">${escapeHtml(question.question)}</p>
+    <p class="mb-2 font-bold text-[#013062]">${renderSafe(question.question)}</p>
     <div class="space-y-1.5 opacity-90">${options}</div>
   </div>
   <p class="text-[14.5px] font-medium text-slate-700">Isme kya phas raha hai? Logic samjhaun ya full solution chahiye? 😉</p>
@@ -169,7 +172,12 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
       let prompt: string;
       if (currentImage) prompt = `Image doubt: ${effectiveInput || "Analyze this image"}`;
       else if (isGeneral) prompt = userMsg.content;
-      else prompt = `Question: ${question.question}\nStudent says: ${userMsg.content}`;
+      else {
+        const opts = (['a', 'b', 'c', 'd'] as const)
+          .map((k) => question[`option_${k}`] && `${k.toUpperCase()}) ${convertMathmlToLatex(question[`option_${k}`]!)}`)
+          .filter(Boolean).join('\n');
+        prompt = `Question: ${convertMathmlToLatex(question.question)}\n${opts}\nStudent says: ${userMsg.content}`;
+      }
 
       setTyping(true);
       const { data, error: apiError } = await aiAPI.askJeenie({
