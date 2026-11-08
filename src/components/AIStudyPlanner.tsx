@@ -30,7 +30,9 @@ import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import CoachHorizons from '@/components/planner/CoachHorizons';
-import RealityCoach from '@/components/planner/RealityCoach';
+import MissionCoach from '@/components/planner/MissionCoach';
+import type { MissionAttempt, MissionTest } from '@/lib/missionEngine';
+import { getRepairedIds } from '@/lib/mistakeRepair';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import {
@@ -105,6 +107,8 @@ interface PlannerData {
   totalAttempts: number;
   overallAccuracy: number;
   pendingMistakes: number;
+  attempts?: MissionAttempt[];
+  tests?: MissionTest[];
 }
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -365,18 +369,48 @@ export async function loadPlannerData(
   if (chapterMap.size === 0) return { ...emptyPlanner(), roadmaps };
   const chapterIds = Array.from(chapterMap.keys());
 
-  const [countRows, attemptRows] = await Promise.all([
+  const testsSince = new Date(Date.now() - 21 * 864e5).toISOString();
+  const [countRows, attemptRows, testRows] = await Promise.all([
     supabase
       .rpc('get_chapter_question_counts', { p_chapter_ids: chapterIds })
       .then(({ data }) => (data as any[]) || []),
     fetchAllPaginated<any>(() =>
       supabase
         .from('question_attempts')
-        .select('question_id, is_correct, attempted_at, question:questions!inner(chapter_id)')
+        .select('question_id, is_correct, attempted_at, time_spent, test_session_id, question:questions!inner(chapter_id)')
         .eq('user_id', userId)
         .in('question.chapter_id', chapterIds),
     ),
+    supabase
+      .from('test_sessions')
+      .select('id, title, completed_at, total_questions, attempted_questions')
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+      .gte('completed_at', testsSince)
+      .order('completed_at', { ascending: false })
+      .limit(30)
+      .then(({ data }) => (data as any[]) || []),
   ]);
+
+  const missionAttempts: MissionAttempt[] = attemptRows
+    .filter((a) => a.question?.chapter_id && a.attempted_at)
+    .map((a) => ({
+      chapterId: a.question.chapter_id,
+      isCorrect: !!a.is_correct,
+      timeSec: typeof a.time_spent === 'number' ? a.time_spent : null,
+      at: String(a.attempted_at).slice(0, 10),
+      testSessionId: a.test_session_id || null,
+    }));
+  const missionTests: MissionTest[] = testRows
+    .filter((t) => t.completed_at)
+    .map((t) => ({
+      id: t.id,
+      title: t.title || 'Test',
+      completedAt: new Date(t.completed_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
+      totalQuestions: Number(t.total_questions) || 0,
+      attempted: Number(t.attempted_questions) || 0,
+      isFullMock: (Number(t.total_questions) || 0) >= 60,
+    }));
 
   countRows.forEach((row: any) => {
     const metric = row?.chapter_id ? chapterMap.get(row.chapter_id) : null;
@@ -476,7 +510,7 @@ export async function loadPlannerData(
     pendingMistakes: chapters.reduce((sum, chapter) => sum + chapter.pendingMistakes, 0),
   };
 
-  return { ...seed, weekly: buildWeeklyPlan(seed) };
+  return { ...seed, weekly: buildWeeklyPlan(seed), attempts: missionAttempts, tests: missionTests };
 }
 
 export default function AIStudyPlanner() {
@@ -668,12 +702,14 @@ export default function AIStudyPlanner() {
       <AnimatePresence mode="wait">
         <motion.div key={view} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
           {view === 'today' ? (
-            <RealityCoach
+            <MissionCoach
               userId={user?.id || 'anon'}
               exam={targetExam}
               daysLeft={daysLeft}
+              grade={Number.isFinite(Number((profile as any)?.grade)) ? Number((profile as any)?.grade) : null}
               chapters={planner.chapters}
-              todayCount={Object.fromEntries(planner.chapters.map((c) => [c.id, c.todayAttempts || 0]))}
+              attempts={planner.attempts || []}
+              tests={planner.tests || []}
             />
           ) : (
             <CoachHorizons
