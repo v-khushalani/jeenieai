@@ -460,7 +460,8 @@ export async function loadPlannerData(
       const roadmapMetric = roadmapMetricById.get(metric.id);
       const wrongSet = wrongByChapter.get(metric.id) || new Set<string>();
       const correctedSet = correctedByChapter.get(metric.id) || new Set<string>();
-      const pendingMistakes = roadmapMetric?.pendingMistakes ?? [...wrongSet].filter((questionId) => !correctedSet.has(questionId)).length;
+      const repaired = getRepairedIds(userId);
+      const pendingMistakes = [...wrongSet].filter((questionId) => !correctedSet.has(questionId) && !repaired.has(questionId)).length;
       const accuracy = roadmapMetric?.accuracy ?? (metric.attempts > 0 ? Math.round((metric.correct / metric.attempts) * 100) : 0);
       let status: ChapterStatus = 'pending';
       if (roadmapMetric?.status === 'done' || (metric.attempts >= 20 && accuracy >= 80 && pendingMistakes === 0)) status = 'done';

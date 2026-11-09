@@ -168,7 +168,7 @@ export function buildMission(input: MissionInput): Mission {
     const drill = leakChapter || weakest[0] || byPriority[0];
     if (drill) push({ kind: 'drill', title: drill.title, why: leakChapter ? `Pichle 14 din mein yahan ${leaks.topChapter!.marks} marks gaye. Sabse bada leak, sabse pehle.` : `Weightage × kamzori sabse zyada. ${drill.attempts >= 5 ? drill.accuracy + '% accuracy ko 75% tak lao.' : 'Abhi tak touch nahi kiya.'}`, href: practice(drill, 'weak', 15), target: 15, minutes: 40, chapterId: drill.id });
     if (sinceMock === null || sinceMock >= 7) {
-      push({ kind: 'mock', title: 'Full mock (3 hr)', why: '7 din ho gaye full mock ke bina. Exam stamina sirf mock se banti hai.', href: '/test', target: 1, minutes: 180 });
+      push({ kind: 'mock', title: 'Full mock (3 hr)', why: sinceMock === null ? 'Abhi tak koi full mock nahi diya. Pehla mock asli starting point batayega.' : `${sinceMock} din ho gaye full mock ke bina. Exam stamina sirf mock se banti hai.`, href: '/test', target: 1, minutes: 180 });
     } else if (sinceTest === null || sinceTest >= 3) {
       const c = weakest[1] || weakest[0] || byPriority[1];
       if (c) push({ kind: 'test', title: `Chapter test: ${c.title}`, why: 'Har 3 din ek timed checkpoint — practice ka asli result yahin dikhta hai.', href: chapterTest(c), target: 1, minutes: 60, chapterId: c.id });

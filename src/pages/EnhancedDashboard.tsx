@@ -33,6 +33,7 @@ import { getDaysUntilDate, getExamDateForGrade } from "@/utils/examTimeline";
 import PointsService from "@/services/pointsService";
 import { logger } from "@/utils/logger";
 import { useFeatureFlag } from '@/contexts/FeatureFlagContext';
+import MissionCTA from '@/components/dashboard/MissionCTA';
 
 const EnhancedDashboard = () => {
   const { user, isPremium, isProPlus } = useAuth();
@@ -433,6 +434,7 @@ const EnhancedDashboard = () => {
                         </Card>
                       </div>
 
+                      <MissionCTA userId={user?.id} />
                       <div className="grid grid-cols-2 gap-2 auto-rows-fr items-stretch">
                         <Card className={`h-full rounded-xl shadow-xs border-l-4 ${goalColors.border} ${goalColors.bg}`}> 
                           <CardContent className="p-2.5 h-full flex flex-col justify-between">
@@ -574,6 +576,7 @@ const EnhancedDashboard = () => {
                   </CardContent>
                 </Card>
 
+                <MissionCTA userId={user?.id} className="h-full" />
                 {/* 3rd Card: Today's Goal */}
                 <Card className={`rounded-lg sm:rounded-xl shadow-xs hover:shadow-md transition-all border-l-4 ${goalColors.border} ${goalColors.bg} backdrop-blur-xs`}> 
                   <CardContent className="p-3 sm:p-4">

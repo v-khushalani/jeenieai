@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ComingSoonBanner from '@/components/ComingSoonBanner';
+import { getRepairedIds, markRepaired } from '@/lib/mistakeRepair';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -409,7 +410,8 @@ const PracticePage: React.FC = () => {
         const latest = new Map<string, { ok: boolean; at: string }>();
         (atts || []).forEach((a) => { if (!latest.has(a.question_id)) latest.set(a.question_id, { ok: !!a.is_correct, at: a.attempted_at || a.created_at || '' }); });
         const dayAgo = Date.now() - 864e5;
-        const wrongIds = [...latest.entries()].filter(([, v]) => !v.ok && new Date(v.at).getTime() <= dayAgo).map(([id]) => id).slice(0, 60);
+        const repaired = getRepairedIds(user.id);
+        const wrongIds = [...latest.entries()].filter(([id, v]) => !v.ok && !repaired.has(id) && new Date(v.at).getTime() <= dayAgo).map(([id]) => id).slice(0, 60);
         if (wrongIds.length) {
           let rq = supabase
             .from('questions')
@@ -570,8 +572,12 @@ const PracticePage: React.FC = () => {
           selected_option: displaySelected,
           is_correct: result.is_correct,
           mode: 'practice',
-          time_spent: 0,
+          time_spent: Math.max(1, Math.round((Date.now() - questionStartTime.current) / 1000)),
         });
+        // Re-solving an old mistake correctly = repaired (first attempt stays the record).
+        if (attemptInsertError && (attemptInsertError as { code?: string }).code === '23505' && result.is_correct) {
+          markRepaired(user.id, currentQuestion.id);
+        }
         // Ignore unique-violation (23505): means this (user, question) was already recorded.
         // We treat the first attempt as the source of truth and just move on.
         if (attemptInsertError && (attemptInsertError as { code?: string }).code !== '23505') {
