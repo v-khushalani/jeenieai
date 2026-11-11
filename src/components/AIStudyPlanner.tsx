@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +31,8 @@ import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization'
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import CoachHorizons from '@/components/planner/CoachHorizons';
 import MissionCoach from '@/components/planner/MissionCoach';
-import type { MissionAttempt, MissionTest } from '@/lib/missionEngine';
+import type { MissionAttempt, MissionTest, MissionInput } from '@/lib/missionEngine';
+import { plannerToday, readPreferences, readEvidence, type PlannerPreferences } from '@/lib/plannerState';
 import { getRepairedIds } from '@/lib/mistakeRepair';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -111,151 +112,7 @@ interface PlannerData {
   tests?: MissionTest[];
 }
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-const todayISO = () => new Date().toISOString().split('T')[0];
-
-const taskHash = (task: PlannerTask) =>
-  `${task.date}::${task.type}::${task.chapterId || task.subject}::${task.title}`.toLowerCase().replace(/\s+/g, '_');
-
-const daysSince = (iso: string | null) => {
-  if (!iso) return 99;
-  const parsed = new Date(iso).getTime();
-  if (Number.isNaN(parsed)) return 99;
-  return Math.max(0, Math.floor((Date.now() - parsed) / (1000 * 60 * 60 * 24)));
-};
-
-const buildPracticeHref = (chapter: ChapterMetric, type: TaskType) => {
-  const params = new URLSearchParams();
-  params.set('chapter_id', chapter.id);
-  params.set('subject', chapter.subject);
-  params.set('chapter', chapter.title);
-  params.set('mode', type);
-  params.set('mode', type === 'learn' ? 'learn' : 'weak');
-  return `/practice?${params.toString()}`;
-};
-
-const buildTestHref = (chapter: ChapterMetric) => {
-  const params = new URLSearchParams();
-  params.set('chapter_id', chapter.id);
-  params.set('subject', chapter.subject);
-  params.set('chapter', chapter.title);
-  params.set('mode', 'chapter');
-  return `/test?${params.toString()}`;
-};
-
-const makeTask = (chapter: ChapterMetric, date: string, type: TaskType, index: number): PlannerTask => {
-  const dayName = DAY_NAMES[new Date(date).getDay()];
-  const base = {
-    id: `${date}-${type}-${chapter.id}-${index}`,
-    date,
-    dayName,
-    subject: chapter.subject,
-    chapter: chapter.title,
-    chapterId: chapter.id,
-  };
-
-  if (type === 'review') {
-    return {
-      ...base,
-      title: 'Mistake repair',
-      subtitle: `${chapter.pendingMistakes || chapter.wrong} galat questions dobara kar`,
-      duration: 30,
-      type,
-      priority: 'high',
-      actionLabel: 'Review',
-      href: buildPracticeHref(chapter, 'review'),
-    };
-  }
-
-  if (type === 'drill') {
-    return {
-      ...base,
-      title: 'Weakness drill',
-      subtitle: `${Math.round(chapter.accuracy)}% accuracy ko 70%+ push kar`,
-      duration: 40,
-      type,
-      priority: 'high',
-      actionLabel: 'Drill',
-      href: buildPracticeHref(chapter, 'drill'),
-    };
-  }
-
-  if (type === 'test') {
-    return {
-      ...base,
-      title: 'Chapter test',
-      subtitle: `${chapter.title} ka timed checkpoint`,
-      duration: 60,
-      type,
-      priority: 'medium',
-      actionLabel: 'Test',
-      href: buildTestHref(chapter),
-    };
-  }
-
-  return {
-    ...base,
-    title: 'Start / continue chapter',
-    subtitle: `${chapter.attempts}/15 foundation questions done`,
-    duration: 45,
-    type,
-    priority: chapter.attempts === 0 ? 'high' : 'medium',
-    actionLabel: 'Practice',
-    href: buildPracticeHref(chapter, 'learn'),
-  };
-};
-
-function chooseChapterForTask(data: {
-  active: ChapterMetric | null;
-  weak: ChapterMetric[];
-  medium: ChapterMetric[];
-  strong: ChapterMetric[];
-  pending: ChapterMetric[];
-}, dayIndex: number, type: TaskType) {
-  if (type === 'review') {
-    return data.weak.find((c) => c.pendingMistakes > 0) || data.medium.find((c) => c.pendingMistakes > 0) || data.active || data.pending[0] || null;
-  }
-  if (type === 'drill') return data.weak[dayIndex % Math.max(1, data.weak.length)] || data.active || data.pending[0] || null;
-  if (type === 'test') return data.medium[dayIndex % Math.max(1, data.medium.length)] || data.active || data.strong[0] || data.pending[0] || null;
-  return data.active || data.pending[dayIndex % Math.max(1, data.pending.length)] || data.weak[0] || null;
-}
-
-function buildWeeklyPlan(seed: Omit<PlannerData, 'weekly'>): DayPlan[] {
-  const days: DayPlan[] = [];
-  const now = new Date();
-  const pattern: TaskType[][] = [
-    ['learn', 'drill', 'review'],
-    ['learn', 'drill'],
-    ['review', 'learn'],
-    ['drill', 'learn'],
-    ['learn', 'test'],
-    ['test', 'review'],
-    ['review'],
-  ];
-
-  for (let i = 0; i < 7; i += 1) {
-    const dateObj = new Date(now);
-    dateObj.setDate(now.getDate() + i);
-    const date = dateObj.toISOString().split('T')[0];
-    const types = pattern[i] || ['learn'];
-    const tasks = types
-      .map((type, idx) => {
-        const chapter = chooseChapterForTask(seed, i + idx, type);
-        return chapter ? makeTask(chapter, date, type, idx) : null;
-      })
-      .filter(Boolean) as PlannerTask[];
-
-    days.push({
-      date,
-      dayName: DAY_NAMES[dateObj.getDay()],
-      totalMinutes: tasks.reduce((sum, task) => sum + task.duration, 0),
-      tasks,
-    });
-  }
-
-  return days;
-}
+const daysSince = (iso: string | null) => iso ? Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 864e5)) : 99;
 
 const emptyPlanner = (): PlannerData => ({
   roadmaps: [],
@@ -398,7 +255,7 @@ export async function loadPlannerData(
       chapterId: a.question.chapter_id,
       isCorrect: !!a.is_correct,
       timeSec: typeof a.time_spent === 'number' ? a.time_spent : null,
-      at: String(a.attempted_at).slice(0, 10),
+      at: new Date(a.attempted_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
       testSessionId: a.test_session_id || null,
     }));
   const missionTests: MissionTest[] = testRows
@@ -439,11 +296,11 @@ export async function loadPlannerData(
     if (attempt.is_correct) {
       metric.correct += 1;
       if (!correctedByChapter.has(chapterId)) correctedByChapter.set(chapterId, new Set());
-      if (attempt.question_id) correctedByChapter.get(chapterId)!.add(attempt.question_id);
+      if (attempt.question_id) correctedByChapter.get(chapterId)?.add(attempt.question_id);
     } else {
       metric.wrong += 1;
       if (!wrongByChapter.has(chapterId)) wrongByChapter.set(chapterId, new Set());
-      if (attempt.question_id) wrongByChapter.get(chapterId)!.add(attempt.question_id);
+      if (attempt.question_id) wrongByChapter.get(chapterId)?.add(attempt.question_id);
     }
     if (!metric.lastAttemptAt || new Date(attempt.attempted_at || 0).getTime() > new Date(metric.lastAttemptAt || 0).getTime()) {
       metric.lastAttemptAt = attempt.attempted_at || null;
@@ -511,21 +368,22 @@ export async function loadPlannerData(
     pendingMistakes: chapters.reduce((sum, chapter) => sum + chapter.pendingMistakes, 0),
   };
 
-  return { ...seed, weekly: buildWeeklyPlan(seed), attempts: missionAttempts, tests: missionTests };
+  return { ...seed, weekly: [], attempts: missionAttempts, tests: missionTests };
 }
 
 export default function AIStudyPlanner() {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [view, setView] = useState<'today' | 'week' | 'plan'>('today');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewParam = searchParams.get('view');
+  const view = viewParam === 'week' || viewParam === 'plan' ? viewParam : 'today';
+  const [preferences, setPreferences] = useState<PlannerPreferences>(() => readPreferences(user?.id || 'anon'));
   const { getExamDate } = useExamDates();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [targetExam, setTargetExam] = useState<ExamKey>('JEE');
   const [planner, setPlanner] = useState<PlannerData>(emptyPlanner());
-  const [completedHashes, setCompletedHashes] = useState<Set<string>>(new Set());
-  const [selectedDay, setSelectedDay] = useState(0);
+  const [loadError, setLoadError] = useState(false);
   const [signal, setSignal] = useState<any>(null);
 
 
@@ -557,37 +415,32 @@ export default function AIStudyPlanner() {
       const data = await loadPlannerData(user.id, exam, classLevel);
 
 
-      const sevenAgo = new Date();
-      sevenAgo.setDate(sevenAgo.getDate() - 6);
-      const { data: progressRows } = await supabase
-        .from('study_plan_progress')
-        .select('plan_date, task_hash')
-        .eq('user_id', user.id)
-        .gte('plan_date', sevenAgo.toISOString().split('T')[0]);
-
-      const done = new Set<string>();
-      (progressRows || []).forEach((row: any) => {
-        if (row?.task_hash) done.add(row.task_hash);
-      });
-
       setProfile(prof);
       setTargetExam(exam);
       setPlanner(data);
-      setCompletedHashes(done);
+      setLoadError(false);
 
       // Fetch coach signal (streak, etc.)
       supabase.functions.invoke('compute-coach-signal').then(({ data: sigData }) => {
         if (sigData) setSignal(sigData);
       }).catch(() => {});
 
-      writePlannerCache(user.id, { profile: prof, targetExam: exam, planner: data, completedHashes: Array.from(done) });
+      writePlannerCache(user.id, { profile: prof, targetExam: exam, planner: data, completedHashes: [] });
     } catch (error) {
       logger.error('Planner load error', error);
+      setLoadError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [user?.id]);
+
+  useEffect(() => { if (user?.id) setPreferences(readPreferences(user.id)); }, [user?.id]);
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') void loadAll({ silent: true }); };
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
+  }, [loadAll]);
 
   // Cache-first render: hydrate from cache instantly, then refresh in background.
   useEffect(() => {
@@ -597,10 +450,10 @@ export default function AIStudyPlanner() {
       setProfile(cached.data.profile);
       setTargetExam(cached.data.targetExam || 'JEE');
       setPlanner(cached.data.planner);
-      setCompletedHashes(new Set(cached.data.completedHashes || []));
+
       setLoading(false);
       // Refresh in background if stale
-      if (!isFresh(cached.ageMs)) void loadAll({ silent: true });
+      void loadAll({ silent: true });
     } else {
       void loadAll();
       // Watchdog: never block the full page more than 6s on a cold load.
@@ -610,38 +463,6 @@ export default function AIStudyPlanner() {
       return () => window.clearTimeout(watchdog);
     }
   }, [user?.id, loadAll]);
-
-  const toggleDone = async (task: PlannerTask) => {
-    if (!user?.id) return;
-    const hash = taskHash(task);
-    const next = new Set(completedHashes);
-    if (next.has(hash)) {
-      next.delete(hash);
-      setCompletedHashes(next);
-      await supabase
-        .from('study_plan_progress')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('plan_date', task.date)
-        .eq('task_hash', hash);
-    } else {
-      next.add(hash);
-      setCompletedHashes(next);
-      await supabase.from('study_plan_progress').upsert(
-        {
-          user_id: user.id,
-          plan_date: task.date,
-          task_hash: hash,
-          task_label: `${task.title} · ${task.chapter}`,
-          chapter_id: task.chapterId || null,
-          milestone: task.type,
-          status: 'done',
-          last_synced_at: new Date().toISOString(),
-        } as any,
-        { onConflict: 'user_id,plan_date,task_hash' },
-      );
-    }
-  };
 
   if (loading) {
     return (
@@ -664,15 +485,27 @@ export default function AIStudyPlanner() {
     return getDaysUntilDate(base.toISOString().slice(0, 10));
   })();
   const VIEWS = [
-    { id: 'today', label: 'Aaj' },
-    { id: 'week', label: 'Is hafte' },
-    { id: 'plan', label: 'Exam plan' },
+    { id: 'today', label: 'Today' },
+    { id: 'week', label: 'Week' },
+    { id: 'plan', label: 'Overview' },
   ] as const;
+
+  const today = plannerToday();
+  const weekend = [0, 6].includes(new Date(today + 'T00:00:00Z').getUTCDay());
+  const input: MissionInput = {
+    exam: targetExam, daysLeft: daysLeft ?? 0,
+    grade: Number.isFinite(Number(profile?.grade)) ? Number(profile?.grade) : null,
+    chapters: planner.chapters, attempts: planner.attempts || [], tests: planner.tests || [], todayIso: today,
+    cohortOverride: preferences.cohort,
+    availableMinutes: weekend ? preferences.weekendMinutes : preferences.weekdayMinutes,
+    coachingChapterIds: preferences.coaching, backlogChapterId: preferences.backlogId,
+    completedTaskIds: Object.entries(readEvidence(user?.id || 'anon')).filter(([, e]) => e.reviewed).map(([id]) => id),
+  };
 
   return (
     <div className="space-y-5 py-3 pb-24">
       <div className="flex items-center justify-between gap-2 px-1">
-        <h1 className="text-xl font-extrabold tracking-tight">JEEnie Coach</h1>
+        <h1 className="text-xl font-extrabold tracking-normal">JEEnie Coach</h1>
         <div className="flex items-center gap-2">
           {(signal?.streak?.current || 0) > 0 && (
             <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-bold">
@@ -685,42 +518,27 @@ export default function AIStudyPlanner() {
         </div>
       </div>
 
-      <div className="relative mx-auto grid h-11 max-w-xl grid-cols-3 rounded-2xl bg-muted/60 p-1">
+      <div role="tablist" aria-label="Planner views" className="relative mx-auto grid h-11 max-w-3xl grid-cols-3 rounded-md bg-muted/60 p-1">
         {VIEWS.map((v) => (
-          <button
+          <Button variant="ghost" role="tab" aria-selected={view === v.id}
             key={v.id}
-            onClick={() => setView(v.id)}
+            onClick={() => setSearchParams({ view: v.id })}
             className={`relative z-10 rounded-xl text-xs font-bold transition-colors ${view === v.id ? 'text-foreground' : 'text-muted-foreground'}`}
           >
             {view === v.id && (
               <motion.span layoutId="coach-seg" className="absolute inset-0 -z-10 rounded-xl bg-background shadow-sm" transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
             )}
             {v.label}
-          </button>
+          </Button>
         ))}
       </div>
 
       <AnimatePresence mode="wait">
         <motion.div key={view} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.18 }}>
-          {view === 'today' ? (
-            <MissionCoach
-              userId={user?.id || 'anon'}
-              exam={targetExam}
-              daysLeft={daysLeft}
-              grade={Number.isFinite(Number((profile as any)?.grade)) ? Number((profile as any)?.grade) : null}
-              chapters={planner.chapters}
-              attempts={planner.attempts || []}
-              tests={planner.tests || []}
-            />
-          ) : (
-            <CoachHorizons
-              view={view}
-              exam={targetExam}
-              daysLeft={daysLeft}
-              chapters={planner.chapters}
-              weekCount={Object.fromEntries(planner.chapters.map((c) => [c.id, (c as any).weekAttempts || 0]))}
-            />
-          )}
+          {loadError && <p role="alert" className="mb-4 text-sm text-muted-foreground">Could not refresh your plan. Try refresh; any saved plan may be out of date.</p>}
+          {daysLeft === null ? <p className="py-8 text-sm text-muted-foreground">Set your target exam date to create a plan.</p> : view === 'today' ? (
+            <MissionCoach userId={user?.id || 'anon'} input={input} preferences={preferences} onPreferences={setPreferences} />
+          ) : <CoachHorizons view={view} input={input} preferences={preferences} />}
         </motion.div>
       </AnimatePresence>
     </div>

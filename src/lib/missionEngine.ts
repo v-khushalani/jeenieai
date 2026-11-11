@@ -14,6 +14,7 @@
  *                 unit tests + formula speed, Phase 3 (≤27d) 72-hour mock loop.
  */
 import { getWeightage } from './examWeightage';
+import { normalizeSubject } from './subjectNormalization';
 
 export type Cohort = 'foundation' | 'improver' | 'sprint';
 export type Behaviour = 'careless' | 'concept' | 'slow' | 'clean' | 'unknown';
@@ -28,7 +29,7 @@ export interface MissionChapter {
   id: string; subject: string; title: string;
   chapterNumber: number | null;
   attempts: number; accuracy: number; pendingMistakes: number;
-  todayAttempts?: number;
+  todayAttempts?: number; classLevel?: number | null; totalQuestions?: number; lastAttemptAt?: string | null;
 }
 
 export interface MissionAttempt {
@@ -43,7 +44,7 @@ export interface MissionTest {
 
 export interface MissionTask {
   id: string; kind: MissionKind; title: string; why: string;
-  href: string; target: number; minutes: number; chapterId?: string;
+  href: string; target: number; minutes: number; chapterId?: string; subject?: string; testId?: string; lane?: 'coaching' | 'backlog' | 'adaptive';
 }
 
 export interface ScoreLeaks {
@@ -53,13 +54,14 @@ export interface ScoreLeaks {
 
 export interface Mission {
   cohort: Cohort; phase: string; headline: string; why: string;
-  tasks: MissionTask[]; leaks: ScoreLeaks; nextTest: string;
+  tasks: MissionTask[]; leaks: ScoreLeaks; nextTest: string; budgetMinutes: number; plannedMinutes: number; warnings: string[];
 }
 
 export interface MissionInput {
   exam: string; daysLeft: number; grade: number | null;
   chapters: MissionChapter[]; attempts: MissionAttempt[]; tests: MissionTest[];
-  todayIso: string; cohortOverride?: Cohort | null;
+  todayIso: string; cohortOverride?: Cohort | null; availableMinutes?: number;
+  coachingChapterIds?: Record<string, string>; backlogChapterId?: string; completedTaskIds?: string[];
 }
 
 const DAY = 864e5;
@@ -94,7 +96,7 @@ export function priorityOf(exam: string, c: MissionChapter): number {
 }
 
 export function computeLeaks(attempts: MissionAttempt[], tests: MissionTest[], chapters: MissionChapter[], todayIso: string): ScoreLeaks {
-  const recent = attempts.filter((a) => daysBetween(a.at, todayIso) <= 14);
+  const recent = attempts.filter((a) => daysBetween(a.at, todayIso) >= 0 && daysBetween(a.at, todayIso) <= 14);
   let careless = 0, concept = 0, otherWrong = 0, slowCorrect = 0;
   const byChapter = new Map<string, number>();
   recent.forEach((a) => {
@@ -107,7 +109,7 @@ export function computeLeaks(attempts: MissionAttempt[], tests: MissionTest[], c
     } else if (b === 'slow') slowCorrect += 1;
   });
   const unattempted = tests
-    .filter((t) => daysBetween(t.completedAt, todayIso) <= 14)
+    .filter((t) => daysBetween(t.completedAt, todayIso) >= 0 && daysBetween(t.completedAt, todayIso) <= 14)
     .reduce((s, t) => s + Math.max(0, t.totalQuestions - t.attempted) * 4, 0);
   let top: ScoreLeaks['topChapter'] = null;
   byChapter.forEach((marks, id) => {
@@ -121,104 +123,117 @@ const practice = (c: MissionChapter, mode: string, target: number) =>
 const chapterTest = (c: MissionChapter) =>
   `/test?${new URLSearchParams({ chapter_id: c.id, subject: c.subject, chapter: c.title, mode: 'chapter' })}`;
 
+/** One schedule policy for Today and the rolling week. Repeated weakness work is
+ * deliberate only when evidence still calls for it; a chapter gets one block/day. */
 export function buildMission(input: MissionInput): Mission {
-  const { exam, daysLeft, grade, chapters, attempts, tests, todayIso } = input;
-  const touched = chapters.filter((c) => c.attempts >= 5);
-  const coverage = chapters.length ? Math.round((touched.length / chapters.length) * 100) : 0;
+  const { exam, daysLeft, grade, attempts, tests, todayIso } = input;
+  const budgetMinutes = Math.max(15, Math.min(720, input.availableMinutes ?? 180));
+  const chapters = input.chapters.filter(c =>
+    (grade !== 11 && grade !== 12 || c.classLevel == null || c.classLevel === grade) &&
+    (c.totalQuestions === undefined || c.totalQuestions > 0));
+  const touched = chapters.filter(c => c.attempts >= 5);
+  const coverage = chapters.length ? touched.length / chapters.length * 100 : 0;
   const cohort = deriveCohort(daysLeft, grade, coverage, input.cohortOverride);
   const leaks = computeLeaks(attempts, tests, chapters, todayIso);
   const tasks: MissionTask[] = [];
-  const push = (t: Omit<MissionTask, 'id'>) => { if (!tasks.some((x) => x.kind === t.kind && x.chapterId === t.chapterId)) tasks.push({ ...t, id: `${t.kind}-${t.chapterId || 'all'}` }); };
-
-  const sortedSeq = [...chapters].sort((a, b) => a.subject.localeCompare(b.subject) || (a.chapterNumber ?? 999) - (b.chapterNumber ?? 999));
-  const byPriority = [...chapters].sort((a, b) => priorityOf(exam, b) - priorityOf(exam, a));
-  const weakest = byPriority.filter((c) => c.attempts >= 5 && c.accuracy < 70);
-  const mostMistakes = [...chapters].filter((c) => c.pendingMistakes > 0).sort((a, b) => b.pendingMistakes - a.pendingMistakes)[0];
-  const leakChapter = leaks.topChapter ? chapters.find((c) => c.id === leaks.topChapter!.id) : undefined;
-
-  const lastTest = [...tests].sort((a, b) => b.completedAt.localeCompare(a.completedAt))[0];
-  const lastMock = tests.filter((t) => t.isFullMock).sort((a, b) => b.completedAt.localeCompare(a.completedAt))[0];
+  const warnings: string[] = [];
+  let remaining = budgetMinutes;
+  const add = (task: Omit<MissionTask, 'id'>) => {
+    const id = task.testId ? `analysis-${task.testId}` : `${task.kind}-${task.chapterId || 'all'}`;
+    if (input.completedTaskIds?.includes(id)) return;
+    if (task.chapterId && tasks.some(t => t.chapterId === task.chapterId)) return;
+    if (tasks.some(t => t.id === id) || task.minutes > remaining) return;
+    tasks.push({ ...task, id });
+    remaining -= task.minutes;
+  };
+  const byPriority = [...chapters].sort((a, b) => priorityOf(exam, b) - priorityOf(exam, a) || a.id.localeCompare(b.id));
+  const recentTests = [...tests].filter(t => daysBetween(t.completedAt, todayIso) >= 0)
+    .sort((a, b) => b.completedAt.localeCompare(a.completedAt));
+  const lastTest = recentTests[0];
+  const lastMock = recentTests.find(t => t.isFullMock);
   const sinceTest = lastTest ? daysBetween(lastTest.completedAt, todayIso) : null;
   const sinceMock = lastMock ? daysBetween(lastMock.completedAt, todayIso) : null;
+  const analysisDue = lastTest && sinceTest !== null && sinceTest <= 1 &&
+    !input.completedTaskIds?.includes(`analysis-${lastTest.id}`);
+  if (analysisDue) add({ kind: 'analysis', title: `Review: ${lastTest.title}`, testId: lastTest.id,
+    why: 'Review wrong and skipped questions before another timed test. Confirm the review when you return.',
+    href: `/test-results/${lastTest.id}`, target: 1, minutes: Math.min(45, budgetMinutes) });
 
-  // Test-to-plan: a test in the last 48h always produces a post-mortem first.
-  const analysisDue = lastTest && sinceTest !== null && sinceTest <= 1;
-  if (analysisDue) {
-    push({ kind: 'analysis', title: `Post-mortem: ${lastTest!.title || 'last test'}`, why: 'Test ke baad pehla kaam: har galat aur chhoota question samjho. Bina analysis agla test bekaar hai.', href: `/test-results/${lastTest!.id}`, target: 1, minutes: 30 });
+  const phase = cohort === 'foundation' ? 'Build foundations' : cohort === 'improver' ? 'Strengthen preparation' :
+    daysLeft > 45 ? 'Essential coverage' : daysLeft > 27 ? 'Consolidation' : 'Mock → review → retest';
+  const mockDue = cohort === 'improver' ? sinceMock === null || sinceMock >= 7 :
+    cohort === 'sprint' && daysLeft <= 27 && mockLoopStage(sinceMock) === 0;
+  // Never substitute a chapter test for a full exam; never squeeze a 3h mock
+  // into a shorter free-study budget. It is offered on a larger-budget day.
+  if (mockDue && !analysisDue) {
+    if (remaining >= 180) add({ kind: 'mock', title: 'Full-length mock', why: 'Use exam conditions. The next session is review, then targeted repair.',
+      href: '/test?mode=full', target: 1, minutes: 180 });
+    else warnings.push('A full mock needs a separate 180-minute slot. Today stays within your available time.');
   }
-
-  let phase = '';
-  let nextTest = '';
-
-  if (cohort === 'foundation') {
-    phase = 'Foundation build';
-    const active = sortedSeq.find((c) => !(c.attempts >= 40 && c.accuracy >= 75)) || sortedSeq[0];
-    if (active) push({ kind: 'learn', title: active.title, why: `Sequence mein agla chapter. ${active.attempts}/40 questions done — Easy se shuru, level khud badhega.`, href: practice(active, 'learn', 20), target: 20, minutes: 45, chapterId: active.id });
-    const cumulativeDue = sinceTest === null ? touched.length >= 3 : sinceTest >= 14;
-    if (cumulativeDue && touched.length) {
-      const c = [...touched].sort((a, b) => a.accuracy - b.accuracy)[0];
-      push({ kind: 'test', title: `Cumulative check: ${c.title}`, why: '14 din ho gaye bina test ke. Padha hua yaad hai ya nahi, test se pata chalega.', href: chapterTest(c), target: 1, minutes: 60, chapterId: c.id });
-    }
-    nextTest = sinceTest === null ? '3 chapters cover hone ke baad pehla test' : `Agla cumulative test ${Math.max(0, 14 - sinceTest)} din mein`;
-  } else if (cohort === 'improver') {
-    phase = 'Rank improvement';
-    if (sinceMock !== null && sinceMock <= 1 && !analysisDue) {
-      push({ kind: 'analysis', title: 'Mock analysis day', why: 'Mock ke agle din naya kuch nahi — sirf galtiyan.', href: `/test-results/${lastMock!.id}`, target: 1, minutes: 45 });
-    }
-    const drill = leakChapter || weakest[0] || byPriority[0];
-    if (drill) push({ kind: 'drill', title: drill.title, why: leakChapter ? `Pichle 14 din mein yahan ${leaks.topChapter!.marks} marks gaye. Sabse bada leak, sabse pehle.` : `Weightage × kamzori sabse zyada. ${drill.attempts >= 5 ? drill.accuracy + '% accuracy ko 75% tak lao.' : 'Abhi tak touch nahi kiya.'}`, href: practice(drill, 'weak', 15), target: 15, minutes: 40, chapterId: drill.id });
-    if (sinceMock === null || sinceMock >= 7) {
-      push({ kind: 'mock', title: 'Full mock (3 hr)', why: sinceMock === null ? 'Abhi tak koi full mock nahi diya. Pehla mock asli starting point batayega.' : `${sinceMock} din ho gaye full mock ke bina. Exam stamina sirf mock se banti hai.`, href: '/test', target: 1, minutes: 180 });
-    } else if (sinceTest === null || sinceTest >= 3) {
-      const c = weakest[1] || weakest[0] || byPriority[1];
-      if (c) push({ kind: 'test', title: `Chapter test: ${c.title}`, why: 'Har 3 din ek timed checkpoint — practice ka asli result yahin dikhta hai.', href: chapterTest(c), target: 1, minutes: 60, chapterId: c.id });
-    }
-    nextTest = sinceMock === null ? 'Full mock aaj' : `Agla full mock ${Math.max(0, 7 - sinceMock)} din mein`;
-  } else {
-    if (daysLeft > 45) {
-      phase = 'Sprint · Phase 1 — high-yield coverage';
-      const hy = byPriority.filter((c) => getWeightage(exam, c.subject, c.title).tier === 1 && !(c.attempts >= 40 && c.accuracy >= 75));
-      const pick = hy[0] || byPriority[0];
-      if (pick) push({ kind: 'learn', title: pick.title, why: `High-weightage chapter (~${getWeightage(exam, pick.subject, pick.title).expectedQ} Q/paper). 90 din mein pehle wahi jahan marks hain.`, href: practice(pick, 'learn', 25), target: 25, minutes: 60, chapterId: pick.id });
-      if (sinceTest === null || sinceTest >= 4) {
-        const c = touched.sort((a, b) => a.accuracy - b.accuracy)[0];
-        if (c) push({ kind: 'test', title: `Chapter test: ${c.title}`, why: 'Har 4 din ek chapter test — jo cover kiya woh pakka hua ya nahi.', href: chapterTest(c), target: 1, minutes: 60, chapterId: c.id });
-      }
-      nextTest = 'Chapter test har 4 din';
-    } else if (daysLeft > 27) {
-      phase = 'Sprint · Phase 2 — unit tests + speed';
-      const c = leakChapter || weakest[0] || byPriority[0];
-      if (c) push({ kind: 'drill', title: c.title, why: 'Is chapter mein sabse zyada marks ja rahe hain. Aaj fix karo.', href: practice(c, 'weak', 20), target: 20, minutes: 45, chapterId: c.id });
-      if (sinceTest === null || sinceTest >= 2) {
-        const t = weakest[1] || byPriority[1] || c;
-        if (t) push({ kind: 'test', title: `Unit test: ${t.title}`, why: 'Phase 2 mein har 2 din test. Speed aur accuracy dono train hote hain.', href: chapterTest(t), target: 1, minutes: 60, chapterId: t.id });
-      }
-      nextTest = 'Unit test har 2 din';
-    } else {
-      phase = 'Sprint · Phase 3 — 72-hour mock loop';
-      const stage = mockLoopStage(sinceMock);
-      if (stage === 0) push({ kind: 'mock', title: 'Full mock (exam conditions)', why: '72-hour loop ka Day 1. Exam time pe, phone door, +4/−1.', href: '/test', target: 1, minutes: 180 });
-      else if (stage === 1 && lastMock && !analysisDue) push({ kind: 'analysis', title: 'Mock post-mortem', why: 'Loop ka Day 2: zero naya padhai. Sirf mock ki galtiyan.', href: `/test-results/${lastMock.id}`, target: 1, minutes: 60 });
-      else if (stage === 2) {
-        const c = leakChapter || weakest[0] || byPriority[0];
-        if (c) push({ kind: 'drill', title: `Retest: ${c.title}`, why: 'Loop ka Day 3: mock mein jahan marks kate, wahi targeted retest.', href: practice(c, 'weak', 20), target: 20, minutes: 45, chapterId: c.id });
-      }
-      nextTest = stage === 0 ? 'Full mock aaj' : `Agla full mock ${3 - (sinceMock || 0)} din mein`;
-    }
+  const subjects = ['Physics', 'Chemistry', /neet/i.test(exam) ? 'Biology' : 'Mathematics']
+    .filter(s => chapters.some(c => normalizeSubject(c.subject) === s));
+  const others = [...new Set(chapters.map(c => normalizeSubject(c.subject)))].filter(s => !subjects.includes(s));
+  subjects.push(...others);
+  // Rotate which subject comes first when a short day cannot fit all three.
+  const offset = Math.abs(Math.floor(new Date(todayIso).getTime() / DAY)) % Math.max(1, subjects.length);
+  const orderedSubjects = [...subjects.slice(offset), ...subjects.slice(0, offset)];
+  const practiceBudget = remaining;
+  const selected: { chapter: MissionChapter; lane: 'coaching' | 'backlog' | 'adaptive' }[] = [];
+  for (const subject of orderedSubjects) {
+    const pool = byPriority.filter(c => normalizeSubject(c.subject) === subject);
+    const coaching = pool.find(c => c.id === input.coachingChapterIds?.[subject]);
+    const backlog = pool.find(c => c.id === input.backlogChapterId && c.id !== coaching?.id);
+    const leakId = leaks.topChapter?.id;
+    const weak = pool.find(c => c.id === leakId) || pool.find(c => c.pendingMistakes > 0 || c.attempts >= 5 && c.accuracy < 70);
+    const sequential = [...pool].sort((a, b) => (a.chapterNumber ?? 999) - (b.chapterNumber ?? 999))
+      .find(c => c.attempts < 40 || c.accuracy < 75);
+    const chapter = coaching || backlog || (cohort === 'foundation' ? sequential || weak : weak || pool[0]);
+    if (chapter) selected.push({ chapter, lane: coaching ? 'coaching' : backlog ? 'backlog' : 'adaptive' });
   }
-
-  // Behaviour corrections — shared by every cohort.
-  if (mostMistakes) push({ kind: 'repair', title: `Mistake repair: ${mostMistakes.title}`, why: `${mostMistakes.pendingMistakes} galat questions pending. Jo galti ek baar hui, woh exam mein dobara na ho.`, href: practice(mostMistakes, 'revision', Math.min(10, mostMistakes.pendingMistakes)), target: Math.min(10, mostMistakes.pendingMistakes), minutes: 20, chapterId: mostMistakes.id });
-  if (leaks.careless >= 15 && leakChapter) push({ kind: 'careless', title: 'Careless trap review', why: `${leaks.careless} marks 45 second se kam mein galat answer se gaye. Aata tha, jaldi kiya. Aaj dheere, units check karke.`, href: practice(leakChapter, 'revision', 8), target: 8, minutes: 15 });
-  if (leaks.slowCorrect >= 5 && touched[0]) {
-    const c = [...touched].sort((a, b) => b.accuracy - a.accuracy)[0];
-    push({ kind: 'speed', title: `Speed drill: ${c.title}`, why: `${leaks.slowCorrect} sahi answers mein 4+ minute lage. Exam mein itna time nahi milega.`, href: practice(c, 'learn', 10), target: 10, minutes: 15, chapterId: c.id });
+  // One extra backlog block only if distinct from the subject's coaching block.
+  const backlog = chapters.find(c => c.id === input.backlogChapterId);
+  if (backlog && !selected.some(s => s.chapter.id === backlog.id) && practiceBudget >= 120)
+    selected.push({ chapter: backlog, lane: 'backlog' });
+  const slots = Math.min(selected.length, Math.floor(practiceBudget / 15));
+  for (const { chapter: c, lane } of selected.slice(0, slots)) {
+    const minutes = Math.min(remaining, Math.max(15, Math.floor(practiceBudget / slots / 5) * 5));
+    const repair = c.pendingMistakes > 0;
+    const kind: MissionKind = repair ? 'repair' : c.attempts < 5 ? 'learn' : 'drill';
+    const target = repair ? Math.min(c.pendingMistakes, Math.max(1, Math.floor(minutes / 4)), 10) : Math.max(3, Math.floor(minutes / 3));
+    const id = `${kind}-${c.id}`;
+    const reasons = [lane === 'coaching' ? 'Matches your current coaching chapter.' : lane === 'backlog' ? 'Your selected backlog, within your active class scope.' :
+      cohort === 'foundation' ? 'Next chapter in this subject’s sequence.' : c.attempts < 5 ? 'Not enough evidence yet: begin with a short baseline set.' : `${c.accuracy}% accuracy across ${c.attempts} recorded questions.`];
+    if (repair) reasons.push(`${c.pendingMistakes} unresolved mistakes; retry the actual questions, not a random set.`);
+    add({ kind, title: c.title, why: reasons.join(' '), subject: normalizeSubject(c.subject), lane,
+      href: practice(c, repair ? 'revision' : 'learn', target) + `&planner_task=${encodeURIComponent(id)}`,
+      chapterId: c.id, target, minutes });
   }
+  const testInterval = cohort === 'foundation' ? 14 : cohort === 'improver' ? 3 : daysLeft > 45 ? 4 : 2;
+  const nextTest = mockDue ? 'Full mock due · reserve 3 hours' :
+    cohort === 'foundation' && touched.length < 3 ? 'First checkpoint after 3 chapters have practice evidence' :
+    `Chapter checkpoint ${sinceTest === null || sinceTest >= testInterval ? 'due' : `in ${testInterval - sinceTest} days`}`;
+  // A checkpoint is a real chapter test, not a falsely labelled unit test.
+  if (!analysisDue && !tasks.some(t => t.kind === 'mock') && remaining >= 30 && touched.length &&
+    (sinceTest === null ? touched.length >= 3 : sinceTest >= testInterval)) {
+    const c = byPriority.find(c => c.attempts >= 5 && !tasks.some(t => t.chapterId === c.id));
+    if (c) add({ kind: 'test', title: `Checkpoint: ${c.title}`, why: 'A timed chapter check, followed by review.',
+      href: chapterTest(c), chapterId: c.id, subject: normalizeSubject(c.subject), target: 1, minutes: 30 });
+  }
+  if (!chapters.length) warnings.push('No question-backed chapters are available in your active scope. Change your setup or try again later.');
+  if (slots < subjects.length && !tasks.some(t => t.kind === 'mock')) warnings.push('Short day: subjects rotate; unfinished work does not become an overdue pile.');
+  return { cohort, phase, headline: tasks.some(t => t.kind === 'mock') ? 'Test day. Review comes next.' :
+    analysisDue ? 'Turn your last test into your next improvement.' : touched.length ? 'A focused plan for today.' : 'Start small. Build evidence.',
+    why: tasks[0]?.why || '', tasks, leaks, nextTest, budgetMinutes,
+    plannedMinutes: tasks.reduce((s, t) => s + t.minutes, 0), warnings };
+}
 
-  const final = tasks.slice(0, 4);
-  const lead = final[0];
-  const headline = leaks.total > 0
-    ? `${leaks.total} marks leak ho rahe hain — aaj ${Math.min(leaks.total, Math.round(leaks.total * 0.4))} wapas lao`
-    : touched.length === 0 ? 'Pehla din: shuru karo, data khud plan banayega' : 'Aaj ka mission';
-  return { cohort, phase, headline, why: lead?.why || '', tasks: final, leaks, nextTest };
+export function buildMissionWeek(input: MissionInput, weekdayMinutes: number, weekendMinutes: number): { date: string; mission: Mission }[] {
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(input.todayIso + 'T00:00:00Z');
+    date.setUTCDate(date.getUTCDate() + i);
+    const day = date.getUTCDay();
+    return { date: date.toISOString().slice(0, 10), mission: buildMission({ ...input,
+      todayIso: date.toISOString().slice(0, 10), daysLeft: Math.max(0, input.daysLeft - i),
+      availableMinutes: day === 0 || day === 6 ? weekendMinutes : weekdayMinutes }) };
+  });
 }
