@@ -2,7 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ComingSoonBanner from '@/components/ComingSoonBanner';
-import { getRepairedIds, markRepaired } from '@/lib/mistakeRepair';
+import { recordPlannerAnswer } from '@/lib/plannerState';
+import { invalidatePlannerCache } from '@/lib/plannerCache';
+import { getRepairedIds, recordRepairAttempt } from '@/lib/mistakeRepair';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -121,6 +123,7 @@ const PracticePage: React.FC = () => {
   const topicId = UUID_RE.test(rawTopicId) ? rawTopicId : '';
   const topicName = searchParams.get('topic') || '';
   const topicFilterName = /^[0-9a-f-]{20,}$/i.test(topicName) ? '' : topicName.trim();
+  const plannerTaskId = searchParams.get('planner_task') || '';
   const mode = (searchParams.get('mode') || '').toLowerCase();
   const isRevisit = mode === 'revision' || mode === 'weak';
   const missionId = searchParams.get('mission_id') || '';
@@ -302,7 +305,7 @@ const PracticePage: React.FC = () => {
         }
       }
 
-      const takeCount = isMissionBlock ? missionTarget : QUESTIONS_PER_BATCH;
+      const takeCount = missionTarget > 0 ? Math.min(50, missionTarget) : QUESTIONS_PER_BATCH;
 
       // Revisit mode: intentionally re-serve previously attempted questions in this scope
       if (isRevisit) {
@@ -315,6 +318,15 @@ const PracticePage: React.FC = () => {
         else if (chapterId) q = q.eq('chapter_id', chapterId);
         else if (subject) q = q.ilike('subject', subject);
         if (!topicId && topicFilterName) q = q.ilike('topic', `%${topicFilterName}%`);
+        if (mode === 'revision' && user?.id) {
+          const { data: wrong, error: wrongError } = await supabase.from('question_attempts')
+            .select('question_id').eq('user_id', user.id).eq('is_correct', false);
+          if (wrongError) throw wrongError;
+          const repaired = getRepairedIds(user.id);
+          const ids = (wrong || []).map(a => a.question_id).filter(id => !repaired.has(id));
+          if (!ids.length) { setQuestions([]); setLoading(false); return; }
+          q = q.in('id', ids.slice(0, 500));
+        }
         const { data, error } = await q.limit(500);
         if (error) throw error;
         const ordered = orderPoolByLevel(data || [], trackRef.current, levelRef.current).slice(0, takeCount);
@@ -575,14 +587,17 @@ const PracticePage: React.FC = () => {
           time_spent: Math.max(1, Math.round((Date.now() - questionStartTime.current) / 1000)),
         });
         // Re-solving an old mistake correctly = repaired (first attempt stays the record).
-        if (attemptInsertError && (attemptInsertError as { code?: string }).code === '23505' && result.is_correct) {
-          markRepaired(user.id, currentQuestion.id);
+        if (attemptInsertError && (attemptInsertError as { code?: string }).code === '23505') {
+          recordRepairAttempt(user.id, currentQuestion.id, result.is_correct);
         }
         // Ignore unique-violation (23505): means this (user, question) was already recorded.
         // We treat the first attempt as the source of truth and just move on.
         if (attemptInsertError && (attemptInsertError as { code?: string }).code !== '23505') {
           throw attemptInsertError;
         }
+
+        recordPlannerAnswer(user.id, plannerTaskId, currentQuestion.id);
+        invalidatePlannerCache(user.id);
 
         const pointsDelta = getPointsDelta(currentQuestion.difficulty, result.is_correct);
         const [practiceStatsRes, streakRes, topicMasteryRes] = await Promise.all([

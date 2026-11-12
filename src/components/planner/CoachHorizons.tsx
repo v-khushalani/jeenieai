@@ -17,10 +17,10 @@ export default function CoachHorizons({ view, input, preferences }: { view: 'wee
       <section className="border-t border-border pt-5"><h3 className="font-semibold">Next checkpoint</h3><p className="mt-2 text-sm text-muted-foreground">{week[0].mission.nextTest}</p><Button variant="outline" className="mt-3" onClick={() => navigate('/tests')}>Choose a test<ArrowRight /></Button></section>
     </section>;
   }
-  return <section className="mx-auto max-w-3xl space-y-5"><header><h2 className="text-2xl font-bold">The next seven days</h2><p className="mt-2 text-sm text-muted-foreground">Provisional priorities; future days update after practice and tests. These are not seven fixed homework lists.</p></header>
+  return <section className="mx-auto max-w-3xl space-y-5"><header><h2 className="text-2xl font-bold">The next seven days</h2><p className="mt-2 text-sm text-muted-foreground">Provisional schedule · assumes planned tests are completed. Updated after actual practice and results.</p></header>
     <ol className="divide-y divide-border">{week.map(({ date, mission }, i) => <li key={date} className="py-5"><div className="flex items-baseline justify-between gap-3"><h3 className="font-semibold">{i === 0 ? 'Today' : new Date(date + 'T00:00:00Z').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}</h3><span className="text-xs text-muted-foreground">{mission.plannedMinutes}/{mission.budgetMinutes} min</span></div>
-      <p className="mt-2 text-sm text-muted-foreground">{mission.tasks.map(t => t.subject || (t.kind === 'mock' ? 'Full mock' : 'Review')).join(' · ') || 'Rest / reset'}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{mission.nextTest}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{mission.tasks.map(t => t.kind === 'analysis' ? 'Test analysis' : t.kind === 'mock' ? 'Full mock' : t.subject).filter((v, i, all) => all.indexOf(v) === i).join(' · ') || 'Rest / reset'}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{mission.tasks.some(t => t.kind === 'analysis') ? 'Review wrong and skipped questions' : mission.tasks.some(t => t.kind === 'mock' || t.kind === 'test') ? 'Timed checkpoint' : 'Coaching practice and targeted repair'}</p>
       {i === 0 && <Button variant="ghost" size="sm" className="mt-2" onClick={() => navigate('/ai-planner?view=today')}>Open today<ArrowRight /></Button>}
     </li>)}</ol>
   </section>;

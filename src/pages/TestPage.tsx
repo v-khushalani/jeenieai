@@ -398,6 +398,7 @@ const TestPage: React.FC = () => {
       const chapterId = searchParams.get('chapter_id');
       const subject = searchParams.get('subject') || '';
       const chapter = searchParams.get('chapter') || '';
+      if (mode === 'full') { setTestMode('full'); setPlannerLinkHandled(true); return; }
       if (mode !== 'chapter' || !chapterId || !subject || !chapter) return;
 
       const option = { id: chapterId, subject, chapter };
@@ -639,6 +640,7 @@ const TestPage: React.FC = () => {
           startTime: new Date().toISOString(),
           examPattern: pyqExam,
           sessionId: reservedSessionId || undefined,
+
         };
 
         safeLocalStorage.setItem('currentTest', JSON.stringify(testSession));
@@ -747,6 +749,7 @@ const TestPage: React.FC = () => {
           startTime: new Date().toISOString(),
           examPattern: pattern.name,
           sessionId: reservedSessionId || undefined,
+          plannerTaskId: mode === 'full' ? searchParams.get('planner_task') || undefined : undefined,
         };
 
         safeLocalStorage.setItem('currentTest', JSON.stringify(testSession));
@@ -917,6 +920,7 @@ const TestPage: React.FC = () => {
         startTime: new Date().toISOString(),
         examPattern: pattern.name,
         sessionId: reservedSessionId || undefined,
+        plannerTaskId: mode === 'chapter' ? searchParams.get('planner_task') || undefined : undefined,
       };
 
       safeLocalStorage.setItem('currentTest', JSON.stringify(testSession));

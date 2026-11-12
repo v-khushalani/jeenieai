@@ -6,9 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { buildMission, type MissionInput } from '@/lib/missionEngine';
-import { defaultPreferences, missionKey, readEvidence, readPreferences, savePreferences, taskComplete, writeEvidence, type PlannerPreferences } from '@/lib/plannerState';
+import { missionKey, readEvidence, savePreferences, taskComplete, writeEvidence, type PlannerPreferences } from '@/lib/plannerState';
 import safeLocalStorage from '@/utils/safeStorage';
-import GoalProgress from '@/components/GoalProgress';
+import { Progress } from '@/components/ui/progress';
 
 interface Props { userId: string; input: MissionInput; preferences: PlannerPreferences; onPreferences: (p: PlannerPreferences) => void }
 export default function MissionCoach({ userId, input, preferences, onPreferences }: Props) {
@@ -16,10 +16,23 @@ export default function MissionCoach({ userId, input, preferences, onPreferences
   const [settings, setSettings] = useState(false);
   const [evidence, setEvidence] = useState(() => readEvidence(userId));
   const [notice, setNotice] = useState('');
-  const mission = useMemo(() => buildMission(input), [input]);
+  const mission = useMemo(() => {
+    const fresh = buildMission(input);
+    // Keep identities stable through practice; settings or a new test invalidate the daily lock.
+    const signature = JSON.stringify([preferences, input.grade, input.exam, input.tests.map(t => t.id), input.chapters.map(c => c.id)]);
+    try {
+      const saved = JSON.parse(safeLocalStorage.getItem(missionKey(userId)) || 'null');
+      if (saved?.signature === signature && Array.isArray(saved.tasks)) {
+        fresh.tasks = saved.tasks;
+        fresh.plannedMinutes = fresh.tasks.reduce((sum, t) => sum + t.minutes, 0);
+      }
+      safeLocalStorage.setItem(missionKey(userId), JSON.stringify({ signature, tasks: fresh.tasks }));
+    } catch { /* storage is optional */ }
+    return fresh;
+  }, [input, preferences, userId]);
   const unfinished = mission.tasks.filter(t => !taskComplete(t, evidence[t.id]));
   useEffect(() => {
-    safeLocalStorage.setItem(missionKey(userId), JSON.stringify({ tasks: mission.tasks }));
+    setEvidence(readEvidence(userId));
   }, [mission, userId]);
   const update = (p: PlannerPreferences) => { savePreferences(userId, p); onPreferences(p); };
   const acknowledge = (id: string, analysis = false) => {
@@ -33,7 +46,7 @@ export default function MissionCoach({ userId, input, preferences, onPreferences
         <div><p className="text-xs text-muted-foreground">{input.exam} · {input.grade ? `Class ${input.grade} only` : 'Exam syllabus'} · {input.daysLeft} days remaining</p>
           <h2 className="mt-2 text-2xl font-bold">{mission.headline}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{mission.phase} · {mission.plannedMinutes} / {mission.budgetMinutes} minutes</p></div>
-        <Button variant="outline" size="icon" aria-label="Planner settings" onClick={() => setSettings(true)}><Settings2 /></Button>
+        <Button variant="outline" size="icon" className="shrink-0" aria-label="Planner settings" onClick={() => setSettings(true)}><Settings2 /></Button>
       </div>
       <p className="mt-3 text-sm text-muted-foreground">{mission.nextTest}</p>
     </header>
@@ -44,13 +57,14 @@ export default function MissionCoach({ userId, input, preferences, onPreferences
         const done = taskComplete(task, evidence[task.id]);
         return <li key={task.id} className="py-5 first:pt-0">
           <div className="flex items-start gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs">{done ? <Check className="h-4 w-4" /> : i + 1}</span>
-            <div className="min-w-0 flex-1"><p className="text-xs text-muted-foreground">{task.subject || 'Test review'} · {task.lane === 'coaching' ? 'Coaching' : task.lane === 'backlog' ? 'Backlog' : task.kind} · {task.minutes} min</p>
+            <div className="min-w-0 flex-1"><p className="text-xs text-muted-foreground">{task.subject || (task.kind === 'mock' ? 'Full exam' : 'Test review')} · {task.lane === 'coaching' ? 'Coaching' : task.lane === 'backlog' ? 'Backlog' : task.kind} · {task.minutes} min</p>
               <h4 className="mt-1 break-words font-semibold">{task.title}</h4><p className="mt-2 text-sm text-muted-foreground">{task.why}</p>
-              {task.chapterId && task.kind !== 'test' && <div className="mt-3"><GoalProgress got={evidence[task.id]?.questionIds.length || 0} target={task.target} /></div>}
+              {task.chapterId && task.kind !== 'test' && <div className="mt-3"><div className="flex items-center gap-3"><Progress className="h-1 flex-1" value={Math.min(100, (evidence[task.id]?.questionIds.length || 0) / task.target * 100)} /><span className="shrink-0 text-xs text-muted-foreground">{Math.min(task.target, evidence[task.id]?.questionIds.length || 0)}/{task.target} solved</span></div></div>}
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" variant={done ? 'outline' : 'default'} onClick={() => navigate(task.href)}>{done ? 'Open again' : task.kind === 'analysis' ? 'Open review' : 'Start'}<ArrowRight /></Button>
                 {!done && <Button size="sm" variant="ghost" onClick={() => acknowledge(task.id, task.kind === 'analysis')}>
                   <Check />{task.kind === 'analysis' ? 'Review completed' : 'Done offline'}</Button>}
+                {done && (evidence[task.id]?.offline || evidence[task.id]?.reviewed) && <Button size="sm" variant="ghost" onClick={() => { writeEvidence(userId, task.id, { questionIds: evidence[task.id]?.questionIds || [] }); setEvidence(readEvidence(userId)); }}>Undo check-off</Button>}
                 {done && evidence[task.id]?.offline && <span className="self-center text-xs text-muted-foreground">Self-reported · not mastery evidence</span>}
               </div>
             </div></div>

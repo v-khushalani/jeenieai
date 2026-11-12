@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { writeEvidence } from '@/lib/plannerState';
+import { invalidatePlannerCache } from '@/lib/plannerCache';
 import safeLocalStorage from '@/utils/safeStorage';
 import {
   Clock,
@@ -69,6 +71,7 @@ interface TestSession {
   groupTestCode?: string;
   examPattern?: string;
   sessionId?: string;
+  plannerTaskId?: string;
 }
 
 interface UserAnswer {
@@ -562,6 +565,8 @@ const TestAttemptPage = () => {
         })
       );
 
+      if (testSession.plannerTaskId) writeEvidence(user.id, testSession.plannerTaskId, { questionIds: [], reviewed: true });
+      invalidatePlannerCache(user.id);
       toast.success("Test submitted successfully!");
       navigate(persistedSessionId ? `/test-results/${persistedSessionId}` : "/test-results");
 

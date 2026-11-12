@@ -1,32 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import {
-  AlertTriangle,
-  ArrowRight,
-  BookOpen,
-  Calendar,
-  CheckCircle2,
-  Flame,
-  Loader2,
-  RefreshCw,
-  RotateCcw,
-  
-  Target,
-  Trophy,
-  Zap,
-  Rocket,
-} from 'lucide-react';
+import { Flame, Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useExamDates } from '@/hooks/useExamDates';
 import { normalizeTargetExam } from '@/config/goalConfig';
 import { getDaysUntilDate, getExamDateForGrade } from '@/utils/examTimeline';
 import { logger } from '@/utils/logger';
-import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { getSubjectAliases, normalizeSubject } from '@/lib/subjectNormalization';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import CoachHorizons from '@/components/planner/CoachHorizons';
@@ -45,12 +26,10 @@ import {
   type SubjectRoadmap,
 } from '@/lib/roadmapEngine';
 import safeLocalStorage from '@/utils/safeStorage';
-import { readPlannerCache, writePlannerCache, isFresh } from '@/lib/plannerCache';
+import { readPlannerCache, writePlannerCache } from '@/lib/plannerCache';
 
 type ExamKey = 'JEE' | 'NEET' | 'Foundation';
 type ChapterStatus = 'pending' | 'weak' | 'medium' | 'strong' | 'done';
-type TaskType = 'learn' | 'drill' | 'review' | 'test';
-
 interface ChapterMetric {
   id: string;
   subject: string;
@@ -69,29 +48,6 @@ interface ChapterMetric {
   todayAttempts?: number;
 }
 
-interface PlannerTask {
-  id: string;
-  date: string;
-  dayName: string;
-  title: string;
-  subtitle: string;
-  subject: string;
-  chapter: string;
-  chapterId?: string;
-  duration: number;
-  type: TaskType;
-  priority: 'high' | 'medium' | 'low';
-  actionLabel: string;
-  href: string;
-}
-
-interface DayPlan {
-  date: string;
-  dayName: string;
-  totalMinutes: number;
-  tasks: PlannerTask[];
-}
-
 interface PlannerData {
   roadmaps: SubjectRoadmap[];
   chapters: ChapterMetric[];
@@ -102,7 +58,6 @@ interface PlannerData {
   pending: ChapterMetric[];
   active: ChapterMetric | null;
   next: ChapterMetric | null;
-  weekly: DayPlan[];
   coveragePct: number;
   totalQuestions: number;
   totalAttempts: number;
@@ -124,7 +79,6 @@ const emptyPlanner = (): PlannerData => ({
   pending: [],
   active: null,
   next: null,
-  weekly: [],
   coveragePct: 0,
   totalQuestions: 0,
   totalAttempts: 0,
@@ -230,7 +184,7 @@ export async function loadPlannerData(
   const [countRows, attemptRows, testRows] = await Promise.all([
     supabase
       .rpc('get_chapter_question_counts', { p_chapter_ids: chapterIds })
-      .then(({ data }) => (data as any[]) || []),
+      .then(({ data, error }) => { if (error) throw error; return (data as any[]) || []; }),
     fetchAllPaginated<any>(() =>
       supabase
         .from('question_attempts')
@@ -246,7 +200,7 @@ export async function loadPlannerData(
       .gte('completed_at', testsSince)
       .order('completed_at', { ascending: false })
       .limit(30)
-      .then(({ data }) => (data as any[]) || []),
+      .then(({ data, error }) => { if (error) throw error; return (data as any[]) || []; }),
   ]);
 
   const missionAttempts: MissionAttempt[] = attemptRows
@@ -266,7 +220,7 @@ export async function loadPlannerData(
       completedAt: new Date(t.completed_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
       totalQuestions: Number(t.total_questions) || 0,
       attempted: Number(t.attempted_questions) || 0,
-      isFullMock: (Number(t.total_questions) || 0) >= 60,
+      isFullMock: /full.*(?:mock|syllabus)|pyq mock/i.test(t.title || ''),
     }));
 
   countRows.forEach((row: any) => {
@@ -368,7 +322,7 @@ export async function loadPlannerData(
     pendingMistakes: chapters.reduce((sum, chapter) => sum + chapter.pendingMistakes, 0),
   };
 
-  return { ...seed, weekly: [], attempts: missionAttempts, tests: missionTests };
+  return { ...seed, attempts: missionAttempts, tests: missionTests };
 }
 
 export default function AIStudyPlanner() {

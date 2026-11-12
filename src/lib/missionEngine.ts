@@ -121,7 +121,7 @@ export function computeLeaks(attempts: MissionAttempt[], tests: MissionTest[], c
 const practice = (c: MissionChapter, mode: string, target: number) =>
   `/practice?${new URLSearchParams({ chapter_id: c.id, subject: c.subject, chapter: c.title, mode, target: String(target) })}`;
 const chapterTest = (c: MissionChapter) =>
-  `/test?${new URLSearchParams({ chapter_id: c.id, subject: c.subject, chapter: c.title, mode: 'chapter' })}`;
+  `/tests?${new URLSearchParams({ chapter_id: c.id, subject: c.subject, chapter: c.title, mode: 'chapter' })}`;
 
 /** One schedule policy for Today and the rolling week. Repeated weakness work is
  * deliberate only when evidence still calls for it; a chapter gets one block/day. */
@@ -167,7 +167,7 @@ export function buildMission(input: MissionInput): Mission {
   // into a shorter free-study budget. It is offered on a larger-budget day.
   if (mockDue && !analysisDue) {
     if (remaining >= 180) add({ kind: 'mock', title: 'Full-length mock', why: 'Use exam conditions. The next session is review, then targeted repair.',
-      href: '/test?mode=full', target: 1, minutes: 180 });
+      href: '/tests?mode=full&planner_task=mock-all', target: 1, minutes: 180 });
     else warnings.push('A full mock needs a separate 180-minute slot. Today stays within your available time.');
   }
   const subjects = ['Physics', 'Chemistry', /neet/i.test(exam) ? 'Biology' : 'Mathematics']
@@ -177,10 +177,17 @@ export function buildMission(input: MissionInput): Mission {
   // Rotate which subject comes first when a short day cannot fit all three.
   const offset = Math.abs(Math.floor(new Date(todayIso).getTime() / DAY)) % Math.max(1, subjects.length);
   const orderedSubjects = [...subjects.slice(offset), ...subjects.slice(0, offset)];
+  const testInterval = cohort === 'foundation' ? 14 : cohort === 'improver' ? 3 : daysLeft > 45 ? 4 : 2;
+  const checkpointDue = !analysisDue && !tasks.some(t => t.kind === 'mock') && remaining >= 105 &&
+    (sinceTest === null ? touched.length >= 3 : sinceTest >= testInterval);
+  const checkpoint = checkpointDue ? byPriority.find(c => c.attempts >= 5 && !Object.values(input.coachingChapterIds || {}).includes(c.id)) : undefined;
+  if (checkpoint) add({ kind: 'test', title: `Checkpoint: ${checkpoint.title}`, why: 'A timed chapter check, followed by review.',
+    href: chapterTest(checkpoint) + `&planner_task=test-${checkpoint.id}`, chapterId: checkpoint.id,
+    subject: normalizeSubject(checkpoint.subject), target: 1, minutes: 60 });
   const practiceBudget = remaining;
   const selected: { chapter: MissionChapter; lane: 'coaching' | 'backlog' | 'adaptive' }[] = [];
   for (const subject of orderedSubjects) {
-    const pool = byPriority.filter(c => normalizeSubject(c.subject) === subject);
+    const pool = byPriority.filter(c => normalizeSubject(c.subject) === subject && c.id !== checkpoint?.id);
     const coaching = pool.find(c => c.id === input.coachingChapterIds?.[subject]);
     const backlog = pool.find(c => c.id === input.backlogChapterId && c.id !== coaching?.id);
     const leakId = leaks.topChapter?.id;
@@ -192,12 +199,12 @@ export function buildMission(input: MissionInput): Mission {
   }
   // One extra backlog block only if distinct from the subject's coaching block.
   const backlog = chapters.find(c => c.id === input.backlogChapterId);
-  if (backlog && !selected.some(s => s.chapter.id === backlog.id) && practiceBudget >= 120)
+  if (backlog && backlog.id !== checkpoint?.id && !selected.some(s => s.chapter.id === backlog.id) && practiceBudget >= 120)
     selected.push({ chapter: backlog, lane: 'backlog' });
   const slots = Math.min(selected.length, Math.floor(practiceBudget / 15));
   for (const { chapter: c, lane } of selected.slice(0, slots)) {
-    const minutes = Math.min(remaining, Math.max(15, Math.floor(practiceBudget / slots / 5) * 5));
     const repair = c.pendingMistakes > 0;
+    const minutes = Math.min(remaining, repair ? Math.min(20, Math.max(5, c.pendingMistakes * 4)) : lane === 'backlog' ? 45 : Math.max(15, Math.floor(practiceBudget / slots / 5) * 5));
     const kind: MissionKind = repair ? 'repair' : c.attempts < 5 ? 'learn' : 'drill';
     const target = repair ? Math.min(c.pendingMistakes, Math.max(1, Math.floor(minutes / 4)), 10) : Math.max(3, Math.floor(minutes / 3));
     const id = `${kind}-${c.id}`;
@@ -208,19 +215,11 @@ export function buildMission(input: MissionInput): Mission {
       href: practice(c, repair ? 'revision' : 'learn', target) + `&planner_task=${encodeURIComponent(id)}`,
       chapterId: c.id, target, minutes });
   }
-  const testInterval = cohort === 'foundation' ? 14 : cohort === 'improver' ? 3 : daysLeft > 45 ? 4 : 2;
   const nextTest = mockDue ? 'Full mock due · reserve 3 hours' :
     cohort === 'foundation' && touched.length < 3 ? 'First checkpoint after 3 chapters have practice evidence' :
     `Chapter checkpoint ${sinceTest === null || sinceTest >= testInterval ? 'due' : `in ${testInterval - sinceTest} days`}`;
-  // A checkpoint is a real chapter test, not a falsely labelled unit test.
-  if (!analysisDue && !tasks.some(t => t.kind === 'mock') && remaining >= 30 && touched.length &&
-    (sinceTest === null ? touched.length >= 3 : sinceTest >= testInterval)) {
-    const c = byPriority.find(c => c.attempts >= 5 && !tasks.some(t => t.chapterId === c.id));
-    if (c) add({ kind: 'test', title: `Checkpoint: ${c.title}`, why: 'A timed chapter check, followed by review.',
-      href: chapterTest(c), chapterId: c.id, subject: normalizeSubject(c.subject), target: 1, minutes: 30 });
-  }
   if (!chapters.length) warnings.push('No question-backed chapters are available in your active scope. Change your setup or try again later.');
-  if (slots < subjects.length && !tasks.some(t => t.kind === 'mock')) warnings.push('Short day: subjects rotate; unfinished work does not become an overdue pile.');
+  if (slots + (checkpoint ? 1 : 0) < subjects.length && !tasks.some(t => t.kind === 'mock')) warnings.push('Short day: subjects rotate; unfinished work does not become an overdue pile.');
   return { cohort, phase, headline: tasks.some(t => t.kind === 'mock') ? 'Test day. Review comes next.' :
     analysisDue ? 'Turn your last test into your next improvement.' : touched.length ? 'A focused plan for today.' : 'Start small. Build evidence.',
     why: tasks[0]?.why || '', tasks, leaks, nextTest, budgetMinutes,
@@ -228,12 +227,19 @@ export function buildMission(input: MissionInput): Mission {
 }
 
 export function buildMissionWeek(input: MissionInput, weekdayMinutes: number, weekendMinutes: number): { date: string; mission: Mission }[] {
+  const projectedTests = [...input.tests];
   return Array.from({ length: 7 }, (_, i) => {
     const date = new Date(input.todayIso + 'T00:00:00Z');
     date.setUTCDate(date.getUTCDate() + i);
     const day = date.getUTCDay();
-    return { date: date.toISOString().slice(0, 10), mission: buildMission({ ...input,
-      todayIso: date.toISOString().slice(0, 10), daysLeft: Math.max(0, input.daysLeft - i),
-      availableMinutes: day === 0 || day === 6 ? weekendMinutes : weekdayMinutes }) };
+    const dateIso = date.toISOString().slice(0, 10);
+    const mission = buildMission({ ...input, tests: projectedTests, todayIso: dateIso,
+      daysLeft: Math.max(0, input.daysLeft - i), availableMinutes: day === 0 || day === 6 ? weekendMinutes : weekdayMinutes });
+    // Calendar projection assumes scheduled tests happen; these synthetic rows
+    // are never persisted or used as student performance evidence.
+    const scheduled = mission.tasks.find(t => t.kind === 'test' || t.kind === 'mock');
+    if (scheduled) projectedTests.push({ id: `projected-${dateIso}`, title: scheduled.title,
+      completedAt: dateIso, totalQuestions: 0, attempted: 0, isFullMock: scheduled.kind === 'mock' });
+    return { date: dateIso, mission };
   });
 }

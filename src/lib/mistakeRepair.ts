@@ -1,22 +1,24 @@
-// A wrong question re-solved correctly counts as "repaired". The first attempt
-// stays the official record (one attempt row per user+question), so repairs are
-// tracked here per device and subtracted from the planner's pending mistakes.
+// Original attempt rows remain unchanged. Repair evidence is device-local;
+// two correct retries at least seven days apart retire a mistake.
 import safeLocalStorage from '@/utils/safeStorage';
-
-const KEY = (uid: string) => `jeenie:repaired:${uid}`;
-
-export function getRepairedIds(userId: string): Set<string> {
-  try {
-    const raw = safeLocalStorage.getItem(KEY(userId));
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set();
-  }
+interface Repair { firstCorrectAt: string | null; repaired: boolean }
+const progressKey = (uid: string) => `jeenie:repair-progress:v2:${uid}`;
+function readProgress(uid: string): Record<string, Repair> {
+  try { return JSON.parse(safeLocalStorage.getItem(progressKey(uid)) || '{}'); }
+  catch { return {}; }
 }
-
+export function getRepairedIds(userId: string): Set<string> {
+  const progress = readProgress(userId);
+  return new Set(Object.entries(progress).filter(([, r]) => r.repaired).map(([id]) => id));
+}
+export function recordRepairAttempt(userId: string, questionId: string, correct: boolean, at = new Date().toISOString()): void {
+  const progress = readProgress(userId);
+  const old = progress[questionId];
+  const elapsed = old?.firstCorrectAt ? new Date(at).getTime() - new Date(old.firstCorrectAt).getTime() : 0;
+  progress[questionId] = !correct ? { firstCorrectAt: null, repaired: false } :
+    { firstCorrectAt: old?.firstCorrectAt || at, repaired: !!old?.firstCorrectAt && elapsed >= 7 * 864e5 };
+  safeLocalStorage.setItem(progressKey(userId), JSON.stringify(progress));
+}
 export function markRepaired(userId: string, questionId: string): void {
-  const s = getRepairedIds(userId);
-  if (s.has(questionId)) return;
-  s.add(questionId);
-  try { safeLocalStorage.setItem(KEY(userId), JSON.stringify([...s].slice(-2000))); } catch { /* ignore */ }
+  recordRepairAttempt(userId, questionId, true);
 }
