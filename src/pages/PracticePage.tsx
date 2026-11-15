@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import ComingSoonBanner from '@/components/ComingSoonBanner';
+import { fetchFreshPractice, unresolvedMistakes } from '@/lib/practiceFeed';
+import { savePracticeAttempt } from '@/lib/practiceAttempts';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
 import { recordPlannerAnswer } from '@/lib/plannerState';
 import { invalidatePlannerCache } from '@/lib/plannerCache';
 import { getRepairedIds, recordRepairAttempt } from '@/lib/mistakeRepair';
@@ -138,6 +140,8 @@ const PracticePage: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [scopeExpanded, setScopeExpanded] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [stats, setStats] = useState({ correct: 0, wrong: 0, total: 0 });
 
@@ -278,10 +282,12 @@ const PracticePage: React.FC = () => {
 
   const fetchQuestions = useCallback(async (_difficulty?: string) => {
     setLoading(true);
+    setLoadError(false);
+    setScopeExpanded(false);
+    repairIds.current = new Set();
     try {
       // Resolve exam + batch filters from profile
       let examFilter: string | null = null;
-      let userBatchIds: string[] = [];
       if (user?.id) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -295,19 +301,12 @@ const PracticePage: React.FC = () => {
           levelRef.current = loadLadder(user.id, t, ladderScope).tier;
         }
         examFilter = getExamFilter(profileExam, profile?.grade || 12) || mapBatchToExamField(profileExam, profile?.grade || 12);
-        if (profile?.target_exam) {
-          const { data: batches } = await supabase
-            .from('batches')
-            .select('id')
-            .eq('exam_type', profile.target_exam)
-            .eq('is_active', true);
-          userBatchIds = (batches || []).map(b => b.id);
-        }
+
       }
 
       const takeCount = missionTarget > 0 ? Math.min(50, missionTarget) : QUESTIONS_PER_BATCH;
 
-      // Revisit mode: intentionally re-serve previously attempted questions in this scope
+      // Both repair modes contain unresolved mistakes only.
       if (isRevisit) {
         let q = supabase
           .from('questions')
@@ -318,18 +317,17 @@ const PracticePage: React.FC = () => {
         else if (chapterId) q = q.eq('chapter_id', chapterId);
         else if (subject) q = q.ilike('subject', subject);
         if (!topicId && topicFilterName) q = q.ilike('topic', `%${topicFilterName}%`);
-        if (mode === 'revision' && user?.id) {
-          const { data: wrong, error: wrongError } = await supabase.from('question_attempts')
-            .select('question_id').eq('user_id', user.id).eq('is_correct', false);
-          if (wrongError) throw wrongError;
-          const repaired = getRepairedIds(user.id);
-          const ids = (wrong || []).map(a => a.question_id).filter(id => !repaired.has(id));
+        if (user?.id) {
+          const wrong = await fetchAllPaginated(() => supabase.from('question_attempts')
+            .select('question_id, is_correct, attempted_at, created_at').eq('user_id', user.id).order('id'));
+          const ids = unresolvedMistakes(wrong, getRepairedIds(user.id));
           if (!ids.length) { setQuestions([]); setLoading(false); return; }
           q = q.in('id', ids.slice(0, 500));
         }
         const { data, error } = await q.limit(500);
         if (error) throw error;
         const ordered = orderPoolByLevel(data || [], trackRef.current, levelRef.current).slice(0, takeCount);
+        repairIds.current = new Set(ordered.map(question => question.id));
         setQuestions(ordered);
         setLoading(false);
         return;
@@ -345,95 +343,46 @@ const PracticePage: React.FC = () => {
       // Fetch a wider pool than we need so difficulty ordering has room to pick from
       const rpcLimit = Math.max(takeCount * 4, 60);
 
-      const buildRpcArgs = (opts: {
-        useChapter?: boolean;
-        useTopic?: boolean;
-        useSubject?: boolean;
-        useBatches?: boolean;
-        useExam?: boolean;
-      }) => ({
-        p_user_id: user.id,
-        p_exam: opts.useExam !== false ? examFilter : null,
-        p_subject: opts.useSubject && subject ? subject : null,
-        p_chapter_id: opts.useChapter && chapterId ? chapterId : null,
-        p_topic_id: opts.useTopic && topicId ? topicId : null,
-        p_topic_name: !topicId && topicFilterName ? topicFilterName : null,
-        // Batch scoping is intentionally OFF: questions.batch_id is siloed per
-        // exam family (Chemistry rows sit under the NEET Class 12 batch), which
-        // made served questions disagree with displayed counts. Exam pool +
-        // class-level guard inside the RPC already scope correctly.
-        p_batch_ids: null,
-
-        p_limit: rpcLimit,
-      });
-
-      // Primary: all filters on
-      let { data: pool, error: rpcErr } = await supabase.rpc('fetch_unseen_questions', buildRpcArgs({
-        useChapter: true, useTopic: true, useSubject: true, useBatches: true, useExam: true,
-      }));
-      if (rpcErr) throw rpcErr;
-
-      // Fallback ladder: drop batch filter, then exam filter, then subject (only if no chapter/topic)
-      if ((!pool || pool.length === 0) && userBatchIds.length > 0) {
-        const r = await supabase.rpc('fetch_unseen_questions', buildRpcArgs({
-          useChapter: true, useTopic: true, useSubject: true, useBatches: false, useExam: true,
-        }));
-        pool = r.data || [];
-      }
-      if ((!pool || pool.length === 0) && examFilter) {
-        const r = await supabase.rpc('fetch_unseen_questions', buildRpcArgs({
-          useChapter: true, useTopic: true, useSubject: true, useBatches: false, useExam: false,
-        }));
-        pool = r.data || [];
-      }
-
-      if (!pool || pool.length === 0) {
-        // All unseen questions done → recycle already-attempted ones instead of a dead end.
-        let rq = supabase
-          .from('questions')
-          .select('id, question, question_text, question_image_url, option_a, option_b, option_c, option_d, options, correct_options, numerical_answer, numerical_tolerance, difficulty, question_type, topic, topic_id, chapter, chapter_id, subject, exam, is_pyq, pyq_exam, pyq_year, pyq_session')
-          .or('is_active.is.null,is_active.eq.true');
-        if (topicId) rq = rq.eq('topic_id', topicId);
-        else if (chapterId) rq = rq.eq('chapter_id', chapterId);
-        else if (subject) rq = rq.ilike('subject', subject);
-        if (!topicId && topicFilterName) rq = rq.ilike('topic', `%${topicFilterName}%`);
-        const { data: recycled } = await rq.limit(300);
-        if (recycled && recycled.length > 0) {
-          toast.info('Saare naye questions ho gaye — ab revision round chal raha hai.');
-          const shuffled = [...recycled].sort(() => Math.random() - 0.5);
-          setQuestions(orderPoolByLevel(shuffled as Question[], trackRef.current, levelRef.current).slice(0, takeCount));
-          setLoading(false);
-          return;
-        }
-        setQuestions([]);
-        setLoading(false);
-        return;
-      }
+      const { questions: pool, expanded } = await fetchFreshPractice<Question>(
+        { chapterId, topicId, topicName: topicFilterName },
+        async (scope) => {
+          const { data, error } = await supabase.rpc('fetch_unseen_questions', {
+            p_user_id: user.id,
+            p_exam: examFilter,
+            p_subject: subject || null,
+            p_chapter_id: scope.chapterId || null,
+            p_topic_id: scope.topicId || null,
+            p_topic_name: scope.topicName || null,
+            p_batch_ids: null,
+            p_limit: rpcLimit,
+          });
+          if (error) throw error;
+          return (data || []) as Question[];
+        },
+      );
+      setScopeExpanded(expanded);
 
       // Mistake repair: questions whose latest attempt was wrong, 1+ day ago, in this scope.
       let repair: Question[] = [];
       try {
-        const { data: atts } = await supabase
+        const atts = await fetchAllPaginated(() => supabase
           .from('question_attempts')
           .select('question_id, is_correct, attempted_at, created_at')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(400);
-        const latest = new Map<string, { ok: boolean; at: string }>();
-        (atts || []).forEach((a) => { if (!latest.has(a.question_id)) latest.set(a.question_id, { ok: !!a.is_correct, at: a.attempted_at || a.created_at || '' }); });
-        const dayAgo = Date.now() - 864e5;
-        const repaired = getRepairedIds(user.id);
-        const wrongIds = [...latest.entries()].filter(([id, v]) => !v.ok && !repaired.has(id) && new Date(v.at).getTime() <= dayAgo).map(([id]) => id).slice(0, 60);
+          .eq('user_id', user.id).order('id'));
+        const wrongIds = unresolvedMistakes(atts, getRepairedIds(user.id), Date.now() - 864e5).slice(0, 60);
         if (wrongIds.length) {
           let rq = supabase
             .from('questions')
             .select('id, question, question_text, question_image_url, option_a, option_b, option_c, option_d, options, correct_options, numerical_answer, numerical_tolerance, difficulty, question_type, topic, topic_id, chapter, chapter_id, subject, exam, is_pyq, pyq_exam, pyq_year, pyq_session')
             .in('id', wrongIds)
             .or('is_active.is.null,is_active.eq.true');
-          if (topicId) rq = rq.eq('topic_id', topicId);
+          if (examFilter) rq = rq.eq('exam', examFilter);
+          if (topicId && !expanded) rq = rq.eq('topic_id', topicId);
           else if (chapterId) rq = rq.eq('chapter_id', chapterId);
           else if (subject) rq = rq.ilike('subject', subject);
-          const { data: rqd } = await rq;
+          if (topicFilterName && !expanded && !topicId) rq = rq.ilike('topic', `%${topicFilterName}%`);
+          const { data: rqd, error: repairError } = await rq;
+          if (repairError) throw repairError;
           repair = ((rqd || []) as Question[]).sort(() => Math.random() - 0.5);
         }
       } catch (e) { logger.error('Mistake repair fetch failed:', e); }
@@ -442,6 +391,8 @@ const PracticePage: React.FC = () => {
       const fresh = orderPoolByLevel(pool as Question[], trackRef.current, levelRef.current);
       setQuestions(interleaveRepair(fresh, repair, takeCount));
     } catch (error) {
+      setQuestions([]);
+      setLoadError(true);
       logger.error('Failed to fetch practice questions:', error);
       toast.error('Failed to load questions');
     } finally {
@@ -560,6 +511,14 @@ const PracticePage: React.FC = () => {
           explanation,
         };
 
+        const synced = await savePracticeAttempt({
+          userId: user.id, questionId: currentQuestion.id,
+          selectedOption: displaySelected, selectedOptions: selectedLetters,
+          correct: result.is_correct,
+          seconds: Math.max(1, Math.round((Date.now() - questionStartTime.current) / 1000)),
+        });
+        if (!synced) toast.info('Test history preserved. This repair is saved on this device only.');
+
         setAnsweredQuestions(prev => new Map(prev).set(currentIndex, record));
 
         setStats(prev => ({
@@ -578,24 +537,7 @@ const PracticePage: React.FC = () => {
           setQuestions(prev => [...prev.slice(0, idx + 1), ...orderPoolByLevel(prev.slice(idx + 1), track, nextLadder.tier)]);
         }
 
-        const { error: attemptInsertError } = await supabase.from('question_attempts').insert({
-          user_id: user.id,
-          question_id: currentQuestion.id,
-          selected_option: displaySelected,
-          is_correct: result.is_correct,
-          mode: 'practice',
-          time_spent: Math.max(1, Math.round((Date.now() - questionStartTime.current) / 1000)),
-        });
-        // Re-solving an old mistake correctly = repaired (first attempt stays the record).
-        if (attemptInsertError && (attemptInsertError as { code?: string }).code === '23505') {
-          recordRepairAttempt(user.id, currentQuestion.id, result.is_correct);
-        }
-        // Ignore unique-violation (23505): means this (user, question) was already recorded.
-        // We treat the first attempt as the source of truth and just move on.
-        if (attemptInsertError && (attemptInsertError as { code?: string }).code !== '23505') {
-          throw attemptInsertError;
-        }
-
+        recordRepairAttempt(user.id, currentQuestion.id, result.is_correct);
         recordPlannerAnswer(user.id, plannerTaskId, currentQuestion.id);
         invalidatePlannerCache(user.id);
 
@@ -728,7 +670,7 @@ const PracticePage: React.FC = () => {
 
   const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
   const currentQuestion = questions[currentIndex];
-  const title = topicName || chapter || subject || 'Practice';
+  const title = (scopeExpanded ? chapter : topicName) || chapter || subject || 'Practice';
 
   // Expose currently visible question to floating AI Doubt Solver
   useRegisterJeenieQuestion(
@@ -786,7 +728,9 @@ const PracticePage: React.FC = () => {
     return (
       <div className="mobile-app-shell-bottom-nav bg-background flex items-center justify-center p-4 overflow-hidden">
         <div className="max-w-md w-full space-y-4">
-          <ComingSoonBanner subtitle="Is selection ke questions jaldi add ho rahe hain. Tab tak dusra chapter ya subject try karo!" />
+          <h2 className="text-xl font-bold">{loadError ? 'Could not load questions' : isRevisit ? 'No unresolved mistakes here' : 'No new questions left here'}</h2>
+          <p className="text-muted-foreground">{loadError ? 'Please try again. Your answers are unchanged.' : 'Choose another chapter to continue.'}</p>
+          {loadError && <Button variant="outline" className="w-full" onClick={() => fetchQuestions()}>Try again</Button>}
           <Button className="w-full" onClick={() => navigate('/study-now')}>
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Study
           </Button>
@@ -849,7 +793,7 @@ const PracticePage: React.FC = () => {
                   setAnsweredQuestions(new Map());
                   fetchQuestions();
                 }}>
-                  <RotateCcw className="w-4 h-4 mr-2" /> Retry
+                  <RotateCcw className="w-4 h-4 mr-2" /> More questions
                 </Button>
               </>
             )}
@@ -869,6 +813,7 @@ const PracticePage: React.FC = () => {
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
           <div className="text-center">
+            {scopeExpanded && <p className="text-xs text-muted-foreground">Topic complete · Chapter practice</p>}
             <h1 className="text-sm font-bold text-primary truncate max-w-[200px]">{title}</h1>
             <p className="text-xs text-muted-foreground">Q {currentIndex + 1}/{questions.length}</p>
           </div>
@@ -1169,7 +1114,7 @@ const PracticePage: React.FC = () => {
       {/* Fixed Zaptom Nav Bar */}
       <div className="shrink-0 z-30 border-t border-border bg-background/95 backdrop-blur-md px-4 py-3">
         <div className="container mx-auto max-w-3xl flex items-center justify-between gap-3">
-          <Button variant="outline" size="sm" onClick={handlePrev} disabled={currentIndex === 0}>
+          <Button variant="outline" size="sm" onClick={handlePrev} disabled={currentIndex === 0 || isValidating}>
             <ArrowLeft className="w-4 h-4 mr-1" /> Prev
           </Button>
 
@@ -1180,8 +1125,9 @@ const PracticePage: React.FC = () => {
           <Button
             size="sm"
             variant={!isCurrentAnswered && currentIndex < questions.length - 1 ? 'outline' : 'default'}
+            disabled={isValidating}
             onClick={() => { cancelAutoAdvance(); handleNext(); }}
-            title={!isCurrentAnswered ? 'Skip — accuracy pe asar nahi padega' : undefined}
+            title={!isCurrentAnswered ? 'Skip without changing accuracy' : undefined}
           >
             {currentIndex < questions.length - 1 ? (
               isCurrentAnswered

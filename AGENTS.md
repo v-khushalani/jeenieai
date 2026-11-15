@@ -5,3 +5,6 @@
 
 - Planner Today and Week share missionEngine; preferences and task-scoped, device-local evidence live in plannerState so navigation never counts as completion and offline check-offs never alter mastery.
 - Planner practice links carry planner_task and bounded target; test links use canonical /tests with explicit mode so chapter scope survives navigation.
+- Practice exhaustion uses unseen-only parent-chapter fallback in practiceFeed; never widen exam scope or silently recycle solved items, so daily practice stays fresh.
+- Practice retries update only practice-owned question_attempts rows; test-linked records remain unchanged to preserve assessment evidence.
+- Practice attempt persistence lives in practiceAttempts and is independently regression-tested to prevent retry-save failures being treated as success.
