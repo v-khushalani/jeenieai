@@ -571,8 +571,8 @@ const EnhancedDashboard = () => {
                         <p className="text-xs font-medium text-muted-foreground">Today's Accuracy</p>
                       </div>
                     </div>
-                    <h3 className={`text-2xl sm:text-3xl font-bold mb-2 ${goalColors.text}`}>{Math.min(stats?.todayProgress ?? 0, stats?.todayGoal ?? 30)}/{stats?.todayGoal ?? 30}</h3>
-                    <GoalProgress got={stats?.todayProgress ?? 0} target={stats?.todayGoal ?? 30} />
+                    <h3 className={`text-2xl sm:text-3xl font-bold ${accuracyColors.text}`}>{stats?.todayAccuracy ?? 0}%</h3>
+                    <p className="text-xs text-muted-foreground mt-1">{stats?.questionsToday ?? 0} solved today · Overall: {stats?.accuracy ?? 0}%</p>
                   </CardContent>
                 </Card>
 
