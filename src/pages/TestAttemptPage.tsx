@@ -27,6 +27,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { testsAPI } from "@/services/api";
 import { logger } from "@/utils/logger";
 import { toast } from "sonner";
+import { buildNtaLayout, ntaStatus } from '@/lib/ntaLayout';
+import { NtaPalette, NtaSubjectTabs } from '@/components/test/NtaPalette';
+import { getSubjectMarking, normalizeSubjectName } from '@/config/examPatterns';
 import { formatSubjectDisplay } from '@/utils/subjectDisplay';
 import { MathDisplay } from "@/components/admin/MathDisplay";
 import { QuestionReportDialog, ReportButton } from '@/components/QuestionReportDialog';
@@ -624,6 +627,13 @@ const TestAttemptPage = () => {
   const userAnswer = userAnswers[currentQuestion.id];
   const answeredCount = Object.values(userAnswers).filter((a) => a.selectedOption).length;
   const markedCount = Object.values(userAnswers).filter((a) => a.isMarkedForReview).length;
+  const ntaLayout = buildNtaLayout(testSession.questions);
+  const isNta = /full syllabus|pyq/i.test(testSession.title || '') && ntaLayout.length > 1;
+  const activeSubject = normalizeSubjectName((currentQuestion as any).subject) || 'General';
+  const activeSection = ntaLayout.find((s) => s.subject === activeSubject)?.sections
+    .find((sec) => sec.indices.includes(currentQuestionIndex))?.label;
+  const ntaMarking = getSubjectMarking(testSession.examPattern, activeSubject);
+  const ntaStatusOf = (i: number) => ntaStatus(userAnswers[testSession.questions[i].id]);
 
   return (
     <div className="h-dvh overflow-hidden bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex flex-col">
@@ -694,13 +704,24 @@ const TestAttemptPage = () => {
           <div className="grid lg:grid-cols-4 gap-3 sm:gap-4 h-full">
             {/* Question Panel */}
             <div className="lg:col-span-3 flex flex-col min-h-0 overflow-hidden">
+              {isNta && (
+                <NtaSubjectTabs layout={ntaLayout} activeSubject={activeSubject} onPick={navigateQuestion} />
+              )}
               {/* Question Card */}
               <Card className="flex-1 overflow-y-auto min-h-0 mb-0 dark:bg-slate-900 dark:border-slate-700">
                 <CardHeader className="pb-2 sm:pb-3 sticky top-0 bg-card z-5 border-b">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base sm:text-lg">
-                      Question {currentQuestionIndex + 1}
-                    </CardTitle>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CardTitle className="text-base sm:text-lg">
+                        Question {currentQuestionIndex + 1}
+                      </CardTitle>
+                      {isNta && (
+                        <>
+                          <Badge variant="secondary">{activeSubject} · {activeSection}</Badge>
+                          <Badge variant="outline">+{ntaMarking.correctMarks} / {ntaMarking.incorrectMarks}</Badge>
+                        </>
+                      )}
+                    </div>
                     {reportsEnabled && <ReportButton onClick={() => setReportingQuestionId(currentQuestion.id)} />}
                   </div>
                 </CardHeader>
@@ -870,6 +891,9 @@ const TestAttemptPage = () => {
                   <CardTitle className="text-base">Question Palette</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {isNta ? (
+                    <NtaPalette layout={ntaLayout} activeSubject={activeSubject} current={currentQuestionIndex} statusOf={ntaStatusOf} onPick={navigateQuestion} />
+                  ) : (<>
                   <div className={`grid gap-1.5 mb-4 ${
                     testSession.questions.length > 50 ? 'grid-cols-10' : 'grid-cols-5'
                   }`}>
@@ -914,6 +938,7 @@ const TestAttemptPage = () => {
                       <span>Not Visited</span>
                     </div>
                   </div>
+                  </>)}
 
                   {/* Stats */}
                   <div className="mt-4 pt-4 border-t">
@@ -973,6 +998,15 @@ const TestAttemptPage = () => {
                 </Button>
               </div>
 
+              {isNta ? (
+                <>
+                  <NtaSubjectTabs layout={ntaLayout} activeSubject={activeSubject} onPick={navigateQuestion} />
+                  <div className="border-b mb-4">
+                    <NtaPalette big layout={ntaLayout} activeSubject={activeSubject} current={currentQuestionIndex} statusOf={ntaStatusOf}
+                      onPick={(i) => { navigateQuestion(i); setShowMobilePalette(false); }} />
+                  </div>
+                </>
+              ) : (<>
               {/* Question Grid */}
               <div className={`grid gap-2 mb-4 ${
                 testSession.questions.length > 50 ? 'grid-cols-6' : 'grid-cols-5'
@@ -1021,6 +1055,7 @@ const TestAttemptPage = () => {
                   <span>Not Visited</span>
                 </div>
               </div>
+              </>)}
 
               {/* Stats */}
               <div className="grid grid-cols-3 gap-3 text-center">

@@ -35,6 +35,7 @@ import {
   getPracticeQuestions,
   getTestSeriesQuestions,
 } from '@/utils/batchQueryBuilder';
+import { orderForNta } from '@/lib/ntaLayout';
 import { getExamPattern, EXAM_PATTERNS, balanceQuestionsBySubject, normalizeSubjectName } from '@/config/examPatterns';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import { normalizeTargetExam } from '@/config/goalConfig';
@@ -707,11 +708,11 @@ const TestPage: React.FC = () => {
           .filter((question) => !attemptedIds.has(question.id))
           .sort(() => Math.random() - 0.5);
 
-        const allSelected = balanceQuestionsBySubject(
+        const allSelected = orderForNta(balanceQuestionsBySubject(
           freshPool,
           pattern.subjects,
           pattern.totalQuestions
-        );
+        ), pattern.subjects);
 
         logger.info('Full mock test subject split', {
           split: pattern.subjects.map((subject) => ({
