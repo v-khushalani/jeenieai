@@ -169,7 +169,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ compact = false }) => {
       if (user?.id && !userStats.some((u) => u.id === user.id)) {
         const { data: currentProfile } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url')
+          .select('id, full_name, avatar_url, total_points, current_streak, total_questions_solved, overall_accuracy')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -178,10 +178,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ compact = false }) => {
             id: currentProfile.id,
             full_name: getDisplayName(currentProfile.full_name),
             avatar_url: currentProfile.avatar_url || undefined,
-            total_questions: 0,
-            accuracy: 0,
-            total_points: 0,
-            streak: 0,
+            total_questions: Number((currentProfile as any).total_questions_solved) || 0,
+            accuracy: Math.round(Number((currentProfile as any).overall_accuracy) || 0),
+            total_points: Number((currentProfile as any).total_points) || 0,
+            streak: Number((currentProfile as any).current_streak) || 0,
             rank: userStats.length + 1,
             rank_change: 0,
             questions_today: 0,
