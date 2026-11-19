@@ -35,7 +35,7 @@ import {
   getPracticeQuestions,
   getTestSeriesQuestions,
 } from '@/utils/batchQueryBuilder';
-import { orderForNta } from '@/lib/ntaLayout';
+import { pickNtaPaper } from '@/lib/ntaLayout';
 import { getExamPattern, EXAM_PATTERNS, balanceQuestionsBySubject, normalizeSubjectName } from '@/config/examPatterns';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import { normalizeTargetExam } from '@/config/goalConfig';
@@ -708,11 +708,10 @@ const TestPage: React.FC = () => {
           .filter((question) => !attemptedIds.has(question.id))
           .sort(() => Math.random() - 0.5);
 
-        const allSelected = orderForNta(balanceQuestionsBySubject(
-          freshPool,
-          pattern.subjects,
-          pattern.totalQuestions
-        ), pattern.subjects);
+        // NTA paper: JEE Main = 20 MCQ (Section A) + 5 numerical (Section B) per subject.
+        const perSubject = Math.round(pattern.totalQuestions / pattern.subjects.length);
+        const numericalPerSubject = pattern.name === 'JEE Mains' ? 5 : 0;
+        const allSelected = pickNtaPaper(freshPool, pattern.subjects, perSubject, numericalPerSubject);
 
         logger.info('Full mock test subject split', {
           split: pattern.subjects.map((subject) => ({

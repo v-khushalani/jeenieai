@@ -45,3 +45,24 @@ export function ntaStatus(a?: { selectedOption?: string; isMarkedForReview?: boo
   if (a.isMarkedForReview) return a.selectedOption ? 'answered-marked' : 'marked';
   return a.selectedOption ? 'answered' : 'not-answered';
 }
+
+/**
+ * Pick an NTA paper: per subject `perSubject` questions, of which up to
+ * `numericalPerSubject` are numerical (JEE Main: 20 MCQ + 5 numerical).
+ * Shortfalls are filled from the other type so the paper keeps its size.
+ */
+export function pickNtaPaper<T extends QLike>(
+  pool: T[], subjects: string[], perSubject: number, numericalPerSubject: number,
+): T[] {
+  const out: T[] = [];
+  for (const subject of subjects) {
+    const mine = pool.filter((q) => normalizeSubjectName(q.subject) === normalizeSubjectName(subject));
+    const nums = mine.filter((q) => isNumericalType(q.question_type));
+    const mcqs = mine.filter((q) => !isNumericalType(q.question_type));
+    const n = nums.slice(0, numericalPerSubject);
+    const m = mcqs.slice(0, perSubject - n.length);
+    const extra = nums.slice(n.length, n.length + (perSubject - n.length - m.length));
+    out.push(...m, ...n, ...extra);
+  }
+  return orderForNta(out, subjects);
+}

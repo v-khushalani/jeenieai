@@ -948,7 +948,7 @@ const TestAttemptPage = () => {
                         <div className="text-xs">Done</div>
                       </div>
                       <div>
-                        <div className="font-bold text-yellow-600">{markedCount}</div>
+                        <div className={`font-bold ${isNta ? "text-violet-600" : "text-yellow-600"}`}>{markedCount}</div>
                         <div className="text-xs">Marked</div>
                       </div>
                       <div>
