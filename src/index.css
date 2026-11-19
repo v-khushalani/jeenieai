@@ -625,7 +625,7 @@
   background: linear-gradient(135deg, rgba(15, 92, 214, 0.1) 0%, rgba(173, 216, 255, 0.22) 100%);
 }
 /* 🧠 JEEnie AI Formula & Highlight Theme */
-.jeenius-formula {
+.jeenie-formula {
   background-color: hsl(var(--secondary));
   color: hsl(var(--primary));
   font-family: 'Saira', monospace;
@@ -637,7 +637,7 @@
   transition: all 0.25s ease-in-out;
 }
 
-.jeenius-formula:hover {
+.jeenie-formula:hover {
   background-color: hsl(var(--accent));
   color: hsl(var(--primary));
   box-shadow: 0 0 6px hsl(var(--primary) / 0.25);
@@ -645,13 +645,13 @@
 }
 
 /* Bold & Important Text */
-.jeenius-strong {
+.jeenie-strong {
   color: hsl(var(--primary));
   font-weight: 700;
 }
 
 /* 💬 Chat bubbles */
-.jeenius-ai {
+.jeenie-ai {
   background-color: hsl(var(--background));
   color: hsl(var(--primary));
   border-left: 4px solid hsl(var(--primary));
@@ -661,7 +661,7 @@
   box-shadow: 0 2px 6px hsl(var(--primary) / 0.05);
 }
 
-.jeenius-user {
+.jeenie-user {
   background-color: hsl(var(--muted));
   color: hsl(var(--foreground));
   border-radius: 12px;
@@ -671,7 +671,7 @@
 }
 
 /* Italic or subtle emphasis */
-.jeenius-em {
+.jeenie-em {
   color: hsl(var(--primary));
   font-style: italic;
 }
