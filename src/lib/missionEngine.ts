@@ -18,7 +18,10 @@ import { normalizeSubject } from './subjectNormalization';
 
 export type Cohort = 'foundation' | 'improver' | 'sprint';
 export type Behaviour = 'careless' | 'concept' | 'slow' | 'clean' | 'unknown';
-export type MissionKind = 'learn' | 'drill' | 'repair' | 'careless' | 'speed' | 'test' | 'mock' | 'analysis';
+export type MissionKind = 'learn' | 'drill' | 'repair' | 'careless' | 'speed' | 'test' | 'mock' | 'analysis' | 'revise';
+
+/** Mastered chapters untouched this long get a short retention drill. */
+export const DECAY_DAYS = 14;
 
 export const CARELESS_MAX_SEC = 45;
 export const CONCEPT_MIN_SEC = 120;
@@ -44,7 +47,9 @@ export interface MissionTest {
 
 export interface MissionTask {
   id: string; kind: MissionKind; title: string; why: string;
-  href: string; target: number; minutes: number; chapterId?: string; subject?: string; testId?: string; lane?: 'coaching' | 'backlog' | 'adaptive';
+  href: string; target: number; minutes: number; chapterId?: string; subject?: string; testId?: string;
+  /** Marks already lost on recorded mistakes this task retries (5 per wrong). Never a prediction. */
+  marksAtStake?: number; lane?: 'coaching' | 'backlog' | 'adaptive';
 }
 
 export interface ScoreLeaks {
@@ -54,7 +59,7 @@ export interface ScoreLeaks {
 
 export interface Mission {
   cohort: Cohort; phase: string; headline: string; why: string;
-  tasks: MissionTask[]; leaks: ScoreLeaks; nextTest: string; budgetMinutes: number; plannedMinutes: number; warnings: string[];
+  tasks: MissionTask[]; leaks: ScoreLeaks; marksAtStake: number; nextTest: string; budgetMinutes: number; plannedMinutes: number; warnings: string[];
 }
 
 export interface MissionInput {
@@ -213,7 +218,18 @@ export function buildMission(input: MissionInput): Mission {
     if (repair) reasons.push(`${c.pendingMistakes} unresolved mistakes; retry the actual questions, not a random set.`);
     add({ kind, title: c.title, why: reasons.join(' '), subject: normalizeSubject(c.subject), lane,
       href: practice(c, repair ? 'revision' : 'learn', target) + `&planner_task=${encodeURIComponent(id)}`,
-      chapterId: c.id, target, minutes });
+      chapterId: c.id, target, minutes, marksAtStake: repair ? target * MARKS_LOST_PER_WRONG : undefined });
+  }
+  // Retention: one short drill on a strong chapter not practised for DECAY_DAYS.
+  const decayed = chapters
+    .filter(c => c.attempts >= 10 && c.accuracy >= 75 && c.pendingMistakes === 0 && c.lastAttemptAt &&
+      daysBetween(c.lastAttemptAt, todayIso) >= DECAY_DAYS && !tasks.some(t => t.chapterId === c.id))
+    .sort((a, b) => (a.lastAttemptAt || '').localeCompare(b.lastAttemptAt || '') || a.id.localeCompare(b.id))[0];
+  if (decayed && remaining >= 10) {
+    const id = `revise-${decayed.id}`;
+    add({ kind: 'revise', title: decayed.title, subject: normalizeSubject(decayed.subject), lane: 'adaptive', chapterId: decayed.id,
+      why: `Strong at ${decayed.accuracy}%, but untouched for ${daysBetween(decayed.lastAttemptAt!, todayIso)} days. A short drill keeps it from fading.`,
+      href: practice(decayed, 'learn', 5) + `&planner_task=${encodeURIComponent(id)}`, target: 5, minutes: 10 });
   }
   const nextTest = mockDue ? 'Full mock due · reserve 3 hours' :
     cohort === 'foundation' && touched.length < 3 ? 'First checkpoint after 3 chapters have practice evidence' :
@@ -222,7 +238,8 @@ export function buildMission(input: MissionInput): Mission {
   if (slots + (checkpoint ? 1 : 0) < subjects.length && !tasks.some(t => t.kind === 'mock')) warnings.push('Short day: subjects rotate; unfinished work does not become an overdue pile.');
   return { cohort, phase, headline: tasks.some(t => t.kind === 'mock') ? 'Test day. Review comes next.' :
     analysisDue ? 'Turn your last test into your next improvement.' : touched.length ? 'A focused plan for today.' : 'Start small. Build evidence.',
-    why: tasks[0]?.why || '', tasks, leaks, nextTest, budgetMinutes,
+    why: tasks[0]?.why || '', tasks, leaks,
+    marksAtStake: tasks.reduce((s, t) => s + (t.marksAtStake || 0), 0), nextTest, budgetMinutes,
     plannedMinutes: tasks.reduce((s, t) => s + t.minutes, 0), warnings };
 }
 

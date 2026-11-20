@@ -10,6 +10,8 @@ import { missionKey, readEvidence, savePreferences, taskComplete, writeEvidence,
 import safeLocalStorage from '@/utils/safeStorage';
 import { Progress } from '@/components/ui/progress';
 
+const KIND_LABEL: Record<string, string> = { learn: 'Baseline', drill: 'Practice', repair: 'Mistake repair', careless: 'Careless fix', speed: 'Speed', test: 'Checkpoint', mock: 'Mock', analysis: 'Review', revise: 'Retention' };
+
 interface Props { userId: string; input: MissionInput; preferences: PlannerPreferences; onPreferences: (p: PlannerPreferences) => void }
 export default function MissionCoach({ userId, input, preferences, onPreferences }: Props) {
   const navigate = useNavigate();
@@ -25,6 +27,7 @@ export default function MissionCoach({ userId, input, preferences, onPreferences
       if (saved?.signature === signature && Array.isArray(saved.tasks)) {
         fresh.tasks = saved.tasks;
         fresh.plannedMinutes = fresh.tasks.reduce((sum, t) => sum + t.minutes, 0);
+        fresh.marksAtStake = fresh.tasks.reduce((sum, t) => sum + (t.marksAtStake || 0), 0);
       }
       safeLocalStorage.setItem(missionKey(userId), JSON.stringify({ signature, tasks: fresh.tasks }));
     } catch { /* storage is optional */ }
@@ -49,6 +52,12 @@ export default function MissionCoach({ userId, input, preferences, onPreferences
         <Button variant="outline" size="icon" className="shrink-0" aria-label="Planner settings" onClick={() => setSettings(true)}><Settings2 /></Button>
       </div>
       <p className="mt-3 text-sm text-muted-foreground">{mission.nextTest}</p>
+      {unfinished[0] && <div className="mt-5 rounded-lg bg-primary p-4 text-primary-foreground">
+        <p className="text-xs opacity-80">Up next · {unfinished[0].minutes} min{unfinished[0].marksAtStake ? ` · ${unfinished[0].marksAtStake} marks lost here so far` : ''}</p>
+        <p className="mt-1 break-words text-lg font-semibold">{unfinished[0].title}</p>
+        <Button variant="secondary" className="mt-3 w-full sm:w-auto" onClick={() => navigate(unfinished[0].href)}>{unfinished[0].kind === 'analysis' ? 'Open review' : 'Start now'}<ArrowRight /></Button>
+      </div>}
+      {mission.marksAtStake > 0 && <p className="mt-3 text-sm"><span className="font-semibold tabular-nums">{mission.marksAtStake} marks</span> <span className="text-muted-foreground">already lost on mistakes in today’s plan. Fix them once, keep them for good.</span></p>}
     </header>
     {mission.warnings.map(w => <p key={w} className="border-l-2 border-primary pl-3 text-sm text-muted-foreground">{w}</p>)}
     <div className="flex items-center justify-between gap-2"><h3 className="font-semibold">Today’s work</h3><span className="text-sm text-muted-foreground">{mission.tasks.length - unfinished.length}/{mission.tasks.length} complete</span></div>
@@ -57,7 +66,7 @@ export default function MissionCoach({ userId, input, preferences, onPreferences
         const done = taskComplete(task, evidence[task.id]);
         return <li key={task.id} className="py-5 first:pt-0">
           <div className="flex items-start gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs">{done ? <Check className="h-4 w-4" /> : i + 1}</span>
-            <div className="min-w-0 flex-1"><p className="text-xs text-muted-foreground">{task.subject || (task.kind === 'mock' ? 'Full exam' : 'Test review')} · {task.lane === 'coaching' ? 'Coaching' : task.lane === 'backlog' ? 'Backlog' : task.kind} · {task.minutes} min</p>
+            <div className="min-w-0 flex-1"><p className="text-xs text-muted-foreground">{task.subject || (task.kind === 'mock' ? 'Full exam' : 'Test review')} · {task.lane === 'coaching' ? 'Coaching' : task.lane === 'backlog' ? 'Backlog' : KIND_LABEL[task.kind]} · {task.minutes} min{task.marksAtStake ? ` · ${task.marksAtStake} marks at stake` : ''}</p>
               <h4 className="mt-1 break-words font-semibold">{task.title}</h4><p className="mt-2 text-sm text-muted-foreground">{task.why}</p>
               {task.chapterId && task.kind !== 'test' && <div className="mt-3"><div className="flex items-center gap-3"><Progress className="h-1 flex-1" value={Math.min(100, (evidence[task.id]?.questionIds.length || 0) / task.target * 100)} /><span className="shrink-0 text-xs text-muted-foreground">{Math.min(task.target, evidence[task.id]?.questionIds.length || 0)}/{task.target} solved</span></div></div>}
               <div className="mt-3 flex flex-wrap gap-2">

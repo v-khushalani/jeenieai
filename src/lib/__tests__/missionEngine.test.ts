@@ -125,3 +125,22 @@ describe('daily schedule constraints', () => {
     expect(new Set(week.map(d => d.mission.tasks[0].subject)).size).toBe(3);
   });
 });
+
+describe('retention + marks at stake', () => {
+  const base = { exam: 'JEE Main', daysLeft: 200, grade: 12, attempts: [], tests: [], todayIso: '2026-11-20', availableMinutes: 120 };
+  const ch = (id: string, o: any) => ({ id, subject: 'Physics', title: 'C' + id, chapterNumber: Number(id), attempts: 20, accuracy: 60, pendingMistakes: 0, classLevel: 12, totalQuestions: 50, ...o });
+  it('adds a retention drill for a strong chapter idle 14+ days', () => {
+    const m = buildMission({ ...base, chapters: [ch('1', { pendingMistakes: 3 }), ch('2', { accuracy: 90, lastAttemptAt: '2026-11-01' })] } as any);
+    expect(m.tasks.find(t => t.kind === 'revise')?.chapterId).toBe('2');
+  });
+  it('no retention drill when practised within 14 days', () => {
+    const m = buildMission({ ...base, chapters: [ch('1', { pendingMistakes: 3 }), ch('2', { accuracy: 90, lastAttemptAt: '2026-11-10' })] } as any);
+    expect(m.tasks.some(t => t.kind === 'revise')).toBe(false);
+  });
+  it('repair task carries 5 marks per retried mistake', () => {
+    const m = buildMission({ ...base, chapters: [ch('1', { pendingMistakes: 3 })] } as any);
+    const t = m.tasks.find(t => t.kind === 'repair')!;
+    expect(t.marksAtStake).toBe(t.target * 5);
+    expect(m.marksAtStake).toBe(t.target * 5);
+  });
+});

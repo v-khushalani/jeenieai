@@ -14,7 +14,7 @@ export default function MissionCTA({ userId, className = '' }: { userId?: string
   try { tasks = JSON.parse(safeLocalStorage.getItem(missionKey(userId)) || '{}').tasks || []; } catch { /* no saved plan */ }
   const evidence = readEvidence(userId);
   const next = tasks.find(t => !taskComplete(t, evidence[t.id]));
-  return <Button variant="outline" onClick={() => navigate('/ai-planner?view=today')} className={`h-auto w-full justify-between whitespace-normal p-3 text-left ${className}`}>
-    <span className="min-w-0"><span className="block text-xs text-muted-foreground">Today’s plan</span><span className="block text-sm font-semibold">{next?.title || (tasks.length ? 'Today’s work complete' : 'Set your study priorities')}</span></span><ArrowRight />
+  return <Button variant="outline" onClick={() => navigate(next?.href || '/ai-planner?view=today')} className={`h-auto w-full justify-between whitespace-normal p-3 text-left ${className}`}>
+    <span className="min-w-0"><span className="block text-xs text-muted-foreground">{next ? `Today’s plan · start next · ${next.minutes} min` : 'Today’s plan'}</span><span className="block text-sm font-semibold">{next?.title || (tasks.length ? 'Today’s work complete' : 'Set your study priorities')}</span></span><ArrowRight />
   </Button>;
 }
