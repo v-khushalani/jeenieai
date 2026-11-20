@@ -189,6 +189,21 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ compact = false }) => {
         }
       }
 
+      // Hidden accounts (e.g. owner's own account) still get an accurate private rank.
+      if (user?.id && sinceDate && periodQuestionCounts[user.id] === undefined) {
+        const { count } = await supabase
+          .from('question_attempts')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .gte('created_at', sinceDate);
+        periodQuestionCounts[user.id] = count || 0;
+      }
+      userStats.sort((a, b) =>
+        sinceDate
+          ? (periodQuestionCounts[b.id] || 0) - (periodQuestionCounts[a.id] || 0)
+          : (b.total_points - a.total_points) || (b.total_questions - a.total_questions)
+      );
+
       userStats.forEach((u, index) => {
         u.rank = index + 1;
       });
